@@ -1,0 +1,93 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-tint: var(--primary-tint);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Lora", ui-serif, Georgia, serif;
+}
+
+:root {
+  color-scheme: light;
+  --radius: 0.75rem;
+
+  /* Blue-DOMINANT palette: the app surface itself is deep blue.
+     White is reserved for content cards that sit on top. */
+  --background: #0F3A6B;      /* deep Yale-blue app background */
+  --foreground: #F4F8FD;      /* near-white text on blue */
+
+  --card: #ffffff;
+  --card-foreground: #0B2340;
+
+  --primary: #00356B;         /* Yale blue */
+  --primary-foreground: #ffffff;
+  --primary-tint: #1A4C8B;    /* mid blue for large blocks */
+
+  --secondary: #1A4C8B;       /* blue section background */
+  --secondary-foreground: #ffffff;
+
+  --muted: #EAF1FA;           /* light blue tint used inside white cards */
+  --muted-foreground: #3f5675;
+
+  --accent: #C9DBF0;
+  --accent-foreground: #00356B;
+
+  --border: #294F7F;          /* border visible on blue surface */
+  --input: #B9CBE3;
+  --ring: #7FB3FF;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  html, body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--foreground);
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+  /* Inside white/card surfaces, restore dark text + primary headings */
+  .bg-white, .bg-card, [data-surface="card"] {
+    color: var(--card-foreground);
+  }
+  .bg-white h1, .bg-white h2, .bg-white h3, .bg-white h4, .bg-white h5, .bg-white h6,
+  .bg-card h1, .bg-card h2, .bg-card h3, .bg-card h4, .bg-card h5, .bg-card h6 {
+    color: var(--primary);
+  }
+}
+
+@utility soft-shadow {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.12);
+}

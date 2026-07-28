@@ -1,0 +1,211 @@
+import { supabase } from "@/integrations/supabase/client";
+import type { Section, Difficulty } from "./sat";
+import { format } from "date-fns";
+
+export type TestType = "practice" | "daily" | "mock";
+
+export type PracticeFilters = {
+  section: Section;
+  skill?: string | null;
+  difficulty?: Difficulty | null;
+  limit?: number;
+};
+
+async function currentUserId(): Promise<string> {
+  const { data } = await supabase.auth.getUser();
+  const uid = data.user?.id;
+  if (!uid) throw new Error("Not signed in");
+  return uid;
+}
+
+export async function startPracticeSession(f: PracticeFilters): Promise<string> {
+  const uid = await currentUserId();
+  let q = supabase.from("questions").select("id").eq("section", f.section);
+  if (f.skill) q = q.eq("skill", f.skill);
+  if (f.difficulty) q = q.eq("difficulty", f.difficulty);
+  q = q.order("created_at", { ascending: false }).limit(f.limit ?? 20);
+  const { data: qs, error: qErr } = await q;
+  if (qErr) throw qErr;
+  const ids = (qs ?? []).map((r) => r.id as string);
+  if (ids.length === 0) throw new Error("No questions match this filter yet.");
+
+  const { data: sess, error } = await supabase
+    .from("test_sessions")
+    .insert({
+      user_id: uid,
+      type: "practice",
+      total_questions: ids.length,
+      metadata: {
+        question_ids: ids,
+        section: f.section,
+        skill: f.skill ?? null,
+        difficulty: f.difficulty ?? null,
+      },
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return sess.id as string;
+}
+
+async function questionsForTests(testIds: string[]): Promise<string[]> {
+  if (testIds.length === 0) return [];
+  const { data } = await supabase
+    .from("test_questions")
+    .select("test_id, question_id, position")
+    .in("test_id", testIds)
+    .order("position", { ascending: true });
+  const orderMap = new Map(testIds.map((id, i) => [id, i]));
+  const rows = ((data ?? []) as { test_id: string; question_id: string; position: number }[]).slice();
+  rows.sort((a, b) => {
+    const ta = orderMap.get(a.test_id) ?? 0;
+    const tb = orderMap.get(b.test_id) ?? 0;
+    if (ta !== tb) return ta - tb;
+    return a.position - b.position;
+  });
+  return rows.map((r) => r.question_id);
+}
+
+export async function startDailySession(): Promise<{ sessionId: string; resumed: boolean }> {
+  const uid = await currentUserId();
+  const today = format(new Date(), "yyyy-MM-dd");
+  const { data: dt, error: dtErr } = await supabase
+    .from("daily_tests")
+    .select("id")
+    .eq("date", today)
+    .maybeSingle();
+  if (dtErr) throw dtErr;
+  if (!dt) throw new Error("No daily test is available for today.");
+
+  const { data: existing } = await supabase
+    .from("test_sessions")
+    .select("id,completed_at")
+    .eq("user_id", uid)
+    .eq("daily_test_id", dt.id)
+    .is("completed_at", null)
+    .order("started_at", { ascending: false })
+    .limit(1);
+  if (existing && existing.length > 0) {
+    return { sessionId: existing[0].id as string, resumed: true };
+  }
+
+  // Prefer linked tests; fallback to legacy per-question rows
+  let ids: string[] = [];
+  const { data: linkedTests } = await supabase
+    .from("daily_test_tests")
+    .select("test_id, position")
+    .eq("daily_test_id", dt.id)
+    .order("position", { ascending: true });
+  if (linkedTests && linkedTests.length > 0) {
+    ids = await questionsForTests(linkedTests.map((r) => r.test_id as string));
+  }
+  if (ids.length === 0) {
+    const { data: dq } = await supabase
+      .from("daily_test_questions")
+      .select("question_id, position")
+      .eq("daily_test_id", dt.id)
+      .order("position", { ascending: true });
+    ids = (dq ?? []).map((r) => r.question_id as string);
+  }
+  if (ids.length === 0) throw new Error("Today's daily test has no questions yet.");
+
+  const { data: sess, error } = await supabase
+    .from("test_sessions")
+    .insert({
+      user_id: uid,
+      type: "daily",
+      daily_test_id: dt.id,
+      total_questions: ids.length,
+      metadata: { question_ids: ids },
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return { sessionId: sess.id as string, resumed: false };
+}
+
+export async function startMockSession(mockExamId: string): Promise<{ sessionId: string; resumed: boolean }> {
+  const uid = await currentUserId();
+  const { data: existing } = await supabase
+    .from("test_sessions")
+    .select("id,completed_at")
+    .eq("user_id", uid)
+    .eq("mock_exam_id", mockExamId)
+    .is("completed_at", null)
+    .order("started_at", { ascending: false })
+    .limit(1);
+  if (existing && existing.length > 0) return { sessionId: existing[0].id as string, resumed: true };
+
+  // Prefer mock_exam_sections (tests picker); fallback to legacy per-question rows
+  let ids: string[] = [];
+  const { data: sections } = await supabase
+    .from("mock_exam_sections")
+    .select("test_id, module, section_index")
+    .eq("mock_exam_id", mockExamId)
+    .not("test_id", "is", null)
+    .order("module", { ascending: true })
+    .order("section_index", { ascending: true });
+  if (sections && sections.length > 0) {
+    ids = await questionsForTests(sections.map((s) => s.test_id as string));
+  }
+  if (ids.length === 0) {
+    const { data: mq } = await supabase
+      .from("mock_exam_questions")
+      .select("question_id, section, module, position")
+      .eq("mock_exam_id", mockExamId)
+      .order("section", { ascending: true })
+      .order("module", { ascending: true })
+      .order("position", { ascending: true });
+    ids = (mq ?? []).map((r) => r.question_id as string);
+  }
+  if (ids.length === 0) throw new Error("This mock exam has no questions yet.");
+
+  const { data: sess, error } = await supabase
+    .from("test_sessions")
+    .insert({
+      user_id: uid,
+      type: "mock",
+      mock_exam_id: mockExamId,
+      total_questions: ids.length,
+      metadata: { question_ids: ids },
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return { sessionId: sess.id as string, resumed: false };
+}
+
+export function scaledScore(correct: number, total: number): number {
+  if (total <= 0) return 200;
+  const frac = correct / total;
+  return Math.round(200 + Math.max(0, Math.min(1, frac)) * 600);
+}
+
+export async function bumpDailyStreak(userId: string): Promise<void> {
+  const today = format(new Date(), "yyyy-MM-dd");
+  const { data: sp } = await supabase
+    .from("student_profiles")
+    .select("current_streak,longest_streak,last_daily_completed_date")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const last = sp?.last_daily_completed_date ?? null;
+  if (last === today) return;
+
+  let next = 1;
+  if (last) {
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    const yesterday = format(y, "yyyy-MM-dd");
+    if (last === yesterday) next = (sp?.current_streak ?? 0) + 1;
+  }
+  const longest = Math.max(sp?.longest_streak ?? 0, next);
+  await supabase
+    .from("student_profiles")
+    .update({
+      current_streak: next,
+      longest_streak: longest,
+      last_daily_completed_date: today,
+    })
+    .eq("user_id", userId);
+}

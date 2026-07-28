@@ -1,0 +1,10 @@
+# Local runtime env for `wrangler dev` (Cloudflare Workers).
+# Copy this file to `.dev.vars` and fill in values. `.dev.vars` is gitignored.
+#
+# Public values (also present in wrangler.jsonc "vars" for production):
+SUPABASE_URL="https://secadznjokojeswksmbx.supabase.co"
+SUPABASE_PUBLISHABLE_KEY="your-anon-publishable-key"
+#
+# Secret — only needed if you start using the admin (service-role) Supabase client.
+# In production set it with: wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+# SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"

@@ -1,0 +1,27 @@
+{
+  // Cloudflare Workers config for the TanStack Start (SSR) app.
+  // The build is produced by nitro's cloudflare target (bundled inside
+  // @lovable.dev/vite-tanstack-config) and lands in `.output/`.
+  //   - server entry -> .output/server/index.mjs
+  //   - static assets -> .output/public
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "beyond-sat",
+  "compatibility_date": "2025-09-02",
+  // Supabase + nitro rely on Node built-ins (crypto, stream, etc.) at the edge.
+  "compatibility_flags": ["nodejs_compat"],
+  "main": ".output/server/index.mjs",
+  "assets": {
+    "directory": ".output/public"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // Runtime env for SSR (exposed to the Worker as process.env via nodejs_compat).
+  // These are the PUBLIC Supabase values (anon/publishable) — safe to commit.
+  // The secret SUPABASE_SERVICE_ROLE_KEY must NOT go here; set it with:
+  //   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+  "vars": {
+    "SUPABASE_URL": "https://secadznjokojeswksmbx.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlY2Fkem5qb2tvamVzd2tzbWJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0MDM1MTgsImV4cCI6MjA5OTk3OTUxOH0._8vhr8ladNZoo8-XLfZ2yqwd1lYWvMEHiqb3Kt59SXk"
+  }
+}

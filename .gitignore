@@ -16,6 +16,14 @@ dist-ssr
 .nitro
 *.local
 
+# Package manager: this project uses npm (package-lock.json is committed).
+# A second lockfile makes Cloudflare's build pick bun instead of npm, and the
+# two drift out of sync -> `bun install --frozen-lockfile` fails the build.
+bun.lock
+bun.lockb
+yarn.lock
+pnpm-lock.yaml
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

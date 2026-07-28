@@ -48,8 +48,9 @@ admin/server feature needs it.
    This opens a browser to authorize Wrangler against your Cloudflare account.
 
 3. **(Optional) Pick a Worker name.** Edit `"name"` in `wrangler.jsonc` if you
-   want something other than `beyond-sat`. This becomes your default URL:
-   `https://<name>.<your-subdomain>.workers.dev`.
+   want something other than `beyond-sat-v0`. This becomes your default URL:
+   `https://<name>.<your-subdomain>.workers.dev`. It must match the Worker that
+   is connected to this repo in the Cloudflare dashboard.
 
 ---
 
@@ -91,7 +92,7 @@ npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 ## Optional: custom domain
 
 1. Add your domain as a zone in the Cloudflare dashboard.
-2. In the dashboard: **Workers & Pages → beyond-sat → Settings → Domains &
+2. In the dashboard: **Workers & Pages → beyond-sat-v0 → Settings → Domains &
    Routes → Add custom domain**, or add a `routes` block to `wrangler.jsonc`.
 
 ---

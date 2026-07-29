@@ -75,7 +75,7 @@ function PracticeLanding() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="rounded-2xl border border-border bg-white p-6 soft-shadow">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-orange-50 text-orange-600">
               <CalendarClock className="h-5 w-5" />
@@ -103,9 +103,9 @@ function PracticeLanding() {
           </Link>
         </div>
 
-        <div className="rounded-2xl border border-border bg-white p-6 soft-shadow">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-primary">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-600">
               <ClipboardList className="h-5 w-5" />
             </div>
             <div>
@@ -119,7 +119,7 @@ function PracticeLanding() {
             to="/practice/mock"
             aria-disabled={!mockCount}
             className={
-              "mt-5 inline-flex items-center gap-2 rounded-lg border border-primary px-4 py-2.5 text-sm font-bold text-primary hover:bg-accent transition " +
+              "mt-5 inline-flex items-center gap-2 rounded-lg border border-blue-600 px-4 py-2.5 text-sm font-bold text-blue-600 hover:bg-blue-50 transition " +
               (!mockCount ? "opacity-40 pointer-events-none" : "")
             }
           >
@@ -147,16 +147,16 @@ function SectionCard({
   return (
     <Link
       to={to}
-      className="group relative overflow-hidden rounded-2xl border border-border bg-white p-6 soft-shadow hover:border-primary/40 transition"
+      className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 soft-shadow hover:border-blue-600/40 transition"
     >
       <div className={"absolute -right-8 -top-8 h-32 w-32 rounded-full bg-gradient-to-br " + accent + " opacity-10"} />
       <div className="relative">
-        <div className="grid h-12 w-12 place-items-center rounded-xl bg-accent text-primary">{icon}</div>
+        <div className="grid h-12 w-12 place-items-center rounded-xl bg-blue-50 text-blue-600">{icon}</div>
         <h2 className="mt-4 text-2xl font-black text-slate-900">{title}</h2>
         <div className="mt-1 text-sm text-slate-500">
           <span className="text-slate-900 font-black tabular-nums">{count ?? "—"}</span> questions available
         </div>
-        <div className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-primary group-hover:gap-2.5 transition-all">
+        <div className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 group-hover:gap-2.5 transition-all">
           Practice this section <ArrowRight className="h-4 w-4" />
         </div>
       </div>

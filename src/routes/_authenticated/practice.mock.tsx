@@ -85,7 +85,7 @@ function MockList() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate({ to: "/practice" })}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-slate-600 hover:text-primary transition"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:text-blue-600 transition"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -97,10 +97,10 @@ function MockList() {
 
       {mocks == null ? (
         <div className="grid place-items-center h-48">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
         </div>
       ) : mocks.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-white p-10 text-center soft-shadow">
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center soft-shadow">
           <ClipboardList className="h-8 w-8 mx-auto text-slate-400" />
           <h2 className="mt-3 text-lg font-bold text-slate-800">No mock exams yet</h2>
           <p className="text-sm text-slate-500 mt-1">Admins will publish full-length tests here.</p>
@@ -118,10 +118,10 @@ function MockList() {
             return (
               <li
                 key={m.id}
-                className="rounded-2xl border border-border bg-white p-5 flex items-start justify-between gap-4 soft-shadow"
+                className="rounded-2xl border border-slate-200 bg-white p-5 flex items-start justify-between gap-4 soft-shadow"
               >
                 <div className="min-w-0">
-                  <h3 className="text-lg font-black text-primary">{m.title}</h3>
+                  <h3 className="text-lg font-black text-blue-600">{m.title}</h3>
                   {m.description && (
                     <p className="mt-1 text-sm text-slate-600 line-clamp-2">{m.description}</p>
                   )}

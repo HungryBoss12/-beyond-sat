@@ -187,11 +187,11 @@ function AdminMocks() {
           <Plus className="h-4 w-4" /> New mock exam
         </button>
       </div>
-      <div className="mt-4 rounded-2xl border border-border bg-white overflow-hidden">
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-white overflow-hidden">
         {items.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-500">No mock exams yet.</div>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-slate-200">
             {items.map((m) => (
               <li key={m.id} className="flex items-center gap-4 px-4 py-3">
                 <div className="flex-1 min-w-0">
@@ -237,7 +237,7 @@ function AdminMocks() {
       {editing && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 grid place-items-center p-4 overflow-y-auto">
           <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl my-8 flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <h3 className="text-lg font-bold text-slate-800">
                 {editing.id ? "Edit mock exam" : "New mock exam"}
               </h3>
@@ -253,7 +253,7 @@ function AdminMocks() {
                 <input
                   value={editing.title}
                   onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
               </Row>
               <Row label="Description">
@@ -261,15 +261,15 @@ function AdminMocks() {
                   value={editing.description ?? ""}
                   onChange={(e) => setEditing({ ...editing, description: e.target.value })}
                   rows={2}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
               </Row>
 
               {[1, 2].map((mod) => (
-                <div key={mod} className="rounded-xl border border-border p-4 bg-slate-50">
+                <div key={mod} className="rounded-xl border border-slate-200 p-4 bg-slate-50">
                   <div className="flex items-center gap-2 mb-3">
-                    <Layers className="h-4 w-4 text-primary" />
-                    <h4 className="text-sm font-bold text-primary">Module {mod} — 4 sections</h4>
+                    <Layers className="h-4 w-4 text-blue-600" />
+                    <h4 className="text-sm font-bold text-blue-600">Module {mod} — 4 sections</h4>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {[1, 2, 3, 4].map((idx) => {
@@ -281,10 +281,10 @@ function AdminMocks() {
                       return (
                         <div
                           key={idx}
-                          className="rounded-lg bg-white border border-border p-3 space-y-2"
+                          className="rounded-lg bg-white border border-slate-200 p-3 space-y-2"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary shrink-0">
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 shrink-0">
                               {idx}
                             </span>
                             <input
@@ -294,7 +294,7 @@ function AdminMocks() {
                                   section_name: e.target.value,
                                 })
                               }
-                              className="flex-1 rounded-md border border-border px-2 py-1 text-xs font-semibold"
+                              className="flex-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold"
                               placeholder={`Section ${idx} name`}
                             />
                           </div>
@@ -305,7 +305,7 @@ function AdminMocks() {
                                 test_id: e.target.value || null,
                               })
                             }
-                            className="w-full rounded-md border border-border px-2 py-1.5 text-xs"
+                            className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs"
                           >
                             <option value="">— Choose a test —</option>
                             {availableTests.map((t) => (
@@ -344,7 +344,7 @@ function AdminMocks() {
                 </div>
               ))}
 
-              <details className="rounded-xl border border-border p-4">
+              <details className="rounded-xl border border-slate-200 p-4">
                 <summary className="text-sm font-bold text-slate-700 cursor-pointer">
                   Advanced: timings & thresholds
                 </summary>
@@ -397,7 +397,7 @@ function AdminMocks() {
                 Published
               </label>
             </div>
-            <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
               <button
                 onClick={() => setEditing(null)}
                 className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
@@ -434,7 +434,7 @@ function NumInput({ v, set }: { v: number; set: (n: number) => void }) {
       type="number"
       value={v}
       onChange={(e) => set(parseInt(e.target.value) || 0)}
-      className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
     />
   );
 }

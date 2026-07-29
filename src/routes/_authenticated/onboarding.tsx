@@ -154,7 +154,7 @@ function Onboarding() {
   if (loading) {
     return (
       <div className="min-h-screen grid place-items-center bg-slate-50">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -162,7 +162,7 @@ function Onboarding() {
   return (
     <div className="min-h-screen grid place-items-center bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6">
       <div className="w-full max-w-md rounded-3xl bg-white text-slate-800 p-8 md:p-10 shadow-2xl">
-        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary mb-5">
+        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-blue-600 mb-5">
           <CalendarDays className="h-7 w-7" />
         </div>
         <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
@@ -184,7 +184,7 @@ function Onboarding() {
               step={10}
               value={targetRw}
               onChange={(e) => setTargetRw(e.target.value)}
-              className="w-full rounded-xl border-2 border-border px-4 py-3 text-lg font-semibold text-slate-800 focus:border-primary focus:outline-none"
+              className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 text-lg font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
             />
             <span className="text-[11px] text-slate-500">200–800</span>
           </label>
@@ -199,15 +199,15 @@ function Onboarding() {
               step={10}
               value={targetMath}
               onChange={(e) => setTargetMath(e.target.value)}
-              className="w-full rounded-xl border-2 border-border px-4 py-3 text-lg font-semibold text-slate-800 focus:border-primary focus:outline-none"
+              className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 text-lg font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
             />
             <span className="text-[11px] text-slate-500">200–800</span>
           </label>
         </div>
 
-        <div className="mt-3 rounded-xl bg-slate-50 border border-border px-4 py-2.5 flex items-center justify-between">
+        <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-2.5 flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total target</span>
-          <span className="text-lg font-black text-primary tabular-nums">
+          <span className="text-lg font-black text-blue-600 tabular-nums">
             {totalNum || "—"} <span className="text-xs font-bold text-slate-400">/ 1600</span>
           </span>
         </div>
@@ -217,14 +217,14 @@ function Onboarding() {
             Exam date
           </span>
           {dateOptions.length === 0 ? (
-            <div className="rounded-xl border-2 border-dashed border-border px-4 py-3 text-sm text-slate-500">
+            <div className="rounded-xl border-2 border-dashed border-slate-200 px-4 py-3 text-sm text-slate-500">
               No official exam dates published yet. Please check back soon.
             </div>
           ) : (
             <select
               value={examDate}
               onChange={(e) => setExamDate(e.target.value)}
-              className="w-full rounded-xl border-2 border-border px-4 py-3 text-lg font-semibold text-slate-800 focus:border-primary focus:outline-none bg-white"
+              className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 text-lg font-semibold text-slate-800 focus:border-blue-600 focus:outline-none bg-white"
             >
               <option value="">Select an exam date…</option>
               {dateOptions.map((d) => (
@@ -238,9 +238,9 @@ function Onboarding() {
         </label>
 
         {daysLeft !== null && (
-          <div className="mt-4 rounded-xl bg-primary/5 border border-primary/10 px-4 py-3 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-bold text-primary">
+          <div className="mt-4 rounded-xl bg-blue-50 border border-blue-600/10 px-4 py-3 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-bold text-blue-600">
               {daysLeft === 0 ? "Exam is today!" : `${daysLeft} day${daysLeft === 1 ? "" : "s"} until your exam`}
             </span>
           </div>

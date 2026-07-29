@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Section, Difficulty } from "./sat";
+import { questionCountFor, rawToScaled } from "./sat";
 import { format } from "date-fns";
 
 export type TestType = "practice" | "daily" | "mock";
@@ -175,10 +176,20 @@ export async function startMockSession(mockExamId: string): Promise<{ sessionId:
   return { sessionId: sess.id as string, resumed: false };
 }
 
-export function scaledScore(correct: number, total: number): number {
+/**
+ * Scale a raw score for one section to the 200-800 SAT range.
+ *
+ * Mocks in this app can be shorter than a real section (54 R&W / 44 Math), so
+ * the raw count is first projected onto the official question count, then run
+ * through the shared conversion curve in `lib/sat`. Using that curve here keeps
+ * mock results consistent with the score calculator shown in Analysis — a
+ * previous linear `200 + pct * 600` version disagreed with it.
+ */
+export function scaledScore(correct: number, total: number, section: Section = "reading_writing"): number {
   if (total <= 0) return 200;
-  const frac = correct / total;
-  return Math.round(200 + Math.max(0, Math.min(1, frac)) * 600);
+  const official = questionCountFor(section);
+  const projected = (Math.max(0, Math.min(total, correct)) / total) * official;
+  return rawToScaled(section, projected);
 }
 
 export async function bumpDailyStreak(userId: string): Promise<void> {

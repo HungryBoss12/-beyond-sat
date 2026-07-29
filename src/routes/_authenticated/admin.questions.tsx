@@ -185,7 +185,7 @@ function AdminQuestions() {
               onClick={() => setFilter(k)}
               className={
                 "rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wider " +
-                (filter === k ? "bg-primary text-white" : "bg-white border border-border text-slate-600")
+                (filter === k ? "bg-primary text-white" : "bg-white border border-slate-200 text-slate-600")
               }
             >
               {k === "all" ? "All" : SECTION_LABEL[k]}
@@ -200,20 +200,20 @@ function AdminQuestions() {
         </button>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-border bg-white overflow-hidden">
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-white overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-sm text-slate-500">Loading…</div>
         ) : items.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-500">No questions yet.</div>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-slate-200">
             {items.map((q) => (
               <li key={q.id} className="flex items-center gap-4 px-4 py-3 hover:bg-slate-50">
                 {q.image_url ? (
                   <img
                     src={q.image_url}
                     alt=""
-                    className="h-10 w-10 rounded-md object-cover border border-border shrink-0"
+                    className="h-10 w-10 rounded-md object-cover border border-slate-200 shrink-0"
                   />
                 ) : (
                   <div className="h-10 w-10 rounded-md bg-slate-100 grid place-items-center shrink-0">
@@ -225,7 +225,7 @@ function AdminQuestions() {
                     {q.question_text || q.prompt}
                   </div>
                   <div className="mt-1 flex gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
                       {SECTION_LABEL[q.section]}
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
@@ -281,7 +281,7 @@ function AdminQuestions() {
       {editing && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 grid place-items-center p-4 overflow-y-auto">
           <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl my-8">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <h3 className="text-lg font-bold text-slate-800">
                 {editing.id ? "Edit question" : "New question"}
               </h3>
@@ -305,7 +305,7 @@ function AdminQuestions() {
                         skill: s === "math" ? "Algebra" : "Craft and Structure",
                       });
                     }}
-                    className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   >
                     <option value="math">Math</option>
                     <option value="reading_writing">Reading & Writing</option>
@@ -315,7 +315,7 @@ function AdminQuestions() {
                   <select
                     value={editing.skill}
                     onChange={(e) => setEditing({ ...editing, skill: e.target.value })}
-                    className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   >
                     {skills.map((s) => (
                       <option key={s} value={s}>
@@ -330,7 +330,7 @@ function AdminQuestions() {
                     onChange={(e) =>
                       setEditing({ ...editing, difficulty: e.target.value as Difficulty })
                     }
-                    className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   >
                     {LETTER_DIFFICULTIES.map((d) => (
                       <option key={d} value={d}>
@@ -343,7 +343,7 @@ function AdminQuestions() {
                   <select
                     value={editing.kind}
                     onChange={(e) => setEditing({ ...editing, kind: e.target.value as any })}
-                    className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   >
                     <option value="multiple_choice">Multiple choice</option>
                     <option value="grid_in">Grid-in</option>
@@ -358,7 +358,7 @@ function AdminQuestions() {
                         source_month: e.target.value ? Number(e.target.value) : null,
                       })
                     }
-                    className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   >
                     <option value="">— None —</option>
                     {MONTHS.map((m, i) => (
@@ -381,7 +381,7 @@ function AdminQuestions() {
                       })
                     }
                     placeholder="e.g. 2023"
-                    className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   />
                 </Field>
                 <Field label="Time limit (minutes, optional)">
@@ -403,7 +403,7 @@ function AdminQuestions() {
                       })
                     }
                     placeholder="e.g. 1.5"
-                    className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   />
                 </Field>
               </div>
@@ -414,10 +414,10 @@ function AdminQuestions() {
                     <img
                       src={editing.image_url}
                       alt=""
-                      className="h-16 w-16 rounded-lg object-cover border border-border"
+                      className="h-16 w-16 rounded-lg object-cover border border-slate-200"
                     />
                   ) : (
-                    <div className="h-16 w-16 rounded-lg bg-slate-100 grid place-items-center border border-border">
+                    <div className="h-16 w-16 rounded-lg bg-slate-100 grid place-items-center border border-slate-200">
                       <ImageIcon className="h-6 w-6 text-slate-400" />
                     </div>
                   )}
@@ -436,7 +436,7 @@ function AdminQuestions() {
                       type="button"
                       onClick={() => fileRef.current?.click()}
                       disabled={uploading}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-primary/40 self-start"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-600/40 self-start"
                     >
                       {uploading ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -518,7 +518,7 @@ function AdminQuestions() {
                           .filter(Boolean),
                       })
                     }
-                    className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   />
                 </Field>
               )}
@@ -531,7 +531,7 @@ function AdminQuestions() {
                 />
               </Field>
             </div>
-            <div className="px-6 py-4 border-t border-border flex items-center justify-between gap-2 flex-wrap">
+            <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-2 flex-wrap">
               <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
                 <input
                   type="checkbox"
@@ -550,7 +550,7 @@ function AdminQuestions() {
                 {!editing.id && (
                   <button
                     onClick={() => save({ addAnother: true, carryOver })}
-                    className="rounded-lg border border-primary text-primary bg-white px-4 py-2 text-sm font-semibold hover:bg-primary/5"
+                    className="rounded-lg border border-blue-600 text-blue-600 bg-white px-4 py-2 text-sm font-semibold hover:bg-blue-50"
                   >
                     Save & add another
                   </button>

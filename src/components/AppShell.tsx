@@ -76,9 +76,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-slate-800">
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 flex-col border-r border-border bg-white z-30">
-        <div className="h-16 flex items-center px-6 border-b border-border">
-          <span className="text-xl font-black text-primary tracking-tight">BeyondSAT</span>
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 flex-col border-r border-slate-200 bg-white z-30">
+        <div className="h-16 flex items-center px-6 border-b border-slate-200">
+          <span className="text-xl font-black text-blue-600 tracking-tight">BeyondSAT</span>
         </div>
         <nav className="flex-1 p-4 space-y-1">
           {NAV.map((n) => {
@@ -91,8 +91,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className={
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition " +
                   (active
-                    ? "bg-accent text-primary"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-primary")
+                    ? "bg-blue-50 text-blue-600"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-blue-600")
                 }
               >
                 <Icon className="h-4.5 w-4.5 h-[18px] w-[18px]" />
@@ -106,8 +106,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className={
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition " +
                 (pathname.startsWith("/admin")
-                  ? "bg-accent text-primary"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-primary")
+                  ? "bg-blue-50 text-blue-600"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-blue-600")
               }
             >
               <Shield className="h-[18px] w-[18px]" />
@@ -115,7 +115,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           )}
         </nav>
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-slate-200">
           <div className="flex items-center gap-2 rounded-lg bg-orange-50 px-3 py-2.5">
             <Flame className="h-5 w-5 text-orange-500 fill-orange-500" />
             <div>
@@ -129,12 +129,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Header */}
-      <header className="sticky top-0 z-20 border-b border-border bg-primary/95 text-white backdrop-blur lg:pl-64">
+      <header className="sticky top-0 z-20 border-b border-slate-200 bg-primary/95 text-white backdrop-blur lg:pl-64">
         <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setDrawerOpen(true)}
-              className="lg:hidden inline-flex items-center justify-center rounded-lg border border-border h-9 w-9 text-slate-600"
+              className="lg:hidden inline-flex items-center justify-center rounded-lg border border-slate-200 h-9 w-9 text-slate-600"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
@@ -152,7 +152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div ref={menuRef} className="relative">
               <button
                 onClick={() => setMenuOpen((v) => !v)}
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-white py-1 pl-1 pr-2 hover:border-primary/40 transition"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-2 hover:border-blue-600/40 transition"
               >
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-primary text-white text-xs font-bold">
                   {initials}
@@ -163,8 +163,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <ChevronDown className="h-4 w-4 text-slate-500" />
               </button>
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-white shadow-lg py-1">
-                  <div className="px-4 py-2 border-b border-border">
+                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white shadow-lg py-1">
+                  <div className="px-4 py-2 border-b border-slate-200">
                     <div className="text-sm font-semibold text-slate-800 truncate">{name}</div>
                     <div className="text-xs text-slate-500 truncate">{email}</div>
                   </div>
@@ -232,7 +232,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Mobile bottom tab bar */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-primary border-t border-border">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-primary border-t border-slate-200">
         <div className="grid grid-cols-4">
           {NAV.map((n) => {
             const active = pathname === n.to || pathname.startsWith(n.to + "/");

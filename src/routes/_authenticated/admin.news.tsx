@@ -98,11 +98,11 @@ function AdminNews() {
         </button>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-border bg-white overflow-hidden">
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-white overflow-hidden">
         {items.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-500">No articles yet.</div>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-slate-200">
             {items.map((a) => (
               <li key={a.id} className="flex items-center gap-4 px-4 py-3">
                 <div className="flex-1 min-w-0">
@@ -149,7 +149,7 @@ function AdminNews() {
       {editing && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 grid place-items-center p-4 overflow-y-auto">
           <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl my-8">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <h3 className="text-lg font-bold text-slate-800">
                 {editing.id ? "Edit article" : "New article"}
               </h3>
@@ -162,21 +162,21 @@ function AdminNews() {
                 <input
                   value={editing.title}
                   onChange={(e) => setEditing({ ...editing, title: e.target.value, slug: editing.slug || slugify(e.target.value) })}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
               </FieldRow>
               <FieldRow label="Slug">
                 <input
                   value={editing.slug}
                   onChange={(e) => setEditing({ ...editing, slug: slugify(e.target.value) })}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm font-mono"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono"
                 />
               </FieldRow>
               <FieldRow label="Cover image URL (optional)">
                 <input
                   value={editing.cover_image_url ?? ""}
                   onChange={(e) => setEditing({ ...editing, cover_image_url: e.target.value })}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
               </FieldRow>
               <FieldRow label="Excerpt">
@@ -184,7 +184,7 @@ function AdminNews() {
                   value={editing.excerpt ?? ""}
                   onChange={(e) => setEditing({ ...editing, excerpt: e.target.value })}
                   rows={2}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
               </FieldRow>
               <FieldRow label="Body">
@@ -192,7 +192,7 @@ function AdminNews() {
                   value={editing.body}
                   onChange={(e) => setEditing({ ...editing, body: e.target.value })}
                   rows={10}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
               </FieldRow>
               <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -204,7 +204,7 @@ function AdminNews() {
                 Published
               </label>
             </div>
-            <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
               <button onClick={() => setEditing(null)} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
               <button onClick={save} className="rounded-lg bg-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90">Save</button>
             </div>

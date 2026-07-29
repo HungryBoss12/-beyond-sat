@@ -45,11 +45,11 @@ function News() {
       {items === null ? (
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-40 rounded-2xl bg-white border border-border animate-pulse" />
+            <div key={i} className="h-40 rounded-2xl bg-white border border-slate-200 animate-pulse" />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-border bg-white p-12 text-center">
+        <div className="mt-8 rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
           <Newspaper className="h-8 w-8 text-slate-400 mx-auto" />
           <h2 className="mt-3 text-lg font-bold text-slate-800">Nothing here yet</h2>
           <p className="text-sm text-slate-500 mt-1">Check back soon.</p>
@@ -61,7 +61,7 @@ function News() {
               key={a.id}
               to="/news/$slug"
               params={{ slug: a.slug }}
-              className="group rounded-2xl overflow-hidden border border-border bg-white hover:border-primary/40 transition soft-shadow"
+              className="group rounded-2xl overflow-hidden border border-slate-200 bg-white hover:border-blue-600/40 transition soft-shadow"
             >
               {a.cover_image_url ? (
                 <div className="aspect-[16/9] bg-slate-100 overflow-hidden">
@@ -73,20 +73,20 @@ function News() {
                 </div>
               ) : (
                 <div className="aspect-[16/9] bg-gradient-to-br from-primary/10 to-primary/5 grid place-items-center">
-                  <Newspaper className="h-10 w-10 text-primary/40" />
+                  <Newspaper className="h-10 w-10 text-blue-600/40" />
                 </div>
               )}
               <div className="p-5">
-                <div className="text-xs font-semibold uppercase tracking-wider text-primary/70">
+                <div className="text-xs font-semibold uppercase tracking-wider text-blue-600/70">
                   {a.published_at ? format(new Date(a.published_at), "MMM d, yyyy") : ""}
                 </div>
-                <h2 className="mt-1.5 text-lg font-bold text-slate-800 group-hover:text-primary">
+                <h2 className="mt-1.5 text-lg font-bold text-slate-800 group-hover:text-blue-600">
                   {a.title}
                 </h2>
                 {a.excerpt && (
                   <p className="mt-1.5 text-sm text-slate-600 line-clamp-2">{a.excerpt}</p>
                 )}
-                <div className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary">
+                <div className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-600">
                   Read <ArrowRight className="h-4 w-4" />
                 </div>
               </div>

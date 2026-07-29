@@ -126,11 +126,11 @@ function AdminDaily() {
         </button>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-border bg-white overflow-hidden">
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-white overflow-hidden">
         {items.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-500">No daily tests scheduled.</div>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-slate-200">
             {items.map((d) => (
               <li key={d.id} className="flex items-center gap-4 px-4 py-3">
                 <div className="flex-1">
@@ -141,7 +141,7 @@ function AdminDaily() {
                 </div>
                 <button
                   onClick={() => openEditor(d)}
-                  className="rounded-lg bg-white border border-border px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-primary/40"
+                  className="rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-600/40"
                 >
                   Manage tests
                 </button>
@@ -160,7 +160,7 @@ function AdminDaily() {
       {editing && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 grid place-items-center p-4">
           <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <h3 className="text-lg font-bold text-slate-800">
                 {editing.dt.title || `Daily · ${editing.dt.date}`}
                 <span className="ml-2 text-xs font-normal text-slate-500">
@@ -180,13 +180,13 @@ function AdminDaily() {
                   <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
                     Selected order
                   </div>
-                  <ol className="rounded-lg border border-border overflow-hidden">
+                  <ol className="rounded-lg border border-slate-200 overflow-hidden">
                     {editing.tests.map((tid, idx) => {
                       const t = pool.find((x) => x.id === tid);
                       return (
                         <li
                           key={tid}
-                          className="flex items-center gap-2 px-3 py-2 text-sm border-b last:border-b-0 border-border bg-slate-50"
+                          className="flex items-center gap-2 px-3 py-2 text-sm border-b last:border-b-0 border-slate-200 bg-slate-50"
                         >
                           <span className="tabular-nums text-xs font-bold text-slate-400 w-6">
                             {idx + 1}.
@@ -195,7 +195,7 @@ function AdminDaily() {
                             {t?.title ?? "(missing)"}
                           </span>
                           {t && (
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
                               M{t.module}
                             </span>
                           )}
@@ -228,14 +228,14 @@ function AdminDaily() {
                 <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
                   Available tests
                 </div>
-                <ul className="rounded-lg border border-border divide-y divide-border">
+                <ul className="rounded-lg border border-slate-200 divide-y divide-slate-200">
                   {pool
                     .filter((t) => !editing.tests.includes(t.id))
                     .map((t) => (
                       <li key={t.id} className="flex items-center gap-3 px-3 py-2">
                         <button
                           onClick={() => toggle(t.id)}
-                          className="rounded-md border border-border h-7 w-7 grid place-items-center text-primary hover:bg-primary hover:text-white"
+                          className="rounded-md border border-slate-200 h-7 w-7 grid place-items-center text-blue-600 hover:bg-primary hover:text-white"
                         >
                           <Plus className="h-4 w-4" />
                         </button>
@@ -244,7 +244,7 @@ function AdminDaily() {
                             {t.title}
                           </div>
                           <div className="mt-0.5 flex gap-1.5 flex-wrap">
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
                               {SECTION_LABEL[t.section]} · M{t.module}
                             </span>
                             <span
@@ -272,7 +272,7 @@ function AdminDaily() {
                 </ul>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
               <button
                 onClick={() => setEditing(null)}
                 className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"

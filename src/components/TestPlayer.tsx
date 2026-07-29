@@ -157,9 +157,10 @@ export function TestPlayer({
     const scaled =
       type === "mock"
         ? {
-            rw: scaledScore(rwC, rwT),
-            math: scaledScore(mC, mT),
-            total: scaledScore(rwC, rwT) + scaledScore(mC, mT),
+            rw: scaledScore(rwC, rwT, "reading_writing"),
+            math: scaledScore(mC, mT, "math"),
+            total:
+              scaledScore(rwC, rwT, "reading_writing") + scaledScore(mC, mT, "math"),
           }
         : null;
 
@@ -202,16 +203,16 @@ export function TestPlayer({
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* top bar — Bluebook-style with centered timer */}
-      <div className="h-14 grid grid-cols-3 items-center px-4 sm:px-6 border-b border-border bg-white">
+      <div className="h-14 grid grid-cols-3 items-center px-4 sm:px-6 border-b border-slate-200 bg-white">
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => (onExit ? onExit() : navigate({ to: "/practice" }))}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-slate-600 hover:text-primary transition"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:text-blue-600 transition"
             aria-label="Exit"
           >
             <X className="h-4 w-4" />
           </button>
-          <span className="text-sm font-black text-primary tracking-tight truncate">BeyondSAT</span>
+          <span className="text-sm font-black text-blue-600 tracking-tight truncate">BeyondSAT</span>
           <span className="hidden sm:inline text-xs text-slate-500 uppercase font-bold tracking-wider truncate">
             {type === "mock" ? "Mock exam" : type === "daily" ? "Daily test" : "Practice"}
           </span>
@@ -228,7 +229,7 @@ export function TestPlayer({
         <div className="flex justify-end">
           <button
             onClick={() => setShowReview((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:border-primary/40 transition"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:border-blue-600/40 transition"
           >
             <Flag className="h-3.5 w-3.5" /> Review {answeredCount}/{questions.length}
           </button>
@@ -303,11 +304,11 @@ function BottomBar({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="relative h-16 border-t border-border bg-white flex items-center justify-between px-4 sm:px-6">
+    <div className="relative h-16 border-t border-slate-200 bg-white flex items-center justify-between px-4 sm:px-6">
       <button
         onClick={onPrev}
         disabled={idx === 0 || showReview}
-        className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-bold text-slate-700 disabled:opacity-40 hover:border-primary/40 transition"
+        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 disabled:opacity-40 hover:border-blue-600/40 transition"
       >
         <ChevronLeft className="h-4 w-4" /> Back
       </button>
@@ -321,7 +322,7 @@ function BottomBar({
           <ChevronRight className={"h-4 w-4 transition " + (open ? "-rotate-90" : "rotate-90")} />
         </button>
         {open && (
-          <div className="absolute bottom-full mb-3 w-[min(92vw,520px)] rounded-2xl border border-border bg-white shadow-2xl p-4">
+          <div className="absolute bottom-full mb-3 w-[min(92vw,520px)] rounded-2xl border border-slate-200 bg-white shadow-2xl p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Jump to question
@@ -392,8 +393,8 @@ function ReviewPanel({
 }) {
   const unanswered = answered.filter((x) => !x).length;
   return (
-    <div className="rounded-2xl border border-border bg-white p-6 soft-shadow">
-      <h2 className="text-xl font-black text-primary">Review your answers</h2>
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+      <h2 className="text-xl font-black text-blue-600">Review your answers</h2>
       <p className="text-sm text-slate-600 mt-1">
         {unanswered > 0
           ? `${unanswered} unanswered. Tap any number to jump back.`
@@ -498,7 +499,7 @@ function ResultsView({
         </div>
         <button
           onClick={onExit}
-          className="w-full rounded-lg bg-white text-primary px-6 py-3 text-sm font-bold hover:bg-white/90 transition"
+          className="w-full rounded-lg bg-white text-blue-600 px-6 py-3 text-sm font-bold hover:bg-white/90 transition"
         >
           Back to practice
         </button>

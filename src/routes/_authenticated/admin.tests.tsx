@@ -197,7 +197,7 @@ function AdminTests() {
       </div>
 
       {loading ? (
-        <div className="mt-6 rounded-2xl border border-border bg-white p-10 text-center text-sm text-slate-500">
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
           Loading…
         </div>
       ) : (
@@ -207,17 +207,17 @@ function AdminTests() {
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
                 Module {m}
               </h2>
-              <div className="rounded-2xl border border-border bg-white overflow-hidden">
+              <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
                 {grouped[m as 1 | 2].length === 0 ? (
                   <div className="p-6 text-center text-sm text-slate-500">No tests in module {m}.</div>
                 ) : (
-                  <ul className="divide-y divide-border">
+                  <ul className="divide-y divide-slate-200">
                     {grouped[m as 1 | 2].map((t) => (
                       <li key={t.id} className="flex items-center gap-4 px-4 py-3 hover:bg-slate-50">
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-semibold text-slate-800 truncate">{t.title}</div>
                           <div className="mt-1 flex gap-1.5 flex-wrap">
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
                               {SECTION_LABEL[t.section]}
                             </span>
                             <span
@@ -260,7 +260,7 @@ function AdminTests() {
       {editing && editingQs && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 grid place-items-center p-4 overflow-y-auto">
           <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl my-8 flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <h3 className="text-lg font-bold text-slate-800">
                 {editing.id ? "Edit test" : "New test"}
               </h3>
@@ -280,7 +280,7 @@ function AdminTests() {
                   value={editing.title}
                   onChange={(e) => setEditing({ ...editing, title: e.target.value })}
                   placeholder="Test 1"
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
               </Field>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -293,7 +293,7 @@ function AdminTests() {
                       setEditingQs([]);
                       reloadPool(s);
                     }}
-                    className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   >
                     <option value="math">Math</option>
                     <option value="reading_writing">Reading & Writing</option>
@@ -303,7 +303,7 @@ function AdminTests() {
                   <select
                     value={editing.module}
                     onChange={(e) => setEditing({ ...editing, module: Number(e.target.value) as 1 | 2 })}
-                    className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   >
                     <option value={1}>Module 1</option>
                     <option value={2}>Module 2</option>
@@ -315,7 +315,7 @@ function AdminTests() {
                     onChange={(e) =>
                       setEditing({ ...editing, difficulty: e.target.value as LetterDifficulty })
                     }
-                    className="w-full rounded-lg border border-border px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   >
                     {LETTER_DIFFICULTIES.map((d) => (
                       <option key={d} value={d}>
@@ -334,7 +334,7 @@ function AdminTests() {
                           source_month: e.target.value ? Number(e.target.value) : null,
                         })
                       }
-                      className="flex-1 rounded-lg border border-border px-2 py-2 text-sm"
+                      className="flex-1 rounded-lg border border-slate-200 px-2 py-2 text-sm"
                     >
                       <option value="">Month</option>
                       {MONTHS.map((m, i) => (
@@ -355,7 +355,7 @@ function AdminTests() {
                         })
                       }
                       placeholder="Year"
-                      className="w-20 rounded-lg border border-border px-2 py-2 text-sm"
+                      className="w-20 rounded-lg border border-slate-200 px-2 py-2 text-sm"
                     />
                   </div>
                 </Field>
@@ -373,13 +373,13 @@ function AdminTests() {
                   )}
                 </div>
                 {editingQs.length > 0 && (
-                  <ol className="mb-4 rounded-lg border border-border overflow-hidden">
+                  <ol className="mb-4 rounded-lg border border-slate-200 overflow-hidden">
                     {editingQs.map((qid, idx) => {
                       const q = pool.find((x) => x.id === qid);
                       return (
                         <li
                           key={qid}
-                          className="flex items-center gap-2 px-3 py-2 text-sm border-b last:border-b-0 border-border bg-slate-50"
+                          className="flex items-center gap-2 px-3 py-2 text-sm border-b last:border-b-0 border-slate-200 bg-slate-50"
                         >
                           <span className="tabular-nums text-xs font-bold text-slate-400 w-6">
                             {idx + 1}.
@@ -410,15 +410,15 @@ function AdminTests() {
                     })}
                   </ol>
                 )}
-                <div className="rounded-lg border border-border max-h-72 overflow-y-auto">
-                  <ul className="divide-y divide-border">
+                <div className="rounded-lg border border-slate-200 max-h-72 overflow-y-auto">
+                  <ul className="divide-y divide-slate-200">
                     {pool
                       .filter((q) => !editingQs.includes(q.id))
                       .map((q) => (
                         <li key={q.id} className="flex items-start gap-3 px-3 py-2">
                           <button
                             onClick={() => toggleQ(q.id)}
-                            className="mt-0.5 rounded-md border border-border h-6 w-6 grid place-items-center text-primary hover:bg-primary hover:text-white"
+                            className="mt-0.5 rounded-md border border-slate-200 h-6 w-6 grid place-items-center text-blue-600 hover:bg-primary hover:text-white"
                           >
                             <Plus className="h-3.5 w-3.5" />
                           </button>
@@ -441,7 +441,7 @@ function AdminTests() {
                 </div>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
               <button
                 onClick={() => {
                   setEditing(null);

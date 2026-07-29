@@ -66,25 +66,25 @@ function AdminUsers() {
         placeholder="Search by name or email…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        className="w-full max-w-md rounded-lg border border-border px-3 py-2 text-sm"
+        className="w-full max-w-md rounded-lg border border-slate-200 px-3 py-2 text-sm"
       />
-      <div className="mt-4 rounded-2xl border border-border bg-white overflow-hidden">
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-white overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-sm text-slate-500">Loading…</div>
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-500">No users found.</div>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-slate-200">
             {filtered.map((u) => (
               <li key={u.id} className="flex items-center gap-4 px-4 py-3">
-                <div className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                <div className="grid h-9 w-9 place-items-center rounded-full bg-blue-50 text-blue-600 text-xs font-bold">
                   {(u.full_name || u.email || "?").slice(0, 2).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-slate-800 truncate">
                     {u.full_name || "—"}
                     {u.isAdmin && (
-                      <span className="ml-2 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                      <span className="ml-2 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
                         Admin
                       </span>
                     )}
@@ -98,7 +98,7 @@ function AdminUsers() {
                   className={
                     "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold " +
                     (u.isAdmin
-                      ? "bg-white border border-border text-slate-600 hover:border-red-300 hover:text-red-600"
+                      ? "bg-white border border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600"
                       : "bg-primary text-white hover:opacity-90")
                   }
                 >

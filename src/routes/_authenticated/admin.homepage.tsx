@@ -184,7 +184,7 @@ function AdminHomepage() {
   return (
     <div className="space-y-6">
 
-      <div className="rounded-2xl border border-border bg-white p-5 soft-shadow">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 soft-shadow">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[220px]">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
@@ -193,7 +193,7 @@ function AdminHomepage() {
             <select
               value={newKind}
               onChange={(e) => setNewKind(e.target.value)}
-              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
             >
               {KIND_OPTIONS.map((k) => (
                 <option key={k.value} value={k.value}>
@@ -216,9 +216,9 @@ function AdminHomepage() {
         const Icon = meta.icon;
         const isDirty = !!dirty[s.id];
         return (
-          <div key={s.id} className="rounded-2xl border border-border bg-white p-5 soft-shadow">
+          <div key={s.id} className="rounded-2xl border border-slate-200 bg-white p-5 soft-shadow">
             <div className="flex flex-wrap items-center gap-2 mb-4">
-              <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                 <Icon className="h-5 w-5" />
               </div>
               <div>
@@ -234,7 +234,7 @@ function AdminHomepage() {
                 <button
                   onClick={() => move(s, -1)}
                   disabled={idx === 0}
-                  className="h-8 w-8 grid place-items-center rounded-lg border border-border text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  className="h-8 w-8 grid place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
                   aria-label="Move up"
                   title="Move up"
                 >
@@ -243,7 +243,7 @@ function AdminHomepage() {
                 <button
                   onClick={() => move(s, 1)}
                   disabled={idx === sections.length - 1}
-                  className="h-8 w-8 grid place-items-center rounded-lg border border-border text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  className="h-8 w-8 grid place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
                   aria-label="Move down"
                   title="Move down"
                 >
@@ -251,7 +251,7 @@ function AdminHomepage() {
                 </button>
                 <button
                   onClick={() => toggleVisible(s)}
-                  className="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-border text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  className="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                   title={s.visible ? "Click to hide" : "Click to show"}
                 >
                   {s.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
@@ -259,7 +259,7 @@ function AdminHomepage() {
                 </button>
                 <button
                   onClick={() => remove(s)}
-                  className="h-8 w-8 grid place-items-center rounded-lg border border-border text-rose-600 hover:bg-rose-50"
+                  className="h-8 w-8 grid place-items-center rounded-lg border border-slate-200 text-rose-600 hover:bg-rose-50"
                   aria-label="Delete section"
                   title="Delete section"
                 >
@@ -329,7 +329,7 @@ function TextInput({
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20"
     />
   );
 }
@@ -351,7 +351,7 @@ function TextArea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20"
     />
   );
 }
@@ -371,7 +371,7 @@ function NumberInput({
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value === "" ? 0 : Number(e.target.value))}
       placeholder={placeholder}
-      className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20"
     />
   );
 }
@@ -539,7 +539,7 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
 
   // fallback: unknown kind
   return (
-    <div className="rounded-lg border border-dashed border-border p-4 text-sm text-slate-500">
+    <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
       This section type doesn't have a friendly editor yet.
     </div>
   );
@@ -559,14 +559,14 @@ function ItemRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-slate-50/50 p-4">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Item {index + 1}</span>
         <div className="ml-auto flex items-center gap-1">
           <button
             onClick={() => onMove(-1)}
             disabled={index === 0}
-            className="h-7 w-7 grid place-items-center rounded-md border border-border bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+            className="h-7 w-7 grid place-items-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40"
             aria-label="Move up"
           >
             <ChevronUp className="h-3.5 w-3.5" />
@@ -574,14 +574,14 @@ function ItemRow({
           <button
             onClick={() => onMove(1)}
             disabled={index === count - 1}
-            className="h-7 w-7 grid place-items-center rounded-md border border-border bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+            className="h-7 w-7 grid place-items-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40"
             aria-label="Move down"
           >
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={onRemove}
-            className="h-7 w-7 grid place-items-center rounded-md border border-border bg-white text-rose-600 hover:bg-rose-50"
+            className="h-7 w-7 grid place-items-center rounded-md border border-slate-200 bg-white text-rose-600 hover:bg-rose-50"
             aria-label="Remove item"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -597,7 +597,7 @@ function AddItemButton({ label, onClick }: { label: string; onClick: () => void 
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-lg border border-dashed border-primary/40 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5"
+      className="inline-flex items-center gap-2 rounded-lg border border-dashed border-blue-600/40 px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50"
     >
       <Plus className="h-4 w-4" /> {label}
     </button>

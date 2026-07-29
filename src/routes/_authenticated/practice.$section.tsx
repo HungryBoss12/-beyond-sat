@@ -91,7 +91,7 @@ function SectionBrowse() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate({ to: "/practice" })}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-slate-600 hover:text-primary hover:border-primary/40 transition"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-600/40 transition"
           aria-label="Back"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -106,7 +106,7 @@ function SectionBrowse() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
         {/* Filters */}
-        <aside className="rounded-2xl border border-border bg-white p-5 soft-shadow h-fit">
+        <aside className="rounded-2xl border border-slate-200 bg-white p-5 soft-shadow h-fit">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
             <Filter className="h-4 w-4" /> Filters
           </div>
@@ -194,30 +194,30 @@ function SectionBrowse() {
           </div>
 
           {loading ? (
-            <div className="grid place-items-center h-48 rounded-2xl border border-border bg-white">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <div className="grid place-items-center h-48 rounded-2xl border border-slate-200 bg-white">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
             </div>
           ) : total === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border bg-white p-10 text-center">
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
               <div className="text-lg font-bold text-slate-800">No questions yet</div>
               <p className="text-sm text-slate-500 mt-1">
                 Admins haven't added questions for this filter. Try widening it.
               </p>
               <Link
                 to="/practice"
-                className="mt-4 inline-block text-sm font-bold text-primary hover:underline"
+                className="mt-4 inline-block text-sm font-bold text-blue-600 hover:underline"
               >
                 Back to practice
               </Link>
             </div>
           ) : (
-            <ul className="rounded-2xl border border-border bg-white divide-y divide-border overflow-hidden soft-shadow">
+            <ul className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-200 overflow-hidden soft-shadow">
               {questions.map((q, i) => (
                 <li
                   key={q.id}
                   className="flex items-start gap-4 p-4 hover:bg-slate-50 transition cursor-pointer"
                 >
-                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent text-primary text-xs font-black">
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-600 text-xs font-black">
                     {i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -255,7 +255,7 @@ function FilterRow({
       onClick={onClick}
       className={
         "w-full flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-semibold transition " +
-        (active ? "bg-accent text-primary" : "text-slate-600 hover:bg-slate-50")
+        (active ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:bg-slate-50")
       }
     >
       <span className="truncate">{label}</span>

@@ -217,8 +217,8 @@ export function QuestionCard({
   }, [q.prompt, answer.highlights]);
 
   return (
-    <div className="rounded-2xl border-2 border-primary/40 bg-white soft-shadow overflow-hidden ring-1 ring-primary/10">
-      <div className="flex items-center justify-between px-6 py-4 border-b-2 border-primary/20 bg-slate-50">
+    <div className="rounded-2xl border-2 border-blue-600/40 bg-white soft-shadow overflow-hidden ring-1 ring-primary/10">
+      <div className="flex items-center justify-between px-6 py-4 border-b-2 border-blue-600/20 bg-slate-50">
         <div className="flex items-center gap-3">
           <div className="text-sm font-bold text-slate-600 tabular-nums">
             Question {index + 1} of {total}
@@ -249,7 +249,7 @@ export function QuestionCard({
         <div ref={containerRef} className="flex flex-col md:flex-row min-h-[680px]">
           {/* Passage */}
           <div
-            className="relative border-b md:border-b-0 md:border-r border-border overflow-y-auto"
+            className="relative border-b md:border-b-0 md:border-r border-slate-200 overflow-y-auto"
             style={{ flexBasis: `${leftPct}%` }}
           >
             <div
@@ -263,14 +263,14 @@ export function QuestionCard({
                 <img
                   src={q.image_url}
                   alt=""
-                  className="mt-5 max-w-full rounded-lg border border-border"
+                  className="mt-5 max-w-full rounded-lg border border-slate-200"
                 />
               ) : null}
             </div>
 
             {toolbar && (
               <div
-                className="absolute z-10 -translate-x-1/2 -translate-y-full flex items-center gap-1 rounded-lg border border-border bg-white shadow-lg px-1.5 py-1"
+                className="absolute z-10 -translate-x-1/2 -translate-y-full flex items-center gap-1 rounded-lg border border-slate-200 bg-white shadow-lg px-1.5 py-1"
                 style={{ left: toolbar.x, top: toolbar.y }}
               >
                 <button
@@ -287,7 +287,7 @@ export function QuestionCard({
                   onClick={() => addHighlight(true)}
                   className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 >
-                  <StickyNote className="h-3.5 w-3.5 text-primary" /> Note
+                  <StickyNote className="h-3.5 w-3.5 text-blue-600" /> Note
                   <kbd
                     title="Change in Profile → Highlight shortcuts"
                     className="ml-1 rounded px-1 text-[10px] font-mono bg-slate-100 text-slate-500"
@@ -297,7 +297,7 @@ export function QuestionCard({
             )}
 
             {answer.highlights.length > 0 && (
-              <div className="border-t border-border bg-yellow-50/40 p-4 space-y-2">
+              <div className="border-t border-slate-200 bg-yellow-50/40 p-4 space-y-2">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Highlights & notes
                 </div>
@@ -407,7 +407,7 @@ function QuestionBody({
             value={answer.gridAnswer}
             onChange={(e) => onChange({ ...answer, gridAnswer: e.target.value })}
             inputMode="numeric"
-            className="mt-2 block w-full max-w-xs rounded-lg border border-border px-4 py-3 text-xl font-bold tabular-nums focus:border-primary focus:outline-none"
+            className="mt-2 block w-full max-w-xs rounded-lg border border-slate-200 px-4 py-3 text-xl font-bold tabular-nums focus:border-blue-600 focus:outline-none"
             placeholder="e.g. 3.14 or 5/8"
           />
         </div>
@@ -428,10 +428,10 @@ function QuestionBody({
                       : isWrong
                       ? "border-red-300 bg-red-50"
                       : selected
-                      ? "border-primary bg-accent"
+                      ? "border-blue-600 bg-blue-50"
                       : eliminated
                       ? "border-slate-200 bg-slate-50 opacity-60"
-                      : "border-border bg-white hover:border-primary/40")
+                      : "border-slate-200 bg-white hover:border-blue-600/40")
                   }
                 >
                   <button
@@ -446,8 +446,8 @@ function QuestionBody({
                     className={
                       "grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 text-base font-black transition " +
                       (selected
-                        ? "border-primary bg-primary text-white"
-                        : "border-slate-300 text-slate-600 hover:border-primary")
+                        ? "border-blue-600 bg-primary text-white"
+                        : "border-slate-300 text-slate-600 hover:border-blue-600")
                     }
                   >
                     {LETTERS[i]}

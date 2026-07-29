@@ -101,13 +101,13 @@ function SessionReview() {
   if (loading) {
     return (
       <div className="grid place-items-center h-[60vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
       </div>
     );
   }
   if (err) {
     return (
-      <div className="rounded-2xl border border-dashed border-border bg-white p-10 text-center">
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
         <div className="text-lg font-bold text-slate-800">{err}</div>
         <button
           onClick={() => navigate({ to: "/analysis" })}
@@ -124,16 +124,16 @@ function SessionReview() {
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-100 flex flex-col">
-      <div className="h-14 grid grid-cols-3 items-center px-4 sm:px-6 border-b border-border bg-white">
+      <div className="h-14 grid grid-cols-3 items-center px-4 sm:px-6 border-b border-slate-200 bg-white">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate({ to: "/analysis" })}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-slate-600 hover:text-primary transition"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:text-blue-600 transition"
             aria-label="Exit"
           >
             <X className="h-4 w-4" />
           </button>
-          <span className="text-sm font-black text-primary tracking-tight">Review mode</span>
+          <span className="text-sm font-black text-blue-600 tracking-tight">Review mode</span>
         </div>
         <div className="flex justify-center">
           {isCorrect === true ? (
@@ -171,11 +171,11 @@ function SessionReview() {
         </div>
       </div>
 
-      <div className="h-16 border-t border-border bg-white flex items-center justify-between px-4 sm:px-6">
+      <div className="h-16 border-t border-slate-200 bg-white flex items-center justify-between px-4 sm:px-6">
         <button
           onClick={() => setIdx((i) => Math.max(0, i - 1))}
           disabled={idx === 0}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-bold text-slate-700 disabled:opacity-40 hover:border-primary/40 transition"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 disabled:opacity-40 hover:border-blue-600/40 transition"
         >
           <ChevronLeft className="h-4 w-4" /> Previous
         </button>

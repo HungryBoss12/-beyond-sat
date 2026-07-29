@@ -6,22 +6,31 @@ import {
   TrendingDown,
   Minus,
   Target,
-  CalendarDays,
   ArrowRight,
   Trophy,
   Sparkles,
   Shield,
+  ClipboardList,
+  BarChart3,
 } from "lucide-react";
 import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  RadialBarChart,
+  RadialBar,
+  PolarAngleAxis,
   Radar,
   RadarChart,
   PolarGrid,
-  PolarAngleAxis,
   PolarRadiusAxis,
-  ResponsiveContainer,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
-import { RW_SKILLS, MATH_SKILLS } from "@/lib/sat";
+import { RW_SKILLS, MATH_SKILLS, scoreBand } from "@/lib/sat";
+import { CountUp } from "@/components/CountUp";
 import { format } from "date-fns";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -106,22 +115,62 @@ function Dashboard() {
   const mocks = sessions.filter((s) => s.type === "mock");
   const dailyDoneToday = sp?.last_daily_completed_date === today;
 
+  /** Most recent scored mock — the headline "Your Progress" number. */
+  const latest = useMemo(() => {
+    const scored = mocks.filter((m) => m.score != null) as (Session & { score: number })[];
+    if (scored.length === 0) return null;
+    const [current, previous] = scored;
+    return {
+      score: current.score,
+      rw: current.rw_score,
+      math: current.math_score,
+      delta: previous?.score != null ? current.score - previous.score : null,
+      at: current.completed_at,
+    };
+  }, [mocks]);
+
   const avg = useMemo(() => {
     const scored = mocks.filter((m) => m.score != null) as (Session & { score: number })[];
     if (scored.length === 0) return null;
-    const total = scored.reduce((a, b) => a + (b.score ?? 0), 0) / scored.length;
-    const rw =
-      scored.reduce((a, b) => a + (b.rw_score ?? 0), 0) /
-      Math.max(1, scored.filter((s) => s.rw_score != null).length);
-    const math =
-      scored.reduce((a, b) => a + (b.math_score ?? 0), 0) /
-      Math.max(1, scored.filter((s) => s.math_score != null).length);
-    const prev = scored.slice(1);
-    const prevAvg =
-      prev.length > 0 ? prev.reduce((a, b) => a + (b.score ?? 0), 0) / prev.length : null;
-    const delta = prevAvg == null ? 0 : total - prevAvg;
-    return { total: Math.round(total), rw: Math.round(rw), math: Math.round(math), delta };
+    const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    const rwVals = scored.map((s) => s.rw_score).filter((v): v is number => v != null);
+    const mathVals = scored.map((s) => s.math_score).filter((v): v is number => v != null);
+    return {
+      total: Math.round(mean(scored.map((s) => s.score))),
+      rw: rwVals.length ? Math.round(mean(rwVals)) : 0,
+      math: mathVals.length ? Math.round(mean(mathVals)) : 0,
+      best: Math.max(...scored.map((s) => s.score)),
+      count: scored.length,
+    };
   }, [mocks]);
+
+  /** Score trend, oldest -> newest, for the line chart. */
+  const trend = useMemo(() => {
+    const scored = (mocks.filter((m) => m.score != null) as (Session & { score: number })[])
+      .slice()
+      .reverse()
+      .slice(-6);
+    return scored.map((m) => ({
+      label: m.completed_at ? format(new Date(m.completed_at), "MMM") : "—",
+      score: m.score,
+    }));
+  }, [mocks]);
+
+  const accuracy = useMemo(() => {
+    const graded = attempts.filter((a) => a.is_correct != null);
+    if (graded.length === 0) return null;
+    const bySection = (section: "reading_writing" | "math") => {
+      const rows = graded.filter((a) => a.questions?.section === section);
+      if (rows.length === 0) return null;
+      return Math.round((rows.filter((a) => a.is_correct).length / rows.length) * 100);
+    };
+    return {
+      overall: Math.round((graded.filter((a) => a.is_correct).length / graded.length) * 100),
+      rw: bySection("reading_writing"),
+      math: bySection("math"),
+      answered: graded.length,
+    };
+  }, [attempts]);
 
   const radarData = useMemo(() => {
     const skills = [...RW_SKILLS, ...MATH_SKILLS];
@@ -149,25 +198,17 @@ function Dashboard() {
     ? Math.max(0, Math.ceil((new Date(sp.exam_date).getTime() - Date.now()) / 86400000))
     : null;
 
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 animate-pulse">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-48 rounded-2xl bg-white border border-border" />
-        ))}
-      </div>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="space-y-6">
       {/* Greeting */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 rise-in">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900">
             Welcome back, {name.split(" ")[0]}.
           </h1>
-          <p className="text-sm text-slate-600 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             {sp?.target_score
               ? `Target ${sp.target_score}${daysToExam != null ? ` · ${daysToExam} days to exam` : ""}.`
               : "Let's build your prep plan."}
@@ -176,16 +217,34 @@ function Dashboard() {
         {isAdmin && (
           <Link
             to="/admin"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition soft-shadow self-start md:self-auto"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition soft-shadow self-start md:self-auto"
           >
             <Shield className="h-4 w-4" /> Open Admin Panel <ArrowRight className="h-4 w-4" />
           </Link>
         )}
       </div>
 
+      {/* Hero: progress + accuracy, mirroring the product mockup */}
+      <div className="grid gap-5 lg:grid-cols-5">
+        <ProgressPanel latest={latest} trend={trend} target={sp?.target_score ?? null} />
+        <AccuracyPanel accuracy={accuracy} />
+      </div>
+
+      {/* Stat chips */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 stagger">
+        <StatChip
+          icon={ClipboardList}
+          value={avg?.count ?? 0}
+          label="Tests Taken"
+        />
+        <StatChip icon={TrendingUp} value={avg?.total ?? 0} label="Average Score" />
+        <StatChip icon={Trophy} value={avg?.best ?? 0} label="Best Score" />
+        <StatChip icon={Target} value={accuracy?.overall ?? 0} suffix="%" label="Accuracy" />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Daily test CTA */}
-        <Card className="lg:col-span-2 bg-gradient-to-br from-blue-600 to-blue-700 text-white border-transparent">
+        <Card className="lg:col-span-2 bg-gradient-to-br from-blue-600 to-blue-800 text-white border-transparent rise-in">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider">
@@ -198,24 +257,21 @@ function Dashboard() {
                   : "A quick mixed set. 10–15 minutes. Feeds your streak."}
               </p>
             </div>
-            <Flame className="h-10 w-10 text-orange-300 fill-orange-300 shrink-0" />
+            <Flame className="h-10 w-10 shrink-0 text-orange-300 fill-orange-300" />
           </div>
           <Link
             to={dailyDoneToday ? "/practice" : "/practice/daily"}
-            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-bold text-primary hover:bg-white/90 transition"
+            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-bold text-blue-600 hover:bg-blue-50 transition"
           >
             {dailyDoneToday ? "Practice more" : "Start today's test"} <ArrowRight className="h-4 w-4" />
           </Link>
         </Card>
 
         {/* Streak */}
-        <Card>
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Win streak</div>
-            <Flame className="h-5 w-5 text-orange-500 fill-orange-500" />
-          </div>
+        <Card className="rise-in lift">
+          <CardHead label="Win streak" icon={Flame} iconClass="text-orange-500 fill-orange-500" />
           <div className="mt-3 flex items-baseline gap-2">
-            <div className="text-5xl font-black text-slate-900 tabular-nums">
+            <div className="text-5xl font-black tabular-nums text-slate-900 pop-in">
               {sp?.current_streak ?? 0}
             </div>
             <div className="text-sm text-slate-500">days</div>
@@ -226,50 +282,25 @@ function Dashboard() {
           <p className="mt-3 text-xs text-slate-500">Complete today's daily test to keep it going.</p>
         </Card>
 
-        {/* Average score */}
-        <Card>
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Average score</div>
-            <Target className="h-5 w-5 text-primary" />
-          </div>
-          {avg ? (
-            <>
-              <div className="mt-3 flex items-baseline gap-3">
-                <div className="text-5xl font-black text-primary tabular-nums">{avg.total}</div>
-                <TrendBadge delta={avg.delta} />
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                <MiniStat label="R&W" value={avg.rw} />
-                <MiniStat label="Math" value={avg.math} />
-              </div>
-            </>
-          ) : (
-            <EmptyMini text="No mock exams yet." />
-          )}
-        </Card>
-
         {/* Recommendations */}
-        <Card className="lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Focus next</div>
-            <Sparkles className="h-5 w-5 text-primary" />
-          </div>
-          <div className="mt-3 space-y-2.5">
+        <Card className="lg:col-span-2 rise-in">
+          <CardHead label="Focus next" icon={Sparkles} />
+          <div className="mt-3 space-y-2.5 stagger">
             {buildRecs(sp, weakest).map((r, i) => (
               <div
                 key={i}
-                className="flex items-start gap-3 rounded-lg border border-border p-3 hover:border-primary/40 transition"
+                className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 transition hover:border-blue-600/40 hover:bg-blue-50/40"
               >
-                <div className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-primary text-sm font-bold shrink-0">
+                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-blue-50 text-sm font-bold text-blue-600">
                   {i + 1}
                 </div>
                 <div className="flex-1">
                   <div className="text-sm font-semibold text-slate-800">{r.title}</div>
-                  <div className="text-xs text-slate-500 mt-0.5">{r.desc}</div>
+                  <div className="mt-0.5 text-xs text-slate-500">{r.desc}</div>
                 </div>
                 <Link
                   to={r.to}
-                  className="text-xs font-bold text-primary hover:underline shrink-0 mt-1"
+                  className="mt-1 shrink-0 text-xs font-bold text-blue-600 hover:underline"
                 >
                   Go →
                 </Link>
@@ -278,12 +309,9 @@ function Dashboard() {
           </div>
         </Card>
 
-        {/* Radar */}
-        <Card className="lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Skill radar</div>
-            <span className="text-xs text-slate-500">Accuracy %</span>
-          </div>
+        {/* Skill radar */}
+        <Card className="lg:col-span-2 rise-in">
+          <CardHead label="Skill radar" icon={BarChart3} />
           <div className="mt-2 h-72">
             {attempts.length === 0 ? (
               <EmptyMini text="Answer questions to fill your radar." />
@@ -299,8 +327,8 @@ function Dashboard() {
                   <Radar
                     name="Accuracy"
                     dataKey="value"
-                    stroke="#2563EB"
-                    fill="#2563EB"
+                    stroke="#1313cf"
+                    fill="#1313cf"
                     fillOpacity={0.25}
                     strokeWidth={2}
                   />
@@ -311,25 +339,22 @@ function Dashboard() {
         </Card>
 
         {/* Mock history */}
-        <Card>
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Mock history</div>
-            <CalendarDays className="h-5 w-5 text-slate-400" />
-          </div>
+        <Card className="rise-in">
+          <CardHead label="Mock history" icon={ClipboardList} iconClass="text-slate-400" />
           {mocks.length === 0 ? (
             <div className="mt-6">
               <EmptyMini text="No mock exams taken yet." />
               <Link
                 to="/practice"
-                className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline"
+                className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:underline"
               >
                 Take one <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           ) : (
-            <ul className="mt-3 divide-y divide-border">
+            <ul className="mt-3 divide-y divide-slate-200">
               {mocks.slice(0, 6).map((m) => (
-                <li key={m.id} className="py-2.5 flex items-center justify-between">
+                <li key={m.id} className="flex items-center justify-between py-2.5">
                   <div>
                     <div className="text-sm font-semibold text-slate-800">
                       {m.completed_at ? format(new Date(m.completed_at), "MMM d, yyyy") : "—"}
@@ -338,7 +363,7 @@ function Dashboard() {
                       R&W {m.rw_score ?? "—"} · Math {m.math_score ?? "—"}
                     </div>
                   </div>
-                  <div className="text-xl font-black text-primary tabular-nums">{m.score ?? "—"}</div>
+                  <div className="text-xl font-black tabular-nums text-blue-600">{m.score ?? "—"}</div>
                 </li>
               ))}
             </ul>
@@ -349,19 +374,243 @@ function Dashboard() {
   );
 }
 
+/** Headline score + six-mock trend line. Mirrors "Your Progress" in the mockup. */
+function ProgressPanel({
+  latest,
+  trend,
+  target,
+}: {
+  latest: { score: number; rw: number | null; math: number | null; delta: number | null; at: string | null } | null;
+  trend: { label: string; score: number }[];
+  target: number | null;
+}) {
+  const band = latest ? scoreBand(latest.score) : null;
+  return (
+    <Card className="lg:col-span-3 rise-in">
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Your Progress</div>
+        {target != null && (
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+            Target {target}
+          </span>
+        )}
+      </div>
+
+      <div className="mt-2 flex items-baseline gap-1.5">
+        <span className="text-4xl md:text-5xl font-black tracking-tight tabular-nums text-slate-900 pop-in">
+          <CountUp end={latest?.score ?? 0} />
+        </span>
+        <span className="text-sm font-medium text-slate-400">/1600</span>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {band && <BandBadge band={band} />}
+        {latest?.delta != null && <TrendBadge delta={latest.delta} suffix="vs last test" />}
+        {!latest && (
+          <span className="text-xs text-slate-500">
+            No mock exams yet — your score appears here after your first one.
+          </span>
+        )}
+      </div>
+
+      <div className="mt-4 h-[168px]">
+        {trend.length < 2 ? (
+          <div className="grid h-full place-content-center rounded-xl border border-dashed border-slate-200 text-center">
+            <p className="text-xs text-slate-500">
+              {trend.length === 0
+                ? "Take a mock exam to start your trend line."
+                : "One more mock and your trend line appears."}
+            </p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trend} margin={{ top: 28, right: 20, bottom: 0, left: -18 }}>
+              <CartesianGrid stroke="#F1F5F9" vertical={false} />
+              <XAxis
+                dataKey="label"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "#94A3B8", fontSize: 10 }}
+              />
+              <YAxis
+                domain={[400, 1600]}
+                ticks={[400, 800, 1200, 1600]}
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "#94A3B8", fontSize: 10 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="score"
+                stroke="#1313cf"
+                strokeWidth={2.5}
+                dot={{ r: 3.5, fill: "#1313cf", stroke: "#fff", strokeWidth: 1.5 }}
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/** Radial accuracy gauge + per-section split. Mirrors "Overall Accuracy". */
+function AccuracyPanel({
+  accuracy,
+}: {
+  accuracy: { overall: number; rw: number | null; math: number | null; answered: number } | null;
+}) {
+  const pct = accuracy?.overall ?? 0;
+  const band =
+    pct >= 90 ? "Excellent" : pct >= 75 ? "Strong" : pct >= 60 ? "Fair" : pct > 0 ? "Building" : "No data";
+  return (
+    <Card className="lg:col-span-2 rise-in">
+      <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Overall Accuracy</div>
+
+      <div className="relative mx-auto mt-3 h-[150px] w-[150px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadialBarChart
+            data={[{ name: "accuracy", value: pct, fill: "#1313cf" }]}
+            innerRadius="72%"
+            outerRadius="100%"
+            startAngle={90}
+            endAngle={-270}
+          >
+            <PolarAngleAxis type="number" domain={[0, 100]} tick={false} axisLine={false} />
+            <RadialBar dataKey="value" cornerRadius={12} background={{ fill: "#f0f0fe" }} />
+          </RadialBarChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 grid place-content-center text-center">
+          <div className="text-3xl font-black leading-none tabular-nums text-slate-900">
+            <CountUp end={pct} suffix="%" />
+          </div>
+          <div className="mt-1 text-[10px] font-semibold text-blue-600">{band}</div>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        <AccuracyRow label="Reading & Writing" value={accuracy?.rw ?? null} dotClass="bg-blue-600" />
+        <AccuracyRow label="Math" value={accuracy?.math ?? null} dotClass="bg-blue-400" />
+      </div>
+
+      <p className="mt-3 text-[11px] text-slate-400">
+        {accuracy ? `Across ${accuracy.answered.toLocaleString()} graded answers.` : "Answer questions to see this."}
+      </p>
+    </Card>
+  );
+}
+
+function AccuracyRow({
+  label,
+  value,
+  dotClass,
+}: {
+  label: string;
+  value: number | null;
+  dotClass: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className={"h-2 w-2 shrink-0 rounded-full " + dotClass} />
+      <span className="text-slate-600">{label}</span>
+      <span className="ml-auto font-bold tabular-nums text-slate-900">
+        {value == null ? "—" : `${value}%`}
+      </span>
+    </div>
+  );
+}
+
+function StatChip({
+  icon: Icon,
+  value,
+  label,
+  suffix = "",
+}: {
+  icon: typeof Target;
+  value: number;
+  label: string;
+  suffix?: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 soft-shadow lift">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
+        <Icon className="h-4 w-4" strokeWidth={2} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-lg font-black leading-tight tabular-nums text-slate-900">
+          <CountUp end={value} suffix={suffix} />
+        </span>
+        <span className="block truncate text-[11px] text-slate-500">{label}</span>
+      </span>
+    </div>
+  );
+}
+
+function BandBadge({ band }: { band: { label: string; tone: string } }) {
+  const tones: Record<string, string> = {
+    excellent: "bg-emerald-50 text-emerald-700",
+    good: "bg-blue-50 text-blue-700",
+    fair: "bg-amber-50 text-amber-700",
+    low: "bg-slate-100 text-slate-600",
+  };
+  const dots: Record<string, string> = {
+    excellent: "bg-emerald-500",
+    good: "bg-blue-600",
+    fair: "bg-amber-500",
+    low: "bg-slate-400",
+  };
+  return (
+    <span
+      className={
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold " +
+        (tones[band.tone] ?? tones.low)
+      }
+    >
+      <span className={"h-1.5 w-1.5 rounded-full " + (dots[band.tone] ?? dots.low)} />
+      {band.label}
+    </span>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="h-10 w-64 animate-pulse rounded-lg bg-slate-100" />
+      <div className="grid gap-5 lg:grid-cols-5">
+        <div className="h-80 animate-pulse rounded-2xl border border-slate-200 bg-white lg:col-span-3" />
+        <div className="h-80 animate-pulse rounded-2xl border border-slate-200 bg-white lg:col-span-2" />
+      </div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-16 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={"rounded-2xl border border-border bg-white p-5 md:p-6 soft-shadow " + className}>
+    <div className={"rounded-2xl border border-slate-200 bg-white p-5 md:p-6 soft-shadow " + className}>
       {children}
     </div>
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: number }) {
+function CardHead({
+  label,
+  icon: Icon,
+  iconClass = "text-blue-600",
+}: {
+  label: string;
+  icon: typeof Target;
+  iconClass?: string;
+}) {
   return (
-    <div className="rounded-lg bg-slate-50 px-3 py-2">
-      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</div>
-      <div className="text-lg font-black text-slate-800 tabular-nums">{value}</div>
+    <div className="flex items-center justify-between">
+      <div className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</div>
+      <Icon className={"h-5 w-5 " + iconClass} />
     </div>
   );
 }
@@ -370,11 +619,11 @@ function EmptyMini({ text }: { text: string }) {
   return <p className="mt-3 text-sm text-slate-500">{text}</p>;
 }
 
-function TrendBadge({ delta }: { delta: number }) {
+function TrendBadge({ delta, suffix = "" }: { delta: number; suffix?: string }) {
   if (delta === 0)
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
-        <Minus className="h-3 w-3" /> 0
+        <Minus className="h-3 w-3" /> 0 {suffix}
       </span>
     );
   const up = delta > 0;
@@ -387,7 +636,7 @@ function TrendBadge({ delta }: { delta: number }) {
     >
       {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
       {up ? "+" : ""}
-      {Math.round(delta)}
+      {Math.round(delta)} {suffix}
     </span>
   );
 }
@@ -444,3 +693,4 @@ function buildRecs(
   }
   return recs.slice(0, 3);
 }
+

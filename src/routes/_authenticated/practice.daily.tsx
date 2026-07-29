@@ -66,7 +66,7 @@ function DailyGate() {
   if (state.kind === "loading") {
     return (
       <div className="grid place-items-center h-[50vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -80,7 +80,7 @@ function DailyGate() {
     <div className="max-w-2xl mx-auto">
       <button
         onClick={() => navigate({ to: "/practice" })}
-        className="inline-flex items-center gap-1 text-sm font-bold text-slate-600 hover:text-primary mb-4"
+        className="inline-flex items-center gap-1 text-sm font-bold text-slate-600 hover:text-blue-600 mb-4"
       >
         <ArrowLeft className="h-4 w-4" /> Practice
       </button>
@@ -95,7 +95,7 @@ function DailyGate() {
         <div className="mt-6 flex items-center gap-3">
           <button
             onClick={() => navigate({ to: `/practice/session/${state.sessionId}` })}
-            className="inline-flex items-center gap-2 rounded-lg bg-white text-primary px-5 py-2.5 text-sm font-bold hover:bg-white/90 transition"
+            className="inline-flex items-center gap-2 rounded-lg bg-white text-blue-600 px-5 py-2.5 text-sm font-bold hover:bg-white/90 transition"
           >
             <Flame className="h-4 w-4" /> Start
           </button>
@@ -108,9 +108,9 @@ function DailyGate() {
 function CenterCard({ emoji, title, body }: { emoji: string; title: string; body: string }) {
   const navigate = useNavigate();
   return (
-    <div className="max-w-md mx-auto rounded-2xl border border-border bg-white p-10 text-center soft-shadow">
+    <div className="max-w-md mx-auto rounded-2xl border border-slate-200 bg-white p-10 text-center soft-shadow">
       <div className="text-4xl">{emoji}</div>
-      <h2 className="mt-3 text-xl font-black text-primary">{title}</h2>
+      <h2 className="mt-3 text-xl font-black text-blue-600">{title}</h2>
       <p className="mt-2 text-sm text-slate-600">{body}</p>
       <button
         onClick={() => navigate({ to: "/practice" })}

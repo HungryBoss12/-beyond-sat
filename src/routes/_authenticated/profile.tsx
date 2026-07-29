@@ -185,7 +185,7 @@ function Profile() {
   if (loading) {
     return (
       <div className="grid place-items-center h-[50vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -311,21 +311,21 @@ function Profile() {
       <HighlightShortcutsCard />
 
       {/* History */}
-      <div className="rounded-2xl border border-border bg-white p-6 soft-shadow">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-black text-primary">Test history</h2>
+          <h2 className="text-lg font-black text-blue-600">Test history</h2>
           <span className="text-xs text-slate-500">{sessions.length} completed</span>
         </div>
         {sessions.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">
             You haven't finished any tests yet.{" "}
-            <Link to="/practice" className="text-primary font-bold hover:underline">
+            <Link to="/practice" className="text-blue-600 font-bold hover:underline">
               Start practicing
             </Link>
             .
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-border">
+          <ul className="mt-3 divide-y divide-slate-200">
             {sessions.map((s) => (
               <li key={s.id} className="py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -337,7 +337,7 @@ function Profile() {
                 <div className="text-right">
                   {s.type === "mock" && s.score != null ? (
                     <div>
-                      <div className="text-lg font-black text-primary tabular-nums">{s.score}</div>
+                      <div className="text-lg font-black text-blue-600 tabular-nums">{s.score}</div>
                       <div className="text-[11px] text-slate-500">
                         R&W {s.rw_score ?? "—"} · Math {s.math_score ?? "—"}
                       </div>
@@ -390,9 +390,9 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-white p-6 soft-shadow">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-black text-primary">{title}</h2>
+        <h2 className="text-lg font-black text-blue-600">{title}</h2>
         {editing ? (
           <button
             onClick={onCancel}
@@ -403,7 +403,7 @@ function Panel({
         ) : (
           <button
             onClick={onEdit}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline"
           >
             <Pencil className="h-3.5 w-3.5" /> Edit
           </button>
@@ -507,9 +507,9 @@ function GoalsForm({
         <Input label="English (R&W) 200–800" value={targetRw} onChange={setTargetRw} type="number" />
         <Input label="Math 200–800" value={targetMath} onChange={setTargetMath} type="number" />
       </div>
-      <div className="rounded-lg bg-slate-50 border border-border px-3 py-2 flex justify-between text-sm">
+      <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 flex justify-between text-sm">
         <span className="font-bold uppercase tracking-wider text-[11px] text-slate-500">Total</span>
-        <span className="font-black tabular-nums text-primary">
+        <span className="font-black tabular-nums text-blue-600">
           {validRw && validMath ? `${rw + math} / 1600` : "—"}
         </span>
       </div>
@@ -518,14 +518,14 @@ function GoalsForm({
           Exam date
         </span>
         {dateOptions.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border px-3 py-2 text-sm text-slate-500">
+          <div className="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-sm text-slate-500">
             No exam dates published yet.
           </div>
         ) : (
           <select
             value={examDate}
             onChange={(e) => setExamDate(e.target.value)}
-            className="block w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none bg-white"
+            className="block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none bg-white"
           >
             <option value="">Select an exam date…</option>
             {dateOptions.map((d) => (
@@ -564,7 +564,7 @@ function Input({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="block w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
+        className="block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
       />
     </label>
   );

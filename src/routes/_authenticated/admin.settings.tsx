@@ -41,19 +41,19 @@ function AdminSettings() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h2 className="text-2xl font-black text-primary">Site settings</h2>
+        <h2 className="text-2xl font-black text-blue-600">Site settings</h2>
         <p className="text-sm text-slate-600 mt-1">
           Configure integrations and site-wide options.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border bg-white p-6 soft-shadow">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
         <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center text-primary">
+          <div className="h-10 w-10 rounded-lg bg-blue-50 grid place-items-center text-blue-600">
             <Calculator className="h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-base font-black text-primary">Desmos calculator</div>
+            <div className="text-base font-black text-blue-600">Desmos calculator</div>
             <p className="text-sm text-slate-600 mt-1">
               Paste your Desmos API key. When set, a floating Desmos calculator
               appears inside Math questions, daily tests, and mock exams. Get a
@@ -62,7 +62,7 @@ function AdminSettings() {
                 href="https://www.desmos.com/api/v1.11/docs/index.html#document-api-keys"
                 target="_blank"
                 rel="noreferrer"
-                className="text-primary underline"
+                className="text-blue-600 underline"
               >
                 desmos.com/api
               </a>
@@ -82,7 +82,7 @@ function AdminSettings() {
               value={key}
               onChange={(e) => setKey(e.target.value)}
               placeholder="dcb31709b452b1cf9dc26972add0fda6"
-              className="w-full rounded-lg border border-border px-3 py-2.5 text-sm font-mono"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-mono"
             />
           )}
           <div className="mt-3 flex items-center gap-3">

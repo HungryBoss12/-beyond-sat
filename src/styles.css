@@ -26,6 +26,38 @@
   --color-ring: var(--ring);
   --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Lora", ui-serif, Georgia, serif;
+
+  /* Brand ramp. The three anchors are the requested brand colors:
+       brand-600 #1313cf  (default)
+       brand-700 #1111cf  (hover)
+       brand-800 #0202d4  (active / deep)
+     The lighter steps are derived tints used for card fills and rails.
+
+     NOTE: we deliberately re-point Tailwind's `blue-*` scale at this same
+     ramp. The app uses `blue-600`/`blue-50`/etc. in ~50 places, so remapping
+     the scale re-themes every one of them from a single source of truth
+     instead of scattering brand hexes through the codebase. */
+  --color-brand-50: #f0f0fe;
+  --color-brand-100: #e2e2fd;
+  --color-brand-200: #c6c6fb;
+  --color-brand-300: #9c9cf7;
+  --color-brand-400: #6b6bf0;
+  --color-brand-500: #3f3fe0;
+  --color-brand-600: #1313cf;
+  --color-brand-700: #1111cf;
+  --color-brand-800: #0202d4;
+  --color-brand-900: #01018f;
+
+  --color-blue-50: var(--color-brand-50);
+  --color-blue-100: var(--color-brand-100);
+  --color-blue-200: var(--color-brand-200);
+  --color-blue-300: var(--color-brand-300);
+  --color-blue-400: var(--color-brand-400);
+  --color-blue-500: var(--color-brand-500);
+  --color-blue-600: var(--color-brand-600);
+  --color-blue-700: var(--color-brand-700);
+  --color-blue-800: var(--color-brand-800);
+  --color-blue-900: var(--color-brand-900);
 }
 
 :root {
@@ -41,22 +73,22 @@
   --card: #ffffff;
   --card-foreground: #0F172A;
 
-  --primary: #2563EB;         /* blue-600 */
+  --primary: #1313cf;         /* brand-600 */
   --primary-foreground: #ffffff;
-  --primary-tint: #3B82F6;    /* blue-500 for large blocks */
+  --primary-tint: #3f3fe0;    /* brand-500 for large blocks */
 
-  --secondary: #EFF6FF;       /* blue-50 section background */
-  --secondary-foreground: #1E3A8A;  /* blue-900 */
+  --secondary: #f0f0fe;       /* brand-50 section background */
+  --secondary-foreground: #01018f;  /* brand-900 */
 
   --muted: #F1F5F9;           /* slate-100 tint inside cards */
   --muted-foreground: #475569; /* slate-600 */
 
-  --accent: #DBEAFE;          /* blue-100 */
-  --accent-foreground: #1D4ED8; /* blue-700 */
+  --accent: #e2e2fd;          /* brand-100 */
+  --accent-foreground: #1111cf; /* brand-700 */
 
   --border: #E2E8F0;          /* slate-200, visible on white */
   --input: #CBD5E1;           /* slate-300 */
-  --ring: #93C5FD;            /* blue-300 */
+  --ring: #9c9cf7;            /* brand-300 */
 }
 
 @layer base {
@@ -83,4 +115,99 @@
 
 @utility soft-shadow {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.12);
+}
+
+/* ---------------------------------------------------------------------------
+   Motion
+   Entrance + emphasis animations shared by the dashboard, analysis and admin.
+   Every one is wrapped in a prefers-reduced-motion guard at the bottom of this
+   file, so users who ask their OS for less motion get static content instead.
+   --------------------------------------------------------------------------- */
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes pop-in {
+  0%   { opacity: 0; transform: scale(0.94); }
+  60%  { opacity: 1; transform: scale(1.01); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes sweep-right {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 40%, transparent); }
+  70%  { box-shadow: 0 0 0 10px color-mix(in srgb, var(--primary) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+
+/* Cards / sections easing up into place. */
+@utility rise-in {
+  animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility fade-in {
+  animation: fade-in 0.4s ease-out both;
+}
+
+/* Numbers and badges landing with a little weight. */
+@utility pop-in {
+  animation: pop-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Progress/underline fills that wipe in from the left. */
+@utility sweep-right {
+  transform-origin: left;
+  animation: sweep-right 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility pulse-ring {
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+/* Stagger children of a grid/list so they cascade instead of popping at once.
+   Usage: <div class="stagger"> … each child animates 60ms after the previous. */
+@utility stagger {
+  & > * {
+    animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  & > *:nth-child(1) { animation-delay: 0ms; }
+  & > *:nth-child(2) { animation-delay: 60ms; }
+  & > *:nth-child(3) { animation-delay: 120ms; }
+  & > *:nth-child(4) { animation-delay: 180ms; }
+  & > *:nth-child(5) { animation-delay: 240ms; }
+  & > *:nth-child(6) { animation-delay: 300ms; }
+  & > *:nth-child(7) { animation-delay: 360ms; }
+  & > *:nth-child(8) { animation-delay: 420ms; }
+  & > *:nth-child(n + 9) { animation-delay: 480ms; }
+}
+
+/* Hover lift for interactive cards. */
+@utility lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05), 0 12px 32px -14px rgba(15, 23, 42, 0.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

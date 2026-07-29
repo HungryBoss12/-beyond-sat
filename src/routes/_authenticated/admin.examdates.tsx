@@ -65,7 +65,7 @@ function AdminExamDates() {
     <div className="space-y-6">
       <form
         onSubmit={add}
-        className="rounded-2xl border border-border bg-white p-5 grid gap-3 md:grid-cols-[1fr_1fr_auto] items-end"
+        className="rounded-2xl border border-slate-200 bg-white p-5 grid gap-3 md:grid-cols-[1fr_1fr_auto] items-end"
       >
         <label className="block">
           <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
@@ -75,7 +75,7 @@ function AdminExamDates() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="block w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            className="block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
             required
           />
         </label>
@@ -88,7 +88,7 @@ function AdminExamDates() {
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="e.g. March SAT"
-            className="block w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            className="block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
           />
         </label>
         <button
@@ -100,16 +100,16 @@ function AdminExamDates() {
         {err && <div className="md:col-span-3 text-sm text-red-600">{err}</div>}
       </form>
 
-      <div className="rounded-2xl border border-border bg-white overflow-hidden">
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
         {items.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-500">
             No exam dates yet. Add the official SAT dates students can pick from.
           </div>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-slate-200">
             {items.map((d) => (
               <li key={d.id} className="flex items-center gap-4 px-4 py-3">
-                <CalendarDays className="h-5 w-5 text-primary" />
+                <CalendarDays className="h-5 w-5 text-blue-600" />
                 <div className="flex-1">
                   <div className="text-sm font-semibold text-slate-800">
                     {format(new Date(d.exam_date), "EEEE, MMMM d, yyyy")}

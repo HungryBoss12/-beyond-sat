@@ -153,14 +153,14 @@ function Onboarding() {
 
   if (loading) {
     return (
-      <div className="min-h-screen grid place-items-center bg-[#F5F7FA]">
+      <div className="min-h-screen grid place-items-center bg-slate-50">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen grid place-items-center bg-gradient-to-br from-primary to-[#00234a] text-white p-6">
+    <div className="min-h-screen grid place-items-center bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6">
       <div className="w-full max-w-md rounded-3xl bg-white text-slate-800 p-8 md:p-10 shadow-2xl">
         <div className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary mb-5">
           <CalendarDays className="h-7 w-7" />

@@ -208,7 +208,7 @@ export function MixedMathEditor({
               <button
                 type="button"
                 onClick={confirmMath}
-                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-white hover:bg-[#002a56]"
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
               >
                 <Check className="h-3.5 w-3.5" /> Insert
               </button>

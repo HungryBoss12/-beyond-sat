@@ -95,7 +95,7 @@ function PracticeLanding() {
             to={dailyExists && !dailyDone ? "/practice/daily" : "/practice/daily"}
             aria-disabled={!dailyExists || dailyDone}
             className={
-              "mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-[#002a56] transition " +
+              "mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition " +
               (!dailyExists || dailyDone ? "opacity-40 pointer-events-none" : "")
             }
           >

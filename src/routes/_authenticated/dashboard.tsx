@@ -176,7 +176,7 @@ function Dashboard() {
         {isAdmin && (
           <Link
             to="/admin"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-[#002a56] transition soft-shadow self-start md:self-auto"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition soft-shadow self-start md:self-auto"
           >
             <Shield className="h-4 w-4" /> Open Admin Panel <ArrowRight className="h-4 w-4" />
           </Link>
@@ -185,7 +185,7 @@ function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Daily test CTA */}
-        <Card className="lg:col-span-2 bg-gradient-to-br from-primary to-[#00234a] text-white border-transparent">
+        <Card className="lg:col-span-2 bg-gradient-to-br from-blue-600 to-blue-700 text-white border-transparent">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider">
@@ -299,8 +299,8 @@ function Dashboard() {
                   <Radar
                     name="Accuracy"
                     dataKey="value"
-                    stroke="#00356B"
-                    fill="#00356B"
+                    stroke="#2563EB"
+                    fill="#2563EB"
                     fillOpacity={0.25}
                     strokeWidth={2}
                   />

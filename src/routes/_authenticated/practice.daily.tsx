@@ -84,7 +84,7 @@ function DailyGate() {
       >
         <ArrowLeft className="h-4 w-4" /> Practice
       </button>
-      <div className="rounded-2xl bg-gradient-to-br from-primary to-[#00234a] text-white p-8 soft-shadow">
+      <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white p-8 soft-shadow">
         <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider">
           <CalendarClock className="h-3 w-3" /> Today's daily
         </div>

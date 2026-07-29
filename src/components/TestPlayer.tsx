@@ -365,7 +365,7 @@ function BottomBar({
       <button
         onClick={onNext}
         disabled={showReview}
-        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-[#002a56] transition"
+        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition"
       >
         {isLast ? "Finish" : "Next"} <ChevronRight className="h-4 w-4" />
       </button>
@@ -430,7 +430,7 @@ function ReviewPanel({
         <button
           onClick={onSubmit}
           disabled={submitting}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60 hover:bg-[#002a56] transition"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60 hover:bg-blue-700 transition"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Submit test
@@ -451,7 +451,7 @@ function ResultsView({
 }) {
   const pct = Math.round((result.correct / Math.max(1, result.total)) * 100);
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-primary to-[#00234a] text-white overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-gradient-to-br from-blue-600 to-blue-700 text-white overflow-y-auto">
       <div className="mx-auto max-w-2xl px-6 py-12 space-y-6">
         <div className="text-center">
           <div className="text-xs font-bold uppercase tracking-widest text-white/60">

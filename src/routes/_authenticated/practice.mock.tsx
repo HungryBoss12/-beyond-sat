@@ -137,7 +137,7 @@ function MockList() {
                 <button
                   onClick={() => start(m.id)}
                   disabled={m.questionCount === 0 || starting === m.id}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50 hover:bg-[#002a56] transition shrink-0"
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50 hover:bg-blue-700 transition shrink-0"
                 >
                   {starting === m.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

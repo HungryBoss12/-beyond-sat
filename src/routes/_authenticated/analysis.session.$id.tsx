@@ -184,7 +184,7 @@ function SessionReview() {
             if (idx >= questions.length - 1) navigate({ to: "/analysis" });
             else setIdx((i) => i + 1);
           }}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-[#002a56] transition"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition"
         >
           {idx >= questions.length - 1 ? "Finish" : "Next"} <ChevronRight className="h-4 w-4" />
         </button>

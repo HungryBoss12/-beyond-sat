@@ -195,7 +195,7 @@ function Profile() {
       <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Profile</h1>
 
       {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary to-[#00234a] text-white p-6 md:p-8 soft-shadow">
+      <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 md:p-8 soft-shadow">
         <div className="flex items-center gap-5">
           <div className="grid h-16 w-16 md:h-20 md:w-20 place-items-center rounded-full bg-white/15 text-2xl font-black">
             {initials}
@@ -575,7 +575,7 @@ function SaveButton({ saving }: { saving: boolean }) {
     <button
       type="submit"
       disabled={saving}
-      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-60 hover:bg-[#002a56] transition"
+      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-60 hover:bg-blue-700 transition"
     >
       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
     </button>

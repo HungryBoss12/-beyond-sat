@@ -15,6 +15,7 @@ import {
   ListOrdered,
   Megaphone,
   FileText,
+  Newspaper,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/homepage")({
@@ -40,6 +41,7 @@ const KIND_META: Record<
     description: "The big headline area at the top of the page.",
     template: {
       title: "Headline here",
+      highlight: "",
       subtitle: "Supporting subheadline",
       primary_cta_label: "Get started",
       primary_cta_href: "/signup",
@@ -51,7 +53,16 @@ const KIND_META: Record<
     label: "Stats row",
     icon: BarChart3,
     description: "A row of numbers to show off results.",
-    template: { items: [{ n: 100, s: "%", l: "Describe this stat" }] },
+    template: { items: [{ n: 100, s: "%", l: "Describe this stat", icon: "Target" }] },
+  },
+  press: {
+    label: "Press / logo bar",
+    icon: Newspaper,
+    description: "A \"Featured in\" strip of publication names.",
+    template: {
+      label: "Featured in",
+      items: [{ name: "Forbes" }],
+    },
   },
   features: {
     label: "Features grid",
@@ -193,7 +204,7 @@ function AdminHomepage() {
           </div>
           <button
             onClick={addSection}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-[#002a56]"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
             <Plus className="h-4 w-4" /> Add section
           </button>
@@ -270,7 +281,7 @@ function AdminHomepage() {
               <button
                 onClick={() => saveSection(s)}
                 disabled={saving === s.id || !isDirty}
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-[#002a56] disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Save className="h-4 w-4" />
                 {saving === s.id ? "Saving…" : isDirty ? "Save changes" : "Saved"}
@@ -408,11 +419,29 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
     return (
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Headline"><TextInput value={value.title} onChange={set("title")} placeholder="Ace the SAT..." /></Field>
+        <Field label="Highlighted words" hint="Part of the headline to show in the blue gradient, e.g. Digital SAT. Must match the headline exactly."><TextInput value={value.highlight} onChange={set("highlight")} placeholder="Digital SAT" /></Field>
         <Field label="Subheadline"><TextInput value={value.subtitle} onChange={set("subtitle")} placeholder="Supporting text" /></Field>
+        <div />
         <Field label="Primary button text"><TextInput value={value.primary_cta_label} onChange={set("primary_cta_label")} placeholder="Get started" /></Field>
         <Field label="Primary button link" hint="e.g. /signup or https://…"><TextInput value={value.primary_cta_href} onChange={set("primary_cta_href")} placeholder="/signup" /></Field>
         <Field label="Secondary button text"><TextInput value={value.secondary_cta_label} onChange={set("secondary_cta_label")} placeholder="Sign in" /></Field>
         <Field label="Secondary button link"><TextInput value={value.secondary_cta_href} onChange={set("secondary_cta_href")} placeholder="/signin" /></Field>
+      </div>
+    );
+  }
+
+  if (kind === "press") {
+    return (
+      <div className="space-y-4">
+        <Field label="Label" hint="Shown before the logos."><TextInput value={value.label} onChange={set("label")} placeholder="Featured in" /></Field>
+        <div className="space-y-3">
+          {items.map((it, i) => (
+            <ItemRow key={i} index={i} count={items.length} onMove={(d) => moveItem(i, d)} onRemove={() => removeItem(i)}>
+              <Field label="Publication name"><TextInput value={it.name} onChange={(v) => updateItem(i, { name: v })} placeholder="Forbes" /></Field>
+            </ItemRow>
+          ))}
+          <AddItemButton label="Add a publication" onClick={() => addItem({ name: "Publication" })} />
+        </div>
       </div>
     );
   }
@@ -449,13 +478,12 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
             <div className="grid gap-3 md:grid-cols-4">
               <Field label="Number"><NumberInput value={it.n} onChange={(v) => updateItem(i, { n: v })} placeholder="98" /></Field>
               <Field label="Suffix" hint="e.g. %, +, k"><TextInput value={it.s} onChange={(v) => updateItem(i, { s: v })} placeholder="%" /></Field>
-              <div className="md:col-span-2">
-                <Field label="Label"><TextInput value={it.l} onChange={(v) => updateItem(i, { l: v })} placeholder="Students improved" /></Field>
-              </div>
+              <Field label="Icon name" hint="Any Lucide icon name, e.g. Target"><TextInput value={it.icon} onChange={(v) => updateItem(i, { icon: v })} placeholder="Target" /></Field>
+              <Field label="Label"><TextInput value={it.l} onChange={(v) => updateItem(i, { l: v })} placeholder="Students improved" /></Field>
             </div>
           </ItemRow>
         ))}
-        <AddItemButton label="Add a stat" onClick={() => addItem({ n: 0, s: "", l: "New stat" })} />
+        <AddItemButton label="Add a stat" onClick={() => addItem({ n: 0, s: "", l: "New stat", icon: "Target" })} />
       </div>
     );
   }

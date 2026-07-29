@@ -73,7 +73,7 @@ function SignIn() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F5F7FA]">
+    <div className="min-h-screen flex flex-col bg-slate-50">
       <SiteNav />
       <main className="flex-1 grid place-items-center px-4 py-14">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 md:p-10 soft-shadow border border-border">
@@ -119,7 +119,7 @@ function SignIn() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-[#002a56] disabled:opacity-60 transition inline-flex items-center justify-center gap-2"
+              className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60 transition inline-flex items-center justify-center gap-2"
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />} Sign In
             </button>

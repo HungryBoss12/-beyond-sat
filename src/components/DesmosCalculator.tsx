@@ -89,7 +89,7 @@ export function DesmosCalculator() {
             setOpen(true);
             setMinimized(false);
           }}
-          className="fixed bottom-24 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-primary text-white px-4 py-2.5 text-sm font-bold shadow-2xl hover:bg-[#002a56] transition"
+          className="fixed bottom-24 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-primary text-white px-4 py-2.5 text-sm font-bold shadow-2xl hover:bg-blue-700 transition"
           title="Open Desmos calculator"
         >
           <Calculator className="h-4 w-4" /> Calculator

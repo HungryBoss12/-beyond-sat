@@ -186,7 +186,7 @@ function SectionBrowse() {
             <button
               disabled={total === 0 || starting}
               onClick={practiceThisSet}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-40 hover:bg-[#002a56] transition"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-40 hover:bg-blue-700 transition"
             >
               {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
               Practice this set

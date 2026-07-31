@@ -568,9 +568,9 @@ function ItemRow({
   onRemove: () => void;
   children: React.ReactNode;
 }) {
+  // One step down from the card so the brand-800 inputs nested inside still
+  // read as recessed rather than merging into the row.
   return (
-    {/* One step down from the card so the brand-800 inputs nested inside still
-        read as recessed rather than merging into the row. */}
     <div className="rounded-xl border border-brand-400/40 bg-brand-700 p-4">
       <div className="mb-3 flex items-center gap-2">
         <span className="text-xs font-bold uppercase tracking-wider text-brand-200">Item {index + 1}</span>

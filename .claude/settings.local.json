@@ -106,7 +106,9 @@
       "Bash(\"C:/Program Files/nodejs/node.exe\" \"c:/Users/javaz/Downloads/beyond-sat/scan-palette.cjs\")",
       "Bash(\"C:/Program Files/nodejs/node.exe\" \"c:/Users/javaz/Downloads/beyond-sat/scan-tokens.cjs\")",
       "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require\\('fs'\\);for\\(const f of ['check-palette.cjs','scan-palette.cjs','scan-tokens.cjs']\\){try{fs.unlinkSync\\('c:/Users/javaz/Downloads/beyond-sat/'+f\\);console.log\\('deleted '+f\\)}catch\\(e\\){console.log\\('skip '+f+': '+e.code\\)}}\")",
-      "Bash(\"C:/Program Files/nodejs/node.exe\" scan-jsxcomments.cjs)"
+      "Bash(\"C:/Program Files/nodejs/node.exe\" scan-jsxcomments.cjs)",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" \"c:/Users/javaz/Downloads/beyond-sat/probe-gen.cjs\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"require\\('fs'\\).unlinkSync\\('c:/Users/javaz/Downloads/beyond-sat/probe-gen.cjs'\\);console.log\\('deleted probe-gen.cjs'\\)\")"
     ]
   }
 }

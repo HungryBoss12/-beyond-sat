@@ -10,6 +10,7 @@ import {
   type QuestionRow,
 } from "@/components/QuestionCard";
 import { DesmosCalculator } from "@/components/DesmosCalculator";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { bumpDailyStreak, scaledScore, type TestType } from "@/lib/session";
 
 type Props = {
@@ -207,12 +208,14 @@ export function TestPlayer({
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => (onExit ? onExit() : navigate({ to: "/practice" }))}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:text-blue-600 transition"
+            className="tap grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-blue-600"
             aria-label="Exit"
           >
             <X className="h-4 w-4" />
           </button>
-          <span className="text-sm font-black text-blue-600 tracking-tight truncate">BeyondSAT</span>
+          <span className="truncate text-sm font-black tracking-tight text-slate-900">
+            Beyond<span className="text-blue-600">SAT</span>
+          </span>
           <span className="hidden sm:inline text-xs text-slate-500 uppercase font-bold tracking-wider truncate">
             {type === "mock" ? "Mock exam" : type === "daily" ? "Daily test" : "Practice"}
           </span>
@@ -229,7 +232,7 @@ export function TestPlayer({
         <div className="flex justify-end">
           <button
             onClick={() => setShowReview((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:border-blue-600/40 transition"
+            className="btn-ghost inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700"
           >
             <Flag className="h-3.5 w-3.5" /> Review {answeredCount}/{questions.length}
           </button>
@@ -308,21 +311,26 @@ function BottomBar({
       <button
         onClick={onPrev}
         disabled={idx === 0 || showReview}
-        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 disabled:opacity-40 hover:border-blue-600/40 transition"
+        className="group btn-ghost inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 disabled:pointer-events-none disabled:opacity-40"
       >
-        <ChevronLeft className="h-4 w-4" /> Back
+        <ChevronLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
+        Back
       </button>
 
       <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-bold hover:bg-slate-800 transition tabular-nums"
+          className="tap inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold tabular-nums text-white hover:bg-slate-800"
         >
           Question {idx + 1} of {total}
-          <ChevronRight className={"h-4 w-4 transition " + (open ? "-rotate-90" : "rotate-90")} />
+          <ChevronRight
+            className={
+              "h-4 w-4 transition-transform duration-300 " + (open ? "-rotate-90" : "rotate-90")
+            }
+          />
         </button>
         {open && (
-          <div className="absolute bottom-full mb-3 w-[min(92vw,520px)] rounded-2xl border border-slate-200 bg-white shadow-2xl p-4">
+          <div className="rise-in absolute bottom-full mb-3 w-[min(92vw,520px)] rounded-2xl border border-slate-200/80 bg-white p-4 shadow-float">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Jump to question
@@ -331,7 +339,7 @@ function BottomBar({
                 {answeredCount}/{total} answered
               </span>
             </div>
-            <div className="grid grid-cols-8 sm:grid-cols-10 gap-2">
+            <div className="grid grid-cols-8 gap-2 stagger-fast sm:grid-cols-10">
               {Array.from({ length: total }).map((_, i) => {
                 const a = answered[i];
                 const m = marked[i];
@@ -344,11 +352,11 @@ function BottomBar({
                       setOpen(false);
                     }}
                     className={
-                      "relative h-10 rounded-lg text-sm font-bold tabular-nums transition " +
-                      (cur ? "ring-2 ring-primary ring-offset-1 " : "") +
+                      "tap relative h-10 rounded-lg text-sm font-bold tabular-nums " +
+                      (cur ? "ring-2 ring-blue-600 ring-offset-1 " : "") +
                       (a
-                        ? "bg-primary text-white "
-                        : "bg-slate-100 text-slate-700 hover:bg-slate-200 ")
+                        ? "bg-grad-brand text-white shadow-brand "
+                        : "bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-700 ")
                     }
                   >
                     {i + 1}
@@ -366,9 +374,9 @@ function BottomBar({
       <button
         onClick={onNext}
         disabled={showReview}
-        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition"
+        className="btn-brand group inline-flex items-center gap-2 rounded-lg bg-grad-brand px-4 py-2 text-sm font-bold text-white disabled:pointer-events-none disabled:opacity-40"
       >
-        {isLast ? "Finish" : "Next"} <ChevronRight className="h-4 w-4" />
+        {isLast ? "Finish" : "Next"} <ChevronRight className="arrow-slide h-4 w-4" />
       </button>
     </div>
   );
@@ -393,14 +401,14 @@ function ReviewPanel({
 }) {
   const unanswered = answered.filter((x) => !x).length;
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
-      <h2 className="text-xl font-black text-blue-600">Review your answers</h2>
-      <p className="text-sm text-slate-600 mt-1">
+    <div className="rise-in rounded-2xl border border-slate-200/80 bg-white p-6 shadow-panel">
+      <h2 className="text-xl font-black tracking-tight text-slate-900">Review your answers</h2>
+      <p className="mt-1 text-sm text-slate-600">
         {unanswered > 0
           ? `${unanswered} unanswered. Tap any number to jump back.`
           : "All questions answered. Submit when you're ready."}
       </p>
-      <div className="mt-5 grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2">
+      <div className="mt-5 grid grid-cols-6 gap-2 stagger-fast sm:grid-cols-8 md:grid-cols-10">
         {questions.map((_, i) => {
           const a = answered[i];
           const m = marked[i];
@@ -410,13 +418,11 @@ function ReviewPanel({
               key={i}
               onClick={() => onGoto(i)}
               className={
-                "relative aspect-square rounded-lg text-sm font-bold tabular-nums transition " +
-                (cur
-                  ? "ring-2 ring-primary "
-                  : "") +
+                "tap relative aspect-square rounded-lg text-sm font-bold tabular-nums " +
+                (cur ? "ring-2 ring-blue-600 ring-offset-1 " : "") +
                 (a
-                  ? "bg-primary text-white "
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 ")
+                  ? "bg-grad-brand text-white shadow-brand "
+                  : "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700 ")
               }
             >
               {i + 1}
@@ -431,7 +437,7 @@ function ReviewPanel({
         <button
           onClick={onSubmit}
           disabled={submitting}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60 hover:bg-blue-700 transition"
+          className="btn-brand inline-flex items-center gap-2 rounded-lg bg-grad-brand px-5 py-2.5 text-sm font-bold text-white disabled:pointer-events-none disabled:opacity-60"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Submit test
@@ -452,14 +458,28 @@ function ResultsView({
 }) {
   const pct = Math.round((result.correct / Math.max(1, result.total)) * 100);
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-blue-600 to-blue-700 text-white overflow-y-auto">
-      <div className="mx-auto max-w-2xl px-6 py-12 space-y-6">
-        <div className="text-center">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-grad-brand text-white">
+      {/* Ambient decoration so the full-bleed gradient isn't a flat wall. */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="drift absolute -right-24 -top-32 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
+        <div
+          className="drift absolute -bottom-40 -left-24 h-96 w-96 rounded-full bg-white/[0.07] blur-3xl"
+          style={{ animationDelay: "-7s" }}
+        />
+      </div>
+      <div className="relative mx-auto max-w-2xl space-y-6 px-6 py-12">
+        <div className="rise-in text-center">
           <div className="text-xs font-bold uppercase tracking-widest text-white/60">
             {type === "mock" ? "Mock exam" : type === "daily" ? "Daily test" : "Practice"} complete
           </div>
-          <div className="mt-3 text-7xl font-black tabular-nums">
-            {result.scaled?.total ?? `${result.correct}/${result.total}`}
+          <div className="pop-in mt-3 text-7xl font-black">
+            {result.scaled ? (
+              <AnimatedNumber value={result.scaled.total} duration={1400} />
+            ) : (
+              <span className="tabular-nums">
+                {result.correct}/{result.total}
+              </span>
+            )}
           </div>
           <p className="mt-2 text-white/70">
             {result.scaled
@@ -468,30 +488,36 @@ function ResultsView({
           </p>
         </div>
         {result.scaled && (
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-2xl bg-white/10 p-5">
-              <div className="text-xs uppercase tracking-wider text-white/60 font-bold">R&W</div>
-              <div className="mt-2 text-4xl font-black tabular-nums">{result.scaled.rw}</div>
+          <div className="grid grid-cols-2 gap-4 stagger">
+            <div className="rounded-2xl bg-white/10 p-5 ring-1 ring-white/10">
+              <div className="text-xs font-bold uppercase tracking-wider text-white/60">R&W</div>
+              <div className="mt-2 text-4xl font-black">
+                <AnimatedNumber value={result.scaled.rw} duration={1100} />
+              </div>
               <div className="mt-1 text-xs text-white/60">
                 {result.rwCorrect}/{result.rwTotal} correct
               </div>
             </div>
-            <div className="rounded-2xl bg-white/10 p-5">
-              <div className="text-xs uppercase tracking-wider text-white/60 font-bold">Math</div>
-              <div className="mt-2 text-4xl font-black tabular-nums">{result.scaled.math}</div>
+            <div className="rounded-2xl bg-white/10 p-5 ring-1 ring-white/10">
+              <div className="text-xs font-bold uppercase tracking-wider text-white/60">Math</div>
+              <div className="mt-2 text-4xl font-black">
+                <AnimatedNumber value={result.scaled.math} duration={1100} />
+              </div>
               <div className="mt-1 text-xs text-white/60">
                 {result.mathCorrect}/{result.mathTotal} correct
               </div>
             </div>
           </div>
         )}
-        <div className="rounded-2xl bg-white/10 p-5 flex items-center justify-between">
+        <div className="rise-in flex items-center justify-between rounded-2xl bg-white/10 p-5 ring-1 ring-white/10">
           <div>
-            <div className="text-xs uppercase tracking-wider text-white/60 font-bold">Accuracy</div>
-            <div className="mt-1 text-2xl font-black tabular-nums">{pct}%</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-white/60">Accuracy</div>
+            <div className="mt-1 text-2xl font-black">
+              <AnimatedNumber value={pct} suffix="%" duration={900} />
+            </div>
           </div>
-          <div>
-            <div className="text-xs uppercase tracking-wider text-white/60 font-bold">Answered</div>
+          <div className="text-right">
+            <div className="text-xs font-bold uppercase tracking-wider text-white/60">Answered</div>
             <div className="mt-1 text-2xl font-black tabular-nums">
               {result.correct}/{result.total}
             </div>
@@ -499,7 +525,7 @@ function ResultsView({
         </div>
         <button
           onClick={onExit}
-          className="w-full rounded-lg bg-white text-blue-600 px-6 py-3 text-sm font-bold hover:bg-white/90 transition"
+          className="tap w-full rounded-xl bg-white px-6 py-3.5 text-sm font-bold text-blue-700 shadow-lg shadow-blue-950/20 hover:bg-blue-50"
         >
           Back to practice
         </button>

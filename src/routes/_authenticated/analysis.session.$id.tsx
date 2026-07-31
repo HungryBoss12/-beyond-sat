@@ -111,7 +111,7 @@ function SessionReview() {
         <div className="text-lg font-bold text-slate-800">{err}</div>
         <button
           onClick={() => navigate({ to: "/analysis" })}
-          className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white"
+          className="btn-brand mt-4 rounded-lg bg-grad-brand px-4 py-2 text-sm font-bold text-white"
         >
           Back to analysis
         </button>
@@ -128,12 +128,12 @@ function SessionReview() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate({ to: "/analysis" })}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:text-blue-600 transition"
+            className="tap grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-blue-600"
             aria-label="Exit"
           >
             <X className="h-4 w-4" />
           </button>
-          <span className="text-sm font-black text-blue-600 tracking-tight">Review mode</span>
+          <span className="text-sm font-black tracking-tight text-blue-600">Review mode</span>
         </div>
         <div className="flex justify-center">
           {isCorrect === true ? (
@@ -175,18 +175,20 @@ function SessionReview() {
         <button
           onClick={() => setIdx((i) => Math.max(0, i - 1))}
           disabled={idx === 0}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 disabled:opacity-40 hover:border-blue-600/40 transition"
+          className="group btn-ghost inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 disabled:pointer-events-none disabled:opacity-40"
         >
-          <ChevronLeft className="h-4 w-4" /> Previous
+          <ChevronLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
+          Previous
         </button>
         <button
           onClick={() => {
             if (idx >= questions.length - 1) navigate({ to: "/analysis" });
             else setIdx((i) => i + 1);
           }}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition"
+          className="btn-brand group inline-flex items-center gap-2 rounded-lg bg-grad-brand px-4 py-2 text-sm font-bold text-white"
         >
-          {idx >= questions.length - 1 ? "Finish" : "Next"} <ChevronRight className="h-4 w-4" />
+          {idx >= questions.length - 1 ? "Finish" : "Next"}{" "}
+          <ChevronRight className="arrow-slide h-4 w-4" />
         </button>
       </div>
     </div>

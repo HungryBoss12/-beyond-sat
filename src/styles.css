@@ -37,16 +37,17 @@
      ramp. The app uses `blue-600`/`blue-50`/etc. in ~50 places, so remapping
      the scale re-themes every one of them from a single source of truth
      instead of scattering brand hexes through the codebase. */
-  --color-brand-50: #f0f0fe;
-  --color-brand-100: #e2e2fd;
-  --color-brand-200: #c6c6fb;
-  --color-brand-300: #9c9cf7;
-  --color-brand-400: #6b6bf0;
-  --color-brand-500: #3f3fe0;
+  --color-brand-25: #fafbff;
+  --color-brand-50: #f4f5ff;
+  --color-brand-100: #e9eaff;
+  --color-brand-200: #d5d7ff;
+  --color-brand-300: #b6b9fb;
+  --color-brand-400: #8b8ef6;
+  --color-brand-500: #5c60ea;
   --color-brand-600: #1313cf;
   --color-brand-700: #1111cf;
   --color-brand-800: #0202d4;
-  --color-brand-900: #01018f;
+  --color-brand-900: #0a0a7a;
 
   --color-blue-50: var(--color-brand-50);
   --color-blue-100: var(--color-brand-100);
@@ -86,9 +87,24 @@
   --accent: #e2e2fd;          /* brand-100 */
   --accent-foreground: #1111cf; /* brand-700 */
 
-  --border: #E2E8F0;          /* slate-200, visible on white */
+  --border: #E9EDF4;          /* softer than slate-200; less cage-like on white */
   --input: #CBD5E1;           /* slate-300 */
-  --ring: #9c9cf7;            /* brand-300 */
+  --ring: #b6b9fb;            /* brand-300 */
+
+  /* Gradient primitives. Kept as tokens so panels, buttons and chart fills all
+     pull from the same ramp — changing the brand here changes every gradient.
+     These are deliberately *light*: tinted whites rather than saturated blues,
+     so large surfaces read as paper with a wash of colour rather than as slabs
+     of brand. Only `--grad-brand` (used on small CTAs) is fully saturated. */
+  --grad-brand: linear-gradient(135deg, #3f3fe0 0%, #1313cf 55%, #0202d4 100%);
+  --grad-brand-soft: linear-gradient(135deg, #f4f5ff 0%, #e9eaff 100%);
+  --grad-surface: linear-gradient(180deg, #ffffff 0%, #fafbff 100%);
+  --grad-sheen: linear-gradient(
+    120deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.28) 50%,
+    transparent 80%
+  );
 }
 
 @layer base {
@@ -113,8 +129,79 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Elevation
+   Three steps, all built from the same slate hue so stacked surfaces stay in
+   the same colour family. Each combines a tight contact shadow with a wide
+   diffuse one — that pairing is what makes a card look lifted rather than
+   outlined.
+   --------------------------------------------------------------------------- */
+
 @utility soft-shadow {
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.12);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px -12px rgba(15, 23, 42, 0.12);
+}
+
+@utility shadow-panel {
+  box-shadow:
+    0 1px 1px rgba(15, 23, 42, 0.03),
+    0 2px 6px -2px rgba(15, 23, 42, 0.06),
+    0 12px 32px -16px rgba(15, 23, 42, 0.14);
+}
+
+@utility shadow-float {
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.04),
+    0 12px 24px -8px rgba(15, 23, 42, 0.1),
+    0 32px 64px -32px rgba(15, 23, 42, 0.2);
+}
+
+/* Brand-tinted glow for primary CTAs — the shadow picks up the button colour
+   instead of going grey, which is what sells a button as "lit". */
+@utility shadow-brand {
+  box-shadow:
+    0 1px 2px rgba(2, 2, 212, 0.16),
+    0 8px 20px -6px rgba(19, 19, 207, 0.32);
+}
+
+/* ---------------------------------------------------------------------------
+   Gradient surfaces
+   --------------------------------------------------------------------------- */
+
+@utility bg-grad-brand {
+  background-image: var(--grad-brand);
+}
+
+@utility bg-grad-brand-soft {
+  background-image: var(--grad-brand-soft);
+}
+
+@utility bg-grad-surface {
+  background-image: var(--grad-surface);
+}
+
+/* A hairline gradient border, done with two stacked backgrounds so it works on
+   rounded corners (a plain border-image does not). */
+@utility ring-grad {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(140deg, rgba(19, 19, 207, 0.22), rgba(19, 19, 207, 0));
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -149,6 +236,43 @@
   0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 40%, transparent); }
   70%  { box-shadow: 0 0 0 10px color-mix(in srgb, var(--primary) 0%, transparent); }
   100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+
+/* Slide in from the left — used when a panel replaces another in place. */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Flash a tinted background once, to draw the eye to a number that just
+   changed without moving the layout. */
+@keyframes flash-tint {
+  0%   { background-color: color-mix(in srgb, var(--primary) 12%, transparent); }
+  100% { background-color: transparent; }
+}
+
+/* A highlight sweeping across a surface. Drives the skeleton shimmer and the
+   sheen that crosses a primary button on hover. */
+@keyframes sheen {
+  from { transform: translateX(-120%); }
+  to   { transform: translateX(120%); }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+/* Slow drift for the ambient blurred blobs behind hero panels. Small offsets
+   only — this runs forever, so anything larger becomes a distraction. */
+@keyframes drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(14px, -18px) scale(1.06); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
 }
 
 /* Cards / sections easing up into place. */
@@ -192,13 +316,183 @@
   & > *:nth-child(n + 9) { animation-delay: 480ms; }
 }
 
+/* Tighter cascade for long lists, where 60ms steps would make the last row
+   arrive uncomfortably late. */
+@utility stagger-fast {
+  & > * {
+    animation: rise-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  & > *:nth-child(1) { animation-delay: 0ms; }
+  & > *:nth-child(2) { animation-delay: 30ms; }
+  & > *:nth-child(3) { animation-delay: 60ms; }
+  & > *:nth-child(4) { animation-delay: 90ms; }
+  & > *:nth-child(5) { animation-delay: 120ms; }
+  & > *:nth-child(6) { animation-delay: 150ms; }
+  & > *:nth-child(7) { animation-delay: 180ms; }
+  & > *:nth-child(8) { animation-delay: 210ms; }
+  & > *:nth-child(9) { animation-delay: 240ms; }
+  & > *:nth-child(10) { animation-delay: 270ms; }
+  & > *:nth-child(n + 11) { animation-delay: 300ms; }
+}
+
 /* Hover lift for interactive cards. */
 @utility lift {
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.24s ease,
+    border-color 0.24s ease;
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 2px 4px rgba(15, 23, 42, 0.05),
+      0 14px 36px -14px rgba(15, 23, 42, 0.2);
+  }
+  &:active {
+    transform: translateY(-1px);
+  }
+}
+
+@utility slide-in {
+  animation: slide-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility flash-tint {
+  animation: flash-tint 1s ease-out both;
+}
+
+@utility drift {
+  animation: drift 14s ease-in-out infinite;
+}
+
+@utility spin-slow {
+  animation: spin-slow 18s linear infinite;
+}
+
+/* ---------------------------------------------------------------------------
+   Interaction
+   Buttons and rows need to respond on hover AND on press. The press state is
+   the part usually skipped, and it's what makes a control feel physical.
+   --------------------------------------------------------------------------- */
+
+/* Baseline for any pressable control. */
+@utility tap {
+  transition:
+    transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* Primary CTA: lifts, deepens its glow, and a sheen crosses it on hover. */
+@utility btn-brand {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.24s ease,
+    filter 0.24s ease;
+  box-shadow:
+    0 1px 2px rgba(2, 2, 212, 0.16),
+    0 8px 20px -6px rgba(19, 19, 207, 0.32);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--grad-sheen);
+    transform: translateX(-120%);
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05), 0 12px 32px -14px rgba(15, 23, 42, 0.18);
+    box-shadow:
+      0 2px 4px rgba(2, 2, 212, 0.2),
+      0 14px 32px -8px rgba(19, 19, 207, 0.45);
   }
+  &:hover::after {
+    transform: translateX(120%);
+  }
+  &:active {
+    transform: translateY(0) scale(0.985);
+  }
+}
+
+/* Secondary/outline control: border and text warm to brand, slight lift. */
+@utility btn-ghost {
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+  &:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+    background-color: var(--color-brand-50);
+    color: var(--color-brand-700);
+    box-shadow: 0 6px 16px -10px rgba(15, 23, 42, 0.28);
+  }
+  &:active {
+    transform: translateY(0) scale(0.985);
+  }
+}
+
+/* List rows / nav items: nudge right on hover. Cheap, and it reads as
+   "this is going somewhere". */
+@utility nudge {
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+  &:hover {
+    transform: translateX(3px);
+  }
+}
+
+/* Arrow inside a hovered parent slides forward. Pair with `group`. */
+@utility arrow-slide {
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  .group:hover & {
+    transform: translateX(4px);
+  }
+}
+
+/* Icon tile that inverts to solid brand when its parent row is hovered. */
+@utility tile-invert {
+  transition:
+    background-color 0.24s ease,
+    color 0.24s ease,
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  .group:hover & {
+    background-color: var(--primary);
+    color: #fff;
+    transform: scale(1.06) rotate(-3deg);
+  }
+}
+
+/* Shimmering placeholder. Better than a flat pulse because the moving
+   highlight signals "loading" rather than "disabled". */
+@utility skeleton {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-slate-100) 25%,
+    var(--color-slate-50) 37%,
+    var(--color-slate-100) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Wraps a route outlet; keyed on pathname so each navigation replays it. */
+@utility route-enter {
+  animation: rise-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -209,5 +503,34 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* The blanket rule above stops the looping decorations, but it leaves them
+     frozen at whatever frame they were on. Drop them outright instead, and
+     cancel the hover/press transforms so nothing shifts under the pointer. */
+  .drift,
+  .spin-slow,
+  .pulse-ring {
+    animation: none !important;
+  }
+  .lift:hover,
+  .lift:active,
+  .tap:active,
+  .btn-brand:hover,
+  .btn-brand:active,
+  .btn-ghost:hover,
+  .btn-ghost:active,
+  .nudge:hover,
+  .group:hover .arrow-slide,
+  .group:hover .tile-invert {
+    transform: none !important;
+  }
+  .btn-brand::after {
+    display: none !important;
+  }
+  .skeleton {
+    animation: none !important;
+    background-image: none;
+    background-color: var(--color-slate-100);
   }
 }

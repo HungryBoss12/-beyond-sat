@@ -28,7 +28,9 @@ import {
   type Section,
   type Difficulty,
 } from "@/lib/sat";
-import { CountUp } from "@/components/CountUp";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { PageHead } from "@/components/ui/panel";
+import { Badge, Delta, type Tone } from "@/components/ui/metric";
 import { format } from "date-fns";
 
 export const Route = createFileRoute("/_authenticated/analysis")({
@@ -172,12 +174,10 @@ function AnalysisPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rise-in">
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900">Analysis</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Review your progress and dig into every completed test.
-        </p>
-      </div>
+      <PageHead
+        title="Analysis"
+        subtitle="Review your progress and dig into every completed test."
+      />
 
       {/* Score counters — driven by completed mock exams */}
       <div className="grid gap-4 lg:grid-cols-3">
@@ -225,8 +225,8 @@ function AnalysisPage() {
         />
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow rise-in">
-        <h2 className="text-lg font-bold text-slate-900 mb-2">Correct vs. wrong</h2>
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-panel rise-in">
+        <h2 className="mb-2 text-lg font-black tracking-tight text-slate-900">Correct vs. wrong</h2>
         {totals.total === 0 ? (
           <div className="py-10 text-center text-sm text-slate-500">
             No answers yet — complete a practice test to see your breakdown.
@@ -239,11 +239,14 @@ function AnalysisPage() {
                   data={pieData}
                   dataKey="value"
                   nameKey="name"
+                  innerRadius={52}
                   outerRadius={90}
+                  paddingAngle={2}
+                  animationDuration={900}
                   label={(e: any) => `${e.name}: ${e.value} (${Math.round((e.value / totals.total) * 100)}%)`}
                 >
                   {pieData.map((d) => (
-                    <Cell key={d.name} fill={d.color} />
+                    <Cell key={d.name} fill={d.color} stroke="#fff" strokeWidth={2} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -255,7 +258,7 @@ function AnalysisPage() {
       </div>
 
       {/* Filters */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 flex flex-wrap gap-3 items-end rise-in">
+      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-panel rise-in">
         <FieldFilter label="Section">
           <select
             value={fSection}
@@ -263,7 +266,7 @@ function AnalysisPage() {
               setFSection(e.target.value as any);
               setFSkill("");
             }}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className={CONTROL_CLASS}
           >
             <option value="all">All</option>
             <option value="reading_writing">Reading & Writing</option>
@@ -274,7 +277,7 @@ function AnalysisPage() {
           <select
             value={fSkill}
             onChange={(e) => setFSkill(e.target.value)}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className={CONTROL_CLASS}
           >
             <option value="">Any</option>
             {skillOptions.map((s) => (
@@ -286,7 +289,7 @@ function AnalysisPage() {
           <select
             value={fDifficulty}
             onChange={(e) => setFDifficulty(e.target.value as any)}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className={CONTROL_CLASS}
           >
             <option value="">Any</option>
             {LETTER_DIFFICULTIES.map((d) => (
@@ -295,21 +298,21 @@ function AnalysisPage() {
           </select>
         </FieldFilter>
         <FieldFilter label="From">
-          <input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+          <input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} className={CONTROL_CLASS} />
         </FieldFilter>
         <FieldFilter label="To">
-          <input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+          <input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} className={CONTROL_CLASS} />
         </FieldFilter>
       </div>
 
       {/* Sessions list */}
-      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-panel rise-in">
         {filteredSessions.length === 0 ? (
           <div className="p-10 text-center text-sm text-slate-500">
             No completed tests match these filters yet.
           </div>
         ) : (
-          <ul className="divide-y divide-slate-200">
+          <ul className="divide-y divide-slate-100 stagger-fast">
             {filteredSessions.map((s) => (
               <SessionItem
                 key={s.id}
@@ -327,8 +330,12 @@ function AnalysisPage() {
       </div>
 
       <div className="text-center">
-        <Link to="/practice" className="text-sm font-semibold text-blue-600 hover:underline">
-          ← Back to practice
+        <Link
+          to="/practice"
+          className="group inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 transition-colors hover:text-blue-800"
+        >
+          <span className="transition-transform duration-300 group-hover:-translate-x-0.5">←</span>
+          Back to practice
         </Link>
       </div>
       <Outlet />
@@ -338,12 +345,16 @@ function AnalysisPage() {
 
 function StatCard({ label, value, hint, icon }: { label: string; value: React.ReactNode; hint?: string; icon?: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 soft-shadow lift">
+    <div className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-panel lift">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</span>
-        {icon && <span className="text-blue-600">{icon}</span>}
+        <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">{label}</span>
+        {icon && (
+          <span className="tile-invert grid h-8 w-8 place-items-center rounded-xl bg-blue-50 text-blue-600">
+            {icon}
+          </span>
+        )}
       </div>
-      <div className="mt-2 text-3xl font-black text-blue-600 tabular-nums">{value}</div>
+      <div className="mt-2.5 text-3xl font-black tabular-nums text-slate-900">{value}</div>
       {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
     </div>
   );
@@ -371,55 +382,58 @@ function ScoreCounter({
   return (
     <div
       className={
-        "rounded-2xl border bg-white p-5 soft-shadow rise-in lift " +
-        (emphasis ? "border-blue-600/30 ring-1 ring-blue-600/10" : "border-slate-200")
+        "group relative overflow-hidden rounded-2xl border bg-white p-5 shadow-panel rise-in lift " +
+        (emphasis ? "ring-grad border-blue-600/25" : "border-slate-200/80")
       }
     >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</span>
-        <Gauge className={"h-5 w-5 " + (emphasis ? "text-blue-600" : "text-slate-400")} />
-      </div>
-
-      <div className="mt-2 flex items-baseline gap-1.5">
-        <span
-          className={
-            "font-black tabular-nums pop-in " +
-            (emphasis ? "text-5xl text-blue-600" : "text-4xl text-slate-900")
-          }
-        >
-          <CountUp end={value} />
-        </span>
-        <span className="text-sm font-medium text-slate-400">/1600</span>
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        {band && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-            {band.label}
+      {emphasis && (
+        <div
+          aria-hidden="true"
+          className="drift pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-blue-100/60 blur-3xl"
+        />
+      )}
+      <div className="relative">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">
+            {label}
           </span>
-        )}
-        {delta != null && delta !== 0 && (
           <span
             className={
-              "text-[11px] font-bold " + (delta > 0 ? "text-emerald-600" : "text-red-600")
+              "tile-invert grid h-8 w-8 place-items-center rounded-xl " +
+              (emphasis ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-400")
             }
           >
-            {delta > 0 ? "↑ +" : "↓ "}
-            {Math.abs(Math.round(delta))} vs previous
+            <Gauge className="h-[17px] w-[17px]" />
           </span>
-        )}
-      </div>
+        </div>
 
-      {/* Progress along the 400-1600 range */}
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-        <div
-          className="h-full rounded-full bg-blue-600 sweep-right"
-          style={{ width: `${empty ? 0 : scoreProgress(value)}%` }}
-        />
-      </div>
+        <div className="mt-2.5 flex items-end gap-1.5">
+          <span
+            className={
+              "pop-in font-black leading-none " +
+              (emphasis ? "text-5xl text-blue-600" : "text-4xl text-slate-900")
+            }
+          >
+            <AnimatedNumber value={value} />
+          </span>
+          <span className="pb-1 text-sm font-medium text-slate-400">/ 1600</span>
+        </div>
 
-      {hint && <div className="mt-2 text-xs text-slate-500">{hint}</div>}
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          {band && <Badge label={band.label} tone={band.tone as Tone} />}
+          {delta != null && delta !== 0 && <Delta value={delta} suffix="vs previous" />}
+        </div>
+
+        {/* Progress along the 400-1600 range */}
+        <div className="mt-3.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="sweep-right h-full rounded-full bg-grad-brand transition-[width] duration-700"
+            style={{ width: `${empty ? 0 : scoreProgress(value)}%` }}
+          />
+        </div>
+
+        {hint && <div className="mt-2.5 text-xs text-slate-500">{hint}</div>}
+      </div>
     </div>
   );
 }
@@ -440,14 +454,16 @@ function ScoreCalculator() {
   const band = scoreBand(est.total);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 soft-shadow rise-in">
+    <div className="rounded-2xl border border-slate-200/80 bg-grad-surface p-5 shadow-panel rise-in md:p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-            <Calculator className="h-5 w-5 text-blue-600" />
+          <h2 className="flex items-center gap-2 text-lg font-black tracking-tight text-slate-900">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-blue-50 text-blue-600">
+              <Calculator className="h-[17px] w-[17px]" />
+            </span>
             Score calculator
           </h2>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1.5 text-xs text-slate-500">
             Enter your correct answers per section to estimate a scaled score.
           </p>
         </div>
@@ -457,14 +473,14 @@ function ScoreCalculator() {
               setRw("");
               setMath("");
             }}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            className="btn-ghost fade-in inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600"
           >
             <RotateCcw className="h-3.5 w-3.5" /> Reset
           </button>
         )}
       </div>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+      <div className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
         <RawInput
           label="Reading & Writing"
           max={RW_QUESTION_COUNT}
@@ -480,15 +496,22 @@ function ScoreCalculator() {
           scaled={touched ? est.math : null}
         />
 
-        <div className="rounded-xl bg-blue-600 px-5 py-4 text-center text-white">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-white/70">
-            Estimated total
-          </div>
-          <div className="mt-0.5 text-3xl font-black tabular-nums">
-            {touched ? est.total : 0}
-          </div>
-          <div className="text-[10px] font-semibold text-white/80">
-            {touched ? band.label : "Enter your answers"}
+        <div className="relative overflow-hidden rounded-xl bg-grad-brand px-6 py-4 text-center text-white shadow-brand">
+          <div
+            aria-hidden="true"
+            className="drift pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-white/10 blur-2xl"
+          />
+          <div className="relative">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-white/70">
+              Estimated total
+            </div>
+            {/* Tweens as the inputs change, so the total visibly reacts. */}
+            <div className="mt-0.5 text-3xl font-black">
+              <AnimatedNumber value={touched ? est.total : 0} duration={500} />
+            </div>
+            <div className="text-[10px] font-semibold text-white/80">
+              {touched ? band.label : "Enter your answers"}
+            </div>
           </div>
         </div>
       </div>
@@ -517,7 +540,7 @@ function RawInput({
   return (
     <label className="block">
       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span>
-      <div className="mt-1 flex items-center gap-2">
+      <div className="mt-1.5 flex items-center gap-2">
         <input
           type="number"
           inputMode="numeric"
@@ -527,14 +550,17 @@ function RawInput({
           onChange={(e) => onChange(e.target.value)}
           placeholder="0"
           aria-label={`${label} correct answers out of ${max}`}
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm tabular-nums transition focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm tabular-nums transition-all duration-200 focus:border-blue-600 focus:shadow-brand focus:outline-none focus:ring-2 focus:ring-blue-600/15"
         />
         <span className="shrink-0 text-xs text-slate-400">/ {max}</span>
       </div>
-      <div className="mt-1.5 flex items-center gap-1 text-xs">
-        <Target className="h-3 w-3 text-blue-600" />
+      {/* Raw-to-scaled readout, tweened so it tracks typing. */}
+      <div className="mt-2 flex items-center gap-1.5 text-xs">
+        <Target className="h-3.5 w-3.5 text-blue-600" />
         <span className="text-slate-500">Scaled:</span>
-        <span className="font-bold tabular-nums text-slate-900">{scaled ?? "—"}</span>
+        <span className="font-bold text-slate-900">
+          {scaled == null ? "—" : <AnimatedNumber value={scaled} duration={400} />}
+        </span>
       </div>
     </label>
   );
@@ -555,6 +581,10 @@ function FieldFilter({ label, children }: { label: string; children: React.React
     </label>
   );
 }
+
+/** Shared control styling for the filter row's selects and date inputs. */
+const CONTROL_CLASS =
+  "rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition-all duration-200 hover:border-slate-300 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15";
 
 function SessionItem({
   session,
@@ -630,32 +660,59 @@ function SessionItem({
 
   return (
     <li>
-      <div className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-50">
-        <button onClick={onToggle} className="flex-1 min-w-0 text-left">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-slate-800 capitalize">{session.type}</span>
+      <div
+        className={
+          "flex w-full items-center gap-4 px-5 py-4 transition-colors duration-200 " +
+          (isOpen ? "bg-blue-50/40" : "hover:bg-slate-50")
+        }
+      >
+        <button onClick={onToggle} className="min-w-0 flex-1 text-left">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-bold capitalize text-slate-800">{session.type}</span>
+            {session.type === "mock" && session.score != null && (
+              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                {session.score}
+              </span>
+            )}
             <span className="text-xs text-slate-500">
               {completed ? format(completed, "MMM d, yyyy · HH:mm") : "—"}
             </span>
           </div>
-          <div className="mt-1 text-xs text-slate-500">
-            {correct} / {total} correct · {pct}%
-            {session.score != null ? ` · score ${session.score}` : ""}
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className="text-xs text-slate-500">
+              {correct} / {total} correct · {pct}%
+            </span>
+            {/* Inline accuracy bar, so the list scans without opening rows. */}
+            <span className="hidden h-1 w-24 overflow-hidden rounded-full bg-slate-100 sm:block">
+              <span
+                className="sweep-right block h-full rounded-full bg-grad-brand"
+                style={{ width: `${pct}%` }}
+              />
+            </span>
           </div>
         </button>
         <Link
           to="/analysis/session/$id"
           params={{ id: session.id }}
-          className="rounded-lg border border-blue-600 text-blue-600 px-3 py-1.5 text-xs font-bold hover:bg-blue-50"
+          className="btn-ghost hidden shrink-0 rounded-lg border border-blue-600/40 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 sm:inline-flex"
         >
           Review in test view
         </Link>
-        <button onClick={onToggle}>
-          <ChevronRight className={"h-4 w-4 text-slate-400 transition " + (isOpen ? "rotate-90" : "")} />
+        <button
+          onClick={onToggle}
+          className="tap grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-white hover:text-blue-600"
+          aria-label={isOpen ? "Collapse details" : "Expand details"}
+          aria-expanded={isOpen}
+        >
+          <ChevronRight
+            className={
+              "h-4 w-4 transition-transform duration-300 " + (isOpen ? "rotate-90" : "")
+            }
+          />
         </button>
       </div>
       {isOpen && (
-        <div className="px-5 pb-5 bg-slate-50/60">
+        <div className="rise-in bg-slate-50/60 px-5 pb-5">
           {loading ? (
             <div className="py-6 text-center"><Loader2 className="h-5 w-5 animate-spin text-blue-600 inline" /></div>
           ) : (details && details.length === 0) ? (
@@ -663,12 +720,15 @@ function SessionItem({
           ) : filteredAttempts.length === 0 ? (
             <div className="py-6 text-center text-sm text-slate-500">No questions match the filters for this test.</div>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-2 stagger-fast">
               {filteredAttempts.map((a, i) => {
                 const q = details!.find((d) => d.id === a.question_id)!;
                 const correctChoice = q.choices?.find((c) => c.id === q.correct_choice_id);
                 return (
-                  <li key={a.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                  <li
+                    key={a.id}
+                    className="rounded-xl border border-slate-200/80 bg-white p-3 transition-shadow duration-200 hover:shadow-panel"
+                  >
                     <div className="flex items-start gap-3">
                       {a.is_correct ? (
                         <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />

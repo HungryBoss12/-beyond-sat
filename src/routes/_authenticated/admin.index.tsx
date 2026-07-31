@@ -10,8 +10,11 @@ import {
   ArrowRight,
   Home,
   FileStack,
+  Info,
+  Database,
 } from "lucide-react";
-import { CountUp } from "@/components/CountUp";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { Panel, PanelGlow, Skeleton } from "@/components/ui/panel";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   component: AdminOverview,
@@ -59,35 +62,55 @@ function AdminOverview() {
 
   return (
     <div className="space-y-8">
-      <div className="rise-in">
-        <h2 className="text-xl font-black tracking-tight text-slate-900">At a glance</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Everything currently live across the platform.
-        </p>
-      </div>
+      {/* Banner. Soft gradient rather than a saturated slab, so the stat cards
+          below it stay the brightest thing on the page. */}
+      <Panel tone="soft" className="ring-grad overflow-hidden rise-in">
+        <PanelGlow />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700 ring-1 ring-blue-600/10">
+              <Database className="h-3 w-3" /> Live data
+            </span>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-900">At a glance</h2>
+            <p className="mt-1 max-w-md text-sm text-slate-500">
+              Everything currently on the platform, straight from the database.
+            </p>
+          </div>
+          <Link
+            to="/admin/questions"
+            className="btn-brand group inline-flex items-center gap-2 rounded-xl bg-grad-brand px-4 py-2.5 text-sm font-bold text-white"
+          >
+            Manage content <ArrowRight className="arrow-slide h-4 w-4" />
+          </Link>
+        </div>
+      </Panel>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 stagger">
+      <div className="grid gap-4 stagger sm:grid-cols-2 lg:grid-cols-5">
         {cards.map((c) => {
           const Icon = c.icon;
           return (
             <Link
               key={c.label}
               to={c.to}
-              className="group rounded-2xl border border-slate-200 bg-white p-5 soft-shadow lift"
+              className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-panel lift"
             >
-              <div className={"inline-flex h-9 w-9 items-center justify-center rounded-lg " + c.tone}>
-                <Icon className="h-5 w-5" />
+              <div
+                className={
+                  "tile-invert inline-flex h-10 w-10 items-center justify-center rounded-xl " + c.tone
+                }
+              >
+                <Icon className="h-5 w-5" strokeWidth={2.1} />
               </div>
-              <div className="mt-3 text-3xl font-black tabular-nums text-slate-900">
+              <div className="mt-3.5 text-3xl font-black text-slate-900">
                 {c.value == null ? (
-                  <span className="inline-block h-8 w-14 animate-pulse rounded bg-slate-100" />
+                  <Skeleton className="h-8 w-16" />
                 ) : (
-                  <CountUp end={c.value} />
+                  <AnimatedNumber value={c.value} />
                 )}
               </div>
-              <div className="mt-0.5 flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <div className="mt-1 flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 {c.label}
-                <ArrowRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                <ArrowRight className="arrow-slide h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
               </div>
             </Link>
           );
@@ -95,33 +118,33 @@ function AdminOverview() {
       </div>
 
       <div>
-        <h2 className="text-xl font-black tracking-tight text-slate-900 rise-in">Quick actions</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 stagger">
+        <h2 className="rise-in text-lg font-black tracking-tight text-slate-900">Quick actions</h2>
+        <div className="mt-4 grid gap-4 stagger sm:grid-cols-2">
           {SHORTCUTS.map((s) => {
             const Icon = s.icon;
             return (
               <Link
                 key={s.to}
                 to={s.to}
-                className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-blue-600/40 hover:bg-blue-50/40"
+                className="group flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 nudge hover:border-blue-600/40 hover:bg-blue-50/50"
               >
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white">
-                  <Icon className="h-[18px] w-[18px]" />
+                <span className="tile-invert grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
+                  <Icon className="h-[19px] w-[19px]" strokeWidth={2.1} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-bold text-slate-900">{s.label}</span>
                   <span className="block truncate text-xs text-slate-500">{s.desc}</span>
                 </span>
-                <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-600" />
+                <ArrowRight className="arrow-slide h-4 w-4 shrink-0 text-slate-300 group-hover:text-blue-600" />
               </Link>
             );
           })}
         </div>
       </div>
 
-      <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 rise-in">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">
-          <FileStack className="h-[18px] w-[18px]" />
+      <div className="flex items-start gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 rise-in">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500">
+          <Info className="h-[18px] w-[18px]" />
         </span>
         <p className="text-xs leading-relaxed text-slate-500">
           Counts read straight from the database, so they include unpublished and hidden records.

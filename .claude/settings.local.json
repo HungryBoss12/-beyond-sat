@@ -89,7 +89,12 @@
       "Bash(\"C:/Program Files/Git/usr/bin/head.exe\" -40)",
       "Bash(\"C:/Program Files/Git/usr/bin/rm.exe\" -f tsc.log)",
       "Bash(\"C:/Program Files/Git/usr/bin/tail.exe\" -6 build.log)",
-      "Bash(\"C:/Program Files/Git/usr/bin/grep.exe\" -ciE \"error|failed\" build.log)"
+      "Bash(\"C:/Program Files/Git/usr/bin/grep.exe\" -ciE \"error|failed\" build.log)",
+      "Bash(\"C:/Program Files/nodejs/npx.cmd\" tsc --noEmit)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" ./node_modules/typescript/bin/tsc --noEmit)",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" check-css.cjs)",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"['check-css.cjs','tsc.log','build.log'].forEach\\(f=>{try{require\\('fs'\\).unlinkSync\\(f\\);console.log\\('removed '+f\\)}catch\\(e\\){console.log\\('skip '+f\\)}}\\)\")"
     ]
   }
 }

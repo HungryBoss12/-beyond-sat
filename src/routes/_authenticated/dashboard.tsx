@@ -2,9 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Flame,
-  TrendingUp,
-  TrendingDown,
-  Minus,
   Target,
   ArrowRight,
   Trophy,
@@ -12,10 +9,13 @@ import {
   Shield,
   ClipboardList,
   BarChart3,
+  Gauge,
+  CalendarClock,
+  Zap,
 } from "lucide-react";
 import {
-  LineChart,
-  Line,
+  Area,
+  AreaChart,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -27,10 +27,13 @@ import {
   RadarChart,
   PolarGrid,
   PolarRadiusAxis,
+  Tooltip,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { RW_SKILLS, MATH_SKILLS, scoreBand } from "@/lib/sat";
-import { CountUp } from "@/components/CountUp";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { Panel, PanelGlow, PanelHead, PageHead, EmptyState, Skeleton } from "@/components/ui/panel";
+import { Badge, Delta, MeterRow, StatTile, type Tone } from "@/components/ui/metric";
 import { format } from "date-fns";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -112,7 +115,7 @@ function Dashboard() {
     })();
   }, []);
 
-  const mocks = sessions.filter((s) => s.type === "mock");
+  const mocks = useMemo(() => sessions.filter((s) => s.type === "mock"), [sessions]);
   const dailyDoneToday = sp?.last_daily_completed_date === today;
 
   /** Most recent scored mock — the headline "Your Progress" number. */
@@ -144,7 +147,7 @@ function Dashboard() {
     };
   }, [mocks]);
 
-  /** Score trend, oldest -> newest, for the line chart. */
+  /** Score trend, oldest -> newest, for the area chart. */
   const trend = useMemo(() => {
     const scored = (mocks.filter((m) => m.score != null) as (Session & { score: number })[])
       .slice()
@@ -202,179 +205,65 @@ function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Greeting */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 rise-in">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900">
-            Welcome back, {name.split(" ")[0]}.
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {sp?.target_score
-              ? `Target ${sp.target_score}${daysToExam != null ? ` · ${daysToExam} days to exam` : ""}.`
-              : "Let's build your prep plan."}
-          </p>
-        </div>
-        {isAdmin && (
-          <Link
-            to="/admin"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition soft-shadow self-start md:self-auto"
-          >
-            <Shield className="h-4 w-4" /> Open Admin Panel <ArrowRight className="h-4 w-4" />
-          </Link>
-        )}
-      </div>
+      <PageHead
+        title={`Welcome back, ${name.split(" ")[0]}.`}
+        subtitle={
+          sp?.target_score
+            ? `Target ${sp.target_score}${daysToExam != null ? ` · ${daysToExam} days to exam` : ""}.`
+            : "Let's build your prep plan."
+        }
+        action={
+          isAdmin ? (
+            <Link
+              to="/admin"
+              className="btn-brand group inline-flex items-center gap-2 rounded-xl bg-grad-brand px-4 py-2.5 text-sm font-bold text-white"
+            >
+              <Shield className="h-4 w-4" /> Admin Panel
+              <ArrowRight className="arrow-slide h-4 w-4" />
+            </Link>
+          ) : undefined
+        }
+      />
 
-      {/* Hero: progress + accuracy, mirroring the product mockup */}
+      {/* Hero row: headline score + accuracy gauge */}
       <div className="grid gap-5 lg:grid-cols-5">
         <ProgressPanel latest={latest} trend={trend} target={sp?.target_score ?? null} />
         <AccuracyPanel accuracy={accuracy} />
       </div>
 
       {/* Stat chips */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 stagger">
-        <StatChip
-          icon={ClipboardList}
-          value={avg?.count ?? 0}
-          label="Tests Taken"
+      <div className="grid grid-cols-2 gap-4 stagger lg:grid-cols-4">
+        <StatTile icon={ClipboardList} value={avg?.count ?? 0} label="Tests taken" accent="slate" />
+        <StatTile icon={BarChart3} value={avg?.total ?? 0} label="Average score" accent="brand" />
+        <StatTile icon={Trophy} value={avg?.best ?? 0} label="Best score" accent="amber" />
+        <StatTile
+          icon={Target}
+          value={accuracy?.overall ?? 0}
+          suffix="%"
+          label="Accuracy"
+          accent="emerald"
         />
-        <StatChip icon={TrendingUp} value={avg?.total ?? 0} label="Average Score" />
-        <StatChip icon={Trophy} value={avg?.best ?? 0} label="Best Score" />
-        <StatChip icon={Target} value={accuracy?.overall ?? 0} suffix="%" label="Accuracy" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Daily test CTA */}
-        <Card className="lg:col-span-2 bg-gradient-to-br from-blue-600 to-blue-800 text-white border-transparent rise-in">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider">
-                <Sparkles className="h-3 w-3" /> Today's daily test
-              </div>
-              <h2 className="mt-3 text-2xl font-black text-white">Keep your streak alive</h2>
-              <p className="mt-1 text-white/70 text-sm max-w-md">
-                {dailyDoneToday
-                  ? "Done for today — nice work. Come back tomorrow."
-                  : "A quick mixed set. 10–15 minutes. Feeds your streak."}
-              </p>
-            </div>
-            <Flame className="h-10 w-10 shrink-0 text-orange-300 fill-orange-300" />
-          </div>
-          <Link
-            to={dailyDoneToday ? "/practice" : "/practice/daily"}
-            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-bold text-blue-600 hover:bg-blue-50 transition"
-          >
-            {dailyDoneToday ? "Practice more" : "Start today's test"} <ArrowRight className="h-4 w-4" />
-          </Link>
-        </Card>
-
-        {/* Streak */}
-        <Card className="rise-in lift">
-          <CardHead label="Win streak" icon={Flame} iconClass="text-orange-500 fill-orange-500" />
-          <div className="mt-3 flex items-baseline gap-2">
-            <div className="text-5xl font-black tabular-nums text-slate-900 pop-in">
-              {sp?.current_streak ?? 0}
-            </div>
-            <div className="text-sm text-slate-500">days</div>
-          </div>
-          <div className="mt-4 flex items-center gap-1.5 text-xs text-slate-500">
-            <Trophy className="h-3.5 w-3.5 text-amber-500" /> Longest: {sp?.longest_streak ?? 0} days
-          </div>
-          <p className="mt-3 text-xs text-slate-500">Complete today's daily test to keep it going.</p>
-        </Card>
-
-        {/* Recommendations */}
-        <Card className="lg:col-span-2 rise-in">
-          <CardHead label="Focus next" icon={Sparkles} />
-          <div className="mt-3 space-y-2.5 stagger">
-            {buildRecs(sp, weakest).map((r, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 transition hover:border-blue-600/40 hover:bg-blue-50/40"
-              >
-                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-blue-50 text-sm font-bold text-blue-600">
-                  {i + 1}
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-slate-800">{r.title}</div>
-                  <div className="mt-0.5 text-xs text-slate-500">{r.desc}</div>
-                </div>
-                <Link
-                  to={r.to}
-                  className="mt-1 shrink-0 text-xs font-bold text-blue-600 hover:underline"
-                >
-                  Go →
-                </Link>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Skill radar */}
-        <Card className="lg:col-span-2 rise-in">
-          <CardHead label="Skill radar" icon={BarChart3} />
-          <div className="mt-2 h-72">
-            {attempts.length === 0 ? (
-              <EmptyMini text="Answer questions to fill your radar." />
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={radarData} outerRadius="75%">
-                  <PolarGrid stroke="#e2e8f0" />
-                  <PolarAngleAxis
-                    dataKey="skill"
-                    tick={{ fill: "#475569", fontSize: 11, fontWeight: 600 }}
-                  />
-                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-                  <Radar
-                    name="Accuracy"
-                    dataKey="value"
-                    stroke="#1313cf"
-                    fill="#1313cf"
-                    fillOpacity={0.25}
-                    strokeWidth={2}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </Card>
-
-        {/* Mock history */}
-        <Card className="rise-in">
-          <CardHead label="Mock history" icon={ClipboardList} iconClass="text-slate-400" />
-          {mocks.length === 0 ? (
-            <div className="mt-6">
-              <EmptyMini text="No mock exams taken yet." />
-              <Link
-                to="/practice"
-                className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:underline"
-              >
-                Take one <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          ) : (
-            <ul className="mt-3 divide-y divide-slate-200">
-              {mocks.slice(0, 6).map((m) => (
-                <li key={m.id} className="flex items-center justify-between py-2.5">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-800">
-                      {m.completed_at ? format(new Date(m.completed_at), "MMM d, yyyy") : "—"}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      R&W {m.rw_score ?? "—"} · Math {m.math_score ?? "—"}
-                    </div>
-                  </div>
-                  <div className="text-xl font-black tabular-nums text-blue-600">{m.score ?? "—"}</div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <DailyPanel done={dailyDoneToday} streak={sp?.current_streak ?? 0} />
+        <StreakPanel
+          current={sp?.current_streak ?? 0}
+          longest={sp?.longest_streak ?? 0}
+          daysToExam={daysToExam}
+        />
+        <RecommendationsPanel recs={buildRecs(sp, weakest)} />
+        <RadarPanel data={radarData} hasData={attempts.length > 0} weakest={weakest} />
+        <HistoryPanel mocks={mocks} />
       </div>
     </div>
   );
 }
 
-/** Headline score + six-mock trend line. Mirrors "Your Progress" in the mockup. */
+/**
+ * Headline score + trend. The focal panel of the page, so it gets the ambient
+ * glow and the gradient hairline; everything else stays flat by comparison.
+ */
 function ProgressPanel({
   latest,
   trend,
@@ -385,259 +274,464 @@ function ProgressPanel({
   target: number | null;
 }) {
   const band = latest ? scoreBand(latest.score) : null;
+  // Distance to target, shown only when the student has both a target and a
+  // score to compare it against.
+  const gap = latest && target != null ? target - latest.score : null;
+
   return (
-    <Card className="lg:col-span-3 rise-in">
-      <div className="flex items-start justify-between gap-3">
-        <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Your Progress</div>
-        {target != null && (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-            Target {target}
+    <Panel tone="soft" className="ring-grad overflow-hidden lg:col-span-3">
+      <PanelGlow />
+      <div className="relative">
+        <PanelHead
+          label="Your progress"
+          icon={Gauge}
+          hint={latest?.at ? `Latest mock · ${format(new Date(latest.at), "MMM d, yyyy")}` : "No mocks yet"}
+          action={
+            target != null ? (
+              <span className="rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-bold text-slate-600 ring-1 ring-slate-200">
+                Target {target}
+              </span>
+            ) : undefined
+          }
+        />
+
+        <div className="mt-3 flex items-end gap-2">
+          <span className="pop-in text-5xl font-black leading-none tracking-tight text-slate-900 md:text-6xl">
+            <AnimatedNumber value={latest?.score ?? 0} />
           </span>
-        )}
-      </div>
+          <span className="pb-1 text-sm font-medium text-slate-400">/ 1600</span>
+        </div>
 
-      <div className="mt-2 flex items-baseline gap-1.5">
-        <span className="text-4xl md:text-5xl font-black tracking-tight tabular-nums text-slate-900 pop-in">
-          <CountUp end={latest?.score ?? 0} />
-        </span>
-        <span className="text-sm font-medium text-slate-400">/1600</span>
-      </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {band && <Badge label={band.label} tone={band.tone as Tone} />}
+          {latest?.delta != null && <Delta value={latest.delta} suffix="vs last test" />}
+          {gap != null && gap > 0 && (
+            <span className="text-[11px] font-semibold text-slate-500">
+              {gap} points to target
+            </span>
+          )}
+          {gap != null && gap <= 0 && <Badge label="Target reached" tone="excellent" />}
+          {!latest && (
+            <span className="text-xs text-slate-500">
+              Your score appears here after your first mock exam.
+            </span>
+          )}
+        </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        {band && <BandBadge band={band} />}
-        {latest?.delta != null && <TrendBadge delta={latest.delta} suffix="vs last test" />}
-        {!latest && (
-          <span className="text-xs text-slate-500">
-            No mock exams yet — your score appears here after your first one.
-          </span>
-        )}
+        <div className="mt-5 h-[188px]">
+          {trend.length < 2 ? (
+            <EmptyState
+              className="h-full"
+              icon={BarChart3}
+              title={trend.length === 0 ? "No trend yet" : "One more mock to go"}
+              body={
+                trend.length === 0
+                  ? "Take a full-length mock exam and your score history starts charting here."
+                  : "Your trend line appears once you have two scored mocks to compare."
+              }
+              action={
+                <Link
+                  to="/practice"
+                  className="btn-brand group inline-flex items-center gap-1.5 rounded-lg bg-grad-brand px-3.5 py-2 text-xs font-bold text-white"
+                >
+                  Take a mock <ArrowRight className="arrow-slide h-3.5 w-3.5" />
+                </Link>
+              }
+            />
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={trend} margin={{ top: 12, right: 12, bottom: 0, left: -20 }}>
+                {/* Soft brand wash under the line — lighter than the stroke so
+                    the data reads first and the fill is only atmosphere. */}
+                <defs>
+                  <linearGradient id="dashTrend" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#1313cf" stopOpacity={0.26} />
+                    <stop offset="100%" stopColor="#1313cf" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="#EEF1F7" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#94A3B8", fontSize: 11, fontWeight: 600 }}
+                  dy={6}
+                />
+                <YAxis
+                  domain={[400, 1600]}
+                  ticks={[400, 800, 1200, 1600]}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#94A3B8", fontSize: 10 }}
+                />
+                <Tooltip content={<ChartTip suffix=" / 1600" />} />
+                <Area
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#1313cf"
+                  strokeWidth={2.5}
+                  fill="url(#dashTrend)"
+                  dot={{ r: 3.5, fill: "#fff", stroke: "#1313cf", strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: "#1313cf", stroke: "#fff", strokeWidth: 2.5 }}
+                  animationDuration={900}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
-
-      <div className="mt-4 h-[168px]">
-        {trend.length < 2 ? (
-          <div className="grid h-full place-content-center rounded-xl border border-dashed border-slate-200 text-center">
-            <p className="text-xs text-slate-500">
-              {trend.length === 0
-                ? "Take a mock exam to start your trend line."
-                : "One more mock and your trend line appears."}
-            </p>
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={trend} margin={{ top: 28, right: 20, bottom: 0, left: -18 }}>
-              <CartesianGrid stroke="#F1F5F9" vertical={false} />
-              <XAxis
-                dataKey="label"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#94A3B8", fontSize: 10 }}
-              />
-              <YAxis
-                domain={[400, 1600]}
-                ticks={[400, 800, 1200, 1600]}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#94A3B8", fontSize: 10 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="score"
-                stroke="#1313cf"
-                strokeWidth={2.5}
-                dot={{ r: 3.5, fill: "#1313cf", stroke: "#fff", strokeWidth: 1.5 }}
-                activeDot={{ r: 5 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </div>
-    </Card>
+    </Panel>
   );
 }
 
-/** Radial accuracy gauge + per-section split. Mirrors "Overall Accuracy". */
+/** Radial accuracy gauge + per-section split. */
 function AccuracyPanel({
   accuracy,
 }: {
   accuracy: { overall: number; rw: number | null; math: number | null; answered: number } | null;
 }) {
   const pct = accuracy?.overall ?? 0;
-  const band =
+  const tone: Tone =
+    pct >= 90 ? "excellent" : pct >= 75 ? "good" : pct >= 60 ? "fair" : "low";
+  const label =
     pct >= 90 ? "Excellent" : pct >= 75 ? "Strong" : pct >= 60 ? "Fair" : pct > 0 ? "Building" : "No data";
-  return (
-    <Card className="lg:col-span-2 rise-in">
-      <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Overall Accuracy</div>
 
-      <div className="relative mx-auto mt-3 h-[150px] w-[150px]">
+  return (
+    <Panel className="lg:col-span-2">
+      <PanelHead label="Overall accuracy" icon={Target} />
+
+      <div className="relative mx-auto mt-4 h-[164px] w-[164px]">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart
-            data={[{ name: "accuracy", value: pct, fill: "#1313cf" }]}
-            innerRadius="72%"
+            data={[{ name: "accuracy", value: pct }]}
+            innerRadius="74%"
             outerRadius="100%"
             startAngle={90}
             endAngle={-270}
           >
+            <defs>
+              <linearGradient id="dashGauge" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#5c60ea" />
+                <stop offset="100%" stopColor="#0202d4" />
+              </linearGradient>
+            </defs>
             <PolarAngleAxis type="number" domain={[0, 100]} tick={false} axisLine={false} />
-            <RadialBar dataKey="value" cornerRadius={12} background={{ fill: "#f0f0fe" }} />
+            <RadialBar
+              dataKey="value"
+              cornerRadius={14}
+              fill="url(#dashGauge)"
+              background={{ fill: "#F1F2FF" }}
+              animationDuration={1100}
+            />
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 grid place-content-center text-center">
-          <div className="text-3xl font-black leading-none tabular-nums text-slate-900">
-            <CountUp end={pct} suffix="%" />
+          <div className="text-3xl font-black leading-none text-slate-900">
+            <AnimatedNumber value={pct} suffix="%" />
           </div>
-          <div className="mt-1 text-[10px] font-semibold text-blue-600">{band}</div>
+          <div className="mt-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-600">
+            {label}
+          </div>
         </div>
       </div>
 
-      <div className="mt-4 space-y-2">
-        <AccuracyRow label="Reading & Writing" value={accuracy?.rw ?? null} dotClass="bg-blue-600" />
-        <AccuracyRow label="Math" value={accuracy?.math ?? null} dotClass="bg-blue-400" />
+      <div className="mt-5 space-y-3">
+        <MeterRow label="Reading & Writing" value={accuracy?.rw ?? null} barClass="bg-grad-brand" />
+        <MeterRow label="Math" value={accuracy?.math ?? null} barClass="bg-blue-400" />
       </div>
 
-      <p className="mt-3 text-[11px] text-slate-400">
-        {accuracy ? `Across ${accuracy.answered.toLocaleString()} graded answers.` : "Answer questions to see this."}
+      <p className="mt-4 text-[11px] text-slate-400">
+        {accuracy
+          ? `Across ${accuracy.answered.toLocaleString()} graded answers.`
+          : "Answer some questions to see this."}
       </p>
-    </Card>
+      <span className="sr-only">Accuracy {pct} percent, rated {label}.</span>
+    </Panel>
   );
 }
 
-function AccuracyRow({
-  label,
-  value,
-  dotClass,
+/** Today's daily test — the one saturated surface on the page. */
+function DailyPanel({ done, streak }: { done: boolean; streak: number }) {
+  return (
+    <Panel tone="brand" className="overflow-hidden lg:col-span-2">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+        <div className="drift absolute -right-10 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+        <div className="spin-slow absolute -bottom-24 -left-16 h-56 w-56 rounded-full border border-white/10" />
+      </div>
+      <div className="relative flex h-full flex-col">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ring-1 ring-white/20">
+              <Sparkles className="h-3 w-3" /> Today's daily test
+            </span>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-white">
+              {done ? "Today's done." : "Keep your streak alive"}
+            </h2>
+            <p className="mt-1.5 max-w-md text-sm text-white/70">
+              {done
+                ? `You're ${streak} ${streak === 1 ? "day" : "days"} deep. Come back tomorrow to extend it.`
+                : "A quick mixed set. 10–15 minutes, and it feeds your streak."}
+            </p>
+          </div>
+          <Flame
+            className={
+              "h-11 w-11 shrink-0 " + (done ? "fill-orange-300 text-orange-300" : "text-white/50")
+            }
+          />
+        </div>
+        <Link
+          to={done ? "/practice" : "/practice/daily"}
+          className="group mt-6 inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-blue-700 tap shadow-lg shadow-blue-950/20 hover:bg-blue-50"
+        >
+          {done ? "Practice more" : "Start today's test"}
+          <ArrowRight className="arrow-slide h-4 w-4" />
+        </Link>
+      </div>
+    </Panel>
+  );
+}
+
+/** Streak counter with the exam countdown tucked underneath. */
+function StreakPanel({
+  current,
+  longest,
+  daysToExam,
 }: {
-  label: string;
-  value: number | null;
-  dotClass: string;
+  current: number;
+  longest: number;
+  daysToExam: number | null;
 }) {
   return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className={"h-2 w-2 shrink-0 rounded-full " + dotClass} />
-      <span className="text-slate-600">{label}</span>
-      <span className="ml-auto font-bold tabular-nums text-slate-900">
-        {value == null ? "—" : `${value}%`}
-      </span>
-    </div>
+    <Panel interactive>
+      <PanelHead label="Win streak" icon={Flame} tone="warm" />
+      <div className="mt-3 flex items-baseline gap-2">
+        <span className="pop-in text-5xl font-black leading-none text-slate-900">
+          <AnimatedNumber value={current} />
+        </span>
+        <span className="text-sm text-slate-500">{current === 1 ? "day" : "days"}</span>
+      </div>
+
+      {/* Longest streak as the bar's ceiling, so the fill reads as
+          "how close am I to my own record". */}
+      <div className="mt-4">
+        <MeterRow
+          label="Personal best"
+          value={current}
+          max={Math.max(longest, current, 1)}
+          barClass="bg-gradient-to-r from-orange-400 to-orange-500"
+          display={`${longest} ${longest === 1 ? "day" : "days"}`}
+        />
+      </div>
+
+      <div className="mt-4 flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs">
+        <CalendarClock className="h-4 w-4 shrink-0 text-slate-400" />
+        <span className="text-slate-600">
+          {daysToExam != null ? (
+            <>
+              <b className="text-slate-900">{daysToExam}</b> days until your exam
+            </>
+          ) : (
+            "Set an exam date in your profile"
+          )}
+        </span>
+      </div>
+    </Panel>
   );
 }
 
-function StatChip({
-  icon: Icon,
-  value,
+/** Ranked next actions, derived from the weakest skill and onboarding answers. */
+function RecommendationsPanel({
+  recs,
+}: {
+  recs: { title: string; desc: string; to: "/practice" }[];
+}) {
+  return (
+    <Panel className="lg:col-span-2">
+      <PanelHead label="Focus next" icon={Zap} hint="Ranked by impact on your score" />
+      <div className="mt-4 space-y-2.5 stagger-fast">
+        {recs.map((r, i) => (
+          <Link
+            key={i}
+            to={r.to}
+            className="group flex items-start gap-3 rounded-xl border border-slate-200/80 p-3 nudge hover:border-blue-600/40 hover:bg-blue-50/50"
+          >
+            <span className="tile-invert grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-blue-50 text-sm font-bold text-blue-600">
+              {i + 1}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-slate-800">{r.title}</span>
+              <span className="mt-0.5 block text-xs text-slate-500">{r.desc}</span>
+            </span>
+            <ArrowRight className="arrow-slide mt-1.5 h-4 w-4 shrink-0 text-slate-300 group-hover:text-blue-600" />
+          </Link>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+/** Per-skill accuracy radar. */
+function RadarPanel({
+  data,
+  hasData,
+  weakest,
+}: {
+  data: { skill: string; value: number }[];
+  hasData: boolean;
+  weakest: { skill: string; value: number } | null;
+}) {
+  return (
+    <Panel className="lg:col-span-2">
+      <PanelHead
+        label="Skill radar"
+        icon={BarChart3}
+        hint={weakest ? `Weakest: ${weakest.skill} at ${weakest.value}%` : undefined}
+      />
+      <div className="mt-2 h-72">
+        {!hasData ? (
+          <EmptyState
+            className="h-full"
+            icon={Target}
+            title="Radar is empty"
+            body="Answer questions across the eight SAT skill areas and your strengths map out here."
+            action={
+              <Link
+                to="/practice"
+                className="btn-ghost inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700"
+              >
+                Start practising
+              </Link>
+            }
+          />
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart data={data} outerRadius="74%">
+              <defs>
+                <linearGradient id="dashRadar" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#5c60ea" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#1313cf" stopOpacity={0.18} />
+                </linearGradient>
+              </defs>
+              <PolarGrid stroke="#EEF1F7" />
+              <PolarAngleAxis
+                dataKey="skill"
+                tick={{ fill: "#64748B", fontSize: 10.5, fontWeight: 600 }}
+              />
+              <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
+              <Tooltip content={<ChartTip suffix="% accuracy" />} />
+              <Radar
+                name="Accuracy"
+                dataKey="value"
+                stroke="#1313cf"
+                fill="url(#dashRadar)"
+                strokeWidth={2}
+                animationDuration={900}
+              />
+            </RadarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+/** Recent mock exams, newest first. */
+function HistoryPanel({ mocks }: { mocks: Session[] }) {
+  return (
+    <Panel>
+      <PanelHead label="Mock history" icon={ClipboardList} tone="muted" />
+      {mocks.length === 0 ? (
+        <EmptyState
+          className="mt-4"
+          icon={ClipboardList}
+          title="No mocks yet"
+          body="A full-length mock is the only thing that produces a real 400–1600 score."
+          action={
+            <Link
+              to="/practice"
+              className="btn-brand group inline-flex items-center gap-1.5 rounded-lg bg-grad-brand px-3.5 py-2 text-xs font-bold text-white"
+            >
+              Take one <ArrowRight className="arrow-slide h-3.5 w-3.5" />
+            </Link>
+          }
+        />
+      ) : (
+        <ul className="mt-2 divide-y divide-slate-100 stagger-fast">
+          {mocks.slice(0, 6).map((m) => (
+            <li
+              key={m.id}
+              className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-slate-50"
+            >
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-slate-800">
+                  {m.completed_at ? format(new Date(m.completed_at), "MMM d, yyyy") : "—"}
+                </div>
+                <div className="text-xs text-slate-500">
+                  R&W {m.rw_score ?? "—"} · Math {m.math_score ?? "—"}
+                </div>
+              </div>
+              <div className="shrink-0 text-xl font-black tabular-nums text-blue-600">
+                {m.score ?? "—"}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * Recharts tooltip. The default is a white box with a hard border; this matches
+ * the app's rounded, shadowed surfaces instead.
+ */
+function ChartTip({
+  active,
+  payload,
   label,
   suffix = "",
 }: {
-  icon: typeof Target;
-  value: number;
-  label: string;
+  active?: boolean;
+  payload?: { value?: number | string }[];
+  label?: string | number;
   suffix?: string;
 }) {
+  if (!active || !payload?.length) return null;
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 soft-shadow lift">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
-        <Icon className="h-4 w-4" strokeWidth={2} />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-lg font-black leading-tight tabular-nums text-slate-900">
-          <CountUp end={value} suffix={suffix} />
-        </span>
-        <span className="block truncate text-[11px] text-slate-500">{label}</span>
-      </span>
+    <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-2 shadow-float backdrop-blur">
+      {label != null && (
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</div>
+      )}
+      <div className="text-sm font-black tabular-nums text-slate-900">
+        {payload[0].value}
+        <span className="text-xs font-medium text-slate-400">{suffix}</span>
+      </div>
     </div>
   );
 }
 
-function BandBadge({ band }: { band: { label: string; tone: string } }) {
-  const tones: Record<string, string> = {
-    excellent: "bg-emerald-50 text-emerald-700",
-    good: "bg-blue-50 text-blue-700",
-    fair: "bg-amber-50 text-amber-700",
-    low: "bg-slate-100 text-slate-600",
-  };
-  const dots: Record<string, string> = {
-    excellent: "bg-emerald-500",
-    good: "bg-blue-600",
-    fair: "bg-amber-500",
-    low: "bg-slate-400",
-  };
-  return (
-    <span
-      className={
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold " +
-        (tones[band.tone] ?? tones.low)
-      }
-    >
-      <span className={"h-1.5 w-1.5 rounded-full " + (dots[band.tone] ?? dots.low)} />
-      {band.label}
-    </span>
-  );
-}
-
+/** Loading state that mirrors the real layout, so nothing jumps on arrival. */
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="h-10 w-64 animate-pulse rounded-lg bg-slate-100" />
+      <div className="space-y-2">
+        <Skeleton className="h-9 w-72" />
+        <Skeleton className="h-4 w-48" />
+      </div>
       <div className="grid gap-5 lg:grid-cols-5">
-        <div className="h-80 animate-pulse rounded-2xl border border-slate-200 bg-white lg:col-span-3" />
-        <div className="h-80 animate-pulse rounded-2xl border border-slate-200 bg-white lg:col-span-2" />
+        <Skeleton className="h-[360px] rounded-2xl lg:col-span-3" />
+        <Skeleton className="h-[360px] rounded-2xl lg:col-span-2" />
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-16 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+          <Skeleton key={i} className="h-[74px] rounded-2xl" />
         ))}
       </div>
+      <div className="grid gap-5 lg:grid-cols-3">
+        <Skeleton className="h-52 rounded-2xl lg:col-span-2" />
+        <Skeleton className="h-52 rounded-2xl" />
+      </div>
     </div>
-  );
-}
-
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={"rounded-2xl border border-slate-200 bg-white p-5 md:p-6 soft-shadow " + className}>
-      {children}
-    </div>
-  );
-}
-
-function CardHead({
-  label,
-  icon: Icon,
-  iconClass = "text-blue-600",
-}: {
-  label: string;
-  icon: typeof Target;
-  iconClass?: string;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <div className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</div>
-      <Icon className={"h-5 w-5 " + iconClass} />
-    </div>
-  );
-}
-
-function EmptyMini({ text }: { text: string }) {
-  return <p className="mt-3 text-sm text-slate-500">{text}</p>;
-}
-
-function TrendBadge({ delta, suffix = "" }: { delta: number; suffix?: string }) {
-  if (delta === 0)
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
-        <Minus className="h-3 w-3" /> 0 {suffix}
-      </span>
-    );
-  const up = delta > 0;
-  return (
-    <span
-      className={
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold " +
-        (up ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")
-      }
-    >
-      {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-      {up ? "+" : ""}
-      {Math.round(delta)} {suffix}
-    </span>
   );
 }
 
@@ -693,4 +787,3 @@ function buildRecs(
   }
   return recs.slice(0, 3);
 }
-

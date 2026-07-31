@@ -97,7 +97,15 @@
       "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"['check-css.cjs','tsc.log','build.log'].forEach\\(f=>{try{require\\('fs'\\).unlinkSync\\(f\\);console.log\\('removed '+f\\)}catch\\(e\\){console.log\\('skip '+f\\)}}\\)\")",
       "Bash(\"C:/Program Files/nodejs/node.exe\" \"C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js\" run typecheck)",
       "Bash(\"C:/Program Files/nodejs/node.exe\" \"C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js\" run build)",
-      "Bash(\"C:/Program Files/nodejs/node.exe\" check-palette.cjs)"
+      "Bash(\"C:/Program Files/nodejs/node.exe\" check-palette.cjs)",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require\\('fs'\\);const p=require\\('path'\\);function walk\\(d,pre\\){for\\(const f of fs.readdirSync\\(d,{withFileTypes:true}\\)\\){const fp=p.join\\(d,f.name\\);if\\(f.isDirectory\\(\\)\\)walk\\(fp,pre\\);else console.log\\(fp.replace\\(process.cwd\\(\\)+p.sep,''\\)\\)}};walk\\('src'\\)\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"const f=require\\('fs'\\);const p='c:/Users/javaz/Downloads/beyond-sat/check-palette.cjs';if\\(f.existsSync\\(p\\)\\){f.unlinkSync\\(p\\);console.log\\('deleted'\\);}else{console.log\\('absent'\\);}\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"const f=require\\('fs'\\);const p='c:/Users/javaz/Downloads/beyond-sat/check-palette.cjs';console.log\\(f.existsSync\\(p\\)?'exists':'absent'\\);\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"console.log\\(require\\('fs'\\).readdirSync\\('c:/Users/javaz/Downloads/beyond-sat/src/components/ui'\\).join\\(' '\\)\\)\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" scan-palette.cjs)",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" \"c:/Users/javaz/Downloads/beyond-sat/scan-palette.cjs\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" \"c:/Users/javaz/Downloads/beyond-sat/scan-tokens.cjs\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require\\('fs'\\);for\\(const f of ['check-palette.cjs','scan-palette.cjs','scan-tokens.cjs']\\){try{fs.unlinkSync\\('c:/Users/javaz/Downloads/beyond-sat/'+f\\);console.log\\('deleted '+f\\)}catch\\(e\\){console.log\\('skip '+f+': '+e.code\\)}}\")"
     ]
   }
 }

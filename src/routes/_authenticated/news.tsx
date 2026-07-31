@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Newspaper, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { EmptyState, PageHead } from "@/components/ui/panel";
+import { CardGridSkeleton } from "@/components/ui/skeletons";
 
 type Article = {
   id: string;
@@ -39,21 +41,21 @@ function News() {
 
   return (
     <div>
-      <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">News</h1>
-      <p className="text-sm text-slate-600 mt-1">Announcements and study tips from BeyondSAT.</p>
+      {/* PageHead keeps dark text — it sits on the white page background, where the
+          old text-white heading was invisible. */}
+      <PageHead title="News" subtitle="Announcements and study tips from BeyondSAT." />
 
       {items === null ? (
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-40 rounded-2xl bg-white border border-slate-200 animate-pulse" />
-          ))}
+        <div className="mt-8">
+          <CardGridSkeleton count={4} height={200} />
         </div>
       ) : items.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
-          <Newspaper className="h-8 w-8 text-slate-400 mx-auto" />
-          <h2 className="mt-3 text-lg font-bold text-slate-800">Nothing here yet</h2>
-          <p className="text-sm text-slate-500 mt-1">Check back soon.</p>
-        </div>
+        <EmptyState
+          icon={<Newspaper className="h-8 w-8" />}
+          title="Nothing here yet"
+          body="Check back soon."
+          className="mt-8 py-12"
+        />
       ) : (
         <div className="mt-8 grid gap-5 md:grid-cols-2">
           {items.map((a) => (
@@ -61,33 +63,33 @@ function News() {
               key={a.id}
               to="/news/$slug"
               params={{ slug: a.slug }}
-              className="group rounded-2xl overflow-hidden border border-slate-200 bg-white hover:border-blue-600/40 transition soft-shadow"
+              className="lift group overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel transition-colors hover:border-brand-200/60"
             >
               {a.cover_image_url ? (
-                <div className="aspect-[16/9] bg-slate-100 overflow-hidden">
+                <div className="aspect-[16/9] overflow-hidden bg-brand-800">
                   <img
                     src={a.cover_image_url}
                     alt={a.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 </div>
               ) : (
-                <div className="aspect-[16/9] bg-gradient-to-br from-primary/10 to-primary/5 grid place-items-center">
-                  <Newspaper className="h-10 w-10 text-blue-600/40" />
+                <div className="aspect-[16/9] grid place-items-center bg-grad-brand">
+                  <Newspaper className="h-10 w-10 text-brand-100" />
                 </div>
               )}
               <div className="p-5">
-                <div className="text-xs font-semibold uppercase tracking-wider text-blue-600/70">
+                <div className="text-xs font-semibold uppercase tracking-wider text-brand-200">
                   {a.published_at ? format(new Date(a.published_at), "MMM d, yyyy") : ""}
                 </div>
-                <h2 className="mt-1.5 text-lg font-bold text-slate-800 group-hover:text-blue-600">
+                <h2 className="mt-1.5 text-lg font-bold text-white">
                   {a.title}
                 </h2>
                 {a.excerpt && (
-                  <p className="mt-1.5 text-sm text-slate-600 line-clamp-2">{a.excerpt}</p>
+                  <p className="mt-1.5 line-clamp-2 text-sm text-brand-100">{a.excerpt}</p>
                 )}
-                <div className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-600">
-                  Read <ArrowRight className="h-4 w-4" />
+                <div className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-white">
+                  Read <ArrowRight className="arrow-slide h-4 w-4" />
                 </div>
               </div>
             </Link>

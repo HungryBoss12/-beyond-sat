@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2, CalendarClock, Flame, ArrowLeft } from "lucide-react";
+import { CalendarClock, Flame, ArrowLeft } from "lucide-react";
 import { startDailySession } from "@/lib/session";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { Panel, Skeleton } from "@/components/ui/panel";
 
 export const Route = createFileRoute("/_authenticated/practice/daily")({
   component: DailyGate,
@@ -63,10 +64,14 @@ function DailyGate() {
     })();
   }, []);
 
+  /* This gate does three awaited round-trips before it knows which branch to
+     render, so it's the longest wait in the practice area. Mirror the hero's
+     shape rather than centring a spinner. */
   if (state.kind === "loading") {
     return (
-      <div className="grid place-items-center h-[50vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+      <div className="mx-auto max-w-2xl space-y-4">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-56 rounded-2xl" />
       </div>
     );
   }
@@ -77,30 +82,31 @@ function DailyGate() {
     return <CenterCard emoji="📅" title="No daily test today." body="Check back once an admin posts today's set." />;
   }
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl">
+      {/* Back link sits on the white page background, so it stays dark until hover. */}
       <button
         onClick={() => navigate({ to: "/practice" })}
-        className="inline-flex items-center gap-1 text-sm font-bold text-slate-600 hover:text-blue-600 mb-4"
+        className="nudge mb-4 inline-flex items-center gap-1 text-sm font-bold text-slate-600 hover:text-brand-600"
       >
         <ArrowLeft className="h-4 w-4" /> Practice
       </button>
-      <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white p-8 soft-shadow">
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider">
+      <Panel tone="brand" className="rise-in p-8 md:p-8">
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-brand-400 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white">
           <CalendarClock className="h-3 w-3" /> Today's daily
         </div>
-        <h1 className="mt-3 text-3xl font-black">{state.title ?? "Daily Test"}</h1>
-        <p className="mt-2 text-white/70 text-sm">
+        <h1 className="mt-3 text-3xl font-black text-white">{state.title ?? "Daily Test"}</h1>
+        <p className="mt-2 text-sm text-brand-100">
           {state.count} mixed questions. Feeds your streak.
         </p>
         <div className="mt-6 flex items-center gap-3">
           <button
             onClick={() => navigate({ to: `/practice/session/${state.sessionId}` })}
-            className="inline-flex items-center gap-2 rounded-lg bg-white text-blue-600 px-5 py-2.5 text-sm font-bold hover:bg-white/90 transition"
+            className="btn-brand inline-flex items-center gap-2 rounded-lg bg-brand-400 px-5 py-2.5 text-sm font-bold text-white"
           >
             <Flame className="h-4 w-4" /> Start
           </button>
         </div>
-      </div>
+      </Panel>
     </div>
   );
 }
@@ -108,16 +114,16 @@ function DailyGate() {
 function CenterCard({ emoji, title, body }: { emoji: string; title: string; body: string }) {
   const navigate = useNavigate();
   return (
-    <div className="max-w-md mx-auto rounded-2xl border border-slate-200 bg-white p-10 text-center soft-shadow">
+    <Panel className="pop-in mx-auto max-w-md p-10 text-center md:p-10">
       <div className="text-4xl">{emoji}</div>
-      <h2 className="mt-3 text-xl font-black text-blue-600">{title}</h2>
-      <p className="mt-2 text-sm text-slate-600">{body}</p>
+      <h2 className="mt-3 text-xl font-black text-white">{title}</h2>
+      <p className="mt-2 text-sm text-brand-100">{body}</p>
       <button
         onClick={() => navigate({ to: "/practice" })}
-        className="mt-5 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white"
+        className="btn-brand mt-5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
       >
         Back to practice
       </button>
-    </div>
+    </Panel>
   );
 }

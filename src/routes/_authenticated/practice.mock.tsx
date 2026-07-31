@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Loader2, ClipboardList, Clock, ArrowLeft, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { startMockSession } from "@/lib/session";
+import { EmptyState } from "@/components/ui/panel";
+import { ListSkeleton } from "@/components/ui/skeletons";
 
 export const Route = createFileRoute("/_authenticated/practice/mock")({
   component: MockList,
@@ -82,31 +84,32 @@ function MockList() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
+      <div className="rise-in flex items-center gap-3">
         <button
           onClick={() => navigate({ to: "/practice" })}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:text-blue-600 transition"
+          className="tap inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white shadow-panel hover:bg-brand-400"
+          aria-label="Back"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Mock Exams</h1>
-          <p className="text-sm text-slate-600">Full-length practice tests. Timed, scored, adaptive-style.</p>
+          {/* Was text-white, which made the heading invisible against the white page. */}
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">Mock Exams</h1>
+          <p className="text-sm text-slate-500">Full-length practice tests. Timed, scored, adaptive-style.</p>
         </div>
       </div>
 
       {mocks == null ? (
-        <div className="grid place-items-center h-48">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-        </div>
+        <ListSkeleton rows={3} />
       ) : mocks.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center soft-shadow">
-          <ClipboardList className="h-8 w-8 mx-auto text-slate-400" />
-          <h2 className="mt-3 text-lg font-bold text-slate-800">No mock exams yet</h2>
-          <p className="text-sm text-slate-500 mt-1">Admins will publish full-length tests here.</p>
-        </div>
+        <EmptyState
+          icon={<ClipboardList className="h-8 w-8" />}
+          title="No mock exams yet"
+          body="Admins will publish full-length tests here."
+          className="py-14"
+        />
       ) : (
-        <ul className="space-y-3">
+        <ul className="stagger space-y-3">
           {mocks.map((m) => {
             const totalMin = Math.round(
               (m.rw_module1_time_seconds +
@@ -118,14 +121,14 @@ function MockList() {
             return (
               <li
                 key={m.id}
-                className="rounded-2xl border border-slate-200 bg-white p-5 flex items-start justify-between gap-4 soft-shadow"
+                className="lift flex items-start justify-between gap-4 rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel"
               >
                 <div className="min-w-0">
-                  <h3 className="text-lg font-black text-blue-600">{m.title}</h3>
+                  <h3 className="text-lg font-black text-white">{m.title}</h3>
                   {m.description && (
-                    <p className="mt-1 text-sm text-slate-600 line-clamp-2">{m.description}</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-brand-100">{m.description}</p>
                   )}
-                  <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-brand-100">
                     <span className="inline-flex items-center gap-1">
                       <ClipboardList className="h-3.5 w-3.5" /> {m.questionCount} questions
                     </span>
@@ -137,7 +140,7 @@ function MockList() {
                 <button
                   onClick={() => start(m.id)}
                   disabled={m.questionCount === 0 || starting === m.id}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50 hover:bg-blue-700 transition shrink-0"
+                  className="btn-brand inline-flex shrink-0 items-center gap-2 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
                 >
                   {starting === m.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

@@ -40,21 +40,23 @@ function AdminSettings() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div>
-        <h2 className="text-2xl font-black text-blue-600">Site settings</h2>
-        <p className="text-sm text-slate-600 mt-1">
+      {/* The page heading sits on the white background, so it stays dark; the
+          card below is a brand surface and carries white copy. */}
+      <div className="rise-in">
+        <h2 className="text-2xl font-black tracking-tight text-slate-900">Site settings</h2>
+        <p className="text-sm text-slate-500 mt-1">
           Configure integrations and site-wide options.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+      <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-6 shadow-panel rise-in">
         <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-lg bg-blue-50 grid place-items-center text-blue-600">
+          <div className="h-10 w-10 rounded-lg bg-brand-400 grid place-items-center text-white">
             <Calculator className="h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-base font-black text-blue-600">Desmos calculator</div>
-            <p className="text-sm text-slate-600 mt-1">
+            <div className="text-base font-black text-white">Desmos calculator</div>
+            <p className="text-sm text-brand-100 mt-1">
               Paste your Desmos API key. When set, a floating Desmos calculator
               appears inside Math questions, daily tests, and mock exams. Get a
               free API key at{" "}
@@ -62,7 +64,7 @@ function AdminSettings() {
                 href="https://www.desmos.com/api/v1.11/docs/index.html#document-api-keys"
                 target="_blank"
                 rel="noreferrer"
-                className="text-blue-600 underline"
+                className="font-semibold text-white underline"
               >
                 desmos.com/api
               </a>
@@ -72,24 +74,24 @@ function AdminSettings() {
         </div>
 
         <div className="mt-5">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+          <label className="block text-xs font-bold uppercase tracking-wider text-brand-100 mb-1">
             Desmos API key
           </label>
           {loading ? (
-            <div className="h-10 rounded-lg bg-slate-100 animate-pulse" />
+            <div className="h-10 rounded-lg bg-brand-800 ring-1 ring-brand-400/40" />
           ) : (
             <input
               value={key}
               onChange={(e) => setKey(e.target.value)}
               placeholder="dcb31709b452b1cf9dc26972add0fda6"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-mono"
+              className="w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2.5 text-sm font-mono text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
             />
           )}
           <div className="mt-3 flex items-center gap-3">
             <button
               onClick={save}
               disabled={saving || loading}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+              className="btn-brand inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
             >
               {saving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -99,10 +101,10 @@ function AdminSettings() {
               Save
             </button>
             {saved && (
-              <span className="text-xs font-bold text-emerald-600">Saved.</span>
+              <span className="pop-in text-xs font-bold text-white">Saved.</span>
             )}
             {!key.trim() && !loading && (
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-brand-200">
                 Leave empty to disable the calculator.
               </span>
             )}

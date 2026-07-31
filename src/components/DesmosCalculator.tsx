@@ -89,7 +89,7 @@ export function DesmosCalculator() {
             setOpen(true);
             setMinimized(false);
           }}
-          className="fixed bottom-24 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-primary text-white px-4 py-2.5 text-sm font-bold shadow-2xl hover:bg-blue-700 transition"
+          className="btn-brand fixed bottom-24 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-brand-400 px-4 py-2.5 text-sm font-bold text-white shadow-float"
           title="Open Desmos calculator"
         >
           <Calculator className="h-4 w-4" /> Calculator
@@ -98,27 +98,29 @@ export function DesmosCalculator() {
       {open && (
         <div
           className={
-            "fixed z-40 rounded-2xl border border-border bg-white shadow-2xl overflow-hidden flex flex-col " +
+            /* Only the chrome is ours — the graph area is a Desmos embed that
+               paints its own surface, so it isn't recolored here. */
+            "pop-in fixed z-40 flex flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-float " +
             (minimized
               ? "bottom-24 right-6 w-72 h-12"
               : "bottom-6 right-6 w-[min(92vw,720px)] h-[min(80vh,640px)]")
           }
         >
-          <div className="h-11 shrink-0 flex items-center justify-between px-3 border-b border-border bg-slate-50">
-            <div className="flex items-center gap-2 text-sm font-bold text-primary">
-              <Calculator className="h-4 w-4" /> Desmos Calculator
+          <div className="flex h-11 shrink-0 items-center justify-between border-b border-brand-400/30 bg-brand-800 px-3">
+            <div className="flex items-center gap-2 text-sm font-bold text-white">
+              <Calculator className="h-4 w-4 text-brand-100" /> Desmos Calculator
             </div>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setMinimized((v) => !v)}
-                className="h-8 w-8 grid place-items-center rounded-md text-slate-500 hover:bg-slate-200"
+                className="tap grid h-8 w-8 place-items-center rounded-md text-brand-100 hover:bg-brand-900 hover:text-white"
                 title={minimized ? "Expand" : "Minimize"}
               >
                 <Minus className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setOpen(false)}
-                className="h-8 w-8 grid place-items-center rounded-md text-slate-500 hover:bg-slate-200"
+                className="tap grid h-8 w-8 place-items-center rounded-md text-brand-100 hover:bg-brand-900 hover:text-white"
                 title="Close"
               >
                 <X className="h-4 w-4" />
@@ -126,9 +128,9 @@ export function DesmosCalculator() {
             </div>
           </div>
           {!minimized && (
-            <div className="flex-1 relative">
+            <div className="relative flex-1">
               {!ready && (
-                <div className="absolute inset-0 grid place-items-center text-sm text-slate-500">
+                <div className="absolute inset-0 grid place-items-center bg-brand-700 text-sm font-semibold text-brand-100">
                   Loading calculator…
                 </div>
               )}

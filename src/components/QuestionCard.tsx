@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bookmark, BookmarkCheck, Highlighter, StickyNote, Trash2, X as XIcon } from "lucide-react";
+import { Bookmark, BookmarkCheck, Check, Highlighter, StickyNote, Trash2, X as XIcon } from "lucide-react";
 import { MathText } from "@/components/MathText";
 import {
   DEFAULT_HIGHLIGHT_BINDINGS,
@@ -205,7 +205,9 @@ export function QuestionCard({
         <mark
           key={`h-${i}`}
           title={r.note || "Highlighted"}
-          className="bg-yellow-200/80 rounded px-0.5"
+          // Yellow can't survive on a brand surface, so the highlight inverts to
+          // the lightest step with deep text instead.
+          className="rounded bg-brand-100 px-0.5 text-brand-900"
         >
           <MathText>{text.slice(r.start, r.end)}</MathText>
         </mark>,
@@ -217,23 +219,24 @@ export function QuestionCard({
   }, [q.prompt, answer.highlights]);
 
   return (
-    <div className="rounded-2xl border-2 border-blue-600/40 bg-white soft-shadow overflow-hidden ring-1 ring-primary/10">
-      <div className="flex items-center justify-between px-6 py-4 border-b-2 border-blue-600/20 bg-slate-50">
+    <div className="overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
+      <div className="flex items-center justify-between border-b border-brand-400/30 bg-brand-800 px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="text-sm font-bold text-slate-600 tabular-nums">
+          <div className="text-sm font-bold tabular-nums text-white">
             Question {index + 1} of {total}
           </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <span className="text-xs font-bold uppercase tracking-wider text-brand-100">
             {q.section === "math" ? "Math" : "R&W"} · {q.skill}
           </span>
         </div>
+        {/* Marked-for-review was amber; the active state is the lit brand step. */}
         <button
           onClick={() => onChange({ ...answer, markedForReview: !answer.markedForReview })}
           className={
-            "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-bold transition " +
+            "tap inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-bold transition " +
             (answer.markedForReview
-              ? "bg-amber-100 text-amber-800"
-              : "bg-slate-100 text-slate-600 hover:bg-slate-200")
+              ? "bg-brand-400 text-white ring-1 ring-brand-200/50"
+              : "bg-brand-600 text-brand-100 hover:bg-brand-400 hover:text-white")
           }
         >
           {answer.markedForReview ? (
@@ -249,74 +252,75 @@ export function QuestionCard({
         <div ref={containerRef} className="flex flex-col md:flex-row min-h-[680px]">
           {/* Passage */}
           <div
-            className="relative border-b md:border-b-0 md:border-r border-slate-200 overflow-y-auto"
+            className="relative overflow-y-auto border-b border-brand-400/30 md:border-b-0 md:border-r"
             style={{ flexBasis: `${leftPct}%` }}
           >
             <div
               ref={passageRef}
               onMouseUp={handlePassageMouseUp}
               onContextMenu={handlePassageContextMenu}
-              className="p-8 md:p-10 text-[18px] md:text-[19px] leading-8 text-slate-900 whitespace-pre-wrap selection:bg-primary/20"
+              className="whitespace-pre-wrap p-8 text-[18px] leading-8 text-white selection:bg-brand-200/40 md:p-10 md:text-[19px]"
             >
               {renderedPassage}
               {q.image_url ? (
                 <img
                   src={q.image_url}
                   alt=""
-                  className="mt-5 max-w-full rounded-lg border border-slate-200"
+                  className="mt-5 max-w-full rounded-lg border border-brand-400/40"
                 />
               ) : null}
             </div>
 
             {toolbar && (
               <div
-                className="absolute z-10 -translate-x-1/2 -translate-y-full flex items-center gap-1 rounded-lg border border-slate-200 bg-white shadow-lg px-1.5 py-1"
+                className="pop-in absolute z-10 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-lg border border-brand-400/40 bg-brand-800 px-1.5 py-1 shadow-float"
                 style={{ left: toolbar.x, top: toolbar.y }}
               >
                 <button
                   onClick={() => addHighlight(false)}
-                  className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-yellow-50"
+                  className="tap inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-white hover:bg-brand-400"
                 >
-                  <Highlighter className="h-3.5 w-3.5 text-yellow-600" /> Highlight
+                  <Highlighter className="h-3.5 w-3.5 text-brand-100" /> Highlight
                   <kbd
                     title="Change in Profile → Highlight shortcuts"
-                    className="ml-1 rounded px-1 text-[10px] font-mono bg-slate-100 text-slate-500"
+                    className="ml-1 rounded bg-brand-900 px-1 font-mono text-[10px] text-brand-100"
                   >{formatBinding(bindings.highlight)}</kbd>
                 </button>
                 <button
                   onClick={() => addHighlight(true)}
-                  className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="tap inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-white hover:bg-brand-400"
                 >
-                  <StickyNote className="h-3.5 w-3.5 text-blue-600" /> Note
+                  <StickyNote className="h-3.5 w-3.5 text-brand-100" /> Note
                   <kbd
                     title="Change in Profile → Highlight shortcuts"
-                    className="ml-1 rounded px-1 text-[10px] font-mono bg-slate-100 text-slate-500"
+                    className="ml-1 rounded bg-brand-900 px-1 font-mono text-[10px] text-brand-100"
                   >{formatBinding(bindings.note)}</kbd>
                 </button>
               </div>
             )}
 
             {answer.highlights.length > 0 && (
-              <div className="border-t border-slate-200 bg-yellow-50/40 p-4 space-y-2">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <div className="space-y-2 border-t border-brand-400/30 bg-brand-700 p-4">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-brand-100">
                   Highlights & notes
                 </div>
                 {answer.highlights.map((h) => (
                   <div
                     key={h.id}
-                    className="flex items-start gap-2 rounded-md bg-white border border-yellow-200 p-2"
+                    className="flex items-start gap-2 rounded-md border border-brand-400/40 bg-brand-800 p-2"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-slate-800 line-clamp-2">
-                        <mark className="bg-yellow-200/80 rounded px-0.5"><MathText>{h.text}</MathText></mark>
+                    <div className="min-w-0 flex-1">
+                      <div className="line-clamp-2 text-sm text-white">
+                        {/* Same inversion as the passage: light chip, deep text. */}
+                        <mark className="rounded bg-brand-100 px-0.5 text-brand-900"><MathText>{h.text}</MathText></mark>
                       </div>
                       {h.note && (
-                        <div className="mt-1 text-xs text-slate-600 italic">“{h.note}”</div>
+                        <div className="mt-1 text-xs italic text-brand-100">“{h.note}”</div>
                       )}
                     </div>
                     <button
                       onClick={() => removeHighlight(h.id)}
-                      className="rounded p-1 text-slate-400 hover:text-red-500 hover:bg-red-50"
+                      className="tap rounded p-1 text-brand-100 hover:bg-brand-900 hover:text-white"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -333,10 +337,10 @@ export function QuestionCard({
               document.body.style.cursor = "col-resize";
               document.body.style.userSelect = "none";
             }}
-            className="hidden md:flex w-1.5 items-center justify-center cursor-col-resize bg-slate-100 hover:bg-primary/30 transition"
+            className="hidden w-1.5 cursor-col-resize items-center justify-center bg-brand-800 transition hover:bg-brand-400 md:flex"
             title="Drag to resize"
           >
-            <div className="h-10 w-1 rounded-full bg-slate-300" />
+            <div className="h-10 w-1 rounded-full bg-brand-300" />
           </div>
 
           {/* Question */}
@@ -394,20 +398,20 @@ function QuestionBody({
 
   return (
     <div className="p-8 md:p-10">
-      <MathText block className="text-[18px] md:text-[19px] font-semibold text-slate-900 leading-8 whitespace-pre-wrap">
+      <MathText block className="whitespace-pre-wrap text-[18px] font-semibold leading-8 text-white md:text-[19px]">
         {q.question_text}
       </MathText>
 
       {q.kind === "grid_in" ? (
         <div className="mt-6">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          <label className="text-xs font-bold uppercase tracking-wider text-brand-100">
             Your answer
           </label>
           <input
             value={answer.gridAnswer}
             onChange={(e) => onChange({ ...answer, gridAnswer: e.target.value })}
             inputMode="numeric"
-            className="mt-2 block w-full max-w-xs rounded-lg border border-slate-200 px-4 py-3 text-xl font-bold tabular-nums focus:border-blue-600 focus:outline-none"
+            className="mt-2 block w-full max-w-xs rounded-lg border border-brand-400/50 bg-brand-800 px-4 py-3 text-xl font-bold tabular-nums text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
             placeholder="e.g. 3.14 or 5/8"
           />
         </div>
@@ -420,18 +424,21 @@ function QuestionBody({
             const isWrong = reveal && selected && correctChoiceId !== c.id;
             return (
               <li key={c.id}>
+                {/* Correct/wrong used to be emerald/red. On-palette they read through
+                    lightness plus the ✓/✗ marker on the letter circle instead of hue:
+                    correct is the lit step, wrong is the deepest one. */}
                 <div
                   className={
-                    "flex items-start gap-4 rounded-xl border-2 p-4 md:p-5 transition " +
+                    "flex items-start gap-4 rounded-xl border-2 p-4 transition md:p-5 " +
                     (isCorrect
-                      ? "border-emerald-300 bg-emerald-50"
+                      ? "border-brand-100 bg-brand-400"
                       : isWrong
-                      ? "border-red-300 bg-red-50"
+                      ? "border-brand-300/60 bg-brand-900"
                       : selected
-                      ? "border-blue-600 bg-blue-50"
+                      ? "border-brand-200 bg-brand-400"
                       : eliminated
-                      ? "border-slate-200 bg-slate-50 opacity-60"
-                      : "border-slate-200 bg-white hover:border-blue-600/40")
+                      ? "border-brand-400/30 bg-brand-700"
+                      : "border-brand-400/40 bg-brand-800 hover:border-brand-200")
                   }
                 >
                   <button
@@ -444,13 +451,19 @@ function QuestionBody({
                       })
                     }
                     className={
-                      "grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 text-base font-black transition " +
-                      (selected
-                        ? "border-blue-600 bg-primary text-white"
-                        : "border-slate-300 text-slate-600 hover:border-blue-600")
+                      "tap grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 text-base font-black transition " +
+                      (isCorrect || isWrong || selected
+                        ? "border-white bg-white text-brand-700"
+                        : "border-brand-300 text-white hover:border-brand-100 hover:bg-brand-400")
                     }
                   >
-                    {LETTERS[i]}
+                    {isCorrect ? (
+                      <Check className="h-5 w-5" />
+                    ) : isWrong ? (
+                      <XIcon className="h-5 w-5" />
+                    ) : (
+                      LETTERS[i]
+                    )}
                   </button>
                   <button
                     disabled={reveal}
@@ -462,8 +475,8 @@ function QuestionBody({
                       })
                     }
                     className={
-                      "flex-1 text-left text-[18px] md:text-[19px] leading-8 pt-1.5 " +
-                      (eliminated ? "line-through text-slate-400" : "text-slate-800")
+                      "flex-1 pt-1.5 text-left text-[18px] leading-8 md:text-[19px] " +
+                      (eliminated ? "text-brand-200 line-through" : "text-white")
                     }
                   >
                     <MathText>{c.text}</MathText>
@@ -473,8 +486,10 @@ function QuestionBody({
                       onClick={() => toggleEliminate(c.id)}
                       title="Cross out"
                       className={
-                        "shrink-0 rounded-md p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition " +
-                        (eliminated ? "text-slate-700 bg-slate-100" : "")
+                        "tap shrink-0 rounded-md p-2 transition " +
+                        (eliminated
+                          ? "bg-brand-900 text-white"
+                          : "text-brand-100 hover:bg-brand-900 hover:text-white")
                       }
                     >
                       <XIcon className="h-4 w-4" />

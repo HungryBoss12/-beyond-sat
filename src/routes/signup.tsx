@@ -132,14 +132,14 @@ function SignUp() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col bg-white">
       <SiteNav />
-      <main className="flex-1 grid place-items-center px-4 py-14">
-        <div className="w-full max-w-lg rounded-2xl bg-white p-8 md:p-10 soft-shadow border border-border">
+      <main className="grid flex-1 place-items-center px-4 py-14">
+        <div className="rise-in w-full max-w-lg rounded-2xl border border-brand-400/40 bg-brand-600 p-8 shadow-panel md:p-10">
           {step === "form" ? (
             <>
-              <h1 className="text-2xl md:text-3xl text-primary text-center">Create your account</h1>
-              <p className="mt-2 text-sm text-slate-600 text-center">
+              <h1 className="text-center text-2xl font-black tracking-tight text-white md:text-3xl">Create your account</h1>
+              <p className="mt-2 text-center text-sm text-brand-100">
                 Start practicing for the Digital SAT in minutes.
               </p>
 
@@ -194,7 +194,7 @@ function SignUp() {
                     <button
                       type="button"
                       onClick={() => setShowPw((v) => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center text-slate-500 hover:text-primary"
+                      className="tap absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-brand-100 hover:text-white"
                       aria-label={showPw ? "Hide password" : "Show password"}
                     >
                       {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -202,28 +202,34 @@ function SignUp() {
                   </div>
                 </Field>
 
-                {formError && <p className="text-sm text-red-600">{formError}</p>}
+                {/* Red text can't survive on brand navy, so form-level errors use the
+                    deep chip treatment instead of hue. */}
+                {formError && (
+                  <p className="rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
+                    {formError}
+                  </p>
+                )}
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60 transition inline-flex items-center justify-center gap-2"
+                  className="btn-brand inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-400 px-4 py-3 text-sm font-bold text-white disabled:pointer-events-none disabled:opacity-60"
                 >
                   {loading && <Loader2 className="h-4 w-4 animate-spin" />} Sign Up
                 </button>
               </form>
 
-              <p className="mt-6 text-center text-sm text-slate-600">
+              <p className="mt-6 text-center text-sm text-brand-100">
                 Already have an account?{" "}
-                <Link to="/signin" className="font-semibold text-primary hover:underline">
+                <Link to="/signin" className="font-bold text-white hover:underline">
                   Sign In
                 </Link>
               </p>
             </>
           ) : (
             <>
-              <h1 className="text-2xl md:text-3xl text-primary text-center">Verify your email</h1>
-              {info && <p className="mt-2 text-sm text-slate-600 text-center">{info}</p>}
+              <h1 className="text-center text-2xl font-black tracking-tight text-white md:text-3xl">Verify your email</h1>
+              {info && <p className="mt-2 text-center text-sm text-brand-100">{info}</p>}
               <form onSubmit={handleVerify} className="mt-8 space-y-4">
                 <Field label="6-digit code" error={otpError ?? undefined}>
                   <input
@@ -238,16 +244,16 @@ function SignUp() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60 transition inline-flex items-center justify-center gap-2"
+                  className="btn-brand inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-400 px-4 py-3 text-sm font-bold text-white disabled:pointer-events-none disabled:opacity-60"
                 >
                   {loading && <Loader2 className="h-4 w-4 animate-spin" />} Verify
                 </button>
               </form>
               <div className="mt-6 flex items-center justify-between text-sm">
-                <button onClick={handleResend} className="font-semibold text-primary hover:underline">
+                <button onClick={handleResend} className="font-bold text-white hover:underline">
                   Resend code
                 </button>
-                <button onClick={() => setStep("form")} className="text-slate-500 hover:text-primary">
+                <button onClick={() => setStep("form")} className="font-semibold text-brand-100 hover:text-white">
                   ← Back
                 </button>
               </div>
@@ -261,14 +267,15 @@ function SignUp() {
 }
 
 const inputCls =
-  "w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition";
+  "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2.5 text-sm text-white outline-none transition [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200";
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-semibold text-slate-700">{label}</span>
+      <span className="mb-1 block text-xs font-semibold text-brand-100">{label}</span>
       {children}
-      {error && <span className="mt-1 block text-xs text-red-600">{error}</span>}
+      {/* Field errors read through weight and the light step, never red. */}
+      {error && <span className="mt-1 block text-xs font-bold text-brand-100">{error}</span>}
     </label>
   );
 }

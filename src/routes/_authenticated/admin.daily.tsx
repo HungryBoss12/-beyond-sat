@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Trash2, X, ChevronUp, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
+import { ListSkeleton } from "@/components/ui/skeletons";
 import {
   SECTION_LABEL,
   formatSourceDate,
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/admin/daily")({
 });
 
 function AdminDaily() {
-  const [items, setItems] = useState<DailyTest[]>([]);
+  const [items, setItems] = useState<DailyTest[] | null>(null);
   const [editing, setEditing] = useState<{ dt: DailyTest; tests: string[] } | null>(null);
   const [pool, setPool] = useState<Test[]>([]);
 
@@ -120,100 +121,113 @@ function AdminDaily() {
       <div className="flex justify-end">
         <button
           onClick={() => openEditor()}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90"
+          className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
         >
           <Plus className="h-4 w-4" /> New daily test
         </button>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-white overflow-hidden">
-        {items.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">No daily tests scheduled.</div>
-        ) : (
-          <ul className="divide-y divide-slate-200">
-            {items.map((d) => (
-              <li key={d.id} className="flex items-center gap-4 px-4 py-3">
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-slate-800">
-                    {d.title || `Daily · ${d.date}`}
+      {items === null ? (
+        <div className="mt-4">
+          <ListSkeleton rows={4} />
+        </div>
+      ) : (
+        <div className="rise-in mt-4 overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
+          {items.length === 0 ? (
+            <div className="p-8 text-center text-sm text-brand-100">No daily tests scheduled.</div>
+          ) : (
+            <ul className="divide-y divide-brand-400/30">
+              {items.map((d) => (
+                <li key={d.id} className="flex items-center gap-4 px-4 py-3">
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-white">
+                      {d.title || `Daily · ${d.date}`}
+                    </div>
+                    <div className="text-xs text-brand-100">{d.date}</div>
                   </div>
-                  <div className="text-xs text-slate-500">{d.date}</div>
-                </div>
-                <button
-                  onClick={() => openEditor(d)}
-                  className="rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-600/40"
-                >
-                  Manage tests
-                </button>
-                <button
-                  onClick={() => remove(d.id)}
-                  className="rounded-lg h-8 w-8 grid place-items-center text-red-500 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                  <button
+                    onClick={() => openEditor(d)}
+                    className="tap rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-brand-400/40 hover:bg-brand-400"
+                  >
+                    Manage tests
+                  </button>
+                  <button
+                    onClick={() => remove(d.id)}
+                    className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                    aria-label="Delete daily test"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
+      {/* Modal. The scrim is the deepest brand step so the dialog above it still
+          reads as a #11269D surface rather than a white sheet. */}
       {editing && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 grid place-items-center p-4">
-          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <h3 className="text-lg font-bold text-slate-800">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-brand-900/60 p-4 backdrop-blur-sm">
+          <div className="pop-in flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl border border-brand-400/40 bg-brand-600 shadow-float">
+            <div className="flex items-center justify-between border-b border-brand-400/30 px-6 py-4">
+              <h3 className="text-lg font-bold text-white">
                 {editing.dt.title || `Daily · ${editing.dt.date}`}
-                <span className="ml-2 text-xs font-normal text-slate-500">
+                <span className="ml-2 text-xs font-normal text-brand-100">
                   {editing.tests.length} test{editing.tests.length === 1 ? "" : "s"} selected
                 </span>
               </h3>
               <button
                 onClick={() => setEditing(null)}
-                className="rounded-lg h-8 w-8 grid place-items-center text-slate-500 hover:bg-slate-100"
+                className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                aria-label="Close"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 space-y-6 overflow-y-auto p-6">
               {editing.tests.length > 0 && (
                 <div>
-                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                  <div className="mb-2 text-xs font-bold uppercase tracking-wider text-brand-100">
                     Selected order
                   </div>
-                  <ol className="rounded-lg border border-slate-200 overflow-hidden">
+                  <ol className="overflow-hidden rounded-lg border border-brand-400/40">
                     {editing.tests.map((tid, idx) => {
                       const t = pool.find((x) => x.id === tid);
                       return (
                         <li
                           key={tid}
-                          className="flex items-center gap-2 px-3 py-2 text-sm border-b last:border-b-0 border-slate-200 bg-slate-50"
+                          className="flex items-center gap-2 border-b border-brand-400/30 bg-brand-800 px-3 py-2 text-sm text-white last:border-b-0"
                         >
-                          <span className="tabular-nums text-xs font-bold text-slate-400 w-6">
+                          <span className="w-6 text-xs font-bold tabular-nums text-brand-200">
                             {idx + 1}.
                           </span>
                           <span className="flex-1 truncate font-semibold">
                             {t?.title ?? "(missing)"}
                           </span>
                           {t && (
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
+                            <span className="rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                               M{t.module}
                             </span>
                           )}
                           <button
                             onClick={() => move(tid, -1)}
-                            className="rounded h-6 w-6 grid place-items-center text-slate-500 hover:bg-slate-200"
+                            className="grid h-6 w-6 place-items-center rounded text-brand-100 hover:bg-brand-700 hover:text-white"
+                            aria-label="Move up"
                           >
                             <ChevronUp className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => move(tid, 1)}
-                            className="rounded h-6 w-6 grid place-items-center text-slate-500 hover:bg-slate-200"
+                            className="grid h-6 w-6 place-items-center rounded text-brand-100 hover:bg-brand-700 hover:text-white"
+                            aria-label="Move down"
                           >
                             <ChevronDown className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => toggle(tid)}
-                            className="rounded h-6 w-6 grid place-items-center text-red-500 hover:bg-red-50"
+                            className="grid h-6 w-6 place-items-center rounded text-brand-100 hover:bg-brand-900 hover:text-white"
+                            aria-label="Remove from selection"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
@@ -225,38 +239,39 @@ function AdminDaily() {
               )}
 
               <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                <div className="mb-2 text-xs font-bold uppercase tracking-wider text-brand-100">
                   Available tests
                 </div>
-                <ul className="rounded-lg border border-slate-200 divide-y divide-slate-200">
+                <ul className="divide-y divide-brand-400/30 rounded-lg border border-brand-400/40">
                   {pool
                     .filter((t) => !editing.tests.includes(t.id))
                     .map((t) => (
                       <li key={t.id} className="flex items-center gap-3 px-3 py-2">
                         <button
                           onClick={() => toggle(t.id)}
-                          className="rounded-md border border-slate-200 h-7 w-7 grid place-items-center text-blue-600 hover:bg-primary hover:text-white"
+                          className="tap grid h-7 w-7 place-items-center rounded-md bg-brand-800 text-white ring-1 ring-brand-400/40 hover:bg-brand-400"
+                          aria-label="Add test"
                         >
                           <Plus className="h-4 w-4" />
                         </button>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-slate-800 truncate">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold text-white">
                             {t.title}
                           </div>
-                          <div className="mt-0.5 flex gap-1.5 flex-wrap">
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
+                          <div className="mt-0.5 flex flex-wrap gap-1.5">
+                            <span className="rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                               {SECTION_LABEL[t.section]} · M{t.module}
                             </span>
                             <span
                               className={
-                                "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded " +
+                                "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
                                 difficultyColor(t.difficulty)
                               }
                             >
                               {t.difficulty}
                             </span>
                             {formatSourceDate(t.source_month, t.source_year) && (
-                              <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                              <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
                                 {formatSourceDate(t.source_month, t.source_year)}
                               </span>
                             )}
@@ -265,23 +280,23 @@ function AdminDaily() {
                       </li>
                     ))}
                   {pool.length === 0 && (
-                    <li className="p-6 text-center text-sm text-slate-500">
+                    <li className="p-6 text-center text-sm text-brand-100">
                       No tests yet. Create tests first from the Tests page.
                     </li>
                   )}
                 </ul>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
+            <div className="flex justify-end gap-2 border-t border-brand-400/30 px-6 py-4">
               <button
                 onClick={() => setEditing(null)}
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                className="tap rounded-lg px-4 py-2 text-sm font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
               >
                 Cancel
               </button>
               <button
                 onClick={save}
-                className="rounded-lg bg-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90"
+                className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
               >
                 Save selection
               </button>

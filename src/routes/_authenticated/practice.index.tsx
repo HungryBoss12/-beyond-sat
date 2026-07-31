@@ -3,12 +3,15 @@ import { useEffect, useState } from "react";
 import { BookText, Calculator, ClipboardList, CalendarClock, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { PageHead, Panel } from "@/components/ui/panel";
+import { HeadSkeleton, CardGridSkeleton } from "@/components/ui/skeletons";
 
 export const Route = createFileRoute("/_authenticated/practice/")({
   component: PracticeLanding,
 });
 
 function PracticeLanding() {
+  const [loading, setLoading] = useState(true);
   const [rwCount, setRwCount] = useState<number | null>(null);
   const [mathCount, setMathCount] = useState<number | null>(null);
   const [mockCount, setMockCount] = useState<number | null>(null);
@@ -45,44 +48,54 @@ function PracticeLanding() {
           .maybeSingle();
         setDailyDone(sp?.last_daily_completed_date === today);
       }
+      setLoading(false);
     })();
   }, [today]);
 
+  /* Counts used to appear as em-dashes while the queries ran, which reads as
+     "no questions" rather than "still loading". Mirror the real layout instead:
+     two section cards, then the two smaller action cards. */
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <HeadSkeleton />
+        <CardGridSkeleton count={2} height={220} />
+        <CardGridSkeleton count={2} height={170} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Practice</h1>
-        <p className="text-sm text-slate-600 mt-1">
-          Choose a section, jump into today's daily test, or take a full mock exam.
-        </p>
-      </div>
+      <PageHead
+        title="Practice"
+        subtitle="Choose a section, jump into today's daily test, or take a full mock exam."
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <SectionCard
-          to="/practice/reading_writing"
+          section="reading_writing"
           icon={<BookText className="h-6 w-6" />}
           title="Reading & Writing"
           count={rwCount}
-          accent="from-indigo-500 to-primary"
         />
         <SectionCard
-          to="/practice/math"
+          section="math"
           icon={<Calculator className="h-6 w-6" />}
           title="Math"
           count={mathCount}
-          accent="from-emerald-500 to-teal-700"
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <Panel>
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-orange-50 text-orange-600">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-brand-400 text-white">
               <CalendarClock className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-lg font-black text-slate-900">Today's daily test</div>
-              <div className="text-xs text-slate-500">
+              <div className="text-lg font-black text-white">Today's daily test</div>
+              <div className="text-xs text-brand-100">
                 {dailyExists
                   ? dailyDone
                     ? "You've completed today's test. Nice."
@@ -92,25 +105,25 @@ function PracticeLanding() {
             </div>
           </div>
           <Link
-            to={dailyExists && !dailyDone ? "/practice/daily" : "/practice/daily"}
+            to="/practice/daily"
             aria-disabled={!dailyExists || dailyDone}
             className={
-              "mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition " +
-              (!dailyExists || dailyDone ? "opacity-40 pointer-events-none" : "")
+              "btn-brand mt-5 inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2.5 text-sm font-bold text-white " +
+              (!dailyExists || dailyDone ? "pointer-events-none opacity-40" : "")
             }
           >
             {dailyDone ? "Completed" : "Start"} <ArrowRight className="h-4 w-4" />
           </Link>
-        </div>
+        </Panel>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+        <Panel>
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-600">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-brand-800 text-white">
               <ClipboardList className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-lg font-black text-slate-900">Full mock exams</div>
-              <div className="text-xs text-slate-500">
+              <div className="text-lg font-black text-white">Full mock exams</div>
+              <div className="text-xs text-brand-100">
                 {mockCount ?? 0} exam{mockCount === 1 ? "" : "s"} available · two-module adaptive
               </div>
             </div>
@@ -119,45 +132,52 @@ function PracticeLanding() {
             to="/practice/mock"
             aria-disabled={!mockCount}
             className={
-              "mt-5 inline-flex items-center gap-2 rounded-lg border border-blue-600 px-4 py-2.5 text-sm font-bold text-blue-600 hover:bg-blue-50 transition " +
-              (!mockCount ? "opacity-40 pointer-events-none" : "")
+              "btn-ghost mt-5 inline-flex items-center gap-2 rounded-lg border border-brand-300/60 bg-brand-800 px-4 py-2.5 text-sm font-bold text-white " +
+              (!mockCount ? "pointer-events-none opacity-40" : "")
             }
           >
             Browse mocks <ArrowRight className="h-4 w-4" />
           </Link>
-        </div>
+        </Panel>
       </div>
     </div>
   );
 }
 
+/**
+ * `section` is the route param, not a full path: the generated route tree only
+ * exposes `/practice/$section`, so hand-writing a union of concrete paths
+ * ("/practice/math") doesn't typecheck against it.
+ */
 function SectionCard({
-  to,
+  section,
   icon,
   title,
   count,
-  accent,
 }: {
-  to: "/practice/reading_writing" | "/practice/math";
+  section: "reading_writing" | "math";
   icon: React.ReactNode;
   title: string;
   count: number | null;
-  accent: string;
 }) {
   return (
     <Link
-      to={to}
-      className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 soft-shadow hover:border-blue-600/40 transition"
+      to="/practice/$section"
+      params={{ section }}
+      className="group lift relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 p-6 text-white shadow-panel"
     >
-      <div className={"absolute -right-8 -top-8 h-32 w-32 rounded-full bg-gradient-to-br " + accent + " opacity-10"} />
+      {/* Decorative wash, lighter than the card so it reads as a highlight. */}
+      <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-brand-400/40 blur-2xl" />
       <div className="relative">
-        <div className="grid h-12 w-12 place-items-center rounded-xl bg-blue-50 text-blue-600">{icon}</div>
-        <h2 className="mt-4 text-2xl font-black text-slate-900">{title}</h2>
-        <div className="mt-1 text-sm text-slate-500">
-          <span className="text-slate-900 font-black tabular-nums">{count ?? "—"}</span> questions available
+        <div className="tile-invert grid h-12 w-12 place-items-center rounded-xl bg-brand-800 text-white">
+          {icon}
         </div>
-        <div className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 group-hover:gap-2.5 transition-all">
-          Practice this section <ArrowRight className="h-4 w-4" />
+        <h2 className="mt-4 text-2xl font-black text-white">{title}</h2>
+        <div className="mt-1 text-sm text-brand-100">
+          <span className="font-black tabular-nums text-white">{count ?? 0}</span> questions available
+        </div>
+        <div className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-white">
+          Practice this section <ArrowRight className="arrow-slide h-4 w-4" />
         </div>
       </div>
     </Link>

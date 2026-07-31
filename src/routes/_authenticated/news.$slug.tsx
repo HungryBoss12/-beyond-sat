@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Newspaper } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { EmptyState } from "@/components/ui/panel";
+import { DetailSkeleton } from "@/components/ui/skeletons";
 
 type Article = {
   id: string;
@@ -34,43 +36,54 @@ function ArticlePage() {
   }, [slug]);
 
   if (article === null) {
-    return <div className="h-64 rounded-2xl bg-white border border-border animate-pulse" />;
+    return <DetailSkeleton />;
   }
   if (article === "missing") {
     return (
-      <div className="rounded-2xl border border-dashed border-border bg-white p-12 text-center">
-        <h1 className="text-xl font-bold text-slate-800">Article not found</h1>
-        <Link to="/news" className="mt-3 inline-block text-sm font-semibold text-primary">
-          ← Back to News
-        </Link>
-      </div>
+      <EmptyState
+        icon={<Newspaper className="h-8 w-8" />}
+        title="Article not found"
+        body="It may have been unpublished or the link is out of date."
+        className="py-14"
+        action={
+          <Link
+            to="/news"
+            className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to News
+          </Link>
+        }
+      />
     );
   }
 
+  /* Long-form copy reads directly off the white page rather than out of a navy
+     card, so the heading and body stay dark here — only the accents move onto
+     the brand ramp. */
   return (
-    <article className="max-w-3xl mx-auto">
+    <article className="rise-in mx-auto max-w-3xl">
       <Link
         to="/news"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-primary"
+        className="nudge inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-brand-600"
       >
         <ArrowLeft className="h-4 w-4" /> All news
       </Link>
       {article.published_at && (
-        <div className="mt-6 text-xs font-semibold uppercase tracking-wider text-primary/70">
+        <div className="mt-6 text-xs font-semibold uppercase tracking-wider text-brand-600">
           {format(new Date(article.published_at), "MMMM d, yyyy")}
         </div>
       )}
-      <h1 className="mt-2 text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+      <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">
         {article.title}
       </h1>
       {article.cover_image_url && (
         <img
           src={article.cover_image_url}
           alt={article.title}
-          className="mt-6 w-full rounded-2xl border border-border"
+          className="mt-6 w-full rounded-2xl border border-brand-400/40 shadow-panel"
         />
       )}
-      <div className="mt-8 prose prose-slate max-w-none whitespace-pre-wrap text-slate-700 leading-relaxed">
+      <div className="prose prose-slate mt-8 max-w-none whitespace-pre-wrap leading-relaxed text-slate-700">
         {article.body}
       </div>
     </article>

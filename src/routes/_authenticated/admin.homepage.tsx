@@ -17,6 +17,11 @@ import {
   FileText,
   Newspaper,
 } from "lucide-react";
+import { ListSkeleton } from "@/components/ui/skeletons";
+
+/** Shared control styling for every field in the section editors. */
+const CONTROL_CLASS =
+  "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none";
 
 export const Route = createFileRoute("/_authenticated/admin/homepage")({
   component: AdminHomepage,
@@ -179,21 +184,21 @@ function AdminHomepage() {
     load();
   }
 
-  if (loading) return <div className="text-slate-500">Loading…</div>;
+  if (loading) return <ListSkeleton rows={5} />;
 
   return (
     <div className="space-y-6">
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 soft-shadow">
+      <div className="rise-in rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel">
         <div className="flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-[220px]">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+          <div className="min-w-[220px] flex-1">
+            <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-brand-100">
               Add a new section
             </label>
             <select
               value={newKind}
               onChange={(e) => setNewKind(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              className={CONTROL_CLASS}
             >
               {KIND_OPTIONS.map((k) => (
                 <option key={k.value} value={k.value}>
@@ -204,7 +209,7 @@ function AdminHomepage() {
           </div>
           <button
             onClick={addSection}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            className="btn-brand inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
           >
             <Plus className="h-4 w-4" /> Add section
           </button>
@@ -216,17 +221,21 @@ function AdminHomepage() {
         const Icon = meta.icon;
         const isDirty = !!dirty[s.id];
         return (
-          <div key={s.id} className="rounded-2xl border border-slate-200 bg-white p-5 soft-shadow">
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+          <div
+            key={s.id}
+            className="rise-in rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel"
+          >
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-400 text-white">
                 <Icon className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-sm font-bold text-slate-800">{meta.label}</div>
-                <div className="text-xs text-slate-500">{meta.description}</div>
+                <div className="text-sm font-bold text-white">{meta.label}</div>
+                <div className="text-xs text-brand-100">{meta.description}</div>
               </div>
+              {/* "Hidden" was orange; it reads as a recessed chip with a light ring. */}
               {!s.visible && (
-                <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700 uppercase tracking-wider">
+                <span className="ml-2 rounded-full bg-brand-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white ring-1 ring-brand-300/60">
                   Hidden
                 </span>
               )}
@@ -234,7 +243,7 @@ function AdminHomepage() {
                 <button
                   onClick={() => move(s, -1)}
                   disabled={idx === 0}
-                  className="h-8 w-8 grid place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  className="tap grid h-8 w-8 place-items-center rounded-lg border border-brand-400/50 text-brand-100 hover:bg-brand-800 hover:text-white disabled:opacity-40"
                   aria-label="Move up"
                   title="Move up"
                 >
@@ -243,7 +252,7 @@ function AdminHomepage() {
                 <button
                   onClick={() => move(s, 1)}
                   disabled={idx === sections.length - 1}
-                  className="h-8 w-8 grid place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  className="tap grid h-8 w-8 place-items-center rounded-lg border border-brand-400/50 text-brand-100 hover:bg-brand-800 hover:text-white disabled:opacity-40"
                   aria-label="Move down"
                   title="Move down"
                 >
@@ -251,7 +260,7 @@ function AdminHomepage() {
                 </button>
                 <button
                   onClick={() => toggleVisible(s)}
-                  className="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  className="tap inline-flex h-8 items-center gap-1.5 rounded-lg border border-brand-400/50 px-3 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
                   title={s.visible ? "Click to hide" : "Click to show"}
                 >
                   {s.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
@@ -259,7 +268,7 @@ function AdminHomepage() {
                 </button>
                 <button
                   onClick={() => remove(s)}
-                  className="h-8 w-8 grid place-items-center rounded-lg border border-slate-200 text-rose-600 hover:bg-rose-50"
+                  className="tap grid h-8 w-8 place-items-center rounded-lg border border-brand-400/50 text-brand-100 hover:bg-brand-900 hover:text-white"
                   aria-label="Delete section"
                   title="Delete section"
                 >
@@ -275,13 +284,14 @@ function AdminHomepage() {
             />
 
             <div className="mt-4 flex items-center justify-end gap-3">
+              {/* The confirmation was green; on-palette it's simply light copy. */}
               {savedFlash === s.id && (
-                <span className="text-xs font-semibold text-emerald-600">Saved ✓</span>
+                <span className="fade-in text-xs font-semibold text-white">Saved ✓</span>
               )}
               <button
                 onClick={() => saveSection(s)}
                 disabled={saving === s.id || !isDirty}
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-brand inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Save className="h-4 w-4" />
                 {saving === s.id ? "Saving…" : isDirty ? "Save changes" : "Saved"}
@@ -307,9 +317,9 @@ function Field({
 }) {
   return (
     <label className="block">
-      <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">{label}</div>
+      <div className="mb-1 text-xs font-bold uppercase tracking-wider text-brand-100">{label}</div>
       {children}
-      {hint && <div className="text-[11px] text-slate-500 mt-1">{hint}</div>}
+      {hint && <div className="mt-1 text-[11px] text-brand-100">{hint}</div>}
     </label>
   );
 }
@@ -329,7 +339,7 @@ function TextInput({
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+      className={CONTROL_CLASS}
     />
   );
 }
@@ -351,7 +361,7 @@ function TextArea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+      className={CONTROL_CLASS}
     />
   );
 }
@@ -371,7 +381,7 @@ function NumberInput({
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value === "" ? 0 : Number(e.target.value))}
       placeholder={placeholder}
-      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+      className={CONTROL_CLASS}
     />
   );
 }
@@ -539,7 +549,7 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
 
   // fallback: unknown kind
   return (
-    <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+    <div className="rounded-lg border border-dashed border-brand-300/50 p-4 text-sm text-brand-100">
       This section type doesn't have a friendly editor yet.
     </div>
   );
@@ -559,14 +569,16 @@ function ItemRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Item {index + 1}</span>
+    {/* One step down from the card so the brand-800 inputs nested inside still
+        read as recessed rather than merging into the row. */}
+    <div className="rounded-xl border border-brand-400/40 bg-brand-700 p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="text-xs font-bold uppercase tracking-wider text-brand-200">Item {index + 1}</span>
         <div className="ml-auto flex items-center gap-1">
           <button
             onClick={() => onMove(-1)}
             disabled={index === 0}
-            className="h-7 w-7 grid place-items-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+            className="tap grid h-7 w-7 place-items-center rounded-md border border-brand-400/50 text-brand-100 hover:bg-brand-900 hover:text-white disabled:opacity-40"
             aria-label="Move up"
           >
             <ChevronUp className="h-3.5 w-3.5" />
@@ -574,14 +586,14 @@ function ItemRow({
           <button
             onClick={() => onMove(1)}
             disabled={index === count - 1}
-            className="h-7 w-7 grid place-items-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+            className="tap grid h-7 w-7 place-items-center rounded-md border border-brand-400/50 text-brand-100 hover:bg-brand-900 hover:text-white disabled:opacity-40"
             aria-label="Move down"
           >
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={onRemove}
-            className="h-7 w-7 grid place-items-center rounded-md border border-slate-200 bg-white text-rose-600 hover:bg-rose-50"
+            className="tap grid h-7 w-7 place-items-center rounded-md border border-brand-400/50 text-brand-100 hover:bg-brand-900 hover:text-white"
             aria-label="Remove item"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -597,7 +609,7 @@ function AddItemButton({ label, onClick }: { label: string; onClick: () => void 
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-lg border border-dashed border-blue-600/40 px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50"
+      className="tap inline-flex items-center gap-2 rounded-lg border border-dashed border-brand-300/50 px-3 py-2 text-sm font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
     >
       <Plus className="h-4 w-4" /> {label}
     </button>

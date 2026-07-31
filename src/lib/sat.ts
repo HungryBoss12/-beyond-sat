@@ -142,14 +142,19 @@ export function difficultyLabel(d: Difficulty | string | null | undefined): stri
   return (map[d as string] || d) as string;
 }
 
+/**
+ * Difficulty chip classes. Rank reads through the brand ramp's lightness —
+ * harder is lighter and more prominent — rather than through hue, so these chips
+ * work on the navy surfaces they sit on and stay inside the palette.
+ */
 export function difficultyColor(d: Difficulty | string | null | undefined): string {
   const label = difficultyLabel(d);
   switch (label) {
-    case "S": return "bg-fuchsia-100 text-fuchsia-700";
-    case "A": return "bg-red-50 text-red-600";
-    case "B": return "bg-amber-50 text-amber-600";
-    case "C": return "bg-emerald-50 text-emerald-600";
-    case "D": return "bg-sky-50 text-sky-600";
-    default: return "bg-slate-100 text-slate-600";
+    case "S": return "bg-brand-300 text-white";
+    case "A": return "bg-brand-400 text-white";
+    case "B": return "bg-brand-500 text-white";
+    case "D": return "bg-brand-700 text-white";
+    case "C": return "bg-brand-800 text-brand-100";
+    default: return "bg-brand-800 text-brand-100";
   }
 }

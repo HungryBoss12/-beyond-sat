@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { TestPlayer } from "@/components/TestPlayer";
 import type { QuestionRow } from "@/components/QuestionCard";
 import type { TestType } from "@/lib/session";
+import { EmptyState, Skeleton } from "@/components/ui/panel";
 
 export const Route = createFileRoute("/_authenticated/practice/session/$id")({
   component: SessionRunner,
@@ -95,24 +95,35 @@ function SessionRunner() {
     })();
   }, [id, navigate]);
 
+  /* Sketch the player's chrome — timer bar, question card, nav row — so the
+     wait reads as "your test is coming up" instead of a bare spinner. */
   if (loading) {
     return (
-      <div className="grid place-items-center h-[60vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="space-y-4">
+        <Skeleton className="h-14 rounded-2xl" />
+        <Skeleton className="h-[60vh] rounded-2xl" />
+        <div className="flex justify-between gap-3">
+          <Skeleton className="h-10 w-28" />
+          <Skeleton className="h-10 w-28" />
+        </div>
       </div>
     );
   }
   if (err) {
     return (
-      <div className="rounded-2xl border border-dashed border-border bg-white p-10 text-center">
-        <div className="text-lg font-bold text-slate-800">{err}</div>
-        <button
-          onClick={() => navigate({ to: "/practice" })}
-          className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white"
-        >
-          Back to practice
-        </button>
-      </div>
+      <EmptyState
+        title={err}
+        body="The session may have been removed, or it belongs to another account."
+        className="py-14"
+        action={
+          <button
+            onClick={() => navigate({ to: "/practice" })}
+            className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
+          >
+            Back to practice
+          </button>
+        }
+      />
     );
   }
 

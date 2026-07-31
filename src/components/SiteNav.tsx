@@ -25,10 +25,10 @@ const RESOURCES: { id: string; label: string; description: string }[] = [
 /** Geometric mark shown to the left of the wordmark. */
 function LogoMark() {
   return (
-    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-blue-600">
+    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white">
       <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden="true">
-        <path d="M12 3 21 7.5 12 12 3 7.5 12 3Z" fill="#fff" />
-        <path d="M3 12.5 12 17l9-4.5V16l-9 4.5L3 16v-3.5Z" fill="#fff" fillOpacity="0.55" />
+        <path d="M12 3 21 7.5 12 12 3 7.5 12 3Z" fill="#11269d" />
+        <path d="M3 12.5 12 17l9-4.5V16l-9 4.5L3 16v-3.5Z" fill="#2e43c4" />
       </svg>
     </span>
   );
@@ -58,21 +58,23 @@ export function SiteNav() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm">
+    /* The marketing top bar matches the app shell's: brand surface, white page
+       behind it, and every label at full opacity rather than a muted grey. */
+    <header className="sticky top-0 z-40 border-b border-brand-400/40 bg-brand-600 shadow-brand">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center gap-2.5">
           <LogoMark />
-          <span className="text-xl font-bold tracking-tight text-slate-900">
-            Beyond<span className="text-blue-600">SAT</span>
+          <span className="text-xl font-black tracking-tight text-white">
+            Beyond<span className="text-brand-100">SAT</span>
           </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden items-center gap-8 md:flex">
           {LINKS.map((l) => (
             <div key={l.id} className="contents">
               <button
                 onClick={() => goTo(l.id)}
-                className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors"
+                className="text-sm font-semibold text-brand-100 transition-colors hover:text-white"
               >
                 {l.label}
               </button>
@@ -80,19 +82,22 @@ export function SiteNav() {
               {/* Resources sits between "Results" and "About" */}
               {l.id === "stats" && (
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors outline-none">
+                  <DropdownMenuTrigger className="inline-flex items-center gap-1 text-sm font-semibold text-brand-100 outline-none transition-colors hover:text-white">
                     Resources
                     <ChevronDown className="h-3.5 w-3.5" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-64">
+                  <DropdownMenuContent
+                    align="start"
+                    className="w-64 border-brand-400/40 bg-brand-700 text-white"
+                  >
                     {RESOURCES.map((r) => (
                       <DropdownMenuItem
                         key={r.label}
                         onSelect={() => goTo(r.id)}
-                        className="flex-col items-start gap-0.5 py-2"
+                        className="flex-col items-start gap-0.5 py-2 focus:bg-brand-400 focus:text-white"
                       >
-                        <span className="text-sm font-medium text-slate-900">{r.label}</span>
-                        <span className="text-xs text-slate-500">{r.description}</span>
+                        <span className="text-sm font-bold text-white">{r.label}</span>
+                        <span className="text-xs text-brand-100">{r.description}</span>
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -102,23 +107,23 @@ export function SiteNav() {
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden items-center gap-3 md:flex">
           <Link
             to="/signin"
-            className="rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+            className="tap rounded-lg border border-brand-200 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-800"
           >
             Sign In
           </Link>
           <Link
             to="/signup"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors soft-shadow"
+            className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
           >
             Sign Up
           </Link>
         </div>
 
         <button
-          className="md:hidden grid place-items-center h-10 w-10 rounded-lg border border-slate-200 text-blue-600"
+          className="tap grid h-10 w-10 place-items-center rounded-lg border border-brand-400/50 text-white hover:bg-brand-800 md:hidden"
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle menu"
         >
@@ -127,26 +132,26 @@ export function SiteNav() {
       </div>
 
       {open && (
-        <div className="md:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-1">
+        <div className="slide-in space-y-1 border-t border-brand-400/40 bg-brand-700 px-4 py-4 md:hidden">
           {LINKS.map((l) => (
             <div key={l.id}>
               <button
                 onClick={() => goTo(l.id)}
-                className="block w-full text-left rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-blue-50"
+                className="block w-full rounded-md px-3 py-2 text-left text-sm font-bold text-white hover:bg-brand-400"
               >
                 {l.label}
               </button>
 
               {l.id === "stats" && (
                 <div className="mt-1">
-                  <div className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <div className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-brand-100">
                     Resources
                   </div>
                   {RESOURCES.map((r) => (
                     <button
                       key={r.label}
                       onClick={() => goTo(r.id)}
-                      className="block w-full text-left rounded-md pl-6 pr-3 py-2 text-sm font-medium text-slate-600 hover:bg-blue-50"
+                      className="block w-full rounded-md py-2 pl-6 pr-3 text-left text-sm font-semibold text-brand-100 hover:bg-brand-400 hover:text-white"
                     >
                       {r.label}
                     </button>
@@ -158,13 +163,13 @@ export function SiteNav() {
           <div className="flex gap-2 pt-3">
             <Link
               to="/signin"
-              className="flex-1 rounded-lg border border-blue-600 px-4 py-2 text-center text-sm font-semibold text-blue-600"
+              className="tap flex-1 rounded-lg border border-brand-200 px-4 py-2 text-center text-sm font-bold text-white hover:bg-brand-800"
             >
               Sign In
             </Link>
             <Link
               to="/signup"
-              className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white"
+              className="btn-brand flex-1 rounded-lg bg-brand-400 px-4 py-2 text-center text-sm font-bold text-white"
             >
               Sign Up
             </Link>

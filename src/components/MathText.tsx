@@ -79,9 +79,11 @@ function renderMath(input: string): string {
 
 /** Small helper for admin editors: shows a live rendered preview of LaTeX text. */
 export function MathPreview({ value }: { value: string }) {
+  /* Rendered inside brand-surfaced editors, so it inherits white/light-blue
+     rather than the old slate greys. */
   if (!value?.trim()) {
     return (
-      <div className="text-xs text-slate-400 italic">
+      <div className="text-xs italic text-brand-100">
         Live preview appears here. Wrap math in $…$ (inline) or $$…$$ (block).
       </div>
     );
@@ -89,7 +91,7 @@ export function MathPreview({ value }: { value: string }) {
   return (
     <MathText
       block
-      className="text-sm text-slate-800 leading-7 whitespace-pre-wrap"
+      className="whitespace-pre-wrap text-sm leading-7 text-white"
     >
       {value}
     </MathText>

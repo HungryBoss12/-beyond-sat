@@ -141,8 +141,14 @@ export function PanelGlow({ className }: { className?: string }) {
 }
 
 /** Shimmering placeholder block. */
-export function Skeleton({ className }: { className?: string }) {
-  return <div className={cx("skeleton rounded-lg", className)} />;
+export function Skeleton({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return <div className={cx("skeleton rounded-lg", className)} style={style} />;
 }
 
 /** Dashed empty-state box with an optional icon and call to action. */

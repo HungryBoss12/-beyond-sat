@@ -10,6 +10,7 @@ import {
   ChevronDown,
   AlertCircle,
 } from "lucide-react";
+import { ListSkeleton } from "@/components/ui/skeletons";
 import {
   SECTION_LABEL,
   LETTER_DIFFICULTIES,
@@ -41,6 +42,11 @@ type QRow = {
 export const Route = createFileRoute("/_authenticated/admin/tests")({
   component: AdminTests,
 });
+
+/** Shared control styling for the editor's inputs and selects. `color-scheme`
+    keeps the native select dropdown light-on-dark instead of white-on-white. */
+const CONTROL_CLASS =
+  "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none";
 
 const empty = (): Test => ({
   id: "",
@@ -184,52 +190,59 @@ function AdminTests() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-600">
+      {/* Intro copy and the module headings sit on the white page, so they stay
+          dark; every card below is a brand surface and carries white copy. */}
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-sm text-slate-500">
           Group questions into tests. Add as many questions as you need. Tests are used by daily tests and mock exams.
         </p>
         <button
           onClick={() => openEditor()}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90"
+          className="btn-brand inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
         >
           <Plus className="h-4 w-4" /> New test
         </button>
       </div>
 
       {loading ? (
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
-          Loading…
+        <div className="mt-6">
+          <ListSkeleton rows={6} />
         </div>
       ) : (
         <div className="mt-6 space-y-8">
           {[1, 2].map((m) => (
             <div key={m}>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+              <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
                 Module {m}
               </h2>
-              <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+              <div className="rise-in overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
                 {grouped[m as 1 | 2].length === 0 ? (
-                  <div className="p-6 text-center text-sm text-slate-500">No tests in module {m}.</div>
+                  <div className="p-6 text-center text-sm text-brand-100">
+                    No tests in module {m}.
+                  </div>
                 ) : (
-                  <ul className="divide-y divide-slate-200">
+                  <ul className="divide-y divide-brand-400/30">
                     {grouped[m as 1 | 2].map((t) => (
-                      <li key={t.id} className="flex items-center gap-4 px-4 py-3 hover:bg-slate-50">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-slate-800 truncate">{t.title}</div>
-                          <div className="mt-1 flex gap-1.5 flex-wrap">
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
+                      <li
+                        key={t.id}
+                        className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-brand-500"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold text-white">{t.title}</div>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            <span className="rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                               {SECTION_LABEL[t.section]}
                             </span>
                             <span
                               className={
-                                "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded " +
+                                "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
                                 difficultyColor(t.difficulty)
                               }
                             >
                               {t.difficulty}
                             </span>
                             {formatSourceDate(t.source_month, t.source_year) && (
-                              <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                              <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
                                 {formatSourceDate(t.source_month, t.source_year)}
                               </span>
                             )}
@@ -237,13 +250,15 @@ function AdminTests() {
                         </div>
                         <button
                           onClick={() => openEditor(t)}
-                          className="rounded-lg h-8 w-8 grid place-items-center text-slate-500 hover:bg-slate-100"
+                          className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                          aria-label="Edit test"
                         >
                           <Edit3 className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => remove(t.id)}
-                          className="rounded-lg h-8 w-8 grid place-items-center text-red-500 hover:bg-red-50"
+                          className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-900 hover:text-white"
+                          aria-label="Delete test"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -258,10 +273,10 @@ function AdminTests() {
       )}
 
       {editing && editingQs && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 grid place-items-center p-4 overflow-y-auto">
-          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl my-8 flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <h3 className="text-lg font-bold text-slate-800">
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-brand-900/60 p-4 backdrop-blur-sm">
+          <div className="pop-in my-8 flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl border border-brand-400/40 bg-brand-600 shadow-float">
+            <div className="flex items-center justify-between border-b border-brand-400/30 px-6 py-4">
+              <h3 className="text-lg font-bold text-white">
                 {editing.id ? "Edit test" : "New test"}
               </h3>
               <button
@@ -269,21 +284,22 @@ function AdminTests() {
                   setEditing(null);
                   setEditingQs(null);
                 }}
-                className="rounded-lg h-8 w-8 grid place-items-center text-slate-500 hover:bg-slate-100"
+                className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                aria-label="Close"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="p-6 space-y-4 overflow-y-auto">
+            <div className="space-y-4 overflow-y-auto p-6">
               <Field label="Title">
                 <input
                   value={editing.title}
                   onChange={(e) => setEditing({ ...editing, title: e.target.value })}
                   placeholder="Test 1"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  className={CONTROL_CLASS}
                 />
               </Field>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <Field label="Section">
                   <select
                     value={editing.section}
@@ -293,17 +309,17 @@ function AdminTests() {
                       setEditingQs([]);
                       reloadPool(s);
                     }}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className={CONTROL_CLASS}
                   >
                     <option value="math">Math</option>
-                    <option value="reading_writing">Reading & Writing</option>
+                    <option value="reading_writing">Reading &amp; Writing</option>
                   </select>
                 </Field>
                 <Field label="Module">
                   <select
                     value={editing.module}
                     onChange={(e) => setEditing({ ...editing, module: Number(e.target.value) as 1 | 2 })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className={CONTROL_CLASS}
                   >
                     <option value={1}>Module 1</option>
                     <option value={2}>Module 2</option>
@@ -315,7 +331,7 @@ function AdminTests() {
                     onChange={(e) =>
                       setEditing({ ...editing, difficulty: e.target.value as LetterDifficulty })
                     }
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className={CONTROL_CLASS}
                   >
                     {LETTER_DIFFICULTIES.map((d) => (
                       <option key={d} value={d}>
@@ -334,7 +350,7 @@ function AdminTests() {
                           source_month: e.target.value ? Number(e.target.value) : null,
                         })
                       }
-                      className="flex-1 rounded-lg border border-slate-200 px-2 py-2 text-sm"
+                      className={CONTROL_CLASS + " flex-1 px-2"}
                     >
                       <option value="">Month</option>
                       {MONTHS.map((m, i) => (
@@ -355,33 +371,35 @@ function AdminTests() {
                         })
                       }
                       placeholder="Year"
-                      className="w-20 rounded-lg border border-slate-200 px-2 py-2 text-sm"
+                      className={CONTROL_CLASS + " w-20 px-2"}
                     />
                   </div>
                 </Field>
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-brand-100">
                     Questions in this test ({editingQs.length})
                   </span>
+                  {/* The warning used to be amber. It reads as a light ring on the
+                      deep step instead, since the copy already carries the meaning. */}
                   {editingQs.length < 1 && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-brand-900 px-2 py-0.5 text-[11px] font-semibold text-white ring-1 ring-brand-300/60">
                       <AlertCircle className="h-3.5 w-3.5" /> Add at least 1 question
                     </span>
                   )}
                 </div>
                 {editingQs.length > 0 && (
-                  <ol className="mb-4 rounded-lg border border-slate-200 overflow-hidden">
+                  <ol className="mb-4 overflow-hidden rounded-lg border border-brand-400/40">
                     {editingQs.map((qid, idx) => {
                       const q = pool.find((x) => x.id === qid);
                       return (
                         <li
                           key={qid}
-                          className="flex items-center gap-2 px-3 py-2 text-sm border-b last:border-b-0 border-slate-200 bg-slate-50"
+                          className="flex items-center gap-2 border-b border-brand-400/30 bg-brand-800 px-3 py-2 text-sm text-white last:border-b-0"
                         >
-                          <span className="tabular-nums text-xs font-bold text-slate-400 w-6">
+                          <span className="w-6 text-xs font-bold tabular-nums text-brand-200">
                             {idx + 1}.
                           </span>
                           <span className="flex-1 truncate">
@@ -389,19 +407,22 @@ function AdminTests() {
                           </span>
                           <button
                             onClick={() => moveQ(qid, -1)}
-                            className="rounded h-6 w-6 grid place-items-center text-slate-500 hover:bg-slate-200"
+                            className="grid h-6 w-6 place-items-center rounded text-brand-100 hover:bg-brand-700 hover:text-white"
+                            aria-label="Move up"
                           >
                             <ChevronUp className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => moveQ(qid, 1)}
-                            className="rounded h-6 w-6 grid place-items-center text-slate-500 hover:bg-slate-200"
+                            className="grid h-6 w-6 place-items-center rounded text-brand-100 hover:bg-brand-700 hover:text-white"
+                            aria-label="Move down"
                           >
                             <ChevronDown className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => toggleQ(qid)}
-                            className="rounded h-6 w-6 grid place-items-center text-red-500 hover:bg-red-50"
+                            className="grid h-6 w-6 place-items-center rounded text-brand-100 hover:bg-brand-900 hover:text-white"
+                            aria-label="Remove question"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
@@ -410,30 +431,31 @@ function AdminTests() {
                     })}
                   </ol>
                 )}
-                <div className="rounded-lg border border-slate-200 max-h-72 overflow-y-auto">
-                  <ul className="divide-y divide-slate-200">
+                <div className="max-h-72 overflow-y-auto rounded-lg border border-brand-400/40">
+                  <ul className="divide-y divide-brand-400/30">
                     {pool
                       .filter((q) => !editingQs.includes(q.id))
                       .map((q) => (
                         <li key={q.id} className="flex items-start gap-3 px-3 py-2">
                           <button
                             onClick={() => toggleQ(q.id)}
-                            className="mt-0.5 rounded-md border border-slate-200 h-6 w-6 grid place-items-center text-blue-600 hover:bg-primary hover:text-white"
+                            className="tap mt-0.5 grid h-6 w-6 place-items-center rounded-md bg-brand-800 text-white ring-1 ring-brand-400/40 hover:bg-brand-400"
+                            aria-label="Add question"
                           >
                             <Plus className="h-3.5 w-3.5" />
                           </button>
-                          <div className="flex-1 min-w-0 text-sm">
-                            <div className="font-medium text-slate-800 line-clamp-2">
+                          <div className="min-w-0 flex-1 text-sm">
+                            <div className="line-clamp-2 font-medium text-white">
                               {q.question_text}
                             </div>
-                            <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                            <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-brand-100">
                               {q.skill} · {q.difficulty}
                             </div>
                           </div>
                         </li>
                       ))}
                     {pool.length === 0 && (
-                      <li className="px-3 py-6 text-center text-sm text-slate-500">
+                      <li className="px-3 py-6 text-center text-sm text-brand-100">
                         No questions available for this section.
                       </li>
                     )}
@@ -441,19 +463,19 @@ function AdminTests() {
                 </div>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
+            <div className="flex justify-end gap-2 border-t border-brand-400/30 px-6 py-4">
               <button
                 onClick={() => {
                   setEditing(null);
                   setEditingQs(null);
                 }}
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                className="tap rounded-lg px-4 py-2 text-sm font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
               >
                 Cancel
               </button>
               <button
                 onClick={save}
-                className="rounded-lg bg-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90"
+                className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
               >
                 Save test
               </button>
@@ -468,7 +490,7 @@ function AdminTests() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-brand-100">
         {label}
       </span>
       {children}

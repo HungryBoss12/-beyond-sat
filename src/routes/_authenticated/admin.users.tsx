@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Shield, ShieldOff } from "lucide-react";
 import { format } from "date-fns";
+import { ListSkeleton } from "@/components/ui/skeletons";
 
 type UserRow = {
   id: string;
@@ -66,50 +67,57 @@ function AdminUsers() {
         placeholder="Search by name or email…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        className="w-full max-w-md rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        className="w-full max-w-md rounded-lg border border-brand-400/50 bg-brand-600 px-3 py-2 text-sm text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
       />
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-white overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-sm text-slate-500">Loading…</div>
-        ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">No users found.</div>
-        ) : (
-          <ul className="divide-y divide-slate-200">
-            {filtered.map((u) => (
-              <li key={u.id} className="flex items-center gap-4 px-4 py-3">
-                <div className="grid h-9 w-9 place-items-center rounded-full bg-blue-50 text-blue-600 text-xs font-bold">
-                  {(u.full_name || u.email || "?").slice(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-slate-800 truncate">
-                    {u.full_name || "—"}
-                    {u.isAdmin && (
-                      <span className="ml-2 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
-                        Admin
-                      </span>
-                    )}
+
+      {loading ? (
+        <div className="mt-4">
+          <ListSkeleton rows={6} />
+        </div>
+      ) : (
+        <div className="rise-in mt-4 overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
+          {filtered.length === 0 ? (
+            <div className="p-8 text-center text-sm text-brand-100">No users found.</div>
+          ) : (
+            <ul className="divide-y divide-brand-400/30">
+              {filtered.map((u) => (
+                <li key={u.id} className="flex items-center gap-4 px-4 py-3">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-400 text-xs font-bold text-white">
+                    {(u.full_name || u.email || "?").slice(0, 2).toUpperCase()}
                   </div>
-                  <div className="text-xs text-slate-500 truncate">
-                    {u.email} · Joined {format(new Date(u.created_at), "MMM d, yyyy")}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-white">
+                      {u.full_name || "—"}
+                      {u.isAdmin && (
+                        <span className="ml-2 rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 ring-1 ring-brand-400/40">
+                          Admin
+                        </span>
+                      )}
+                    </div>
+                    <div className="truncate text-xs text-brand-100">
+                      {u.email} · Joined {format(new Date(u.created_at), "MMM d, yyyy")}
+                    </div>
                   </div>
-                </div>
-                <button
-                  onClick={() => toggleAdmin(u)}
-                  className={
-                    "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold " +
-                    (u.isAdmin
-                      ? "bg-white border border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600"
-                      : "bg-primary text-white hover:opacity-90")
-                  }
-                >
-                  {u.isAdmin ? <ShieldOff className="h-3.5 w-3.5" /> : <Shield className="h-3.5 w-3.5" />}
-                  {u.isAdmin ? "Revoke admin" : "Make admin"}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                  {/* Revoke is the destructive side, so it's the recessed dark step
+                      with a light ring rather than red; granting is the lit button. */}
+                  <button
+                    onClick={() => toggleAdmin(u)}
+                    className={
+                      "tap inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold " +
+                      (u.isAdmin
+                        ? "bg-brand-800 text-white ring-1 ring-brand-400/40 hover:bg-brand-900 hover:ring-brand-300/60"
+                        : "btn-brand bg-brand-400 text-white")
+                    }
+                  >
+                    {u.isAdmin ? <ShieldOff className="h-3.5 w-3.5" /> : <Shield className="h-3.5 w-3.5" />}
+                    {u.isAdmin ? "Revoke admin" : "Make admin"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

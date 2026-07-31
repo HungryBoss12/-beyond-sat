@@ -13,6 +13,7 @@ import {
   type Difficulty,
 } from "@/lib/sat";
 import { Plus, Trash2, Edit3, X, ImageIcon, Loader2, Upload } from "lucide-react";
+import { ListSkeleton } from "@/components/ui/skeletons";
 import { MixedMathEditor } from "@/components/MixedMathEditor";
 
 type Choice = { id: string; text: string };
@@ -37,6 +38,11 @@ type Question = {
 export const Route = createFileRoute("/_authenticated/admin/questions")({
   component: AdminQuestions,
 });
+
+/** Shared control styling. `color-scheme` keeps native selects and number
+    spinners light-on-dark instead of white-on-white. */
+const CONTROL_CLASS =
+  "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none";
 
 const empty = (): Question => ({
   id: "",
@@ -177,15 +183,19 @@ function AdminQuestions() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* The filter pills sit bare on the white page, so both states are brand
+            surfaces — the active one is simply the lighter step. */}
         <div className="flex gap-2">
           {(["all", "reading_writing", "math"] as const).map((k) => (
             <button
               key={k}
               onClick={() => setFilter(k)}
               className={
-                "rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wider " +
-                (filter === k ? "bg-primary text-white" : "bg-white border border-slate-200 text-slate-600")
+                "tap rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wider " +
+                (filter === k
+                  ? "bg-brand-400 text-white"
+                  : "bg-brand-600 text-brand-100 hover:bg-brand-500 hover:text-white")
               }
             >
               {k === "all" ? "All" : SECTION_LABEL[k]}
@@ -194,105 +204,117 @@ function AdminQuestions() {
         </div>
         <button
           onClick={() => setEditing(empty())}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90"
+          className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
         >
           <Plus className="h-4 w-4" /> New question
         </button>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-slate-200 bg-white overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-sm text-slate-500">Loading…</div>
-        ) : items.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">No questions yet.</div>
-        ) : (
-          <ul className="divide-y divide-slate-200">
-            {items.map((q) => (
-              <li key={q.id} className="flex items-center gap-4 px-4 py-3 hover:bg-slate-50">
-                {q.image_url ? (
-                  <img
-                    src={q.image_url}
-                    alt=""
-                    className="h-10 w-10 rounded-md object-cover border border-slate-200 shrink-0"
-                  />
-                ) : (
-                  <div className="h-10 w-10 rounded-md bg-slate-100 grid place-items-center shrink-0">
-                    <ImageIcon className="h-4 w-4 text-slate-400" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-slate-800 line-clamp-1">
-                    {q.question_text || q.prompt}
-                  </div>
-                  <div className="mt-1 flex gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
-                      {SECTION_LABEL[q.section]}
-                    </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                      {q.skill}
-                    </span>
-                    <span
-                      className={
-                        "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded " +
-                        difficultyColor(q.difficulty)
-                      }
-                    >
-                      {q.difficulty}
-                    </span>
-                    {formatSourceDate(q.source_month, q.source_year) && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                        {formatSourceDate(q.source_month, q.source_year)}
+      {loading ? (
+        <div className="mt-6">
+          <ListSkeleton rows={6} />
+        </div>
+      ) : (
+        <div className="rise-in mt-6 overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
+          {items.length === 0 ? (
+            <div className="p-8 text-center text-sm text-brand-100">No questions yet.</div>
+          ) : (
+            <ul className="divide-y divide-brand-400/30">
+              {items.map((q) => (
+                <li
+                  key={q.id}
+                  className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-brand-500"
+                >
+                  {q.image_url ? (
+                    <img
+                      src={q.image_url}
+                      alt=""
+                      className="h-10 w-10 shrink-0 rounded-md border border-brand-400/50 object-cover"
+                    />
+                  ) : (
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-brand-800">
+                      <ImageIcon className="h-4 w-4 text-brand-200" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="line-clamp-1 text-sm font-semibold text-white">
+                      {q.question_text || q.prompt}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      <span className="rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                        {SECTION_LABEL[q.section]}
                       </span>
-                    )}
+                      <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                        {q.skill}
+                      </span>
+                      <span
+                        className={
+                          "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
+                          difficultyColor(q.difficulty)
+                        }
+                      >
+                        {q.difficulty}
+                      </span>
+                      {formatSourceDate(q.source_month, q.source_year) && (
+                        <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                          {formatSourceDate(q.source_month, q.source_year)}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <button
-                  onClick={async () => {
-                    const { data } = await supabase.rpc(
-                      "admin_get_question_answers" as any,
-                      { p_question_id: q.id },
-                    );
-                    const ans = (data as any[])?.[0] ?? {};
-                    setEditing({
-                      ...q,
-                      choices: q.choices || [],
-                      correct_choice_id: ans.correct_choice_id ?? null,
-                      correct_grid_answers: ans.correct_grid_answers ?? [],
-                      explanation: ans.explanation ?? null,
-                    });
-                  }}
-                  className="rounded-lg h-8 w-8 grid place-items-center text-slate-500 hover:bg-slate-100"
-                >
-                  <Edit3 className="h-4 w-4" />
-                </button>
+                  <button
+                    onClick={async () => {
+                      const { data } = await supabase.rpc(
+                        "admin_get_question_answers" as any,
+                        { p_question_id: q.id },
+                      );
+                      const ans = (data as any[])?.[0] ?? {};
+                      setEditing({
+                        ...q,
+                        choices: q.choices || [],
+                        correct_choice_id: ans.correct_choice_id ?? null,
+                        correct_grid_answers: ans.correct_grid_answers ?? [],
+                        explanation: ans.explanation ?? null,
+                      });
+                    }}
+                    className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                    aria-label="Edit question"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </button>
 
-                <button
-                  onClick={() => remove(q.id)}
-                  className="rounded-lg h-8 w-8 grid place-items-center text-red-500 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                  <button
+                    onClick={() => remove(q.id)}
+                    className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-900 hover:text-white"
+                    aria-label="Delete question"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
+      {/* Modal. The scrim is the deepest brand step so the dialog above it still
+          reads as a #11269D surface rather than a white sheet. */}
       {editing && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 grid place-items-center p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl my-8">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <h3 className="text-lg font-bold text-slate-800">
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-brand-900/60 p-4 backdrop-blur-sm">
+          <div className="pop-in my-8 w-full max-w-2xl rounded-2xl border border-brand-400/40 bg-brand-600 shadow-float">
+            <div className="flex items-center justify-between border-b border-brand-400/30 px-6 py-4">
+              <h3 className="text-lg font-bold text-white">
                 {editing.id ? "Edit question" : "New question"}
               </h3>
               <button
                 onClick={() => setEditing(null)}
-                className="rounded-lg h-8 w-8 grid place-items-center text-slate-500 hover:bg-slate-100"
+                className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                aria-label="Close"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="space-y-4 p-6">
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Section">
                   <select
@@ -305,17 +327,17 @@ function AdminQuestions() {
                         skill: s === "math" ? "Algebra" : "Craft and Structure",
                       });
                     }}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className={CONTROL_CLASS}
                   >
                     <option value="math">Math</option>
-                    <option value="reading_writing">Reading & Writing</option>
+                    <option value="reading_writing">Reading &amp; Writing</option>
                   </select>
                 </Field>
                 <Field label="Skill">
                   <select
                     value={editing.skill}
                     onChange={(e) => setEditing({ ...editing, skill: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className={CONTROL_CLASS}
                   >
                     {skills.map((s) => (
                       <option key={s} value={s}>
@@ -330,7 +352,7 @@ function AdminQuestions() {
                     onChange={(e) =>
                       setEditing({ ...editing, difficulty: e.target.value as Difficulty })
                     }
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className={CONTROL_CLASS}
                   >
                     {LETTER_DIFFICULTIES.map((d) => (
                       <option key={d} value={d}>
@@ -343,7 +365,7 @@ function AdminQuestions() {
                   <select
                     value={editing.kind}
                     onChange={(e) => setEditing({ ...editing, kind: e.target.value as any })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className={CONTROL_CLASS}
                   >
                     <option value="multiple_choice">Multiple choice</option>
                     <option value="grid_in">Grid-in</option>
@@ -358,7 +380,7 @@ function AdminQuestions() {
                         source_month: e.target.value ? Number(e.target.value) : null,
                       })
                     }
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className={CONTROL_CLASS}
                   >
                     <option value="">— None —</option>
                     {MONTHS.map((m, i) => (
@@ -381,7 +403,7 @@ function AdminQuestions() {
                       })
                     }
                     placeholder="e.g. 2023"
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className={CONTROL_CLASS}
                   />
                 </Field>
                 <Field label="Time limit (minutes, optional)">
@@ -403,7 +425,7 @@ function AdminQuestions() {
                       })
                     }
                     placeholder="e.g. 1.5"
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className={CONTROL_CLASS}
                   />
                 </Field>
               </div>
@@ -414,14 +436,14 @@ function AdminQuestions() {
                     <img
                       src={editing.image_url}
                       alt=""
-                      className="h-16 w-16 rounded-lg object-cover border border-slate-200"
+                      className="h-16 w-16 rounded-lg border border-brand-400/50 object-cover"
                     />
                   ) : (
-                    <div className="h-16 w-16 rounded-lg bg-slate-100 grid place-items-center border border-slate-200">
-                      <ImageIcon className="h-6 w-6 text-slate-400" />
+                    <div className="grid h-16 w-16 place-items-center rounded-lg border border-brand-400/50 bg-brand-800">
+                      <ImageIcon className="h-6 w-6 text-brand-200" />
                     </div>
                   )}
-                  <div className="flex-1 flex flex-col gap-1.5">
+                  <div className="flex flex-1 flex-col gap-1.5">
                     <input
                       ref={fileRef}
                       type="file"
@@ -436,7 +458,7 @@ function AdminQuestions() {
                       type="button"
                       onClick={() => fileRef.current?.click()}
                       disabled={uploading}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-600/40 self-start"
+                      className="tap inline-flex items-center gap-1.5 self-start rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-400 disabled:opacity-40"
                     >
                       {uploading ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -449,7 +471,7 @@ function AdminQuestions() {
                       <button
                         type="button"
                         onClick={() => setEditing({ ...editing, image_url: null })}
-                        className="text-[11px] text-red-500 hover:underline self-start"
+                        className="self-start text-[11px] font-semibold text-brand-100 hover:text-white hover:underline"
                       >
                         Remove image
                       </button>
@@ -485,9 +507,9 @@ function AdminQuestions() {
                           name="correct"
                           checked={editing.correct_choice_id === c.id}
                           onChange={() => setEditing({ ...editing, correct_choice_id: c.id })}
-                          className="mt-3"
+                          className="mt-3 h-4 w-4 accent-brand-200 [color-scheme:dark]"
                         />
-                        <span className="w-6 pt-2 text-sm font-bold text-slate-600">{c.id}</span>
+                        <span className="w-6 pt-2 text-sm font-bold text-white">{c.id}</span>
                         <div className="flex-1">
                           <MixedMathEditor
                             value={c.text}
@@ -518,7 +540,7 @@ function AdminQuestions() {
                           .filter(Boolean),
                       })
                     }
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className={CONTROL_CLASS}
                   />
                 </Field>
               )}
@@ -531,33 +553,34 @@ function AdminQuestions() {
                 />
               </Field>
             </div>
-            <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-2 flex-wrap">
-              <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-brand-400/30 px-6 py-4">
+              <label className="inline-flex items-center gap-2 text-xs font-semibold text-brand-100">
                 <input
                   type="checkbox"
                   checked={carryOver}
                   onChange={(e) => setCarryOver(e.target.checked)}
+                  className="h-4 w-4 accent-brand-200 [color-scheme:dark]"
                 />
-                Carry over section, skill, difficulty, source & timer to next question
+                Carry over section, skill, difficulty, source &amp; timer to next question
               </label>
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setEditing(null)}
-                  className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                  className="tap rounded-lg px-4 py-2 text-sm font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
                 >
                   Cancel
                 </button>
                 {!editing.id && (
                   <button
                     onClick={() => save({ addAnother: true, carryOver })}
-                    className="rounded-lg border border-blue-600 text-blue-600 bg-white px-4 py-2 text-sm font-semibold hover:bg-blue-50"
+                    className="tap rounded-lg border border-brand-300/60 bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"
                   >
-                    Save & add another
+                    Save &amp; add another
                   </button>
                 )}
                 <button
                   onClick={() => save()}
-                  className="rounded-lg bg-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90"
+                  className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
                 >
                   Save
                 </button>
@@ -573,7 +596,7 @@ function AdminQuestions() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-brand-100">
         {label}
       </span>
       {children}

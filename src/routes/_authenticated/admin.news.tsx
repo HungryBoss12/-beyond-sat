@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { slugify } from "@/lib/admin";
 import { Plus, Trash2, Edit3, X, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
+import { ListSkeleton } from "@/components/ui/skeletons";
 
 type Article = {
   id: string;
@@ -21,6 +22,10 @@ export const Route = createFileRoute("/_authenticated/admin/news")({
   component: AdminNews,
 });
 
+/** Shared control styling for the editor's inputs. */
+const CONTROL_CLASS =
+  "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none";
+
 const empty = (): Article => ({
   id: "",
   title: "",
@@ -34,7 +39,7 @@ const empty = (): Article => ({
 });
 
 function AdminNews() {
-  const [items, setItems] = useState<Article[]>([]);
+  const [items, setItems] = useState<Article[] | null>(null);
   const [editing, setEditing] = useState<Article | null>(null);
 
   async function load() {
@@ -92,91 +97,112 @@ function AdminNews() {
       <div className="flex justify-end">
         <button
           onClick={() => setEditing(empty())}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90"
+          className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
         >
           <Plus className="h-4 w-4" /> New article
         </button>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-white overflow-hidden">
-        {items.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">No articles yet.</div>
-        ) : (
-          <ul className="divide-y divide-slate-200">
-            {items.map((a) => (
-              <li key={a.id} className="flex items-center gap-4 px-4 py-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-800 truncate">{a.title}</span>
-                    <span
-                      className={
-                        "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded " +
-                        (a.published ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500")
-                      }
-                    >
-                      {a.published ? "Published" : "Draft"}
-                    </span>
+      {items === null ? (
+        <div className="mt-4">
+          <ListSkeleton rows={5} />
+        </div>
+      ) : (
+        <div className="rise-in mt-4 overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
+          {items.length === 0 ? (
+            <div className="p-8 text-center text-sm text-brand-100">No articles yet.</div>
+          ) : (
+            <ul className="divide-y divide-brand-400/30">
+              {items.map((a) => (
+                <li key={a.id} className="flex items-center gap-4 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-white">{a.title}</span>
+                      {/* Published vs draft reads through the ramp's lightness. */}
+                      <span
+                        className={
+                          "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
+                          (a.published
+                            ? "bg-brand-400 text-white"
+                            : "bg-brand-800 text-brand-100 ring-1 ring-brand-400/40")
+                        }
+                      >
+                        {a.published ? "Published" : "Draft"}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 truncate text-xs text-brand-100">
+                      /{a.slug} · Updated {format(new Date(a.updated_at), "MMM d, yyyy")}
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    /{a.slug} · Updated {format(new Date(a.updated_at), "MMM d, yyyy")}
-                  </div>
-                </div>
-                <button
-                  onClick={() => togglePublish(a)}
-                  className="rounded-lg h-8 w-8 grid place-items-center text-slate-500 hover:bg-slate-100"
-                  title={a.published ? "Unpublish" : "Publish"}
-                >
-                  {a.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-                <button
-                  onClick={() => setEditing(a)}
-                  className="rounded-lg h-8 w-8 grid place-items-center text-slate-500 hover:bg-slate-100"
-                >
-                  <Edit3 className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => remove(a.id)}
-                  className="rounded-lg h-8 w-8 grid place-items-center text-red-500 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                  <button
+                    onClick={() => togglePublish(a)}
+                    className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                    title={a.published ? "Unpublish" : "Publish"}
+                  >
+                    {a.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                  <button
+                    onClick={() => setEditing(a)}
+                    className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                    aria-label="Edit article"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => remove(a.id)}
+                    className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-900 hover:text-white"
+                    aria-label="Delete article"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {editing && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 grid place-items-center p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl my-8">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <h3 className="text-lg font-bold text-slate-800">
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-brand-900/60 p-4 backdrop-blur-sm">
+          <div className="pop-in my-8 w-full max-w-2xl rounded-2xl border border-brand-400/40 bg-brand-600 shadow-float">
+            <div className="flex items-center justify-between border-b border-brand-400/30 px-6 py-4">
+              <h3 className="text-lg font-bold text-white">
                 {editing.id ? "Edit article" : "New article"}
               </h3>
-              <button onClick={() => setEditing(null)} className="rounded-lg h-8 w-8 grid place-items-center text-slate-500 hover:bg-slate-100">
+              <button
+                onClick={() => setEditing(null)}
+                className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                aria-label="Close"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="space-y-4 p-6">
               <FieldRow label="Title">
                 <input
                   value={editing.title}
-                  onChange={(e) => setEditing({ ...editing, title: e.target.value, slug: editing.slug || slugify(e.target.value) })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      title: e.target.value,
+                      slug: editing.slug || slugify(e.target.value),
+                    })
+                  }
+                  className={CONTROL_CLASS}
                 />
               </FieldRow>
               <FieldRow label="Slug">
                 <input
                   value={editing.slug}
                   onChange={(e) => setEditing({ ...editing, slug: slugify(e.target.value) })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono"
+                  className={CONTROL_CLASS + " font-mono"}
                 />
               </FieldRow>
               <FieldRow label="Cover image URL (optional)">
                 <input
                   value={editing.cover_image_url ?? ""}
                   onChange={(e) => setEditing({ ...editing, cover_image_url: e.target.value })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  className={CONTROL_CLASS}
                 />
               </FieldRow>
               <FieldRow label="Excerpt">
@@ -184,7 +210,7 @@ function AdminNews() {
                   value={editing.excerpt ?? ""}
                   onChange={(e) => setEditing({ ...editing, excerpt: e.target.value })}
                   rows={2}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  className={CONTROL_CLASS}
                 />
               </FieldRow>
               <FieldRow label="Body">
@@ -192,21 +218,33 @@ function AdminNews() {
                   value={editing.body}
                   onChange={(e) => setEditing({ ...editing, body: e.target.value })}
                   rows={10}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  className={CONTROL_CLASS}
                 />
               </FieldRow>
-              <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <label className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                {/* accent-color keeps the native checkbox on-palette when checked. */}
                 <input
                   type="checkbox"
                   checked={editing.published}
                   onChange={(e) => setEditing({ ...editing, published: e.target.checked })}
+                  className="h-4 w-4 accent-brand-200 [color-scheme:dark]"
                 />
                 Published
               </label>
             </div>
-            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
-              <button onClick={() => setEditing(null)} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
-              <button onClick={save} className="rounded-lg bg-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90">Save</button>
+            <div className="flex justify-end gap-2 border-t border-brand-400/30 px-6 py-4">
+              <button
+                onClick={() => setEditing(null)}
+                className="tap rounded-lg px-4 py-2 text-sm font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={save}
+                className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
+              >
+                Save
+              </button>
             </div>
           </div>
         </div>
@@ -218,7 +256,9 @@ function AdminNews() {
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">{label}</span>
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-brand-100">
+        {label}
+      </span>
       {children}
     </label>
   );

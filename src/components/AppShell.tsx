@@ -73,8 +73,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     .slice(0, 2)
     .toUpperCase() || "S";
 
+  // The shell's own surface is the one white page; the inherited text colour is
+  // a dark brand step so anything that doesn't set its own still reads.
   return (
-    <div className="min-h-screen bg-background text-slate-800">
+    <div className="min-h-screen bg-white text-brand-900">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-brand-400/30 bg-brand-600 lg:flex">
         <div className="flex h-16 items-center border-b border-brand-400/30 px-6">
@@ -222,7 +224,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
-            className="fade-in absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            className="fade-in absolute inset-0 bg-brand-900/60 backdrop-blur-sm"
             onClick={() => setDrawerOpen(false)}
           />
           <aside className="slide-in absolute inset-y-0 left-0 flex w-72 flex-col bg-brand-600 shadow-float">

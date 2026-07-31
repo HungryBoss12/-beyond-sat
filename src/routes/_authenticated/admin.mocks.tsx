@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Trash2, Edit3, X, Eye, EyeOff, Layers } from "lucide-react";
+import { ListSkeleton } from "@/components/ui/skeletons";
 import {
   SECTION_LABEL,
   difficultyColor,
@@ -52,6 +53,11 @@ export const Route = createFileRoute("/_authenticated/admin/mocks")({
   component: AdminMocks,
 });
 
+/** Shared control styling. `color-scheme` keeps native selects and number
+    spinners light-on-dark instead of white-on-white. */
+const CONTROL_CLASS =
+  "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none";
+
 const empty = (): Mock => ({
   id: "",
   title: "",
@@ -81,7 +87,7 @@ function emptySlots(): SectionSlot[] {
 }
 
 function AdminMocks() {
-  const [items, setItems] = useState<Mock[]>([]);
+  const [items, setItems] = useState<Mock[] | null>(null);
   const [editing, setEditing] = useState<Mock | null>(null);
   const [slots, setSlots] = useState<SectionSlot[]>(emptySlots());
   const [testPool, setTestPool] = useState<Test[]>([]);
@@ -182,78 +188,94 @@ function AdminMocks() {
       <div className="flex justify-end">
         <button
           onClick={() => openEditor()}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90"
+          className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
         >
           <Plus className="h-4 w-4" /> New mock exam
         </button>
       </div>
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-white overflow-hidden">
-        {items.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">No mock exams yet.</div>
-        ) : (
-          <ul className="divide-y divide-slate-200">
-            {items.map((m) => (
-              <li key={m.id} className="flex items-center gap-4 px-4 py-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-800 truncate">{m.title}</span>
-                    <span
-                      className={
-                        "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded " +
-                        (m.published ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500")
-                      }
-                    >
-                      {m.published ? "Published" : "Draft"}
-                    </span>
-                  </div>
-                  {m.description && (
-                    <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">{m.description}</div>
-                  )}
-                </div>
-                <button
-                  onClick={() => togglePublish(m)}
-                  className="rounded-lg h-8 w-8 grid place-items-center text-slate-500 hover:bg-slate-100"
-                >
-                  {m.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-                <button
-                  onClick={() => openEditor(m)}
-                  className="rounded-lg h-8 w-8 grid place-items-center text-slate-500 hover:bg-slate-100"
-                >
-                  <Edit3 className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => remove(m.id)}
-                  className="rounded-lg h-8 w-8 grid place-items-center text-red-500 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
 
+      {items === null ? (
+        <div className="mt-4">
+          <ListSkeleton rows={4} />
+        </div>
+      ) : (
+        <div className="rise-in mt-4 overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
+          {items.length === 0 ? (
+            <div className="p-8 text-center text-sm text-brand-100">No mock exams yet.</div>
+          ) : (
+            <ul className="divide-y divide-brand-400/30">
+              {items.map((m) => (
+                <li key={m.id} className="flex items-center gap-4 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-white">{m.title}</span>
+                      {/* Published vs draft reads through the ramp's lightness. */}
+                      <span
+                        className={
+                          "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
+                          (m.published
+                            ? "bg-brand-400 text-white"
+                            : "bg-brand-800 text-brand-100 ring-1 ring-brand-400/40")
+                        }
+                      >
+                        {m.published ? "Published" : "Draft"}
+                      </span>
+                    </div>
+                    {m.description && (
+                      <div className="mt-0.5 line-clamp-1 text-xs text-brand-100">{m.description}</div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => togglePublish(m)}
+                    className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                    title={m.published ? "Unpublish" : "Publish"}
+                  >
+                    {m.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                  <button
+                    onClick={() => openEditor(m)}
+                    className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                    aria-label="Edit mock exam"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => remove(m.id)}
+                    className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-900 hover:text-white"
+                    aria-label="Delete mock exam"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Modal. The scrim is the deepest brand step so the dialog above it still
+          reads as a #11269D surface rather than a white sheet. */}
       {editing && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 grid place-items-center p-4 overflow-y-auto">
-          <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl my-8 flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <h3 className="text-lg font-bold text-slate-800">
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-brand-900/60 p-4 backdrop-blur-sm">
+          <div className="pop-in my-8 flex max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl border border-brand-400/40 bg-brand-600 shadow-float">
+            <div className="flex items-center justify-between border-b border-brand-400/30 px-6 py-4">
+              <h3 className="text-lg font-bold text-white">
                 {editing.id ? "Edit mock exam" : "New mock exam"}
               </h3>
               <button
                 onClick={() => setEditing(null)}
-                className="rounded-lg h-8 w-8 grid place-items-center text-slate-500 hover:bg-slate-100"
+                className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                aria-label="Close"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="p-6 space-y-6 overflow-y-auto">
+            <div className="space-y-6 overflow-y-auto p-6">
               <Row label="Title">
                 <input
                   value={editing.title}
                   onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  className={CONTROL_CLASS}
                 />
               </Row>
               <Row label="Description">
@@ -261,17 +283,17 @@ function AdminMocks() {
                   value={editing.description ?? ""}
                   onChange={(e) => setEditing({ ...editing, description: e.target.value })}
                   rows={2}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  className={CONTROL_CLASS}
                 />
               </Row>
 
               {[1, 2].map((mod) => (
-                <div key={mod} className="rounded-xl border border-slate-200 p-4 bg-slate-50">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Layers className="h-4 w-4 text-blue-600" />
-                    <h4 className="text-sm font-bold text-blue-600">Module {mod} — 4 sections</h4>
+                <div key={mod} className="rounded-xl border border-brand-400/40 bg-brand-700 p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-brand-100" />
+                    <h4 className="text-sm font-bold text-white">Module {mod} — 4 sections</h4>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {[1, 2, 3, 4].map((idx) => {
                       const slot = slots.find(
                         (s) => s.module === mod && s.section_index === idx,
@@ -281,10 +303,10 @@ function AdminMocks() {
                       return (
                         <div
                           key={idx}
-                          className="rounded-lg bg-white border border-slate-200 p-3 space-y-2"
+                          className="space-y-2 rounded-lg border border-brand-400/40 bg-brand-600 p-3"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 shrink-0">
+                            <span className="shrink-0 rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                               {idx}
                             </span>
                             <input
@@ -294,7 +316,7 @@ function AdminMocks() {
                                   section_name: e.target.value,
                                 })
                               }
-                              className="flex-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold"
+                              className="flex-1 rounded-md border border-brand-400/50 bg-brand-800 px-2 py-1 text-xs font-semibold text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
                               placeholder={`Section ${idx} name`}
                             />
                           </div>
@@ -305,7 +327,7 @@ function AdminMocks() {
                                 test_id: e.target.value || null,
                               })
                             }
-                            className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs"
+                            className="w-full rounded-md border border-brand-400/50 bg-brand-800 px-2 py-1.5 text-xs text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
                           >
                             <option value="">— Choose a test —</option>
                             {availableTests.map((t) => (
@@ -315,10 +337,10 @@ function AdminMocks() {
                             ))}
                           </select>
                           {currentTest && (
-                            <div className="flex gap-1 flex-wrap">
+                            <div className="flex flex-wrap gap-1">
                               <span
                                 className={
-                                  "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded " +
+                                  "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
                                   difficultyColor(currentTest.difficulty)
                                 }
                               >
@@ -328,7 +350,7 @@ function AdminMocks() {
                                 currentTest.source_month,
                                 currentTest.source_year,
                               ) && (
-                                <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                                <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
                                   {formatSourceDate(
                                     currentTest.source_month,
                                     currentTest.source_year,
@@ -344,9 +366,9 @@ function AdminMocks() {
                 </div>
               ))}
 
-              <details className="rounded-xl border border-slate-200 p-4">
-                <summary className="text-sm font-bold text-slate-700 cursor-pointer">
-                  Advanced: timings & thresholds
+              <details className="rounded-xl border border-brand-400/40 p-4">
+                <summary className="cursor-pointer text-sm font-bold text-white">
+                  Advanced: timings &amp; thresholds
                 </summary>
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <Row label="R&W module 1 time (s)">
@@ -388,25 +410,27 @@ function AdminMocks() {
                 </div>
               </details>
 
-              <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <label className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                {/* accent-color keeps the native checkbox on-palette when checked. */}
                 <input
                   type="checkbox"
                   checked={editing.published}
                   onChange={(e) => setEditing({ ...editing, published: e.target.checked })}
+                  className="h-4 w-4 accent-brand-200 [color-scheme:dark]"
                 />
                 Published
               </label>
             </div>
-            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
+            <div className="flex justify-end gap-2 border-t border-brand-400/30 px-6 py-4">
               <button
                 onClick={() => setEditing(null)}
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                className="tap rounded-lg px-4 py-2 text-sm font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
               >
                 Cancel
               </button>
               <button
                 onClick={save}
-                className="rounded-lg bg-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90"
+                className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
               >
                 Save
               </button>
@@ -421,7 +445,7 @@ function AdminMocks() {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-brand-100">
         {label}
       </span>
       {children}
@@ -434,7 +458,7 @@ function NumInput({ v, set }: { v: number; set: (n: number) => void }) {
       type="number"
       value={v}
       onChange={(e) => set(parseInt(e.target.value) || 0)}
-      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+      className={CONTROL_CLASS}
     />
   );
 }

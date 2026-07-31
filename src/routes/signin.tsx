@@ -73,16 +73,16 @@ function SignIn() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col bg-white">
       <SiteNav />
-      <main className="flex-1 grid place-items-center px-4 py-14">
-        <div className="w-full max-w-md rounded-2xl bg-white p-8 md:p-10 soft-shadow border border-border">
-          <h1 className="text-2xl md:text-3xl text-primary text-center">Welcome back</h1>
-          <p className="mt-2 text-sm text-slate-600 text-center">Sign in to continue your prep.</p>
+      <main className="grid flex-1 place-items-center px-4 py-14">
+        <div className="rise-in w-full max-w-md rounded-2xl border border-brand-400/40 bg-brand-600 p-8 shadow-panel md:p-10">
+          <h1 className="text-center text-2xl font-black tracking-tight text-white md:text-3xl">Welcome back</h1>
+          <p className="mt-2 text-center text-sm text-brand-100">Sign in to continue your prep.</p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-slate-700">Email</span>
+              <span className="mb-1 block text-xs font-semibold text-brand-100">Email</span>
               <input
                 type="email"
                 autoComplete="email"
@@ -93,7 +93,7 @@ function SignIn() {
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-slate-700">Password</span>
+              <span className="mb-1 block text-xs font-semibold text-brand-100">Password</span>
               <div className="relative">
                 <input
                   type={showPw ? "text" : "password"}
@@ -105,7 +105,7 @@ function SignIn() {
                 <button
                   type="button"
                   onClick={() => setShowPw((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center text-slate-500 hover:text-primary"
+                  className="tap absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-brand-100 hover:text-white"
                   aria-label={showPw ? "Hide password" : "Show password"}
                 >
                   {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -113,13 +113,23 @@ function SignIn() {
               </div>
             </label>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            {info && <p className="text-sm text-emerald-700">{info}</p>}
+            {/* Red/green feedback can't live on a brand surface — both states use the
+                same deep chip and are told apart by their wording. */}
+            {error && (
+              <p className="rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
+                {error}
+              </p>
+            )}
+            {info && (
+              <p className="rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
+                {info}
+              </p>
+            )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60 transition inline-flex items-center justify-center gap-2"
+              className="btn-brand inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-400 px-4 py-3 text-sm font-bold text-white disabled:pointer-events-none disabled:opacity-60"
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />} Sign In
             </button>
@@ -129,16 +139,16 @@ function SignIn() {
                 type="button"
                 onClick={handleForgot}
                 disabled={resetting}
-                className="text-sm font-medium text-primary hover:underline disabled:opacity-60"
+                className="text-sm font-bold text-white hover:underline disabled:opacity-60"
               >
                 Forgot password?
               </button>
             </div>
           </form>
 
-          <p className="mt-6 text-center text-sm text-slate-600">
+          <p className="mt-6 text-center text-sm text-brand-100">
             New here?{" "}
-            <Link to="/signup" className="font-semibold text-primary hover:underline">
+            <Link to="/signup" className="font-bold text-white hover:underline">
               Create an account
             </Link>
           </p>
@@ -150,4 +160,4 @@ function SignIn() {
 }
 
 const inputCls =
-  "w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition";
+  "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2.5 text-sm text-white outline-none transition [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200";

@@ -72,9 +72,9 @@ function AdminLayout() {
   const current = NAV.find((n) => isActive(n, pathname));
 
   return (
-    <div className="flex min-h-screen bg-slate-50/70 text-slate-800">
+    <div className="flex min-h-screen bg-white">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-slate-200/80 bg-white lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-brand-400/30 bg-brand-600 lg:flex">
         <SidebarBody pathname={pathname} />
       </aside>
 
@@ -82,22 +82,24 @@ function AdminLayout() {
       {drawerOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
-            className="fade-in absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            className="fade-in absolute inset-0 bg-brand-900/60 backdrop-blur-sm"
             onClick={() => setDrawerOpen(false)}
           />
-          <aside className="slide-in absolute inset-y-0 left-0 flex w-72 flex-col bg-white shadow-float">
+          <aside className="slide-in absolute inset-y-0 left-0 flex w-72 flex-col bg-brand-600 shadow-float">
             <SidebarBody pathname={pathname} onNavigate={() => setDrawerOpen(false)} />
           </aside>
         </div>
       )}
 
       <main className="min-w-0 flex-1">
-        <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/85 backdrop-blur-md">
+        {/* Top bar is a brand surface like the sidebar, so its controls use the
+            lighter and darker steps to stay separable from it. */}
+        <header className="sticky top-0 z-20 border-b border-brand-400/30 bg-brand-600/95 backdrop-blur-md">
           <div className="flex h-16 items-center justify-between gap-3 px-4 md:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 onClick={() => setDrawerOpen(true)}
-                className="tap grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 lg:hidden"
+                className="tap grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-brand-400/50 text-white hover:bg-brand-400 lg:hidden"
                 aria-label="Open admin menu"
               >
                 <Menu className="h-4.5 w-4.5" />
@@ -105,21 +107,21 @@ function AdminLayout() {
               <div className="min-w-0">
                 {/* Breadcrumb keeps the group visible now that the sidebar can
                     be collapsed off-screen on mobile. */}
-                <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-brand-200">
                   Admin
                   <ChevronRight className="h-3 w-3" />
-                  <span className="text-slate-500">{current?.group ?? "General"}</span>
+                  <span className="text-brand-100">{current?.group ?? "General"}</span>
                 </div>
                 <h1
                   key={pathname}
-                  className="slide-in truncate text-lg font-black tracking-tight text-slate-900 md:text-xl"
+                  className="slide-in truncate text-lg font-black tracking-tight text-white md:text-xl"
                 >
                   {current?.label ?? "Admin"}
                 </h1>
               </div>
             </div>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-blue-700 ring-1 ring-blue-600/10">
-              <span className="pulse-ring h-1.5 w-1.5 rounded-full bg-blue-600" />
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-800 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white ring-1 ring-brand-400/50">
+              <span className="pulse-ring h-1.5 w-1.5 rounded-full bg-brand-200" />
               Admin
             </span>
           </div>
@@ -144,19 +146,19 @@ function SidebarBody({
 }) {
   return (
     <>
-      <div className="flex h-16 items-center justify-between gap-2.5 border-b border-slate-200/80 px-5">
+      <div className="flex h-16 items-center justify-between gap-2.5 border-b border-brand-400/30 px-5">
         <Link to="/admin" onClick={onNavigate} className="group flex min-w-0 items-center gap-2.5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-grad-brand shadow-brand transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-400 shadow-brand transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
             <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" aria-hidden="true">
               <path d="M12 3 21 7.5 12 12 3 7.5 12 3Z" fill="#fff" />
               <path d="M3 12.5 12 17l9-4.5V16l-9 4.5L3 16v-3.5Z" fill="#fff" fillOpacity="0.55" />
             </svg>
           </span>
           <span className="min-w-0">
-            <span className="block text-base font-black leading-none tracking-tight text-slate-900">
-              Beyond<span className="text-blue-600">SAT</span>
+            <span className="block text-base font-black leading-none tracking-tight text-white">
+              Beyond<span className="text-brand-200">SAT</span>
             </span>
-            <span className="mt-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <span className="mt-1 block text-[10px] font-bold uppercase tracking-wider text-brand-100">
               Admin Panel
             </span>
           </span>
@@ -164,7 +166,7 @@ function SidebarBody({
         {onNavigate && (
           <button
             onClick={onNavigate}
-            className="tap grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-100"
+            className="tap grid h-8 w-8 shrink-0 place-items-center rounded-lg text-brand-100 hover:bg-brand-800"
             aria-label="Close menu"
           >
             <X className="h-4 w-4" />
@@ -178,7 +180,7 @@ function SidebarBody({
           if (items.length === 0) return null;
           return (
             <div key={group}>
-              <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">
+              <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-brand-200">
                 {group}
               </div>
               <div className="space-y-0.5">
@@ -193,13 +195,13 @@ function SidebarBody({
                       className={
                         "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold " +
                         (active
-                          ? "bg-grad-brand text-white shadow-brand"
-                          : "text-slate-600 nudge hover:bg-blue-50 hover:text-blue-700")
+                          ? "bg-brand-400 text-white shadow-brand"
+                          : "text-brand-100 nudge hover:bg-brand-800 hover:text-white")
                       }
                     >
                       {/* Active marker rides the left edge of the pill. */}
                       {active && (
-                        <span className="absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-blue-600" />
+                        <span className="absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand-200" />
                       )}
                       <Icon
                         className={
@@ -217,11 +219,11 @@ function SidebarBody({
         })}
       </nav>
 
-      <div className="border-t border-slate-200/80 p-3.5">
+      <div className="border-t border-brand-400/30 p-3.5">
         <Link
           to="/dashboard"
           onClick={onNavigate}
-          className="group flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-500 nudge hover:bg-blue-50 hover:text-blue-700"
+          className="group flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-brand-100 nudge hover:bg-brand-800 hover:text-white"
         >
           <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
           Back to app

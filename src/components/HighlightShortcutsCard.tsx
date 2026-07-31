@@ -55,29 +55,29 @@ export function HighlightShortcutsCard() {
     {
       slot: "highlight",
       label: "Highlight selection",
-      icon: <Highlighter className="h-4 w-4 text-yellow-600" />,
+      icon: <Highlighter className="h-4 w-4 text-brand-100" />,
       hint: "Select text in a passage, then press this key.",
     },
     {
       slot: "note",
       label: "Highlight + add note",
-      icon: <StickyNote className="h-4 w-4 text-primary" />,
+      icon: <StickyNote className="h-4 w-4 text-brand-100" />,
       hint: "Select text, press this key, then type your note.",
     },
   ];
 
   return (
-    <div className="rounded-2xl border border-border bg-white p-6 soft-shadow">
+    <div className="rise-in rounded-2xl border border-brand-400/40 bg-brand-600 p-6 shadow-panel">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-black text-primary">Highlight shortcuts</h2>
+        <h2 className="text-lg font-black text-white">Highlight shortcuts</h2>
         <button
           onClick={reset}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50"
+          className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 px-2.5 py-1 text-xs font-bold text-brand-100 hover:bg-brand-800 hover:text-white"
         >
           <RotateCcw className="h-3.5 w-3.5" /> Reset
         </button>
       </div>
-      <p className="mt-1 text-xs text-slate-500">
+      <p className="mt-1 text-xs text-brand-100">
         Used while solving questions. Changes save to this browser instantly.
       </p>
 
@@ -85,21 +85,22 @@ export function HighlightShortcutsCard() {
         {rows.map((r) => (
           <div
             key={r.slot}
-            className="flex items-center justify-between gap-3 rounded-lg border border-border bg-slate-50/60 p-3"
+            className="flex items-center justify-between gap-3 rounded-lg border border-brand-400/40 bg-brand-800 p-3"
           >
-            <div className="flex items-start gap-3 min-w-0">
+            <div className="flex min-w-0 items-start gap-3">
               <div className="mt-0.5">{r.icon}</div>
               <div className="min-w-0">
-                <div className="text-sm font-bold text-slate-800">{r.label}</div>
-                <div className="text-xs text-slate-500">{r.hint}</div>
+                <div className="text-sm font-bold text-white">{r.label}</div>
+                <div className="text-xs text-brand-100">{r.hint}</div>
               </div>
             </div>
+            {/* Recording used to flash yellow; it's the lit brand step pulsing instead. */}
             <button
               onClick={() => setRecording(recording === r.slot ? null : r.slot)}
-              className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-mono font-bold border transition ${
+              className={`shrink-0 rounded-md border px-3 py-1.5 font-mono text-xs font-bold transition ${
                 recording === r.slot
-                  ? "border-yellow-400 bg-yellow-100 text-yellow-900 animate-pulse"
-                  : "border-border bg-white text-slate-700 hover:bg-slate-100"
+                  ? "animate-pulse border-brand-200 bg-brand-400 text-white"
+                  : "border-brand-400/50 bg-brand-600 text-white hover:bg-brand-400"
               }`}
               title="Click, then press any key combo. Esc to cancel."
             >

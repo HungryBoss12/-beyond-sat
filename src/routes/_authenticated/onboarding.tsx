@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { CalendarDays, Loader2, Sparkles, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { Skeleton } from "@/components/ui/panel";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   component: Onboarding,
@@ -152,29 +153,43 @@ function Onboarding() {
   }
 
   if (loading) {
+    /* This route renders outside the app shell, so the skeleton has to draw its
+       own centred card on the white page — head, two target fields, the date
+       select and the button. */
     return (
-      <div className="min-h-screen grid place-items-center bg-slate-50">
-        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+      <div className="grid min-h-screen place-items-center bg-white p-6">
+        <div className="w-full max-w-md space-y-4">
+          <Skeleton className="h-14 w-14 rounded-2xl" />
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-4 w-full" />
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <Skeleton className="h-[70px] rounded-xl" />
+            <Skeleton className="h-[70px] rounded-xl" />
+          </div>
+          <Skeleton className="h-11 rounded-xl" />
+          <Skeleton className="h-[70px] rounded-xl" />
+          <Skeleton className="h-12 rounded-xl" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen grid place-items-center bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6">
-      <div className="w-full max-w-md rounded-3xl bg-white text-slate-800 p-8 md:p-10 shadow-2xl">
-        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-blue-600 mb-5">
+    <div className="grid min-h-screen place-items-center bg-white p-6">
+      <div className="pop-in w-full max-w-md rounded-3xl border border-brand-400/40 bg-brand-600 p-8 text-white shadow-brand md:p-10">
+        <div className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-brand-400 text-white">
           <CalendarDays className="h-7 w-7" />
         </div>
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+        <h1 className="text-2xl font-black tracking-tight text-white md:text-3xl">
           Set your SAT goals
         </h1>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-brand-100">
           Pick your exam date and set separate targets for English and Math. You can update these any time from your profile.
         </p>
 
         <div className="mt-6 grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+            <span className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-100">
               <Target className="h-3.5 w-3.5" /> English (R&W)
             </span>
             <input
@@ -184,12 +199,12 @@ function Onboarding() {
               step={10}
               value={targetRw}
               onChange={(e) => setTargetRw(e.target.value)}
-              className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 text-lg font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
+              className="w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-lg font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
             />
-            <span className="text-[11px] text-slate-500">200–800</span>
+            <span className="text-[11px] text-brand-200">200–800</span>
           </label>
           <label className="block">
-            <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+            <span className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-100">
               <Target className="h-3.5 w-3.5" /> Math
             </span>
             <input
@@ -199,32 +214,32 @@ function Onboarding() {
               step={10}
               value={targetMath}
               onChange={(e) => setTargetMath(e.target.value)}
-              className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 text-lg font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
+              className="w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-lg font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
             />
-            <span className="text-[11px] text-slate-500">200–800</span>
+            <span className="text-[11px] text-brand-200">200–800</span>
           </label>
         </div>
 
-        <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-2.5 flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total target</span>
-          <span className="text-lg font-black text-blue-600 tabular-nums">
-            {totalNum || "—"} <span className="text-xs font-bold text-slate-400">/ 1600</span>
+        <div className="mt-3 flex items-center justify-between rounded-xl border border-brand-400/40 bg-brand-800 px-4 py-2.5">
+          <span className="text-xs font-bold uppercase tracking-wider text-brand-100">Total target</span>
+          <span className="text-lg font-black tabular-nums text-white">
+            {totalNum || "—"} <span className="text-xs font-bold text-brand-200">/ 1600</span>
           </span>
         </div>
 
         <label className="mt-4 block">
-          <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand-100">
             Exam date
           </span>
           {dateOptions.length === 0 ? (
-            <div className="rounded-xl border-2 border-dashed border-slate-200 px-4 py-3 text-sm text-slate-500">
+            <div className="rounded-xl border-2 border-dashed border-brand-300/50 px-4 py-3 text-sm text-brand-100">
               No official exam dates published yet. Please check back soon.
             </div>
           ) : (
             <select
               value={examDate}
               onChange={(e) => setExamDate(e.target.value)}
-              className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 text-lg font-semibold text-slate-800 focus:border-blue-600 focus:outline-none bg-white"
+              className="w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-lg font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
             >
               <option value="">Select an exam date…</option>
               {dateOptions.map((d) => (
@@ -238,20 +253,26 @@ function Onboarding() {
         </label>
 
         {daysLeft !== null && (
-          <div className="mt-4 rounded-xl bg-blue-50 border border-blue-600/10 px-4 py-3 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-bold text-blue-600">
+          <div className="pop-in mt-4 flex items-center gap-2 rounded-xl border border-brand-200/50 bg-brand-400 px-4 py-3">
+            <Sparkles className="h-4 w-4 text-white" />
+            <span className="text-sm font-bold text-white">
               {daysLeft === 0 ? "Exam is today!" : `${daysLeft} day${daysLeft === 1 ? "" : "s"} until your exam`}
             </span>
           </div>
         )}
 
-        {err && <div className="mt-3 text-sm text-red-600">{err}</div>}
+        {/* Errors read as a darker inset chip with a light ring rather than red —
+            the copy already says what went wrong. */}
+        {err && (
+          <div className="mt-3 rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
+            {err}
+          </div>
+        )}
 
         <button
           onClick={finish}
           disabled={saving || !examDate || !rwNum || !mathNum}
-          className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-white font-bold py-3.5 hover:opacity-90 disabled:opacity-50"
+          className="btn-brand mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-400 py-3.5 font-bold text-white disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Continue to BeyondSAT

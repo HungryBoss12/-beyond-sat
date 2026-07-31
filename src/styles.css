@@ -24,6 +24,14 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  /* The shadcn primitives (dropdown-menu, select, popover, tooltip) paint with
+     `bg-popover` / `bg-destructive`. Those tokens were never declared, so in
+     Tailwind v4 the utilities silently didn't generate and the menus floated
+     with no surface at all. Declared here on-palette. */
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Lora", ui-serif, Georgia, serif;
 
@@ -85,6 +93,14 @@
 
   --accent: #2e43c4;          /* lighter shade for highlights */
   --accent-foreground: #FFFFFF;
+
+  --popover: #0e1f82;         /* floating menus sit a step above a brand card */
+  --popover-foreground: #FFFFFF;
+
+  /* No red in the palette, so "destructive" is the deepest brand step; the
+     danger read comes from the icon and wording, not the hue. */
+  --destructive: #08135a;
+  --destructive-foreground: #FFFFFF;
 
   --border: #2e43c4;          /* visible divider on a brand surface */
   --input: #2e43c4;
@@ -537,9 +553,11 @@
   .btn-brand::after {
     display: none !important;
   }
+  /* Static placeholder still has to stay on-palette — a grey block would be the
+     one off-brand colour on the page. */
   .skeleton {
     animation: none !important;
     background-image: none;
-    background-color: var(--color-slate-100);
+    background-color: var(--surface-base);
   }
 }

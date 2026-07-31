@@ -2,9 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   LogOut,
-  User as UserIcon,
   Target,
-  CalendarDays,
   Flame,
   Trophy,
   ClipboardList,
@@ -17,6 +15,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { HighlightShortcutsCard } from "@/components/HighlightShortcutsCard";
+import { PageHead, Panel as Surface, PanelGlow, Skeleton } from "@/components/ui/panel";
+import { HeadSkeleton, PanelGridSkeleton, ListSkeleton } from "@/components/ui/skeletons";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   component: Profile,
@@ -182,63 +182,70 @@ function Profile() {
     setEditingGoals(false);
   }
 
+  /* Profile-shaped placeholder rather than a spinner: identity card, the two
+     editable panels, then history. The layout is already correct when the real
+     data lands, so nothing reflows. */
   if (loading) {
     return (
-      <div className="grid place-items-center h-[50vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+      <div className="space-y-6">
+        <HeadSkeleton />
+        <Skeleton className="h-56 rounded-2xl md:h-52" />
+        <PanelGridSkeleton height={280} />
+        <ListSkeleton rows={4} />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Profile</h1>
+      <PageHead title="Profile" subtitle="Your account, goals and test history." />
 
-      {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 md:p-8 soft-shadow">
-        <div className="flex items-center gap-5">
-          <div className="grid h-16 w-16 md:h-20 md:w-20 place-items-center rounded-full bg-white/15 text-2xl font-black">
+      {/* Identity card — the one focal brand surface on this screen. */}
+      <Surface tone="brand" className="overflow-hidden p-6 md:p-8">
+        <PanelGlow />
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-brand-400 text-2xl font-black text-white shadow-brand md:h-20 md:w-20">
             {initials}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-2xl md:text-3xl font-black truncate">{displayName}</div>
-            <div className="text-sm text-white/70 truncate">{email}</div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-2xl font-black md:text-3xl">{displayName}</div>
+            <div className="truncate text-sm text-brand-100">{email}</div>
             {student?.level && (
-              <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider">
+              <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand-400 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white">
                 <Sparkles className="h-3 w-3" /> {student.level}
               </span>
             )}
           </div>
           <button
             onClick={signOut}
-            className="inline-flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 text-sm font-bold transition"
+            className="btn-ghost inline-flex shrink-0 items-center gap-2 self-start rounded-lg border border-brand-300/60 bg-brand-800 px-3 py-2 text-sm font-bold text-white sm:self-auto"
           >
             <LogOut className="h-4 w-4" /> Sign out
           </button>
         </div>
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="stagger mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Stat
-            icon={<Flame className="h-4 w-4 text-orange-300 fill-orange-300" />}
+            icon={<Flame className="h-4 w-4 fill-brand-100 text-brand-100" />}
             label="Current streak"
             value={`${student?.current_streak ?? 0}d`}
           />
           <Stat
-            icon={<Trophy className="h-4 w-4 text-amber-300" />}
+            icon={<Trophy className="h-4 w-4 text-brand-100" />}
             label="Longest"
             value={`${student?.longest_streak ?? 0}d`}
           />
           <Stat
-            icon={<Target className="h-4 w-4 text-white" />}
+            icon={<Target className="h-4 w-4 text-brand-100" />}
             label="Best mock"
             value={bestMock != null ? String(bestMock) : "—"}
           />
           <Stat
-            icon={<ClipboardList className="h-4 w-4 text-white" />}
+            icon={<ClipboardList className="h-4 w-4 text-brand-100" />}
             label="Accuracy"
             value={accuracy != null ? `${accuracy}%` : "—"}
           />
         </div>
-      </div>
+      </Surface>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Personal info */}
@@ -311,43 +318,43 @@ function Profile() {
       <HighlightShortcutsCard />
 
       {/* History */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+      <Surface>
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-black text-blue-600">Test history</h2>
-          <span className="text-xs text-slate-500">{sessions.length} completed</span>
+          <h2 className="text-lg font-black text-white">Test history</h2>
+          <span className="text-xs text-brand-100">{sessions.length} completed</span>
         </div>
         {sessions.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-500">
+          <p className="mt-4 text-sm text-brand-100">
             You haven't finished any tests yet.{" "}
-            <Link to="/practice" className="text-blue-600 font-bold hover:underline">
+            <Link to="/practice" className="font-bold text-white underline-offset-2 hover:underline">
               Start practicing
             </Link>
             .
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-slate-200">
+          <ul className="stagger-fast mt-3 divide-y divide-brand-400/40">
             {sessions.map((s) => (
-              <li key={s.id} className="py-3 flex items-center justify-between gap-3">
+              <li key={s.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <div className="text-sm font-bold text-slate-800 capitalize">{s.type}</div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-sm font-bold capitalize text-white">{s.type}</div>
+                  <div className="text-xs text-brand-100">
                     {format(new Date(s.completed_at), "MMM d, yyyy · h:mm a")}
                   </div>
                 </div>
                 <div className="text-right">
                   {s.type === "mock" && s.score != null ? (
                     <div>
-                      <div className="text-lg font-black text-blue-600 tabular-nums">{s.score}</div>
-                      <div className="text-[11px] text-slate-500">
+                      <div className="text-lg font-black tabular-nums text-white">{s.score}</div>
+                      <div className="text-[11px] text-brand-100">
                         R&W {s.rw_score ?? "—"} · Math {s.math_score ?? "—"}
                       </div>
                     </div>
                   ) : (
                     <div>
-                      <div className="text-lg font-black text-slate-800 tabular-nums">
+                      <div className="text-lg font-black tabular-nums text-white">
                         {s.correct_count ?? 0}/{s.total_questions ?? 0}
                       </div>
-                      <div className="text-[11px] text-slate-500">
+                      <div className="text-[11px] text-brand-100">
                         {s.total_questions
                           ? Math.round(((s.correct_count ?? 0) / s.total_questions) * 100)
                           : 0}
@@ -360,18 +367,18 @@ function Profile() {
             ))}
           </ul>
         )}
-      </div>
+      </Surface>
     </div>
   );
 }
 
 function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-white/10 px-4 py-3">
-      <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-white/70">
+    <div className="rounded-xl bg-brand-800 px-4 py-3">
+      <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-100">
         {icon} {label}
       </div>
-      <div className="mt-1 text-2xl font-black tabular-nums">{value}</div>
+      <div className="pop-in mt-1 text-2xl font-black tabular-nums text-white">{value}</div>
     </div>
   );
 }
@@ -390,35 +397,37 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+    <Surface>
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-black text-blue-600">{title}</h2>
+        <h2 className="text-lg font-black text-white">{title}</h2>
         {editing ? (
           <button
             onClick={onCancel}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-700"
+            className="tap inline-flex items-center gap-1.5 text-xs font-bold text-brand-100 hover:text-white"
           >
             <X className="h-3.5 w-3.5" /> Cancel
           </button>
         ) : (
           <button
             onClick={onEdit}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline"
+            className="tap inline-flex items-center gap-1.5 text-xs font-bold text-white underline-offset-2 hover:underline"
           >
             <Pencil className="h-3.5 w-3.5" /> Edit
           </button>
         )}
       </div>
       <div className="mt-4">{children}</div>
-    </div>
+    </Surface>
   );
 }
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
-      <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{label}</dt>
-      <dd className="mt-0.5 text-sm font-semibold text-slate-800">{value || <span className="text-slate-400">—</span>}</dd>
+      <dt className="text-[11px] font-bold uppercase tracking-wider text-brand-100">{label}</dt>
+      <dd className="mt-0.5 text-sm font-semibold text-white">
+        {value || <span className="text-brand-200">—</span>}
+      </dd>
     </div>
   );
 }
@@ -507,25 +516,25 @@ function GoalsForm({
         <Input label="English (R&W) 200–800" value={targetRw} onChange={setTargetRw} type="number" />
         <Input label="Math 200–800" value={targetMath} onChange={setTargetMath} type="number" />
       </div>
-      <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 flex justify-between text-sm">
-        <span className="font-bold uppercase tracking-wider text-[11px] text-slate-500">Total</span>
-        <span className="font-black tabular-nums text-blue-600">
+      <div className="flex justify-between rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-brand-100">Total</span>
+        <span className="font-black tabular-nums text-white">
           {validRw && validMath ? `${rw + math} / 1600` : "—"}
         </span>
       </div>
       <label className="block">
-        <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-brand-100">
           Exam date
         </span>
         {dateOptions.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-sm text-slate-500">
+          <div className="rounded-lg border border-dashed border-brand-300/60 px-3 py-2 text-sm text-brand-100">
             No exam dates published yet.
           </div>
         ) : (
           <select
             value={examDate}
             onChange={(e) => setExamDate(e.target.value)}
-            className="block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none bg-white"
+            className="block w-full rounded-lg border border-brand-400/60 bg-brand-800 px-3 py-2 text-sm text-white focus:border-brand-200 focus:outline-none"
           >
             <option value="">Select an exam date…</option>
             {dateOptions.map((d) => (
@@ -557,14 +566,16 @@ function Input({
 }) {
   return (
     <label className="block">
-      <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+      <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-brand-100">
         {label}
       </span>
+      {/* `color-scheme: dark` is what makes the native date/number spinners render
+          light — without it the browser draws a dark widget on a dark field. */}
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+        className="block w-full rounded-lg border border-brand-400/60 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
       />
     </label>
   );
@@ -575,7 +586,7 @@ function SaveButton({ saving }: { saving: boolean }) {
     <button
       type="submit"
       disabled={saving}
-      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-60 hover:bg-blue-700 transition"
+      className="btn-brand inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
     >
       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
     </button>

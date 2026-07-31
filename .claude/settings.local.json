@@ -94,7 +94,10 @@
       "Bash(echo \"exit=$?\")",
       "Bash(\"C:/Program Files/nodejs/node.exe\" ./node_modules/typescript/bin/tsc --noEmit)",
       "Bash(\"C:/Program Files/nodejs/node.exe\" check-css.cjs)",
-      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"['check-css.cjs','tsc.log','build.log'].forEach\\(f=>{try{require\\('fs'\\).unlinkSync\\(f\\);console.log\\('removed '+f\\)}catch\\(e\\){console.log\\('skip '+f\\)}}\\)\")"
+      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"['check-css.cjs','tsc.log','build.log'].forEach\\(f=>{try{require\\('fs'\\).unlinkSync\\(f\\);console.log\\('removed '+f\\)}catch\\(e\\){console.log\\('skip '+f\\)}}\\)\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" \"C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js\" run typecheck)",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" \"C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js\" run build)",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" check-palette.cjs)"
     ]
   }
 }

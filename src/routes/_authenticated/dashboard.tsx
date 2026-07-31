@@ -288,7 +288,7 @@ function ProgressPanel({
           hint={latest?.at ? `Latest mock · ${format(new Date(latest.at), "MMM d, yyyy")}` : "No mocks yet"}
           action={
             target != null ? (
-              <span className="rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-bold text-slate-600 ring-1 ring-slate-200">
+              <span className="rounded-full bg-brand-800 px-2.5 py-1 text-[10px] font-bold text-white ring-1 ring-brand-400/40">
                 Target {target}
               </span>
             ) : undefined
@@ -296,23 +296,23 @@ function ProgressPanel({
         />
 
         <div className="mt-3 flex items-end gap-2">
-          <span className="pop-in text-5xl font-black leading-none tracking-tight text-slate-900 md:text-6xl">
+          <span className="pop-in text-5xl font-black leading-none tracking-tight text-white md:text-6xl">
             <AnimatedNumber value={latest?.score ?? 0} />
           </span>
-          <span className="pb-1 text-sm font-medium text-slate-400">/ 1600</span>
+          <span className="pb-1 text-sm font-medium text-brand-100">/ 1600</span>
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {band && <Badge label={band.label} tone={band.tone as Tone} />}
           {latest?.delta != null && <Delta value={latest.delta} suffix="vs last test" />}
           {gap != null && gap > 0 && (
-            <span className="text-[11px] font-semibold text-slate-500">
+            <span className="text-[11px] font-semibold text-brand-100">
               {gap} points to target
             </span>
           )}
           {gap != null && gap <= 0 && <Badge label="Target reached" tone="excellent" />}
           {!latest && (
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-brand-100">
               Your score appears here after your first mock exam.
             </span>
           )}
@@ -345,16 +345,16 @@ function ProgressPanel({
                     the data reads first and the fill is only atmosphere. */}
                 <defs>
                   <linearGradient id="dashTrend" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#1313cf" stopOpacity={0.26} />
-                    <stop offset="100%" stopColor="#1313cf" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#B8C0E8" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#B8C0E8" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#EEF1F7" vertical={false} />
+                <CartesianGrid stroke="#2E43C4" strokeOpacity={0.3} vertical={false} />
                 <XAxis
                   dataKey="label"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#94A3B8", fontSize: 11, fontWeight: 600 }}
+                  tick={{ fill: "#B8C0E8", fontSize: 11, fontWeight: 600 }}
                   dy={6}
                 />
                 <YAxis
@@ -362,17 +362,17 @@ function ProgressPanel({
                   ticks={[400, 800, 1200, 1600]}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#94A3B8", fontSize: 10 }}
+                  tick={{ fill: "#B8C0E8", fontSize: 10 }}
                 />
                 <Tooltip content={<ChartTip suffix=" / 1600" />} />
                 <Area
                   type="monotone"
                   dataKey="score"
-                  stroke="#1313cf"
+                  stroke="#B8C0E8"
                   strokeWidth={2.5}
                   fill="url(#dashTrend)"
-                  dot={{ r: 3.5, fill: "#fff", stroke: "#1313cf", strokeWidth: 2 }}
-                  activeDot={{ r: 6, fill: "#1313cf", stroke: "#fff", strokeWidth: 2.5 }}
+                  dot={{ r: 3.5, fill: "#11269D", stroke: "#B8C0E8", strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: "#2E43C4", stroke: "#fff", strokeWidth: 2.5 }}
                   animationDuration={900}
                 />
               </AreaChart>
@@ -410,9 +410,11 @@ function AccuracyPanel({
             endAngle={-270}
           >
             <defs>
+              {/* Light end of the ramp, so the arc stays legible against the
+                  #0c1b70 track it sits on. */}
               <linearGradient id="dashGauge" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#5c60ea" />
-                <stop offset="100%" stopColor="#0202d4" />
+                <stop offset="0%" stopColor="#FFFFFF" />
+                <stop offset="100%" stopColor="#B8C0E8" />
               </linearGradient>
             </defs>
             <PolarAngleAxis type="number" domain={[0, 100]} tick={false} axisLine={false} />
@@ -420,27 +422,27 @@ function AccuracyPanel({
               dataKey="value"
               cornerRadius={14}
               fill="url(#dashGauge)"
-              background={{ fill: "#F1F2FF" }}
+              background={{ fill: "#0C1B70" }}
               animationDuration={1100}
             />
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 grid place-content-center text-center">
-          <div className="text-3xl font-black leading-none text-slate-900">
+          <div className="text-3xl font-black leading-none text-white">
             <AnimatedNumber value={pct} suffix="%" />
           </div>
-          <div className="mt-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-600">
+          <div className="mt-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
             {label}
           </div>
         </div>
       </div>
 
       <div className="mt-5 space-y-3">
-        <MeterRow label="Reading & Writing" value={accuracy?.rw ?? null} barClass="bg-grad-brand" />
-        <MeterRow label="Math" value={accuracy?.math ?? null} barClass="bg-blue-400" />
+        <MeterRow label="Reading & Writing" value={accuracy?.rw ?? null} barClass="bg-white" />
+        <MeterRow label="Math" value={accuracy?.math ?? null} barClass="bg-brand-200" />
       </div>
 
-      <p className="mt-4 text-[11px] text-slate-400">
+      <p className="mt-4 text-[11px] text-brand-100">
         {accuracy
           ? `Across ${accuracy.answered.toLocaleString()} graded answers.`
           : "Answer some questions to see this."}
@@ -467,21 +469,23 @@ function DailyPanel({ done, streak }: { done: boolean; streak: number }) {
             <h2 className="mt-3 text-2xl font-black tracking-tight text-white">
               {done ? "Today's done." : "Keep your streak alive"}
             </h2>
-            <p className="mt-1.5 max-w-md text-sm text-white/70">
+            <p className="mt-1.5 max-w-md text-sm text-brand-100">
               {done
                 ? `You're ${streak} ${streak === 1 ? "day" : "days"} deep. Come back tomorrow to extend it.`
                 : "A quick mixed set. 10–15 minutes, and it feeds your streak."}
             </p>
           </div>
+          {/* Lit state reads through fill rather than a warm hue — the palette
+              is white + #11269D only. */}
           <Flame
             className={
-              "h-11 w-11 shrink-0 " + (done ? "fill-orange-300 text-orange-300" : "text-white/50")
+              "h-11 w-11 shrink-0 " + (done ? "fill-white text-white" : "text-brand-200")
             }
           />
         </div>
         <Link
           to={done ? "/practice" : "/practice/daily"}
-          className="group mt-6 inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-blue-700 tap shadow-lg shadow-blue-950/20 hover:bg-blue-50"
+          className="group mt-6 inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-brand-700 tap shadow-lg shadow-brand-900/30 hover:bg-brand-50"
         >
           {done ? "Practice more" : "Start today's test"}
           <ArrowRight className="arrow-slide h-4 w-4" />
@@ -505,10 +509,10 @@ function StreakPanel({
     <Panel interactive>
       <PanelHead label="Win streak" icon={Flame} tone="warm" />
       <div className="mt-3 flex items-baseline gap-2">
-        <span className="pop-in text-5xl font-black leading-none text-slate-900">
+        <span className="pop-in text-5xl font-black leading-none text-white">
           <AnimatedNumber value={current} />
         </span>
-        <span className="text-sm text-slate-500">{current === 1 ? "day" : "days"}</span>
+        <span className="text-sm text-brand-100">{current === 1 ? "day" : "days"}</span>
       </div>
 
       {/* Longest streak as the bar's ceiling, so the fill reads as
@@ -518,17 +522,19 @@ function StreakPanel({
           label="Personal best"
           value={current}
           max={Math.max(longest, current, 1)}
-          barClass="bg-gradient-to-r from-orange-400 to-orange-500"
+          barClass="bg-gradient-to-r from-brand-200 to-white"
           display={`${longest} ${longest === 1 ? "day" : "days"}`}
         />
       </div>
 
-      <div className="mt-4 flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs">
-        <CalendarClock className="h-4 w-4 shrink-0 text-slate-400" />
-        <span className="text-slate-600">
+      {/* Exam countdown sits in the deep shade so it reads as a nested box
+          inside the brand panel rather than a light cut-out. */}
+      <div className="mt-4 flex items-center gap-2 rounded-xl bg-brand-800 px-3 py-2.5 text-xs ring-1 ring-brand-400/40">
+        <CalendarClock className="h-4 w-4 shrink-0 text-brand-200" />
+        <span className="text-brand-100">
           {daysToExam != null ? (
             <>
-              <b className="text-slate-900">{daysToExam}</b> days until your exam
+              <b className="text-white">{daysToExam}</b> days until your exam
             </>
           ) : (
             "Set an exam date in your profile"
@@ -553,16 +559,16 @@ function RecommendationsPanel({
           <Link
             key={i}
             to={r.to}
-            className="group flex items-start gap-3 rounded-xl border border-slate-200/80 p-3 nudge hover:border-blue-600/40 hover:bg-blue-50/50"
+            className="group flex items-start gap-3 rounded-xl border border-brand-400/30 bg-brand-800 p-3 nudge hover:border-brand-300 hover:bg-brand-700"
           >
-            <span className="tile-invert grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-blue-50 text-sm font-bold text-blue-600">
+            <span className="tile-invert grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-700 text-sm font-bold text-brand-100">
               {i + 1}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold text-slate-800">{r.title}</span>
-              <span className="mt-0.5 block text-xs text-slate-500">{r.desc}</span>
+              <span className="block text-sm font-semibold text-white">{r.title}</span>
+              <span className="mt-0.5 block text-xs text-brand-100">{r.desc}</span>
             </span>
-            <ArrowRight className="arrow-slide mt-1.5 h-4 w-4 shrink-0 text-slate-300 group-hover:text-blue-600" />
+            <ArrowRight className="arrow-slide mt-1.5 h-4 w-4 shrink-0 text-brand-200 group-hover:text-white" />
           </Link>
         ))}
       </div>
@@ -597,7 +603,7 @@ function RadarPanel({
             action={
               <Link
                 to="/practice"
-                className="btn-ghost inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700"
+                className="btn-ghost inline-flex items-center gap-1.5 rounded-lg border border-brand-300 bg-brand-400 px-3.5 py-2 text-xs font-bold text-white"
               >
                 Start practising
               </Link>
@@ -608,21 +614,21 @@ function RadarPanel({
             <RadarChart data={data} outerRadius="74%">
               <defs>
                 <linearGradient id="dashRadar" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#5c60ea" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="#1313cf" stopOpacity={0.18} />
+                  <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#B8C0E8" stopOpacity={0.16} />
                 </linearGradient>
               </defs>
-              <PolarGrid stroke="#EEF1F7" />
+              <PolarGrid stroke="#2E43C4" />
               <PolarAngleAxis
                 dataKey="skill"
-                tick={{ fill: "#64748B", fontSize: 10.5, fontWeight: 600 }}
+                tick={{ fill: "#B8C0E8", fontSize: 10.5, fontWeight: 600 }}
               />
               <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
               <Tooltip content={<ChartTip suffix="% accuracy" />} />
               <Radar
                 name="Accuracy"
                 dataKey="value"
-                stroke="#1313cf"
+                stroke="#FFFFFF"
                 fill="url(#dashRadar)"
                 strokeWidth={2}
                 animationDuration={900}
@@ -656,21 +662,21 @@ function HistoryPanel({ mocks }: { mocks: Session[] }) {
           }
         />
       ) : (
-        <ul className="mt-2 divide-y divide-slate-100 stagger-fast">
+        <ul className="mt-2 divide-y divide-brand-400/30 stagger-fast">
           {mocks.slice(0, 6).map((m) => (
             <li
               key={m.id}
-              className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-slate-50"
+              className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-brand-800"
             >
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-slate-800">
+                <div className="truncate text-sm font-semibold text-white">
                   {m.completed_at ? format(new Date(m.completed_at), "MMM d, yyyy") : "—"}
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-brand-100">
                   R&W {m.rw_score ?? "—"} · Math {m.math_score ?? "—"}
                 </div>
               </div>
-              <div className="shrink-0 text-xl font-black tabular-nums text-blue-600">
+              <div className="shrink-0 text-xl font-black tabular-nums text-white">
                 {m.score ?? "—"}
               </div>
             </li>
@@ -698,13 +704,13 @@ function ChartTip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-2 shadow-float backdrop-blur">
+    <div className="rounded-xl border border-brand-400/40 bg-brand-600/95 px-3 py-2 shadow-float backdrop-blur">
       {label != null && (
-        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</div>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-brand-200">{label}</div>
       )}
-      <div className="text-sm font-black tabular-nums text-slate-900">
+      <div className="text-sm font-black tabular-nums text-white">
         {payload[0].value}
-        <span className="text-xs font-medium text-slate-400">{suffix}</span>
+        <span className="text-xs font-medium text-brand-100">{suffix}</span>
       </div>
     </div>
   );

@@ -27,27 +27,25 @@
   --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Lora", ui-serif, Georgia, serif;
 
-  /* Brand ramp. The three anchors are the requested brand colors:
-       brand-600 #1313cf  (default)
-       brand-700 #1111cf  (hover)
-       brand-800 #0202d4  (active / deep)
-     The lighter steps are derived tints used for card fills and rails.
+  /* Brand ramp anchored on #11269D (base), with darker (#0C1B70) and
+     lighter (#2E43C4) variations for layering. Used everywhere except the
+     white page background.
 
      NOTE: we deliberately re-point Tailwind's `blue-*` scale at this same
      ramp. The app uses `blue-600`/`blue-50`/etc. in ~50 places, so remapping
      the scale re-themes every one of them from a single source of truth
      instead of scattering brand hexes through the codebase. */
-  --color-brand-25: #fafbff;
-  --color-brand-50: #f4f5ff;
-  --color-brand-100: #e9eaff;
-  --color-brand-200: #d5d7ff;
-  --color-brand-300: #b6b9fb;
-  --color-brand-400: #8b8ef6;
-  --color-brand-500: #5c60ea;
-  --color-brand-600: #1313cf;
-  --color-brand-700: #1111cf;
-  --color-brand-800: #0202d4;
-  --color-brand-900: #0a0a7a;
+  --color-brand-25: #e8ebf5;
+  --color-brand-50: #d1d7eb;
+  --color-brand-100: #b8c0e8;
+  --color-brand-200: #8a98d6;
+  --color-brand-300: #5c70c4;
+  --color-brand-400: #2e43c4;
+  --color-brand-500: #1a2fa8;
+  --color-brand-600: #11269d;
+  --color-brand-700: #0e1f82;
+  --color-brand-800: #0c1b70;
+  --color-brand-900: #08135a;
 
   --color-blue-50: var(--color-brand-50);
   --color-blue-100: var(--color-brand-100);
@@ -65,44 +63,52 @@
   color-scheme: light;
   --radius: 0.75rem;
 
-  /* Blue + white palette, light throughout. The app surface is white and blue
-     is the accent: it carries buttons, active states, and app chrome.
-     There is no dark theme — every surface is white or a light blue/slate tint. */
-  --background: #FFFFFF;      /* white app background */
-  --foreground: #0F172A;      /* slate-900 text on white */
+  /* White + #11269D only. White is reserved for the page background; every
+     other surface (chrome, cards, widgets) is the brand blue or a darker /
+     lighter variation of it. Text on those surfaces is white or #B8C0E8 at
+     full opacity — never a faded white. */
+  --background: #FFFFFF;      /* the only white surface */
+  --foreground: #0F172A;      /* text on the white page background */
 
-  --card: #ffffff;
-  --card-foreground: #0F172A;
+  --card: #11269d;            /* brand base — cards sit on the white page */
+  --card-foreground: #FFFFFF;
 
-  --primary: #1313cf;         /* brand-600 */
+  --primary: #11269d;         /* brand-600, base surface */
   --primary-foreground: #ffffff;
-  --primary-tint: #3f3fe0;    /* brand-500 for large blocks */
+  --primary-tint: #2e43c4;    /* brand-400, buttons / active states */
 
-  --secondary: #f0f0fe;       /* brand-50 section background */
-  --secondary-foreground: #01018f;  /* brand-900 */
+  --secondary: #e8ebf5;       /* lightest tint, for light section bands */
+  --secondary-foreground: #0c1b70;
 
-  --muted: #F1F5F9;           /* slate-100 tint inside cards */
-  --muted-foreground: #475569; /* slate-600 */
+  --muted: #0c1b70;           /* darker nested surface inside a brand card */
+  --muted-foreground: #B8C0E8; /* legible secondary text on brand surfaces */
 
-  --accent: #e2e2fd;          /* brand-100 */
-  --accent-foreground: #1111cf; /* brand-700 */
+  --accent: #2e43c4;          /* lighter shade for highlights */
+  --accent-foreground: #FFFFFF;
 
-  --border: #E9EDF4;          /* softer than slate-200; less cage-like on white */
-  --input: #CBD5E1;           /* slate-300 */
-  --ring: #b6b9fb;            /* brand-300 */
+  --border: #2e43c4;          /* visible divider on a brand surface */
+  --input: #2e43c4;
+  --ring: #2e43c4;
+
+  /* Named surface layers, so components don't repeat raw hexes. */
+  --surface-base: #11269d;
+  --surface-deep: #0c1b70;
+  --surface-lift: #2e43c4;
+  --on-surface: #FFFFFF;
+  --on-surface-muted: #B8C0E8;
 
   /* Gradient primitives. Kept as tokens so panels, buttons and chart fills all
      pull from the same ramp — changing the brand here changes every gradient.
      These are deliberately *light*: tinted whites rather than saturated blues,
      so large surfaces read as paper with a wash of colour rather than as slabs
      of brand. Only `--grad-brand` (used on small CTAs) is fully saturated. */
-  --grad-brand: linear-gradient(135deg, #3f3fe0 0%, #1313cf 55%, #0202d4 100%);
-  --grad-brand-soft: linear-gradient(135deg, #f4f5ff 0%, #e9eaff 100%);
-  --grad-surface: linear-gradient(180deg, #ffffff 0%, #fafbff 100%);
+  --grad-brand: linear-gradient(135deg, #2e43c4 0%, #11269d 55%, #0c1b70 100%);
+  --grad-brand-soft: linear-gradient(135deg, #16309f 0%, #0c1b70 100%);
+  --grad-surface: linear-gradient(180deg, #14299f 0%, #0f2288 100%);
   --grad-sheen: linear-gradient(
     120deg,
     transparent 20%,
-    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0.18) 50%,
     transparent 80%
   );
 }
@@ -161,8 +167,8 @@
    instead of going grey, which is what sells a button as "lit". */
 @utility shadow-brand {
   box-shadow:
-    0 1px 2px rgba(2, 2, 212, 0.16),
-    0 8px 20px -6px rgba(19, 19, 207, 0.32);
+    0 1px 2px rgba(17, 38, 157, 0.24),
+    0 8px 20px -6px rgba(46, 67, 196, 0.4);
 }
 
 /* ---------------------------------------------------------------------------
@@ -191,7 +197,7 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(140deg, rgba(19, 19, 207, 0.22), rgba(19, 19, 207, 0));
+    background: linear-gradient(140deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.04));
     -webkit-mask:
       linear-gradient(#fff 0 0) content-box,
       linear-gradient(#fff 0 0);
@@ -397,8 +403,8 @@
     box-shadow 0.24s ease,
     filter 0.24s ease;
   box-shadow:
-    0 1px 2px rgba(2, 2, 212, 0.16),
-    0 8px 20px -6px rgba(19, 19, 207, 0.32);
+    0 1px 2px rgba(12, 27, 112, 0.3),
+    0 8px 20px -6px rgba(46, 67, 196, 0.45);
 
   &::after {
     content: "";
@@ -412,8 +418,8 @@
   &:hover {
     transform: translateY(-2px);
     box-shadow:
-      0 2px 4px rgba(2, 2, 212, 0.2),
-      0 14px 32px -8px rgba(19, 19, 207, 0.45);
+      0 2px 4px rgba(12, 27, 112, 0.36),
+      0 14px 32px -8px rgba(46, 67, 196, 0.6);
   }
   &:hover::after {
     transform: translateX(120%);
@@ -433,10 +439,10 @@
     box-shadow 0.2s ease;
   &:hover {
     transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
-    background-color: var(--color-brand-50);
-    color: var(--color-brand-700);
-    box-shadow: 0 6px 16px -10px rgba(15, 23, 42, 0.28);
+    border-color: color-mix(in srgb, var(--primary) 50%, transparent);
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #FFFFFF;
+    box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.4);
   }
   &:active {
     transform: translateY(0) scale(0.985);
@@ -471,7 +477,7 @@
     color 0.24s ease,
     transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
   .group:hover & {
-    background-color: var(--primary);
+    background-color: var(--surface-lift);
     color: #fff;
     transform: scale(1.06) rotate(-3deg);
   }
@@ -479,12 +485,15 @@
 
 /* Shimmering placeholder. Better than a flat pulse because the moving
    highlight signals "loading" rather than "disabled". */
+/* Placeholder blocks sit on brand surfaces now, so the shimmer runs through the
+   blue ramp rather than slate — a grey block would be the one off-palette
+   colour on the page. */
 @utility skeleton {
   background-image: linear-gradient(
     90deg,
-    var(--color-slate-100) 25%,
-    var(--color-slate-50) 37%,
-    var(--color-slate-100) 63%
+    var(--surface-base) 25%,
+    var(--surface-lift) 37%,
+    var(--surface-base) 63%
   );
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;

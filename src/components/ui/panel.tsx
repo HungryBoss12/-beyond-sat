@@ -13,10 +13,15 @@ function cx(...parts: (string | false | null | undefined)[]) {
 }
 
 /**
- * The base surface. `tone` picks the fill:
- *  - `plain`  white, for the majority of panels
- *  - `soft`   a barely-tinted white gradient, for panels that should recede
- *  - `brand`  the saturated brand gradient, for a single focal CTA per screen
+ * The base surface. Panels are brand-blue surfaces sitting on the white page
+ * background — white is reserved for the page itself. `tone` picks which layer
+ * of the blue ramp the panel occupies:
+ *  - `plain`  #11269D base, for the majority of panels
+ *  - `soft`   a subtle gradient over the base, for panels that should recede
+ *  - `brand`  the full base→deep gradient, for a single focal panel per screen
+ *
+ * All three are dark, so text inside is white by default and secondary text
+ * uses `text-brand-100` (#B8C0E8) rather than a reduced opacity.
  */
 export function Panel({
   children,
@@ -34,10 +39,10 @@ export function Panel({
   return (
     <Tag
       className={cx(
-        "relative rounded-2xl border p-5 md:p-6",
-        tone === "plain" && "border-slate-200/80 bg-white shadow-panel",
-        tone === "soft" && "border-slate-200/70 bg-grad-surface shadow-panel",
-        tone === "brand" && "border-transparent bg-grad-brand text-white shadow-brand",
+        "relative rounded-2xl border p-5 md:p-6 text-white",
+        tone === "plain" && "border-brand-400/40 bg-brand-600 shadow-panel",
+        tone === "soft" && "border-brand-400/30 bg-grad-surface shadow-panel",
+        tone === "brand" && "border-brand-400/50 bg-grad-brand shadow-brand",
         interactive && "lift",
         className,
       )}
@@ -67,20 +72,22 @@ export function PanelHead({
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">
+        <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-brand-100">
           {label}
         </div>
-        {hint && <div className="mt-0.5 truncate text-xs text-slate-400">{hint}</div>}
+        {hint && <div className="mt-0.5 truncate text-xs text-brand-100">{hint}</div>}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {action}
         {Icon && (
+          /* Icon tiles use the lighter shade so they separate from the panel
+             they sit on; all three tones are white-on-light-blue now. */
           <span
             className={cx(
-              "grid h-8 w-8 place-items-center rounded-xl",
-              tone === "brand" && "bg-blue-50 text-blue-600",
-              tone === "muted" && "bg-slate-100 text-slate-500",
-              tone === "warm" && "bg-orange-50 text-orange-500",
+              "grid h-8 w-8 place-items-center rounded-xl text-white",
+              tone === "brand" && "bg-brand-400",
+              tone === "muted" && "bg-brand-800",
+              tone === "warm" && "bg-brand-400",
             )}
           >
             <Icon className="h-[17px] w-[17px]" strokeWidth={2.1} />
@@ -124,9 +131,9 @@ export function PanelGlow({ className }: { className?: string }) {
       aria-hidden="true"
       className={cx("pointer-events-none absolute inset-0 overflow-hidden rounded-2xl", className)}
     >
-      <div className="drift absolute -right-16 -top-24 h-56 w-56 rounded-full bg-blue-200/40 blur-3xl" />
+      <div className="drift absolute -right-16 -top-24 h-56 w-56 rounded-full bg-brand-400/30 blur-3xl" />
       <div
-        className="drift absolute -bottom-28 -left-12 h-52 w-52 rounded-full bg-blue-100/50 blur-3xl"
+        className="drift absolute -bottom-28 -left-12 h-52 w-52 rounded-full bg-brand-300/20 blur-3xl"
         style={{ animationDelay: "-6s" }}
       />
     </div>
@@ -155,17 +162,17 @@ export function EmptyState({
   return (
     <div
       className={cx(
-        "grid place-content-center justify-items-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-8 text-center",
+        "grid place-content-center justify-items-center rounded-xl border border-dashed border-brand-300/50 bg-brand-800/50 px-4 py-8 text-center",
         className,
       )}
     >
       {Icon && (
-        <span className="mb-3 grid h-10 w-10 place-items-center rounded-xl bg-white text-slate-400 shadow-panel">
+        <span className="mb-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-400 text-white shadow-panel">
           <Icon className="h-5 w-5" />
         </span>
       )}
-      <div className="text-sm font-semibold text-slate-700">{title}</div>
-      {body && <p className="mt-1 max-w-xs text-xs leading-relaxed text-slate-500">{body}</p>}
+      <div className="text-sm font-semibold text-white">{title}</div>
+      {body && <p className="mt-1 max-w-xs text-xs leading-relaxed text-brand-100">{body}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

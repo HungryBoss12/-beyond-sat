@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { TestPlayer } from "@/components/TestPlayer";
 import type { QuestionRow } from "@/components/QuestionCard";
 import type { TestType } from "@/lib/session";
-import { EmptyState, Skeleton } from "@/components/ui/panel";
 
 export const Route = createFileRoute("/_authenticated/practice/session/$id")({
   component: SessionRunner,
@@ -108,34 +107,38 @@ function SessionRunner() {
   /* Sketch the player's chrome — timer bar, question card, nav row — so the
      wait reads as "your test is coming up" instead of a bare spinner.
      This route renders outside AppShell, so it supplies its own page padding. */
+  /* The runner is a light surface, so these use `skeleton-light` rather than the
+     app-wide `Skeleton` — that one shimmers through the dark blue ramp and would
+     flash a navy slab before the white test UI paints. */
   if (loading) {
     return (
-      <div className="mx-auto min-h-[100dvh] max-w-7xl space-y-4 px-4 py-6 sm:px-6">
-        <Skeleton className="h-14 rounded-2xl" />
-        <Skeleton className="h-[60vh] rounded-2xl" />
-        <div className="flex justify-between gap-3">
-          <Skeleton className="h-10 w-28" />
-          <Skeleton className="h-10 w-28" />
+      <div className="min-h-[100dvh] bg-test-canvas">
+        <div className="h-14 w-full bg-test-chrome" />
+        <div className="mx-auto max-w-7xl space-y-4 px-4 py-6 sm:px-6">
+          <div className="skeleton-light h-[60vh] rounded-xl" />
+          <div className="flex justify-between gap-3">
+            <div className="skeleton-light h-10 w-28 rounded-lg" />
+            <div className="skeleton-light h-10 w-28 rounded-lg" />
+          </div>
         </div>
       </div>
     );
   }
   if (err) {
     return (
-      <div className="mx-auto grid min-h-[100dvh] max-w-2xl place-items-center px-4 py-6 sm:px-6">
-        <EmptyState
-          title={err}
-          body="The session may have been removed, or it belongs to another account."
-          className="w-full py-14"
-          action={
-            <button
-              onClick={() => navigate({ to: "/practice" })}
-              className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
-            >
-              Back to practice
-            </button>
-          }
-        />
+      <div className="grid min-h-[100dvh] place-items-center bg-test-canvas px-4 py-6 sm:px-6">
+        <div className="w-full max-w-md rounded-xl border border-test-line bg-white p-8 text-center shadow-panel">
+          <h1 className="text-xl font-black tracking-tight text-test-ink">{err}</h1>
+          <p className="mt-2 text-sm text-test-muted">
+            The session may have been removed, or it belongs to another account.
+          </p>
+          <button
+            onClick={() => navigate({ to: "/practice" })}
+            className="btn-test mt-6 rounded-lg bg-test-accent px-4 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep"
+          >
+            Back to practice
+          </button>
+        </div>
       </div>
     );
   }

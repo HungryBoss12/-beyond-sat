@@ -205,9 +205,9 @@ export function QuestionCard({
         <mark
           key={`h-${i}`}
           title={r.note || "Highlighted"}
-          // Yellow can't survive on a brand surface, so the highlight inverts to
-          // the lightest step with deep text instead.
-          className="rounded bg-brand-100 px-0.5 text-brand-900"
+          // On the light surface a highlight can behave like a real highlight
+          // again: a soft blue wash under navy text.
+          className="rounded bg-test-tint px-0.5 text-test-ink ring-1 ring-test-edge"
         >
           <MathText>{text.slice(r.start, r.end)}</MathText>
         </mark>,
@@ -219,24 +219,28 @@ export function QuestionCard({
   }, [q.prompt, answer.highlights]);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
-      <div className="flex items-center justify-between border-b border-brand-400/30 bg-brand-800 px-6 py-4">
+    /* White card on the ice canvas. `rounded-xl` (12px) per spec, with a
+       neutral hairline rather than a blue one so the border doesn't compete
+       with the answer options' softer blue edges. */
+    <div className="overflow-hidden rounded-xl border border-test-line bg-white shadow-panel">
+      <div className="flex items-center justify-between border-b border-test-line bg-white px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="text-sm font-bold tabular-nums text-white">
+          <div className="text-sm font-bold tabular-nums text-test-ink">
             Question {index + 1} of {total}
           </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-100">
+          <span className="text-xs font-bold uppercase tracking-wider text-test-muted">
             {q.section === "math" ? "Math" : "R&W"} · {q.skill}
           </span>
         </div>
-        {/* Marked-for-review was amber; the active state is the lit brand step. */}
+        {/* Active state is the electric-blue accent; the resting state is a
+            quiet outline so it doesn't pull attention from the question. */}
         <button
           onClick={() => onChange({ ...answer, markedForReview: !answer.markedForReview })}
           className={
             "tap inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-bold transition " +
             (answer.markedForReview
-              ? "bg-brand-400 text-white ring-1 ring-brand-200/50"
-              : "bg-brand-600 text-brand-100 hover:bg-brand-400 hover:text-white")
+              ? "bg-test-accent text-white"
+              : "border border-test-edge bg-white text-test-accent hover:bg-test-tint")
           }
         >
           {answer.markedForReview ? (
@@ -252,75 +256,75 @@ export function QuestionCard({
         <div ref={containerRef} className="flex flex-col md:flex-row min-h-[680px]">
           {/* Passage */}
           <div
-            className="relative overflow-y-auto border-b border-brand-400/30 md:border-b-0 md:border-r"
+            className="relative overflow-y-auto border-b border-test-line md:border-b-0 md:border-r"
             style={{ flexBasis: `${leftPct}%` }}
           >
             <div
               ref={passageRef}
               onMouseUp={handlePassageMouseUp}
               onContextMenu={handlePassageContextMenu}
-              className="whitespace-pre-wrap p-8 text-[18px] leading-8 text-white selection:bg-brand-200/40 md:p-10 md:text-[19px]"
+              className="whitespace-pre-wrap p-8 text-[18px] leading-8 text-test-ink selection:bg-test-edge md:p-10 md:text-[19px]"
             >
               {renderedPassage}
               {q.image_url ? (
                 <img
                   src={q.image_url}
                   alt=""
-                  className="mt-5 max-w-full rounded-lg border border-brand-400/40"
+                  className="mt-5 max-w-full rounded-lg border border-test-line"
                 />
               ) : null}
             </div>
 
             {toolbar && (
               <div
-                className="pop-in absolute z-10 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-lg border border-brand-400/40 bg-brand-800 px-1.5 py-1 shadow-float"
+                className="pop-in absolute z-10 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-lg border border-test-line bg-white px-1.5 py-1 shadow-float"
                 style={{ left: toolbar.x, top: toolbar.y }}
               >
                 <button
                   onClick={() => addHighlight(false)}
-                  className="tap inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-white hover:bg-brand-400"
+                  className="tap inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-test-ink hover:bg-test-tint"
                 >
-                  <Highlighter className="h-3.5 w-3.5 text-brand-100" /> Highlight
+                  <Highlighter className="h-3.5 w-3.5 text-test-accent" /> Highlight
                   <kbd
                     title="Change in Profile → Highlight shortcuts"
-                    className="ml-1 rounded bg-brand-900 px-1 font-mono text-[10px] text-brand-100"
+                    className="ml-1 rounded bg-test-canvas px-1 font-mono text-[10px] text-test-muted"
                   >{formatBinding(bindings.highlight)}</kbd>
                 </button>
                 <button
                   onClick={() => addHighlight(true)}
-                  className="tap inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-white hover:bg-brand-400"
+                  className="tap inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-test-ink hover:bg-test-tint"
                 >
-                  <StickyNote className="h-3.5 w-3.5 text-brand-100" /> Note
+                  <StickyNote className="h-3.5 w-3.5 text-test-accent" /> Note
                   <kbd
                     title="Change in Profile → Highlight shortcuts"
-                    className="ml-1 rounded bg-brand-900 px-1 font-mono text-[10px] text-brand-100"
+                    className="ml-1 rounded bg-test-canvas px-1 font-mono text-[10px] text-test-muted"
                   >{formatBinding(bindings.note)}</kbd>
                 </button>
               </div>
             )}
 
             {answer.highlights.length > 0 && (
-              <div className="space-y-2 border-t border-brand-400/30 bg-brand-700 p-4">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-brand-100">
+              <div className="space-y-2 border-t border-test-line bg-test-canvas p-4">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-test-muted">
                   Highlights & notes
                 </div>
                 {answer.highlights.map((h) => (
                   <div
                     key={h.id}
-                    className="flex items-start gap-2 rounded-md border border-brand-400/40 bg-brand-800 p-2"
+                    className="flex items-start gap-2 rounded-md border border-test-line bg-white p-2"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="line-clamp-2 text-sm text-white">
-                        {/* Same inversion as the passage: light chip, deep text. */}
-                        <mark className="rounded bg-brand-100 px-0.5 text-brand-900"><MathText>{h.text}</MathText></mark>
+                      <div className="line-clamp-2 text-sm text-test-ink">
+                        {/* Same treatment as in the passage. */}
+                        <mark className="rounded bg-test-tint px-0.5 text-test-ink ring-1 ring-test-edge"><MathText>{h.text}</MathText></mark>
                       </div>
                       {h.note && (
-                        <div className="mt-1 text-xs italic text-brand-100">“{h.note}”</div>
+                        <div className="mt-1 text-xs italic text-test-muted">“{h.note}”</div>
                       )}
                     </div>
                     <button
                       onClick={() => removeHighlight(h.id)}
-                      className="tap rounded p-1 text-brand-100 hover:bg-brand-900 hover:text-white"
+                      className="tap rounded p-1 text-test-muted hover:bg-test-tint hover:text-test-accent"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -337,10 +341,10 @@ export function QuestionCard({
               document.body.style.cursor = "col-resize";
               document.body.style.userSelect = "none";
             }}
-            className="hidden w-1.5 cursor-col-resize items-center justify-center bg-brand-800 transition hover:bg-brand-400 md:flex"
+            className="hidden w-1.5 cursor-col-resize items-center justify-center bg-test-canvas transition hover:bg-test-edge md:flex"
             title="Drag to resize"
           >
-            <div className="h-10 w-1 rounded-full bg-brand-300" />
+            <div className="h-10 w-1 rounded-full bg-slate-300" />
           </div>
 
           {/* Question */}
@@ -398,20 +402,20 @@ function QuestionBody({
 
   return (
     <div className="p-8 md:p-10">
-      <MathText block className="whitespace-pre-wrap text-[18px] font-semibold leading-8 text-white md:text-[19px]">
+      <MathText block className="whitespace-pre-wrap text-[18px] font-semibold leading-8 text-test-ink md:text-[19px]">
         {q.question_text}
       </MathText>
 
       {q.kind === "grid_in" ? (
         <div className="mt-6">
-          <label className="text-xs font-bold uppercase tracking-wider text-brand-100">
+          <label className="text-xs font-bold uppercase tracking-wider text-test-muted">
             Your answer
           </label>
           <input
             value={answer.gridAnswer}
             onChange={(e) => onChange({ ...answer, gridAnswer: e.target.value })}
             inputMode="numeric"
-            className="mt-2 block w-full max-w-xs rounded-lg border border-brand-400/50 bg-brand-800 px-4 py-3 text-xl font-bold tabular-nums text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
+            className="mt-2 block w-full max-w-xs rounded-lg border border-test-edge bg-white px-4 py-3 text-xl font-bold tabular-nums text-test-ink placeholder:text-slate-400 focus:border-test-accent focus:outline-none focus:ring-2 focus:ring-test-tint"
             placeholder="e.g. 3.14 or 5/8"
           />
         </div>
@@ -424,21 +428,23 @@ function QuestionBody({
             const isWrong = reveal && selected && correctChoiceId !== c.id;
             return (
               <li key={c.id}>
-                {/* Correct/wrong used to be emerald/red. On-palette they read through
-                    lightness plus the ✓/✗ marker on the letter circle instead of hue:
-                    correct is the lit step, wrong is the deepest one. */}
+                {/* Default is a white card with a soft blue edge; hover washes to
+                    #EFF6FF and pulls the border to the accent; selected fills
+                    with the accent. Review mode keeps hue out of correct/wrong —
+                    the ✓/✗ on the letter circle carries it, with weight from a
+                    ring rather than green/red. */}
                 <div
                   className={
-                    "flex items-start gap-4 rounded-xl border-2 p-4 transition md:p-5 " +
+                    "flex items-start gap-4 rounded-xl border p-4 transition md:p-5 " +
                     (isCorrect
-                      ? "border-brand-100 bg-brand-400"
+                      ? "border-test-accent bg-test-tint ring-2 ring-test-accent"
                       : isWrong
-                      ? "border-brand-300/60 bg-brand-900"
+                      ? "border-slate-400 bg-slate-100"
                       : selected
-                      ? "border-brand-200 bg-brand-400"
+                      ? "border-test-accent bg-test-accent"
                       : eliminated
-                      ? "border-brand-400/30 bg-brand-700"
-                      : "border-brand-400/40 bg-brand-800 hover:border-brand-200")
+                      ? "border-test-line bg-test-canvas"
+                      : "border-test-edge bg-white hover:border-test-accent hover:bg-test-tint")
                   }
                 >
                   <button
@@ -452,9 +458,13 @@ function QuestionBody({
                     }
                     className={
                       "tap grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 text-base font-black transition " +
-                      (isCorrect || isWrong || selected
-                        ? "border-white bg-white text-brand-700"
-                        : "border-brand-300 text-white hover:border-brand-100 hover:bg-brand-400")
+                      (selected && !isCorrect && !isWrong
+                        ? "border-white bg-white text-test-accent"
+                        : isCorrect
+                        ? "border-test-accent bg-test-accent text-white"
+                        : isWrong
+                        ? "border-slate-500 bg-slate-500 text-white"
+                        : "border-test-edge text-test-accent hover:border-test-accent hover:bg-test-tint")
                     }
                   >
                     {isCorrect ? (
@@ -476,7 +486,11 @@ function QuestionBody({
                     }
                     className={
                       "flex-1 pt-1.5 text-left text-[18px] leading-8 md:text-[19px] " +
-                      (eliminated ? "text-brand-200 line-through" : "text-white")
+                      (eliminated
+                        ? "text-slate-400 line-through"
+                        : selected && !isCorrect && !isWrong
+                        ? "text-white"
+                        : "text-test-ink")
                     }
                   >
                     <MathText>{c.text}</MathText>
@@ -488,8 +502,10 @@ function QuestionBody({
                       className={
                         "tap shrink-0 rounded-md p-2 transition " +
                         (eliminated
-                          ? "bg-brand-900 text-white"
-                          : "text-brand-100 hover:bg-brand-900 hover:text-white")
+                          ? "bg-slate-200 text-slate-600"
+                          : selected
+                          ? "text-white/80 hover:bg-white/20 hover:text-white"
+                          : "text-slate-400 hover:bg-test-canvas hover:text-test-ink")
                       }
                     >
                       <XIcon className="h-4 w-4" />

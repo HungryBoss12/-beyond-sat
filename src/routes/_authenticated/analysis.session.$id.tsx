@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { QuestionCard, emptyAnswer, type AnswerState, type QuestionRow } from "@/components/QuestionCard";
-import { EmptyState, Skeleton } from "@/components/ui/panel";
 
 export const Route = createFileRoute("/_authenticated/analysis/session/$id")({
   component: SessionReview,
@@ -104,43 +103,37 @@ function SessionReview() {
      rather than sitting inside the app shell. */
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-white">
-        <div className="grid h-14 grid-cols-3 items-center gap-3 border-b border-brand-400/40 px-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-9 w-9" />
-            <Skeleton className="h-4 w-24" />
-          </div>
-          <Skeleton className="mx-auto h-7 w-28 rounded-full" />
-          <Skeleton className="ml-auto h-3 w-12" />
-        </div>
+      <div className="fixed inset-0 z-50 flex flex-col bg-test-canvas">
+        <div className="h-14 w-full shrink-0 bg-test-chrome" />
         <div className="flex-1 overflow-hidden px-4 py-6 sm:px-6">
           <div className="mx-auto max-w-7xl space-y-4">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-[46vh] rounded-2xl" />
+            <div className="skeleton-light h-4 w-40 rounded" />
+            <div className="skeleton-light h-[46vh] rounded-xl" />
           </div>
         </div>
-        <div className="flex h-16 items-center justify-between border-t border-brand-400/40 px-4 sm:px-6">
-          <Skeleton className="h-10 w-28" />
-          <Skeleton className="h-10 w-24" />
+        <div className="flex h-16 items-center justify-between border-t border-test-line bg-white px-4 sm:px-6">
+          <div className="skeleton-light h-10 w-28 rounded-lg" />
+          <div className="skeleton-light h-10 w-24 rounded-lg" />
         </div>
       </div>
     );
   }
   if (err) {
     return (
-      <EmptyState
-        title={err}
-        body="Answers are only kept for sessions you finished on this account."
-        className="py-14"
-        action={
+      <div className="grid min-h-[100dvh] place-items-center bg-test-canvas px-4 py-6 sm:px-6">
+        <div className="w-full max-w-md rounded-xl border border-test-line bg-white p-8 text-center shadow-panel">
+          <h1 className="text-xl font-black tracking-tight text-test-ink">{err}</h1>
+          <p className="mt-2 text-sm text-test-muted">
+            Answers are only kept for sessions you finished on this account.
+          </p>
           <button
             onClick={() => navigate({ to: "/analysis" })}
-            className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
+            className="btn-test mt-6 rounded-lg bg-test-accent px-4 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep"
           >
             Back to analysis
           </button>
-        }
-      />
+        </div>
+      </div>
     );
   }
 
@@ -148,12 +141,15 @@ function SessionReview() {
   const isCorrect = currentAttempt?.is_correct;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white">
-      <div className="grid h-14 grid-cols-3 items-center border-b border-brand-400/40 bg-brand-600 px-4 sm:px-6">
+    /* Same surface as the live runner — this screen embeds the identical
+       QuestionCard, so it has to share the navy chrome / ice canvas or the card
+       would sit on a mismatched blue. */
+    <div className="fixed inset-0 z-50 flex flex-col bg-test-canvas">
+      <div className="grid h-14 shrink-0 grid-cols-3 items-center bg-test-chrome px-4 sm:px-6">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate({ to: "/analysis" })}
-            className="tap grid h-9 w-9 place-items-center rounded-lg bg-brand-800 text-white hover:bg-brand-400"
+            className="tap grid h-9 w-9 place-items-center rounded-lg border border-white/20 text-white/80 hover:bg-white/10 hover:text-white"
             aria-label="Exit"
           >
             <X className="h-4 w-4" />
@@ -161,29 +157,28 @@ function SessionReview() {
           <span className="text-sm font-black tracking-tight text-white">Review mode</span>
         </div>
         <div className="flex justify-center">
-          {/* Correct/incorrect is carried by the icon plus the ramp step — a
-              lighter chip for correct — so the overlay stays inside the brand
-              palette instead of introducing green and red. */}
+          {/* Still no green/red: correct is the accent fill, incorrect is a
+              neutral slate chip, and the icon carries the rest. */}
           {isCorrect === true ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-400 px-3 py-1 text-sm font-bold text-white">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-test-accent px-3 py-1 text-sm font-bold text-white">
               <CheckCircle2 className="h-4 w-4" /> Correct
             </span>
           ) : isCorrect === false ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-800 px-3 py-1 text-sm font-bold text-white ring-1 ring-brand-300/60">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-sm font-bold text-white ring-1 ring-white/25">
               <XCircle className="h-4 w-4" /> Incorrect
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-800 px-3 py-1 text-sm font-bold text-brand-100">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-sm font-bold text-white/70">
               Unanswered
             </span>
           )}
         </div>
-        <div className="flex justify-end text-xs tabular-nums text-brand-100">
+        <div className="flex justify-end text-xs tabular-nums text-white/70">
           {idx + 1} / {questions.length}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto bg-test-canvas">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
           {q && (
             <QuestionCard
@@ -199,11 +194,11 @@ function SessionReview() {
         </div>
       </div>
 
-      <div className="flex h-16 items-center justify-between border-t border-brand-400/40 bg-brand-600 px-4 sm:px-6">
+      <div className="flex h-16 shrink-0 items-center justify-between border-t border-test-line bg-white px-4 sm:px-6">
         <button
           onClick={() => setIdx((i) => Math.max(0, i - 1))}
           disabled={idx === 0}
-          className="group btn-ghost inline-flex items-center gap-2 rounded-lg bg-brand-800 px-4 py-2 text-sm font-bold text-white disabled:pointer-events-none disabled:opacity-40"
+          className="group tap inline-flex items-center gap-2 rounded-lg border border-test-edge bg-white px-4 py-2 text-sm font-bold text-test-accent hover:bg-test-tint disabled:pointer-events-none disabled:opacity-40"
         >
           <ChevronLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
           Previous
@@ -213,7 +208,7 @@ function SessionReview() {
             if (idx >= questions.length - 1) navigate({ to: "/analysis" });
             else setIdx((i) => i + 1);
           }}
-          className="btn-brand group inline-flex items-center gap-2 rounded-lg bg-grad-brand px-4 py-2 text-sm font-bold text-white"
+          className="btn-test group inline-flex items-center gap-2 rounded-lg bg-test-accent px-4 py-2 text-sm font-bold text-white hover:bg-test-accent-deep"
         >
           {idx >= questions.length - 1 ? "Finish" : "Next"}{" "}
           <ChevronRight className="arrow-slide h-4 w-4" />

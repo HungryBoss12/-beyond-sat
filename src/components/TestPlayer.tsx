@@ -211,20 +211,20 @@ export function TestPlayer({
 
   if (!q || questions.length === 0) {
     return (
-      <div className="grid h-[100dvh] w-full place-items-center bg-white px-4 py-10">
-        <div className="w-full max-w-md rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center shadow-panel">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-800 text-white">
+      <div className="grid h-[100dvh] w-full place-items-center bg-test-canvas px-4 py-10">
+        <div className="w-full max-w-md rounded-xl border border-test-line bg-white p-8 text-center shadow-panel">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-test-tint text-test-accent ring-1 ring-test-edge">
             <X className="h-6 w-6" />
           </span>
-          <h1 className="mt-5 text-xl font-black tracking-tight text-white">
+          <h1 className="mt-5 text-xl font-black tracking-tight text-test-ink">
             No questions available
           </h1>
-          <p className="mt-2 text-sm text-brand-100">
+          <p className="mt-2 text-sm text-test-muted">
             This session has no questions to display. The questions may have been removed.
           </p>
           <button
             onClick={() => (onExit ? onExit() : navigate({ to: "/practice" }))}
-            className="btn-brand mt-6 inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2.5 text-sm font-bold text-white"
+            className="btn-test mt-6 inline-flex items-center gap-2 rounded-lg bg-test-accent px-4 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep"
           >
             Back to practice
           </button>
@@ -237,37 +237,38 @@ export function TestPlayer({
      by an animated/transformed ancestor turning into its containing block, and
      so mobile browser chrome doesn't clip the bottom nav row. */
   return (
-    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white">
-      {/* top bar — Bluebook-style with centered timer */}
-      <div className="grid h-14 shrink-0 grid-cols-3 items-center border-b border-brand-400/40 bg-brand-600 px-4 sm:px-6">
+    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-test-canvas">
+      {/* top bar — Bluebook-style with centered timer. Deep navy chrome so the
+          workspace below reads as the only lit surface on the screen. */}
+      <div className="grid h-14 shrink-0 grid-cols-3 items-center bg-test-chrome px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <button
             onClick={() => (onExit ? onExit() : navigate({ to: "/practice" }))}
-            className="tap grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-brand-400/50 text-brand-100 hover:bg-brand-800 hover:text-white"
+            className="tap grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/20 text-white/80 hover:bg-white/10 hover:text-white"
             aria-label="Exit"
           >
             <X className="h-4 w-4" />
           </button>
           <span className="truncate text-sm font-black tracking-tight text-white">
-            Beyond<span className="text-brand-100">SAT</span>
+            Beyond<span className="text-test-edge">SAT</span>
           </span>
-          <span className="hidden truncate text-xs font-bold uppercase tracking-wider text-brand-100 sm:inline">
+          <span className="hidden truncate text-xs font-bold uppercase tracking-wider text-white/70 sm:inline">
             {type === "mock" ? "Mock exam" : type === "daily" ? "Daily test" : "Practice"}
           </span>
         </div>
         <div className="flex justify-center">
           {durationSeconds > 0 ? (
-            <div className="inline-flex items-center gap-2 rounded-xl bg-brand-900 px-5 py-1.5 text-lg font-black tabular-nums tracking-wider text-white">
+            <div className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-5 py-1.5 text-lg font-black tabular-nums tracking-wider text-white ring-1 ring-white/15">
               <Clock className="h-4 w-4" /> {fmt(timeLeft)}
             </div>
           ) : (
-            <span className="text-xs font-bold uppercase tracking-wider text-brand-100">Untimed</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-white/70">Untimed</span>
           )}
         </div>
         <div className="flex justify-end">
           <button
             onClick={() => setShowReview((v) => !v)}
-            className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-400"
+            className="tap inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-test-accent hover:border-test-accent"
           >
             <Flag className="h-3.5 w-3.5" /> Review {answeredCount}/{questions.length}
           </button>
@@ -276,7 +277,7 @@ export function TestPlayer({
 
       {/* body — min-h-0 is what lets this scroll instead of stretching the
           column and pushing the nav row off-screen. */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-test-canvas">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 pb-24">
           {showReview ? (
             <ReviewPanel
@@ -343,11 +344,13 @@ function BottomBar({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="relative flex h-16 shrink-0 items-center justify-between border-t border-brand-400/40 bg-brand-600 px-4 sm:px-6">
+    /* Footer sits on white with only a hairline above it, so the controls read
+       as part of the workspace rather than a second bar of chrome. */
+    <div className="relative flex h-16 shrink-0 items-center justify-between border-t border-test-line bg-white px-4 sm:px-6">
       <button
         onClick={onPrev}
         disabled={idx === 0 || showReview}
-        className="tap group inline-flex items-center gap-2 rounded-lg border border-brand-400/50 bg-brand-800 px-4 py-2 text-sm font-bold text-white hover:bg-brand-400 disabled:pointer-events-none disabled:opacity-40"
+        className="tap group inline-flex items-center gap-2 rounded-lg border border-test-edge bg-white px-4 py-2 text-sm font-bold text-test-accent hover:bg-test-tint disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
         Back
@@ -356,7 +359,7 @@ function BottomBar({
       <div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="tap inline-flex items-center gap-2 rounded-lg bg-brand-900 px-4 py-2 text-sm font-bold tabular-nums text-white hover:bg-brand-800"
+          className="tap inline-flex items-center gap-2 rounded-lg bg-test-canvas px-4 py-2 text-sm font-bold tabular-nums text-test-ink hover:bg-test-tint"
         >
           Question {idx + 1} of {total}
           <ChevronRight
@@ -366,12 +369,12 @@ function BottomBar({
           />
         </button>
         {open && (
-          <div className="rise-in absolute bottom-full mb-3 w-[min(92vw,520px)] rounded-2xl border border-brand-400/40 bg-brand-600 p-4 shadow-float">
+          <div className="rise-in absolute bottom-full mb-3 w-[min(92vw,520px)] rounded-2xl border border-test-line bg-white p-4 shadow-float">
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-brand-100">
+              <span className="text-xs font-bold uppercase tracking-wider text-test-muted">
                 Jump to question
               </span>
-              <span className="text-xs tabular-nums text-brand-100">
+              <span className="text-xs tabular-nums text-test-muted">
                 {answeredCount}/{total} answered
               </span>
             </div>
@@ -389,16 +392,17 @@ function BottomBar({
                     }}
                     className={
                       "tap relative h-10 rounded-lg text-sm font-bold tabular-nums " +
-                      (cur ? "ring-2 ring-brand-100 ring-offset-2 ring-offset-brand-600 " : "") +
+                      (cur ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "") +
                       (a
-                        ? "bg-brand-400 text-white "
-                        : "bg-brand-800 text-brand-100 hover:bg-brand-900 hover:text-white ")
+                        ? "bg-test-accent text-white "
+                        : "border border-test-edge bg-white text-test-muted hover:bg-test-tint hover:text-test-ink ")
                     }
                   >
                     {i + 1}
-                    {/* The "marked" dot was amber; it's the lightest brand step now. */}
+                    {/* Marked-for-review dot, keyed to the accent so it matches
+                        the bookmark toggle on the card. */}
                     {m && (
-                      <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border border-brand-600 bg-brand-100" />
+                      <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-test-accent" />
                     )}
                   </button>
                 );
@@ -411,7 +415,7 @@ function BottomBar({
       <button
         onClick={onNext}
         disabled={showReview}
-        className="btn-brand group inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:pointer-events-none disabled:opacity-40"
+        className="btn-test group inline-flex items-center gap-2 rounded-lg bg-test-accent px-4 py-2 text-sm font-bold text-white hover:bg-test-accent-deep disabled:pointer-events-none disabled:opacity-40"
       >
         {isLast ? "Finish" : "Next"} <ChevronRight className="arrow-slide h-4 w-4" />
       </button>
@@ -438,9 +442,9 @@ function ReviewPanel({
 }) {
   const unanswered = answered.filter((x) => !x).length;
   return (
-    <div className="rise-in rounded-2xl border border-brand-400/40 bg-brand-600 p-6 shadow-panel">
-      <h2 className="text-xl font-black tracking-tight text-white">Review your answers</h2>
-      <p className="mt-1 text-sm text-brand-100">
+    <div className="rise-in rounded-xl border border-test-line bg-white p-6 shadow-panel">
+      <h2 className="text-xl font-black tracking-tight text-test-ink">Review your answers</h2>
+      <p className="mt-1 text-sm text-test-muted">
         {unanswered > 0
           ? `${unanswered} unanswered. Tap any number to jump back.`
           : "All questions answered. Submit when you're ready."}
@@ -456,15 +460,15 @@ function ReviewPanel({
               onClick={() => onGoto(i)}
               className={
                 "tap relative aspect-square rounded-lg text-sm font-bold tabular-nums " +
-                (cur ? "ring-2 ring-brand-100 ring-offset-2 ring-offset-brand-600 " : "") +
+                (cur ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "") +
                 (a
-                  ? "bg-brand-400 text-white "
-                  : "bg-brand-800 text-brand-100 hover:bg-brand-900 hover:text-white ")
+                  ? "bg-test-accent text-white "
+                  : "border border-test-edge bg-white text-test-muted hover:bg-test-tint hover:text-test-ink ")
               }
             >
               {i + 1}
               {m && (
-                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border border-brand-600 bg-brand-100" />
+                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-test-accent" />
               )}
             </button>
           );
@@ -474,7 +478,7 @@ function ReviewPanel({
         <button
           onClick={onSubmit}
           disabled={submitting}
-          className="btn-brand inline-flex items-center gap-2 rounded-lg bg-brand-400 px-5 py-2.5 text-sm font-bold text-white disabled:pointer-events-none disabled:opacity-60"
+          className="btn-test inline-flex items-center gap-2 rounded-lg bg-test-accent px-5 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep disabled:pointer-events-none disabled:opacity-60"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Submit test

@@ -65,6 +65,36 @@
   --color-blue-700: var(--color-brand-700);
   --color-blue-800: var(--color-brand-800);
   --color-blue-900: var(--color-brand-900);
+
+  /* -------------------------------------------------------------------------
+     Test-taking surface
+
+     The practice / mock / review runner inverts the app's usual scheme. Instead
+     of brand-blue cards on a white page, it's white cards on a soft ice-blue
+     canvas with deep navy text. Two reasons this surface gets its own palette:
+
+     1. Fatigue. A test sitting is 30-70 minutes of sustained reading. A large
+        saturated #11269D field is fine for a dashboard glanced at for seconds
+        and punishing for an hour.
+     2. Contrast. Answer and passage text runs at 18-19px and has to stay
+        comfortably readable — #0F172A on #FFFFFF is ~16.9:1, where the old
+        white-on-#0C1B70 was ~12:1 and dropped further on the lighter steps.
+
+     These are declared as their own `test-*` family rather than reusing
+     `blue-*` because the block above re-points Tailwind's blue scale at the
+     brand ramp: `blue-200` in this project is #8A98D6, not the #BFDBFE this
+     surface needs. `slate-*` is untouched by that remap and is used directly
+     where a token would add nothing.
+     ------------------------------------------------------------------------- */
+  --color-test-canvas: #f0f4f9;      /* page field behind the cards */
+  --color-test-chrome: #0f172a;      /* top nav / header bar */
+  --color-test-ink: #0f172a;         /* primary body text */
+  --color-test-muted: #475569;       /* secondary / meta text */
+  --color-test-line: #e2e8f0;        /* neutral card border, dividers */
+  --color-test-edge: #bfdbfe;        /* answer-option border, softer blue */
+  --color-test-accent: #1d4ed8;      /* selected state, primary action */
+  --color-test-accent-deep: #1a43ba; /* accent hover / pressed */
+  --color-test-tint: #eff6ff;        /* option hover wash */
 }
 
 :root {
@@ -515,6 +545,58 @@
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
+/* Light-surface variant, for the test runner. The default `skeleton` shimmers
+   through the dark blue ramp, which reads as a solid navy block against the ice
+   canvas. */
+@utility skeleton-light {
+  background-image: linear-gradient(
+    90deg,
+    #e3eaf3 25%,
+    #f4f8fc 37%,
+    #e3eaf3 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Primary action on the light test surface. Same motion as `btn-brand`, but the
+   glow is keyed to #1D4ED8 — `btn-brand`'s shadow is mixed from the #11269D
+   ramp and turns muddy over the ice canvas. */
+@utility btn-test {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.24s ease,
+    background-color 0.2s ease;
+  box-shadow:
+    0 1px 2px rgba(29, 78, 216, 0.24),
+    0 8px 20px -6px rgba(29, 78, 216, 0.36);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--grad-sheen);
+    transform: translateX(-120%);
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 2px 4px rgba(29, 78, 216, 0.3),
+      0 14px 32px -8px rgba(29, 78, 216, 0.5);
+  }
+  &:hover::after {
+    transform: translateX(120%);
+  }
+  &:active {
+    transform: translateY(0) scale(0.985);
+  }
+}
+
 /* Wraps a route outlet; keyed on pathname so each navigation replays it. */
 @utility route-enter {
   animation: rise-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -543,6 +625,8 @@
   .tap:active,
   .btn-brand:hover,
   .btn-brand:active,
+  .btn-test:hover,
+  .btn-test:active,
   .btn-ghost:hover,
   .btn-ghost:active,
   .nudge:hover,
@@ -550,7 +634,8 @@
   .group:hover .tile-invert {
     transform: none !important;
   }
-  .btn-brand::after {
+  .btn-brand::after,
+  .btn-test::after {
     display: none !important;
   }
   /* Static placeholder still has to stay on-palette — a grey block would be the
@@ -559,5 +644,10 @@
     animation: none !important;
     background-image: none;
     background-color: var(--surface-base);
+  }
+  .skeleton-light {
+    animation: none !important;
+    background-image: none;
+    background-color: #e3eaf3;
   }
 }

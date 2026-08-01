@@ -17,40 +17,74 @@ function PracticeLanding() {
   const [mockCount, setMockCount] = useState<number | null>(null);
   const [dailyExists, setDailyExists] = useState<boolean>(false);
   const [dailyDone, setDailyDone] = useState<boolean>(false);
+  const [err, setErr] = useState<string | null>(null);
   const today = format(new Date(), "yyyy-MM-dd");
 
   useEffect(() => {
     (async () => {
-      const [{ count: rw }, { count: m }, { count: mocks }, { data: dt }, { data: userData }] =
-        await Promise.all([
-          supabase
-            .from("questions")
-            .select("*", { count: "exact", head: true })
-            .eq("section", "reading_writing"),
-          supabase.from("questions").select("*", { count: "exact", head: true }).eq("section", "math"),
-          supabase
-            .from("mock_exams")
-            .select("*", { count: "exact", head: true })
-            .eq("published", true),
-          supabase.from("daily_tests").select("id").eq("date", today).maybeSingle(),
-          supabase.auth.getUser(),
-        ]);
-      setRwCount(rw ?? 0);
-      setMathCount(m ?? 0);
-      setMockCount(mocks ?? 0);
-      setDailyExists(!!dt);
-      const uid = userData.user?.id;
-      if (uid) {
-        const { data: sp } = await supabase
-          .from("student_profiles")
-          .select("last_daily_completed_date")
-          .eq("user_id", uid)
-          .maybeSingle();
-        setDailyDone(sp?.last_daily_completed_date === today);
+      try {
+        /* Old approach used `{ count: "exact", head: true }`, which relies on the
+           PostgREST Content-Range response header being readable by the browser.
+           Some Supabase clients / proxies don't expose it, so the count silently
+           lands as null and the page renders "0 questions available". Fetching
+           `select("id")` rows and counting on the client side doesn't have that
+           problem — and for a question bank under a few thousand rows it adds no
+           meaningful latency. The `skill` query in `practice.$section.tsx` already
+           uses this pattern successfully. */
+        const [{ data: rwRows }, { data: mRows }, { data: mockRows }, { data: dt }, { data: sess }] =
+          await Promise.all([
+            supabase.from("questions").select("id").eq("section", "reading_writing"),
+            supabase.from("questions").select("id").eq("section", "math"),
+            supabase.from("mock_exams").select("id").eq("published", true),
+            supabase.from("daily_tests").select("id").eq("date", today).maybeSingle(),
+            /* `getSession()` reads the token from localStorage — it never makes a
+               network call. `getUser()` hits the auth API, so putting it inside
+               Promise.all blocked the counts from rendering until the auth server
+               responded. We only need the user id to check whether today's daily
+               is already completed; that's a single cheap request after the counts
+               are already on screen. */
+            supabase.auth.getSession(),
+          ]);
+
+        setRwCount((rwRows ?? []).length);
+        setMathCount((mRows ?? []).length);
+        setMockCount((mockRows ?? []).length);
+        setDailyExists(!!dt);
+
+        const uid = sess?.user?.id;
+        if (uid) {
+          const { data: sp } = await supabase
+            .from("student_profiles")
+            .select("last_daily_completed_date")
+            .eq("user_id", uid)
+            .maybeSingle();
+          setDailyDone(sp?.last_daily_completed_date === today);
+        }
+      } catch (e: any) {
+        setErr(e.message ?? "Could not load practice data.");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [today]);
+
+  if (err) {
+    return (
+      <div className="space-y-6">
+        <PageHead title="Practice" subtitle="Choose a section or take a full mock exam." />
+        <div className="rounded-2xl border border-dashed border-brand-300/50 bg-brand-800/50 px-4 py-10 text-center">
+          <p className="text-sm font-semibold text-white">Could not load practice data</p>
+          <p className="mt-1 text-xs text-brand-100">{err}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn-brand mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
+          >
+            Reload
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   /* Counts used to appear as em-dashes while the queries ran, which reads as
      "no questions" rather than "still loading". Mirror the real layout instead:

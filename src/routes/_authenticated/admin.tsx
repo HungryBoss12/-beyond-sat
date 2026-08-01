@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { canEditorAccess, getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 import {
   LayoutDashboard,
   HelpCircle,
@@ -19,16 +20,18 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  beforeLoad: async () => {
+  /* Runs again on every navigation within /admin, so it doubles as the
+     per-section guard: filtering the sidebar hides links, it doesn't stop an
+     editor from typing /admin/users into the address bar. */
+  beforeLoad: async ({ location }) => {
     const { data } = await supabase.auth.getUser();
     if (!data.user) throw redirect({ to: "/signin" });
-    const { data: role } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", data.user.id)
-      .eq("role", "admin")
-      .maybeSingle();
+    const role = await getStaffRole(data.user.id);
     if (!role) throw redirect({ to: "/dashboard" });
+    if (role === "editor" && !canEditorAccess(location.pathname)) {
+      throw redirect({ to: EDITOR_HOME });
+    }
+    return { staffRole: role };
   },
   component: AdminLayout,
   head: () => ({ meta: [{ title: "Admin — BeyondSAT" }] }),
@@ -45,37 +48,45 @@ type NavItem = {
   /** Match the path exactly. Needed for "/admin", which is a prefix of every
       other admin route and would otherwise always look active. */
   exact?: boolean;
+  /** Editors don't see this. Mirrors the guard in `beforeLoad`. */
+  adminOnly?: boolean;
 };
 
 /** `as const` keeps each `to` a string literal so TanStack's <Link> accepts it;
     `satisfies` still checks every entry against the NavItem shape. */
 const NAV = [
-  { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true, group: "General" },
-  { to: "/admin/homepage", label: "Homepage", icon: Home, group: "General" },
+  { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true, group: "General", adminOnly: true },
+  { to: "/admin/homepage", label: "Homepage", icon: Home, group: "General", adminOnly: true },
   { to: "/admin/questions", label: "Questions", icon: HelpCircle, group: "Content" },
-  { to: "/admin/tests", label: "Tests", icon: FileStack, group: "Content" },
+  { to: "/admin/tests", label: "Tests", icon: FileStack, group: "Content", adminOnly: true },
   { to: "/admin/daily", label: "Daily Tests", icon: CalendarDays, group: "Content" },
   { to: "/admin/mocks", label: "Mock Exams", icon: ClipboardList, group: "Content" },
-  { to: "/admin/examdates", label: "Exam Dates", icon: CalendarDays, group: "Content" },
+  { to: "/admin/examdates", label: "Exam Dates", icon: CalendarDays, group: "Content", adminOnly: true },
   { to: "/admin/news", label: "News", icon: Newspaper, group: "Content" },
-  { to: "/admin/users", label: "Users", icon: Users, group: "Manage" },
-  { to: "/admin/settings", label: "Settings", icon: Settings, group: "Manage" },
+  { to: "/admin/users", label: "Users", icon: Users, group: "Manage", adminOnly: true },
+  { to: "/admin/settings", label: "Settings", icon: Settings, group: "Manage", adminOnly: true },
 ] as const satisfies readonly NavItem[];
+
+function visibleNav(role: StaffRole) {
+  return NAV.filter((n) => role === "admin" || !n.adminOnly);
+}
 
 function isActive(n: NavItem, pathname: string) {
   return n.exact ? pathname === n.to : pathname === n.to || pathname.startsWith(n.to + "/");
 }
 
 function AdminLayout() {
+  const { staffRole } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const current = NAV.find((n) => isActive(n, pathname));
+  const nav = visibleNav(staffRole);
+  const current = nav.find((n) => isActive(n, pathname));
 
   return (
     <div className="flex min-h-screen bg-white">
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-brand-400/30 bg-brand-600 lg:flex">
-        <SidebarBody pathname={pathname} />
+        <SidebarBody pathname={pathname} role={staffRole} />
       </aside>
 
       {/* Mobile drawer */}
@@ -86,7 +97,11 @@ function AdminLayout() {
             onClick={() => setDrawerOpen(false)}
           />
           <aside className="slide-in absolute inset-y-0 left-0 flex w-72 flex-col bg-brand-600 shadow-float">
-            <SidebarBody pathname={pathname} onNavigate={() => setDrawerOpen(false)} />
+            <SidebarBody
+              pathname={pathname}
+              role={staffRole}
+              onNavigate={() => setDrawerOpen(false)}
+            />
           </aside>
         </div>
       )}
@@ -108,9 +123,9 @@ function AdminLayout() {
                 {/* Breadcrumb keeps the group visible now that the sidebar can
                     be collapsed off-screen on mobile. */}
                 <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-brand-200">
-                  Admin
+                  {staffRole === "admin" ? "Admin" : "Editor"}
                   <ChevronRight className="h-3 w-3" />
-                  <span className="text-brand-100">{current?.group ?? "General"}</span>
+                  <span className="text-brand-100">{current?.group ?? "Content"}</span>
                 </div>
                 <h1
                   key={pathname}
@@ -120,9 +135,11 @@ function AdminLayout() {
                 </h1>
               </div>
             </div>
+            {/* The badge is the only place the signed-in role is stated, so it
+                reflects the real role rather than a hardcoded "Admin". */}
             <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-800 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white ring-1 ring-brand-400/50">
               <span className="pulse-ring h-1.5 w-1.5 rounded-full bg-brand-200" />
-              Admin
+              {staffRole === "admin" ? "Admin" : "Editor"}
             </span>
           </div>
         </header>
@@ -139,15 +156,22 @@ function AdminLayout() {
 /** Sidebar contents, shared by the desktop rail and the mobile drawer. */
 function SidebarBody({
   pathname,
+  role,
   onNavigate,
 }: {
   pathname: string;
+  role: StaffRole;
   onNavigate?: () => void;
 }) {
+  const nav = visibleNav(role);
   return (
     <>
       <div className="flex h-16 items-center justify-between gap-2.5 border-b border-brand-400/30 px-5">
-        <Link to="/admin" onClick={onNavigate} className="group flex min-w-0 items-center gap-2.5">
+        <Link
+          to={role === "admin" ? "/admin" : EDITOR_HOME}
+          onClick={onNavigate}
+          className="group flex min-w-0 items-center gap-2.5"
+        >
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-400 shadow-brand transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
             <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" aria-hidden="true">
               <path d="M12 3 21 7.5 12 12 3 7.5 12 3Z" fill="#fff" />
@@ -159,7 +183,7 @@ function SidebarBody({
               Beyond<span className="text-brand-200">SAT</span>
             </span>
             <span className="mt-1 block text-[10px] font-bold uppercase tracking-wider text-brand-100">
-              Admin Panel
+              {role === "admin" ? "Admin Panel" : "Editor Panel"}
             </span>
           </span>
         </Link>
@@ -176,7 +200,7 @@ function SidebarBody({
 
       <nav className="flex-1 space-y-5 overflow-y-auto p-3.5">
         {NAV_GROUPS.map((group) => {
-          const items = NAV.filter((n) => n.group === group);
+          const items = nav.filter((n) => n.group === group);
           if (items.length === 0) return null;
           return (
             <div key={group}>

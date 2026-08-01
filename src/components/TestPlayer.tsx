@@ -191,9 +191,17 @@ export function TestPlayer({
     setSubmitting(false);
   }
 
-  const q = questions[idx];
+  /* Clamped rather than indexed straight: `idx` can outrun the array if the
+     question list ever shrinks, and an out-of-range read here reaches
+     QuestionCard as `undefined` and throws mid-render. */
+  const q = questions.length > 0 ? questions[Math.min(idx, questions.length - 1)] : undefined;
+  /* Driven off `questions`, not `answers`. `answers` is seeded from the initial
+     questions and kept in component state, so if the question list ever changes
+     length the two fall out of sync and `questions[i].kind` reads undefined —
+     which throws during render and blanks the screen. Walking `questions` keeps
+     the lengths aligned by construction. */
   const answered = useMemo(
-    () => answers.map((a, i) => isAnswered(a, questions[i].kind)),
+    () => questions.map((qq, i) => (answers[i] ? isAnswered(answers[i], qq.kind) : false)),
     [answers, questions],
   );
   const answeredCount = answered.filter(Boolean).length;
@@ -201,10 +209,37 @@ export function TestPlayer({
 
   if (result) return <ResultsView result={result} type={type} onExit={() => navigate({ to: "/practice" })} />;
 
+  if (!q || questions.length === 0) {
+    return (
+      <div className="grid h-[100dvh] w-full place-items-center bg-white px-4 py-10">
+        <div className="w-full max-w-md rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center shadow-panel">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-800 text-white">
+            <X className="h-6 w-6" />
+          </span>
+          <h1 className="mt-5 text-xl font-black tracking-tight text-white">
+            No questions available
+          </h1>
+          <p className="mt-2 text-sm text-brand-100">
+            This session has no questions to display. The questions may have been removed.
+          </p>
+          <button
+            onClick={() => (onExit ? onExit() : navigate({ to: "/practice" }))}
+            className="btn-brand mt-6 inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2.5 text-sm font-bold text-white"
+          >
+            Back to practice
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* Sized with dvh rather than `fixed inset-0` so the runner can't be collapsed
+     by an animated/transformed ancestor turning into its containing block, and
+     so mobile browser chrome doesn't clip the bottom nav row. */
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white">
       {/* top bar — Bluebook-style with centered timer */}
-      <div className="grid h-14 grid-cols-3 items-center border-b border-brand-400/40 bg-brand-600 px-4 sm:px-6">
+      <div className="grid h-14 shrink-0 grid-cols-3 items-center border-b border-brand-400/40 bg-brand-600 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <button
             onClick={() => (onExit ? onExit() : navigate({ to: "/practice" }))}
@@ -239,8 +274,9 @@ export function TestPlayer({
         </div>
       </div>
 
-      {/* body */}
-      <div className="flex-1 overflow-y-auto">
+      {/* body — min-h-0 is what lets this scroll instead of stretching the
+          column and pushing the nav row off-screen. */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 pb-24">
           {showReview ? (
             <ReviewPanel
@@ -307,7 +343,7 @@ function BottomBar({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="relative flex h-16 items-center justify-between border-t border-brand-400/40 bg-brand-600 px-4 sm:px-6">
+    <div className="relative flex h-16 shrink-0 items-center justify-between border-t border-brand-400/40 bg-brand-600 px-4 sm:px-6">
       <button
         onClick={onPrev}
         disabled={idx === 0 || showReview}
@@ -459,9 +495,9 @@ function ResultsView({
 }) {
   const pct = Math.round((result.correct / Math.max(1, result.total)) * 100);
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-grad-brand text-white">
+    <div className="relative h-[100dvh] w-full overflow-y-auto bg-grad-brand text-white">
       {/* Ambient decoration so the full-bleed gradient isn't a flat wall. */}
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="drift absolute -right-24 -top-32 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
         <div
           className="drift absolute -bottom-40 -left-24 h-96 w-96 rounded-full bg-white/[0.07] blur-3xl"

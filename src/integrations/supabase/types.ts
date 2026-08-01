@@ -421,6 +421,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          banned: boolean
+          banned_at: string | null
+          banned_reason: string | null
           birth_date: string | null
           city: string | null
           created_at: string
@@ -431,10 +434,14 @@ export type Database = {
           id: string
           intro_completed: boolean
           last_name: string | null
+          last_seen_at: string | null
           school: string | null
           updated_at: string
         }
         Insert: {
+          banned?: boolean
+          banned_at?: string | null
+          banned_reason?: string | null
           birth_date?: string | null
           city?: string | null
           created_at?: string
@@ -445,10 +452,14 @@ export type Database = {
           id: string
           intro_completed?: boolean
           last_name?: string | null
+          last_seen_at?: string | null
           school?: string | null
           updated_at?: string
         }
         Update: {
+          banned?: boolean
+          banned_at?: string | null
+          banned_reason?: string | null
           birth_date?: string | null
           city?: string | null
           created_at?: string
@@ -459,6 +470,7 @@ export type Database = {
           id?: string
           intro_completed?: boolean
           last_name?: string | null
+          last_seen_at?: string | null
           school?: string | null
           updated_at?: string
         }
@@ -754,6 +766,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_set_banned: {
+        Args: { p_user_id: string; p_banned: boolean; p_reason?: string | null }
+        Returns: undefined
+      }
+      admin_set_role: {
+        Args: { p_user_id: string; p_role: string }
+        Returns: undefined
+      }
+      touch_presence: { Args: never; Returns: undefined }
       admin_get_question_answers: {
         Args: { p_question_id: string }
         Returns: {
@@ -782,7 +803,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "student" | "admin"
+      app_role: "student" | "admin" | "editor"
       question_kind: "multiple_choice" | "grid_in"
       sat_difficulty: "easy" | "medium" | "hard" | "C" | "B" | "D" | "A" | "S"
       sat_section: "reading_writing" | "math"

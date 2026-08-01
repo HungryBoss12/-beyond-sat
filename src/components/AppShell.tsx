@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -31,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [streak, setStreak] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [staffRole, setStaffRole] = useState<StaffRole | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,14 +41,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       const u = data.user;
       if (!u) return;
       setEmail(u.email ?? "");
-      const [{ data: prof }, { data: sp }, { data: role }] = await Promise.all([
+      const [{ data: prof }, { data: sp }, role] = await Promise.all([
         supabase.from("profiles").select("full_name,first_name").eq("id", u.id).maybeSingle(),
         supabase.from("student_profiles").select("current_streak").eq("user_id", u.id).maybeSingle(),
-        supabase.from("user_roles").select("role").eq("user_id", u.id).eq("role", "admin").maybeSingle(),
+        getStaffRole(u.id),
       ]);
       setName(prof?.full_name || prof?.first_name || u.email?.split("@")[0] || "Student");
       setStreak(sp?.current_streak ?? 0);
-      setIsAdmin(!!role);
+      setStaffRole(role);
     })();
   }, []);
 
@@ -120,9 +121,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
-          {isAdmin && (
+          {/* Editors get the same entry point, labelled for their role and
+              pointed at the first section they're allowed to open. */}
+          {staffRole && (
             <Link
-              to="/admin"
+              to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
               className={
                 "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold " +
                 (pathname.startsWith("/admin")
@@ -131,7 +134,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               }
             >
               <Shield className="h-[18px] w-[18px] shrink-0 transition-transform duration-300 group-hover:scale-110" />
-              Admin
+              {staffRole === "admin" ? "Admin" : "Editor"}
             </Link>
           )}
         </nav>
@@ -272,9 +275,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </Link>
                 );
               })}
-              {isAdmin && (
+              {staffRole && (
                 <Link
-                  to="/admin"
+                  to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
                   className={
                     "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold " +
                     (pathname.startsWith("/admin")
@@ -283,7 +286,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   }
                 >
                   <Shield className="h-5 w-5 shrink-0" />
-                  Admin
+                  {staffRole === "admin" ? "Admin" : "Editor"}
                 </Link>
               )}
             </nav>

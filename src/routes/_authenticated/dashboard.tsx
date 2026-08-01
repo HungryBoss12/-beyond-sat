@@ -30,6 +30,7 @@ import {
   Tooltip,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
+import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 import { RW_SKILLS, MATH_SKILLS, scoreBand } from "@/lib/sat";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Panel, PanelGlow, PanelHead, PageHead, EmptyState, Skeleton } from "@/components/ui/panel";
@@ -77,7 +78,7 @@ function Dashboard() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [staffRole, setStaffRole] = useState<StaffRole | null>(null);
   const today = format(new Date(), "yyyy-MM-dd");
 
   useEffect(() => {
@@ -85,7 +86,7 @@ function Dashboard() {
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id;
       if (!uid) return;
-      const [{ data: prof }, { data: spData }, { data: sess }, { data: att }, { data: role }] = await Promise.all([
+      const [{ data: prof }, { data: spData }, { data: sess }, { data: att }, role] = await Promise.all([
         supabase.from("profiles").select("full_name,first_name").eq("id", uid).maybeSingle(),
         supabase
           .from("student_profiles")
@@ -104,13 +105,13 @@ function Dashboard() {
           .select("is_correct, questions(section,skill)")
           .eq("user_id", uid)
           .limit(1000),
-        supabase.from("user_roles").select("role").eq("user_id", uid).eq("role", "admin").maybeSingle(),
+        getStaffRole(uid),
       ]);
       setName(prof?.full_name || prof?.first_name || "Student");
       setSp((spData as StudentProfile) ?? null);
       setSessions((sess as Session[]) ?? []);
       setAttempts((att as unknown as AttemptRow[]) ?? []);
-      setIsAdmin(!!role);
+      setStaffRole(role);
       setLoading(false);
     })();
   }, []);
@@ -213,12 +214,13 @@ function Dashboard() {
             : "Let's build your prep plan."
         }
         action={
-          isAdmin ? (
+          staffRole ? (
             <Link
-              to="/admin"
+              to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
               className="btn-brand group inline-flex items-center gap-2 rounded-xl bg-grad-brand px-4 py-2.5 text-sm font-bold text-white"
             >
-              <Shield className="h-4 w-4" /> Admin Panel
+              <Shield className="h-4 w-4" />
+              {staffRole === "admin" ? "Admin Panel" : "Editor Panel"}
               <ArrowRight className="arrow-slide h-4 w-4" />
             </Link>
           ) : undefined

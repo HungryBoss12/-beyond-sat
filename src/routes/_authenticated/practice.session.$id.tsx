@@ -66,6 +66,16 @@ function SessionRunner() {
       const ordered = ids
         .map((qid) => byId.get(qid))
         .filter(Boolean) as QuestionRow[];
+      /* `ids` being non-empty doesn't guarantee any rows came back — questions
+         can be deleted after a session is created, and the reorder above drops
+         every id that no longer resolves. Handing TestPlayer an empty array left
+         its current question undefined, which QuestionCard then dereferenced,
+         throwing mid-render and blanking the whole screen. */
+      if (ordered.length === 0) {
+        setErr("The questions in this session are no longer available.");
+        setLoading(false);
+        return;
+      }
       setQuestions(ordered);
 
 
@@ -96,10 +106,11 @@ function SessionRunner() {
   }, [id, navigate]);
 
   /* Sketch the player's chrome — timer bar, question card, nav row — so the
-     wait reads as "your test is coming up" instead of a bare spinner. */
+     wait reads as "your test is coming up" instead of a bare spinner.
+     This route renders outside AppShell, so it supplies its own page padding. */
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="mx-auto min-h-[100dvh] max-w-7xl space-y-4 px-4 py-6 sm:px-6">
         <Skeleton className="h-14 rounded-2xl" />
         <Skeleton className="h-[60vh] rounded-2xl" />
         <div className="flex justify-between gap-3">
@@ -111,19 +122,21 @@ function SessionRunner() {
   }
   if (err) {
     return (
-      <EmptyState
-        title={err}
-        body="The session may have been removed, or it belongs to another account."
-        className="py-14"
-        action={
-          <button
-            onClick={() => navigate({ to: "/practice" })}
-            className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
-          >
-            Back to practice
-          </button>
-        }
-      />
+      <div className="mx-auto grid min-h-[100dvh] max-w-2xl place-items-center px-4 py-6 sm:px-6">
+        <EmptyState
+          title={err}
+          body="The session may have been removed, or it belongs to another account."
+          className="w-full py-14"
+          action={
+            <button
+              onClick={() => navigate({ to: "/practice" })}
+              className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
+            >
+              Back to practice
+            </button>
+          }
+        />
+      </div>
     );
   }
 

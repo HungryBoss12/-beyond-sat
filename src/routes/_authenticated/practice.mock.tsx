@@ -37,33 +37,31 @@ function MockList() {
       const rows = (data ?? []) as Omit<Mock, "questionCount">[];
       const withCounts: Mock[] = [];
       for (const m of rows) {
-        // Prefer sections-based count (newer format); fall back to legacy per-question rows.
-        const { count: sectionsCount } = await supabase
+        /* Counts come from fetched rows rather than `{ count: "exact", head: true }`.
+           A head request's count arrives in the Content-Range header, which isn't
+           always readable client-side — when it isn't, `count` is null. That made
+           every exam show "0 questions", and worse, a null `sectionsCount` fell
+           through to the legacy branch below and counted the wrong table. */
+        const { data: sectionRows } = await supabase
           .from("mock_exam_sections")
-          .select("*", { count: "exact", head: true })
+          .select("test_id")
           .eq("mock_exam_id", m.id)
           .not("test_id", "is", null);
+        const testIds = (sectionRows ?? []).map((r) => r.test_id as string);
         let questionCount = 0;
-        if (sectionsCount && sectionsCount > 0) {
-          const { data: testIds } = await supabase
-            .from("mock_exam_sections")
-            .select("test_id")
-            .eq("mock_exam_id", m.id)
-            .not("test_id", "is", null);
-          const ids = (testIds ?? []).map((r) => r.test_id as string);
-          if (ids.length > 0) {
-            const { count } = await supabase
-              .from("test_questions")
-              .select("*", { count: "exact", head: true })
-              .in("test_id", ids);
-            questionCount = count ?? 0;
-          }
+        // Prefer sections-based count (newer format); fall back to legacy per-question rows.
+        if (testIds.length > 0) {
+          const { data: tq } = await supabase
+            .from("test_questions")
+            .select("id")
+            .in("test_id", testIds);
+          questionCount = (tq ?? []).length;
         } else {
-          const { count } = await supabase
+          const { data: meq } = await supabase
             .from("mock_exam_questions")
-            .select("*", { count: "exact", head: true })
+            .select("id")
             .eq("mock_exam_id", m.id);
-          questionCount = count ?? 0;
+          questionCount = (meq ?? []).length;
         }
         withCounts.push({ ...m, questionCount });
       }

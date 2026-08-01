@@ -2,6 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import { RoutePending } from "./components/ui/skeletons";
+import { RouteError, RouteNotFound } from "./components/ui/route-error";
 
 export const getRouter = () => {
   const queryClient = new QueryClient();
@@ -26,6 +27,13 @@ export const getRouter = () => {
     defaultPendingComponent: RoutePending,
     defaultPendingMs: 80,
     defaultPendingMinMs: 260,
+
+    /* Error boundaries. An exception thrown while rendering a route otherwise
+     * tears down the tree and leaves a blank page, which is impossible to tell
+     * apart from a CSS problem and reports as "the screen is just white". These
+     * make the failure visible and give the user a way out of it. */
+    defaultErrorComponent: RouteError,
+    defaultNotFoundComponent: RouteNotFound,
   });
 
   return router;

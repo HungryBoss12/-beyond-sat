@@ -2,7 +2,7 @@
 # Copy this file to `.dev.vars` and fill in values. `.dev.vars` is gitignored.
 #
 # Public values (also present in wrangler.jsonc "vars" for production):
-SUPABASE_URL="https://secadznjokojeswksmbx.supabase.co"
+SUPABASE_URL="https://qlzvngegsemrzmyxwykl.supabase.co"
 SUPABASE_PUBLISHABLE_KEY="your-anon-publishable-key"
 #
 # Secret — only needed if you start using the admin (service-role) Supabase client.

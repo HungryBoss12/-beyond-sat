@@ -57,6 +57,18 @@ type StudentProfile = {
   last_daily_completed_date: string | null;
 };
 
+function parseLocalDate(ymd: string): Date {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function todayYmd(): string {
+  const now = new Date();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${m}-${d}`;
+}
+
 type Session = {
   id: string;
   type: "practice" | "daily" | "mock";
@@ -198,8 +210,17 @@ function Dashboard() {
     return withData.sort((a, b) => a.value - b.value)[0];
   }, [radarData]);
 
+  /* `exam_date` is a DATE ("YYYY-MM-DD"); `new Date()` would read it as UTC
+     midnight and come out a day short west of Greenwich. Compare local
+     midnights instead so the countdown matches the date the user picked. */
   const daysToExam = sp?.exam_date
-    ? Math.max(0, Math.ceil((new Date(sp.exam_date).getTime() - Date.now()) / 86400000))
+    ? Math.max(
+        0,
+        Math.round(
+          (parseLocalDate(sp.exam_date).getTime() - parseLocalDate(todayYmd()).getTime()) /
+            86400000,
+        ),
+      )
     : null;
 
   if (loading) return <DashboardSkeleton />;

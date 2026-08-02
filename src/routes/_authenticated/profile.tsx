@@ -54,6 +54,21 @@ type StudentRow = {
 
 type ExamDateOpt = { id: string; exam_date: string; label: string | null };
 
+/* `exam_date` is a Postgres DATE, so it arrives as a bare "YYYY-MM-DD" and
+   `new Date()` would read it as UTC midnight — one day early west of
+   Greenwich. Build a local date instead so the day shown is the day stored. */
+function parseLocalDate(ymd: string): Date {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function todayYmd(): string {
+  const now = new Date();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${m}-${d}`;
+}
+
 type Session = {
   id: string;
   type: "practice" | "daily" | "mock";
@@ -103,7 +118,7 @@ function Profile() {
           .from("exam_dates")
           .select("id,exam_date,label")
           .eq("active", true)
-          .gte("exam_date", new Date().toISOString().slice(0, 10))
+          .gte("exam_date", todayYmd())
           .order("exam_date", { ascending: true }),
       ]);
       setProfile(p as ProfileRow | null);
@@ -129,7 +144,13 @@ function Profile() {
     return scored.length ? Math.max(...scored.map((m) => m.score)) : null;
   }, [mocks]);
   const daysToExam = student?.exam_date
-    ? Math.max(0, Math.ceil((new Date(student.exam_date).getTime() - Date.now()) / 86400000))
+    ? Math.max(
+        0,
+        Math.round(
+          (parseLocalDate(student.exam_date).getTime() - parseLocalDate(todayYmd()).getTime()) /
+            86400000,
+        ),
+      )
     : null;
 
   const displayName =
@@ -304,7 +325,7 @@ function Profile() {
                 label="Exam date"
                 value={
                   student?.exam_date
-                    ? `${format(new Date(student.exam_date), "MMM d, yyyy")}${
+                    ? `${format(parseLocalDate(student.exam_date), "MMM d, yyyy")}${
                         daysToExam != null ? ` (${daysToExam} day${daysToExam === 1 ? "" : "s"} left)` : ""
                       }`
                     : null
@@ -488,7 +509,18 @@ function GoalsForm({
 }) {
   const initialDate = student?.exam_date ?? "";
   const dateInList = dateOptions.some((d) => d.exam_date === initialDate);
-  const [examDate, setExamDate] = useState(dateInList ? initialDate : "");
+  /* Prefill whatever is saved, in or out of the published list. It used to be
+     dropped when it wasn't an option, which meant opening Goals and pressing
+     Save silently wiped the user's exam date — `exam_date: examDate || null`
+     writes null for an empty string. */
+  const [examDate, setExamDate] = useState(initialDate);
+  /* A saved date that isn't one of the published options was chosen
+     deliberately (typed manually during onboarding), so edit it as free text
+     rather than forcing it back onto the select. */
+  const [manual, setManual] = useState(initialDate !== "" && !dateInList);
+  /* With nothing published there is nothing to select, so manual entry is the
+     only control that can be shown — otherwise the field is a dead end. */
+  const showManual = manual || dateOptions.length === 0;
   const [targetRw, setTargetRw] = useState(
     student?.target_rw != null ? String(student.target_rw) : "",
   );
@@ -526,10 +558,21 @@ function GoalsForm({
         <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-brand-100">
           Exam date
         </span>
-        {dateOptions.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-brand-300/60 px-3 py-2 text-sm text-brand-100">
-            No exam dates published yet.
-          </div>
+        {showManual ? (
+          <>
+            <input
+              type="date"
+              value={examDate}
+              min={todayYmd()}
+              onChange={(e) => setExamDate(e.target.value)}
+              className="block w-full rounded-lg border border-brand-400/60 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
+            />
+            {dateOptions.length === 0 && (
+              <span className="mt-1 block text-[11px] text-brand-200">
+                No official dates published yet — enter the date you plan to sit the SAT.
+              </span>
+            )}
+          </>
         ) : (
           <select
             value={examDate}
@@ -539,11 +582,23 @@ function GoalsForm({
             <option value="">Select an exam date…</option>
             {dateOptions.map((d) => (
               <option key={d.id} value={d.exam_date}>
-                {format(new Date(d.exam_date), "MMM d, yyyy")}
+                {format(parseLocalDate(d.exam_date), "MMM d, yyyy")}
                 {d.label ? ` — ${d.label}` : ""}
               </option>
             ))}
           </select>
+        )}
+        {dateOptions.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setManual((m) => !m);
+              setExamDate("");
+            }}
+            className="mt-1.5 text-xs font-bold text-brand-100 underline decoration-brand-300 underline-offset-2 transition-colors hover:text-white"
+          >
+            {manual ? "Choose from published dates" : "My date isn't listed — enter it myself"}
+          </button>
         )}
       </label>
       <div className="flex justify-end">

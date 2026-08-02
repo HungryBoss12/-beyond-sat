@@ -17,6 +17,22 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 
 type ExamDateOpt = { id: string; exam_date: string; label: string | null };
 
+/* `exam_date` is a Postgres DATE, so it arrives as a bare "YYYY-MM-DD".
+   `new Date("2026-08-29")` parses that as UTC midnight, which formats as the
+   28th for anyone west of Greenwich. Split the parts and build a local date so
+   the day shown is the day stored. */
+function parseLocalDate(ymd: string): Date {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function todayYmd(): string {
+  const now = new Date();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${m}-${d}`;
+}
+
 function Onboarding() {
   const navigate = useNavigate();
   const [uid, setUid] = useState<string | null>(null);
@@ -24,6 +40,13 @@ function Onboarding() {
   const [targetRw, setTargetRw] = useState<string>("700");
   const [targetMath, setTargetMath] = useState<string>("700");
   const [dateOptions, setDateOptions] = useState<ExamDateOpt[]>([]);
+  /* When an admin hasn't published any exam dates yet, onboarding used to be a
+     dead end: the only control was a select with nothing in it, so Continue
+     stayed disabled forever. Since every authenticated route redirects here
+     until intro_completed is true, that locked *everyone* out of the app —
+     including the first admin, the only person who could add the dates.
+     Manual entry is the escape hatch. */
+  const [manual, setManual] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -58,7 +81,7 @@ function Onboarding() {
           .from("exam_dates")
           .select("id,exam_date,label")
           .eq("active", true)
-          .gte("exam_date", new Date().toISOString().slice(0, 10))
+          .gte("exam_date", todayYmd())
           .order("exam_date", { ascending: true }),
       ]);
 
@@ -69,9 +92,14 @@ function Onboarding() {
 
       const opts = (dates ?? []) as ExamDateOpt[];
       setDateOptions(opts);
-      if (sp?.exam_date && opts.some((o) => o.exam_date === sp.exam_date)) {
+      if (sp?.exam_date) {
+        /* Keep a previously saved date even when it isn't one of the published
+           options — it was chosen deliberately, so drop into manual mode
+           rather than silently discarding it. */
         setExamDate(sp.exam_date);
+        if (!opts.some((o) => o.exam_date === sp.exam_date)) setManual(true);
       }
+      if (opts.length === 0) setManual(true);
       if (sp?.target_rw) setTargetRw(String(sp.target_rw));
       if (sp?.target_math) setTargetMath(String(sp.target_math));
       setLoading(false);
@@ -83,18 +111,46 @@ function Onboarding() {
   }, [navigate]);
 
   const daysLeft = examDate
-    ? Math.max(0, Math.ceil((new Date(examDate).getTime() - Date.now()) / 86400000))
+    ? Math.max(
+        0,
+        Math.round(
+          (parseLocalDate(examDate).getTime() - parseLocalDate(todayYmd()).getTime()) / 86400000,
+        ),
+      )
     : null;
 
   const rwNum = Number(targetRw);
   const mathNum = Number(targetMath);
   const totalNum = (rwNum || 0) + (mathNum || 0);
 
+  function switchMode(toManual: boolean) {
+    setManual(toManual);
+    setExamDate("");
+    setErr(null);
+  }
+
   async function finish() {
     if (!uid) return;
     if (!examDate) {
       setErr("Please pick your exam date.");
       return;
+    }
+    if (manual) {
+      const picked = parseLocalDate(examDate);
+      if (Number.isNaN(picked.getTime())) {
+        setErr("That doesn't look like a valid date.");
+        return;
+      }
+      if (picked.getTime() < parseLocalDate(todayYmd()).getTime()) {
+        setErr("Your exam date can't be in the past.");
+        return;
+      }
+      const limit = new Date();
+      limit.setFullYear(limit.getFullYear() + 3);
+      if (picked.getTime() > limit.getTime()) {
+        setErr("Please pick a date within the next three years.");
+        return;
+      }
     }
     if (!rwNum || rwNum < 200 || rwNum > 800) {
       setErr("Reading & Writing target must be between 200 and 800.");
@@ -174,6 +230,9 @@ function Onboarding() {
     );
   }
 
+  const fieldClass =
+    "w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-lg font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none";
+
   return (
     <div className="grid min-h-screen place-items-center bg-white p-6">
       <div className="pop-in w-full max-w-md rounded-3xl border border-brand-400/40 bg-brand-600 p-8 text-white shadow-brand md:p-10">
@@ -199,7 +258,7 @@ function Onboarding() {
               step={10}
               value={targetRw}
               onChange={(e) => setTargetRw(e.target.value)}
-              className="w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-lg font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
+              className={fieldClass}
             />
             <span className="text-[11px] text-brand-200">200–800</span>
           </label>
@@ -214,7 +273,7 @@ function Onboarding() {
               step={10}
               value={targetMath}
               onChange={(e) => setTargetMath(e.target.value)}
-              className="w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-lg font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
+              className={fieldClass}
             />
             <span className="text-[11px] text-brand-200">200–800</span>
           </label>
@@ -231,24 +290,45 @@ function Onboarding() {
           <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand-100">
             Exam date
           </span>
-          {dateOptions.length === 0 ? (
-            <div className="rounded-xl border-2 border-dashed border-brand-300/50 px-4 py-3 text-sm text-brand-100">
-              No official exam dates published yet. Please check back soon.
-            </div>
+          {manual ? (
+            <>
+              <input
+                type="date"
+                value={examDate}
+                min={todayYmd()}
+                onChange={(e) => setExamDate(e.target.value)}
+                className={fieldClass}
+              />
+              {dateOptions.length === 0 && (
+                <span className="mt-1.5 block text-[11px] text-brand-200">
+                  No official dates published yet — enter the date you plan to sit the SAT. You can
+                  change it any time from your profile.
+                </span>
+              )}
+            </>
           ) : (
             <select
               value={examDate}
               onChange={(e) => setExamDate(e.target.value)}
-              className="w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-lg font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
+              className={fieldClass}
             >
               <option value="">Select an exam date…</option>
               {dateOptions.map((d) => (
                 <option key={d.id} value={d.exam_date}>
-                  {format(new Date(d.exam_date), "EEEE, MMMM d, yyyy")}
+                  {format(parseLocalDate(d.exam_date), "EEEE, MMMM d, yyyy")}
                   {d.label ? ` — ${d.label}` : ""}
                 </option>
               ))}
             </select>
+          )}
+          {dateOptions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => switchMode(!manual)}
+              className="mt-2 text-xs font-bold text-brand-100 underline decoration-brand-300 underline-offset-2 transition-colors hover:text-white"
+            >
+              {manual ? "Choose from published dates" : "My date isn't listed — enter it myself"}
+            </button>
           )}
         </label>
 

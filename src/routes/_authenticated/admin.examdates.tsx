@@ -16,6 +16,13 @@ export const Route = createFileRoute("/_authenticated/admin/examdates")({
   component: AdminExamDates,
 });
 
+/* `exam_date` is a DATE, so it arrives as a bare "YYYY-MM-DD" and `new Date()`
+   would read it as UTC midnight — one day early west of Greenwich. */
+function parseLocalDate(ymd: string): Date {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
 function AdminExamDates() {
   const [items, setItems] = useState<ExamDate[] | null>(null);
   const [date, setDate] = useState("");
@@ -121,7 +128,7 @@ function AdminExamDates() {
                   <CalendarDays className="h-5 w-5 shrink-0 text-brand-200" />
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold text-white">
-                      {format(new Date(d.exam_date), "EEEE, MMMM d, yyyy")}
+                      {format(parseLocalDate(d.exam_date), "EEEE, MMMM d, yyyy")}
                     </div>
                     {d.label && <div className="text-xs text-brand-100">{d.label}</div>}
                   </div>

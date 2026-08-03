@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  Upload,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -58,6 +59,7 @@ const NAV = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true, group: "General", adminOnly: true },
   { to: "/admin/homepage", label: "Homepage", icon: Home, group: "General", adminOnly: true },
   { to: "/admin/questions", label: "Questions", icon: HelpCircle, group: "Content" },
+  { to: "/admin/import", label: "Import", icon: Upload, group: "Content" },
   { to: "/admin/tests", label: "Tests", icon: FileStack, group: "Content", adminOnly: true },
   { to: "/admin/daily", label: "Daily Tests", icon: CalendarDays, group: "Content" },
   { to: "/admin/mocks", label: "Mock Exams", icon: ClipboardList, group: "Content" },
@@ -144,8 +146,7 @@ function AdminLayout() {
           </div>
         </header>
 
-        {/* Keyed on pathname so every navigation replays the entrance. */}
-        <div key={pathname} className="route-enter max-w-6xl p-4 md:p-8">
+        <div className="max-w-6xl p-4 md:p-8">
           <Outlet />
         </div>
       </main>

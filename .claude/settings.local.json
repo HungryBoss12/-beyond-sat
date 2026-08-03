@@ -135,7 +135,12 @@
       "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require\\('fs'\\);const d='c:/Users/javaz/Downloads/beyond-sat/src/routes/_authenticated';fs.readdirSync\\(d\\).forEach\\(f=>console.log\\(f\\)\\);\")",
       "Bash(\"C:/Program Files/nodejs/node.exe\" \"c:/Users/javaz/Downloads/beyond-sat/datescan.cjs\")",
       "Bash(\"C:/Program Files/nodejs/node.exe\" \"c:/Users/javaz/Downloads/beyond-sat/parsecheck2.cjs\")",
-      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"['datescan.cjs','parsecheck2.cjs'].forEach\\(f=>{try{require\\('fs'\\).unlinkSync\\('c:/Users/javaz/Downloads/beyond-sat/'+f\\);console.log\\('removed '+f\\)}catch\\(e\\){console.log\\('skip '+f\\)}}\\)\")"
+      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"['datescan.cjs','parsecheck2.cjs'].forEach\\(f=>{try{require\\('fs'\\).unlinkSync\\('c:/Users/javaz/Downloads/beyond-sat/'+f\\);console.log\\('removed '+f\\)}catch\\(e\\){console.log\\('skip '+f\\)}}\\)\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require\\('fs'\\);const L=fs.readFileSync\\('c:/Users/javaz/Downloads/beyond-sat/supabase/FRESH_PROJECT_SCHEMA.sql','utf8'\\).split\\(/\\\\r?\\\\n/\\);let on=false;L.forEach\\(\\(l,i\\)=>{if\\(/CREATE TABLE public\\\\.\\(questions|choices|question_tags|tags|skills\\)/.test\\(l\\)\\)on=true;if\\(on\\)console.log\\(\\(i+1\\)+': '+l\\);if\\(on&&/^\\\\\\);/.test\\(l\\)\\)on=false;}\\);\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require\\('fs'\\);const L=fs.readFileSync\\('c:/Users/javaz/Downloads/beyond-sat/supabase/FRESH_PROJECT_SCHEMA.sql','utf8'\\).split\\(/\\\\r?\\\\n/\\);let ctx=0;L.forEach\\(\\(l,i\\)=>{if\\(/GRANT|REVOKE|POLICY|ON public\\\\.questions/.test\\(l\\)&&/question/i.test\\(l\\)\\){ctx=6;}if\\(ctx>0\\){console.log\\(\\(i+1\\)+': '+l\\);ctx--;}}\\);\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" importcheck.cjs)",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"['typescript','sucrase','@babel/core','@babel/plugin-transform-typescript'].forEach\\(m=>{try{require.resolve\\(m,{paths:['c:/Users/javaz/Downloads/beyond-sat']}\\);console.log\\('have '+m\\)}catch\\(e\\){console.log\\('MISSING '+m\\)}}\\)\")",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" tsprobe.cjs)"
     ]
   }
 }

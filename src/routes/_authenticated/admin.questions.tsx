@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -12,7 +12,7 @@ import {
   type Section,
   type Difficulty,
 } from "@/lib/sat";
-import { Plus, Trash2, Edit3, X, ImageIcon, Loader2, Upload } from "lucide-react";
+import { Plus, Trash2, Edit3, X, ImageIcon, Loader2, Upload, Copy } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { MixedMathEditor } from "@/components/MixedMathEditor";
 
@@ -157,6 +157,30 @@ function AdminQuestions() {
     load();
   }
 
+  /* The list can't carry the answer key: `correct_choice_id`,
+     `correct_grid_answers` and `explanation` are revoked at column level, so no
+     SELECT returns them. Both Edit and Duplicate have to fetch them through the
+     RPC one question at a time. */
+  async function withAnswers(q: Question): Promise<Question> {
+    const { data } = await supabase.rpc("admin_get_question_answers" as any, {
+      p_question_id: q.id,
+    });
+    const ans = (data as any[])?.[0] ?? {};
+    return {
+      ...q,
+      choices: q.choices || [],
+      correct_choice_id: ans.correct_choice_id ?? null,
+      correct_grid_answers: ans.correct_grid_answers ?? [],
+      explanation: ans.explanation ?? null,
+    };
+  }
+
+  /** Opens the modal on a copy: same fields, blank id, so Save inserts. */
+  async function duplicate(q: Question) {
+    const full = await withAnswers(q);
+    setEditing({ ...full, id: "" });
+  }
+
   async function uploadImage(file: File) {
     if (!editing) return;
     setUploading(true);
@@ -202,12 +226,20 @@ function AdminQuestions() {
             </button>
           ))}
         </div>
-        <button
-          onClick={() => setEditing(empty())}
-          className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
-        >
-          <Plus className="h-4 w-4" /> New question
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to="/admin/import"
+            className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-400"
+          >
+            <Upload className="h-4 w-4" /> Bulk import
+          </Link>
+          <button
+            onClick={() => setEditing(empty())}
+            className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
+          >
+            <Plus className="h-4 w-4" /> New question
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -263,24 +295,20 @@ function AdminQuestions() {
                     </div>
                   </div>
                   <button
-                    onClick={async () => {
-                      const { data } = await supabase.rpc(
-                        "admin_get_question_answers" as any,
-                        { p_question_id: q.id },
-                      );
-                      const ans = (data as any[])?.[0] ?? {};
-                      setEditing({
-                        ...q,
-                        choices: q.choices || [],
-                        correct_choice_id: ans.correct_choice_id ?? null,
-                        correct_grid_answers: ans.correct_grid_answers ?? [],
-                        explanation: ans.explanation ?? null,
-                      });
-                    }}
+                    onClick={async () => setEditing(await withAnswers(q))}
                     className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
                     aria-label="Edit question"
                   >
                     <Edit3 className="h-4 w-4" />
+                  </button>
+
+                  <button
+                    onClick={() => duplicate(q)}
+                    className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                    aria-label="Duplicate question"
+                    title="Duplicate — opens a copy you can edit before saving"
+                  >
+                    <Copy className="h-4 w-4" />
                   </button>
 
                   <button

@@ -9,6 +9,7 @@ export type StaffRole = "admin" | "editor";
  */
 export const EDITOR_SECTIONS = [
   "/admin/questions",
+  "/admin/import",
   "/admin/daily",
   "/admin/mocks",
   "/admin/news",

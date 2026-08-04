@@ -16,6 +16,11 @@ import {
   Megaphone,
   FileText,
   Newspaper,
+  MonitorSmartphone,
+  Bot,
+  GraduationCap,
+  Star,
+  Gift,
 } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
 
@@ -99,6 +104,84 @@ const KIND_META: Record<
     icon: FileText,
     description: "A free-form block with a title, body text, and optional button.",
     template: { title: "Custom title", body: "Write anything here.", button_label: "", button_href: "" },
+  },
+  showcase: {
+    label: "Dashboard showcase",
+    icon: MonitorSmartphone,
+    description: "The dashboard preview graphic with an optional heading.",
+    template: {
+      title: "Everything in one place",
+      subtitle: "Your scores, your weak spots, your next step.",
+    },
+  },
+  ai_demo: {
+    label: "Beyond AI demo",
+    icon: Bot,
+    description: "A feature block with bullets beside a scripted AI conversation.",
+    template: {
+      eyebrow: "Beyond AI",
+      title: "Your personal 1-on-1 Digital SAT coach",
+      subtitle: "Ask anything. Get a worked solution, not just an answer.",
+      items: [{ text: "Step-by-step explanations for every question" }],
+      button_label: "Try Beyond AI",
+      button_href: "/signup",
+      chat_title: "Beyond AI",
+      messages: [
+        { role: "user", text: "Why is the answer B?" },
+        { role: "assistant", text: "Because $2x + 3 = 9$ gives $x = 3$." },
+      ],
+    },
+  },
+  programs: {
+    label: "Programs",
+    icon: GraduationCap,
+    description: "Cards for each prep program, with a duration and a button.",
+    template: {
+      title: "Choose your program",
+      subtitle: "",
+      items: [
+        {
+          icon: "GraduationCap",
+          title: "Program name",
+          duration: "8 weeks",
+          description: "Describe the program.",
+          button_label: "Learn more",
+          button_href: "/signup",
+        },
+      ],
+    },
+  },
+  reviews: {
+    label: "Student reviews",
+    icon: Star,
+    description: "Testimonial cards with a star rating and a name.",
+    template: {
+      title: "What students say",
+      subtitle: "",
+      items: [
+        { stars: 5, quote: "Write the testimonial here.", name: "Student name", detail: "1520 · +180 points", avatar: "" },
+      ],
+    },
+  },
+  /**
+   * Replaces the old "Pricing table" kind. Beyond SAT has no paid plan, so a
+   * tier grid advertised a product that doesn't exist — and a column labelled
+   * "Free" implies the others cost money. This is one unambiguous statement
+   * with a feature list instead.
+   */
+  free: {
+    label: "Free banner",
+    icon: Gift,
+    description: "A single band stating the platform is free, with a feature list.",
+    template: {
+      eyebrow: "Free forever",
+      title: "Everything here is free",
+      subtitle: "No subscription, no paywall, no locked questions. Make an account and start.",
+      items: [{ text: "What's included" }],
+      button_label: "Create a free account",
+      button_href: "/signup",
+      footnote: "No card required.",
+    },
   },
 };
 
@@ -547,10 +630,235 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
     );
   }
 
+  if (kind === "showcase") {
+    return (
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Title (optional)" hint="Leave both blank to show just the graphic."><TextInput value={value.title} onChange={set("title")} /></Field>
+        <Field label="Subtitle (optional)"><TextInput value={value.subtitle} onChange={set("subtitle")} /></Field>
+      </div>
+    );
+  }
+
+  if (kind === "ai_demo") {
+    /* The scripted transcript is a second list alongside `items`, so it can't
+       reuse the updateItem/addItem helpers above — those are hard-wired to
+       `items`. These three are the same operations against `messages`. */
+    const messages: any[] = Array.isArray(value.messages) ? value.messages : [];
+    const updateMessage = (i: number, patch: any) =>
+      onChange((prev) => {
+        const next = [...(prev.messages ?? [])];
+        next[i] = { ...next[i], ...patch };
+        return { ...prev, messages: next };
+      });
+    const addMessage = (role: string) =>
+      onChange((prev) => ({
+        ...prev,
+        messages: [...(prev.messages ?? []), { role, text: "" }],
+      }));
+    const removeMessage = (i: number) =>
+      onChange((prev) => {
+        const next = [...(prev.messages ?? [])];
+        next.splice(i, 1);
+        return { ...prev, messages: next };
+      });
+    const moveMessage = (i: number, dir: -1 | 1) =>
+      onChange((prev) => {
+        const next = [...(prev.messages ?? [])];
+        const j = i + dir;
+        if (j < 0 || j >= next.length) return prev;
+        [next[i], next[j]] = [next[j], next[i]];
+        return { ...prev, messages: next };
+      });
+
+    return (
+      <div className="space-y-5">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Eyebrow" hint="Small label above the title."><TextInput value={value.eyebrow} onChange={set("eyebrow")} placeholder="Beyond AI" /></Field>
+          <Field label="Title"><TextInput value={value.title} onChange={set("title")} /></Field>
+          <div className="md:col-span-2">
+            <Field label="Subtitle"><TextArea value={value.subtitle} onChange={set("subtitle")} rows={2} /></Field>
+          </div>
+          <Field label="Button text"><TextInput value={value.button_label} onChange={set("button_label")} /></Field>
+          <Field label="Button link"><TextInput value={value.button_href} onChange={set("button_href")} placeholder="/signup" /></Field>
+        </div>
+
+        <SubHeading label="Bullet points" />
+        <div className="space-y-3">
+          {items.map((it, i) => (
+            <ItemRow key={i} index={i} count={items.length} onMove={(dir) => moveItem(i, dir)} onRemove={() => removeItem(i)}>
+              <Field label="Bullet text"><TextInput value={it.text} onChange={(v) => updateItem(i, { text: v })} /></Field>
+            </ItemRow>
+          ))}
+          <AddItemButton label="Add a bullet" onClick={() => addItem({ text: "" })} />
+        </div>
+
+        <SubHeading label="Example conversation" />
+        <Field label="Chat header"><TextInput value={value.chat_title} onChange={set("chat_title")} placeholder="Beyond AI" /></Field>
+        <div className="space-y-3">
+          {messages.map((m, i) => (
+            <ItemRow key={i} index={i} count={messages.length} onMove={(dir) => moveMessage(i, dir)} onRemove={() => removeMessage(i)}>
+              <div className="grid gap-3 md:grid-cols-4">
+                <Field label="Who's speaking">
+                  <select
+                    value={m.role ?? "user"}
+                    onChange={(e) => updateMessage(i, { role: e.target.value })}
+                    className={CONTROL_CLASS}
+                  >
+                    <option value="user">Student</option>
+                    <option value="assistant">Beyond AI</option>
+                  </select>
+                </Field>
+                <div className="md:col-span-3">
+                  {/* Maths is written the same way as in questions, so an admin
+                      who has entered a question already knows this syntax. */}
+                  <Field label="Message" hint="Maths goes in dollar signs, e.g. $2x + 3 = 9$.">
+                    <TextArea value={m.text} onChange={(v) => updateMessage(i, { text: v })} rows={2} />
+                  </Field>
+                </div>
+              </div>
+            </ItemRow>
+          ))}
+          <div className="flex flex-wrap gap-2">
+            <AddItemButton label="Add a student message" onClick={() => addMessage("user")} />
+            <AddItemButton label="Add a Beyond AI reply" onClick={() => addMessage("assistant")} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "programs") {
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Section title"><TextInput value={value.title} onChange={set("title")} /></Field>
+          <Field label="Section subtitle"><TextInput value={value.subtitle} onChange={set("subtitle")} /></Field>
+        </div>
+        <div className="space-y-3">
+          {items.map((it, i) => (
+            <ItemRow key={i} index={i} count={items.length} onMove={(dir) => moveItem(i, dir)} onRemove={() => removeItem(i)}>
+              <div className="grid gap-3 md:grid-cols-3">
+                <Field label="Program name"><TextInput value={it.title} onChange={(v) => updateItem(i, { title: v })} /></Field>
+                <Field label="Duration" hint="Shown under the name."><TextInput value={it.duration} onChange={(v) => updateItem(i, { duration: v })} placeholder="8 weeks" /></Field>
+                <Field label="Icon name" hint="Any Lucide icon name."><TextInput value={it.icon} onChange={(v) => updateItem(i, { icon: v })} placeholder="GraduationCap" /></Field>
+                <div className="md:col-span-3">
+                  <Field label="Description"><TextArea value={it.description} onChange={(v) => updateItem(i, { description: v })} rows={2} /></Field>
+                </div>
+                <Field label="Button text (optional)"><TextInput value={it.button_label} onChange={(v) => updateItem(i, { button_label: v })} /></Field>
+                <Field label="Button link"><TextInput value={it.button_href} onChange={(v) => updateItem(i, { button_href: v })} placeholder="/signup" /></Field>
+              </div>
+            </ItemRow>
+          ))}
+          <AddItemButton
+            label="Add a program"
+            onClick={() => addItem({ icon: "GraduationCap", title: "New program", duration: "", description: "", button_label: "Learn more", button_href: "/signup" })}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "reviews") {
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Section title"><TextInput value={value.title} onChange={set("title")} /></Field>
+          <Field label="Section subtitle"><TextInput value={value.subtitle} onChange={set("subtitle")} /></Field>
+        </div>
+        <div className="space-y-3">
+          {items.map((it, i) => (
+            <ItemRow key={i} index={i} count={items.length} onMove={(dir) => moveItem(i, dir)} onRemove={() => removeItem(i)}>
+              <div className="grid gap-3 md:grid-cols-3">
+                <Field label="Student name"><TextInput value={it.name} onChange={(v) => updateItem(i, { name: v })} /></Field>
+                <Field label="Detail" hint="Score, school, anything short."><TextInput value={it.detail} onChange={(v) => updateItem(i, { detail: v })} placeholder="1520 · +180 points" /></Field>
+                <Field label="Stars" hint="0 to 5."><NumberInput value={it.stars} onChange={(v) => updateItem(i, { stars: v })} placeholder="5" /></Field>
+                <div className="md:col-span-3">
+                  <Field label="Quote" hint="Quotation marks are added automatically."><TextArea value={it.quote} onChange={(v) => updateItem(i, { quote: v })} rows={3} /></Field>
+                </div>
+                <div className="md:col-span-3">
+                  <Field label="Photo URL (optional)" hint="Leave blank to show their initials instead."><TextInput value={it.avatar} onChange={(v) => updateItem(i, { avatar: v })} /></Field>
+                </div>
+              </div>
+            </ItemRow>
+          ))}
+          <AddItemButton
+            label="Add a review"
+            onClick={() => addItem({ stars: 5, quote: "", name: "", detail: "", avatar: "" })}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "free") {
+    /* One flat list of short strings, so it's a textarea rather than ItemRows —
+       a box-per-bullet for four words each is more chrome than content. */
+    const featuresText = items
+      .map((f: any) => (typeof f === "string" ? f : (f?.text ?? "")))
+      .join("\n");
+
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Eyebrow" hint="Small label above the heading.">
+            <TextInput value={value.eyebrow} onChange={set("eyebrow")} placeholder="Free forever" />
+          </Field>
+          <Field label="Heading">
+            <TextInput value={value.title} onChange={set("title")} />
+          </Field>
+          <div className="md:col-span-2">
+            <Field label="Subtitle"><TextInput value={value.subtitle} onChange={set("subtitle")} /></Field>
+          </div>
+          <div className="md:col-span-2">
+            <Field label="What's included" hint="One per line. Shown as a two-column tick list.">
+              <TextArea
+                value={featuresText}
+                onChange={(v) =>
+                  // Blank lines are dropped so a trailing newline doesn't render
+                  // an empty bullet with a tick beside it.
+                  onChange((prev: any) => ({
+                    ...prev,
+                    items: v
+                      .split("\n")
+                      .map((line) => line.trim())
+                      .filter(Boolean)
+                      .map((text) => ({ text })),
+                  }))
+                }
+                rows={6}
+              />
+            </Field>
+          </div>
+          <Field label="Button text">
+            <TextInput value={value.button_label} onChange={set("button_label")} placeholder="Create a free account" />
+          </Field>
+          <Field label="Button link">
+            <TextInput value={value.button_href} onChange={set("button_href")} placeholder="/signup" />
+          </Field>
+          <div className="md:col-span-2">
+            <Field label="Footnote (optional)" hint="Small print under the button.">
+              <TextInput value={value.footnote} onChange={set("footnote")} placeholder="No card required." />
+            </Field>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // fallback: unknown kind
   return (
     <div className="rounded-lg border border-dashed border-brand-300/50 p-4 text-sm text-brand-100">
       This section type doesn't have a friendly editor yet.
+    </div>
+  );
+}
+
+/** Divider label for editors that hold more than one list. */
+function SubHeading({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 pt-1">
+      <span className="text-xs font-bold uppercase tracking-wider text-brand-200">{label}</span>
+      <span className="h-px flex-1 bg-brand-400/40" />
     </div>
   );
 }

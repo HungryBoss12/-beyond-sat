@@ -1,5 +1,6 @@
 import { Minus, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { usePointerGlow } from "@/hooks/usePointerGlow";
 
 /**
  * Metric display primitives: badges, deltas, and the small stat tiles that run
@@ -135,8 +136,12 @@ export function StatTile({
     amber: "bg-brand-200 text-brand-900",
     slate: "bg-brand-800 text-brand-100",
   };
+  const ref = usePointerGlow<HTMLDivElement>();
   return (
-    <div className="group flex items-center gap-3.5 rounded-2xl border border-brand-400/30 bg-brand-600 px-4 py-3.5 shadow-panel lift">
+    <div
+      ref={ref}
+      className="reveal-surface group flex items-center gap-3.5 rounded-2xl border border-brand-400/30 bg-brand-600 px-4 py-3.5 shadow-panel lift"
+    >
       <span
         className={cx(
           "tile-invert grid h-10 w-10 shrink-0 place-items-center rounded-xl",

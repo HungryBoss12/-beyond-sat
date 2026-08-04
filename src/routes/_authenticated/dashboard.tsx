@@ -11,7 +11,6 @@ import {
   BarChart3,
   Gauge,
   CalendarClock,
-  Zap,
 } from "lucide-react";
 import {
   Area,
@@ -33,6 +32,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 import { RW_SKILLS, MATH_SKILLS, scoreBand } from "@/lib/sat";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { FocusNextPanel } from "@/components/ai/FocusNextPanel";
 import { Panel, PanelGlow, PanelHead, PageHead, EmptyState, Skeleton } from "@/components/ui/panel";
 import { Badge, Delta, MeterRow, StatTile, type Tone } from "@/components/ui/metric";
 import { format } from "date-fns";
@@ -275,7 +275,18 @@ function Dashboard() {
           longest={sp?.longest_streak ?? 0}
           daysToExam={daysToExam}
         />
-        <RecommendationsPanel recs={buildRecs(sp, weakest)} />
+        {/* One panel, not two. The ranked steps are rule-based and always
+            present; the suggestion above them and the ask box below are the
+            model's read of the same data, so the student can push back on the
+            advice instead of being handed it. */}
+        <FocusNextPanel
+          className="lg:col-span-3"
+          recs={buildRecs(sp, weakest)}
+          weakestSkill={weakest?.skill ?? null}
+          accuracy={accuracy?.overall ?? null}
+          latestScore={latest?.score ?? null}
+          targetScore={sp?.target_score ?? null}
+        />
         <RadarPanel data={radarData} hasData={attempts.length > 0} weakest={weakest} />
         <HistoryPanel mocks={mocks} />
       </div>
@@ -563,37 +574,6 @@ function StreakPanel({
             "Set an exam date in your profile"
           )}
         </span>
-      </div>
-    </Panel>
-  );
-}
-
-/** Ranked next actions, derived from the weakest skill and onboarding answers. */
-function RecommendationsPanel({
-  recs,
-}: {
-  recs: { title: string; desc: string; to: "/practice" }[];
-}) {
-  return (
-    <Panel className="lg:col-span-2">
-      <PanelHead label="Focus next" icon={Zap} hint="Ranked by impact on your score" />
-      <div className="mt-4 space-y-2.5 stagger-fast">
-        {recs.map((r, i) => (
-          <Link
-            key={i}
-            to={r.to}
-            className="group flex items-start gap-3 rounded-xl border border-brand-400/30 bg-brand-800 p-3 nudge hover:border-brand-300 hover:bg-brand-700"
-          >
-            <span className="tile-invert grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-700 text-sm font-bold text-brand-100">
-              {i + 1}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold text-white">{r.title}</span>
-              <span className="mt-0.5 block text-xs text-brand-100">{r.desc}</span>
-            </span>
-            <ArrowRight className="arrow-slide mt-1.5 h-4 w-4 shrink-0 text-brand-200 group-hover:text-white" />
-          </Link>
-        ))}
       </div>
     </Panel>
   );

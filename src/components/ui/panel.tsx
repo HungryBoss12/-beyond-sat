@@ -1,4 +1,6 @@
+import { isValidElement } from "react";
 import type { LucideIcon } from "lucide-react";
+import { usePointerGlow } from "@/hooks/usePointerGlow";
 
 /**
  * Shared surface primitives for the app's data screens.
@@ -22,6 +24,12 @@ function cx(...parts: (string | false | null | undefined)[]) {
  *
  * All three are dark, so text inside is white by default and secondary text
  * uses `text-brand-100` (#B8C0E8) rather than a reduced opacity.
+ *
+ * Every panel is cursor-lit: `reveal-surface` plus the pointer hook means the
+ * card brightens under the cursor. It's applied here rather than at the ~20 call
+ * sites so the behaviour can't drift between screens, and it costs nothing when
+ * the pointer is elsewhere — the hook writes CSS variables on an animation frame
+ * and no-ops entirely under `prefers-reduced-motion`.
  */
 export function Panel({
   children,
@@ -36,10 +44,12 @@ export function Panel({
   interactive?: boolean;
   as?: "div" | "section" | "article";
 }) {
+  const ref = usePointerGlow<HTMLElement>();
   return (
     <Tag
+      ref={ref as React.Ref<never>}
       className={cx(
-        "relative rounded-2xl border p-5 md:p-6 text-white",
+        "reveal-surface relative rounded-2xl border p-5 md:p-6 text-white",
         tone === "plain" && "border-brand-400/40 bg-brand-600 shadow-panel",
         tone === "soft" && "border-brand-400/30 bg-grad-surface shadow-panel",
         tone === "brand" && "border-brand-400/50 bg-grad-brand shadow-brand",
@@ -151,20 +161,40 @@ export function Skeleton({
   return <div className={cx("skeleton rounded-lg", className)} style={style} />;
 }
 
-/** Dashed empty-state box with an optional icon and call to action. */
+/**
+ * Dashed empty-state box with an optional icon and call to action.
+ *
+ * `icon` takes either the component itself (`icon={Newspaper}`) or an already
+ * rendered element (`icon={<Newspaper className="h-8 w-8" />}`). Both spellings
+ * exist across the app, and passing an element where a component was expected
+ * crashes the whole route with "Element type is invalid" — a blank error page on
+ * an *empty list*, which is the least deserving case. Accepting both removes the
+ * trap rather than relying on every call site remembering which one it was.
+ */
 export function EmptyState({
-  icon: Icon,
+  icon,
   title,
   body,
   action,
   className,
 }: {
-  icon?: LucideIcon;
+  icon?: LucideIcon | React.ReactNode;
   title: string;
   body?: string;
   action?: React.ReactNode;
   className?: string;
 }) {
+  // A lucide icon is a function/forwardRef object; an element is already valid
+  // React output. `isValidElement` is the reliable discriminator between them.
+  const glyph = !icon
+    ? null
+    : isValidElement(icon)
+      ? icon
+      : (() => {
+          const Icon = icon as LucideIcon;
+          return <Icon className="h-5 w-5" />;
+        })();
+
   return (
     <div
       className={cx(
@@ -172,9 +202,11 @@ export function EmptyState({
         className,
       )}
     >
-      {Icon && (
-        <span className="mb-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-400 text-white shadow-panel">
-          <Icon className="h-5 w-5" />
+      {glyph && (
+        /* [&_svg]:h-5 normalises whatever size a pre-rendered element brought
+           with it, so the tile stays 40px square either way. */
+        <span className="mb-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-400 text-white shadow-panel [&_svg]:h-5 [&_svg]:w-5">
+          {glyph}
         </span>
       )}
       <div className="text-sm font-semibold text-white">{title}</div>

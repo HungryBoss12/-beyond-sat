@@ -1,4 +1,4 @@
-import { Twitter, Instagram, Youtube } from "lucide-react";
+import { Twitter, Instagram, Youtube, Sparkles } from "lucide-react";
 
 export function SiteFooter() {
   return (
@@ -10,6 +10,12 @@ export function SiteFooter() {
           <div className="text-2xl font-bold text-white">BeyondSAT</div>
           <p className="mt-3 max-w-sm text-sm text-brand-100">
             The digital SAT prep platform built to feel exactly like test day. Practice, track, and reach your goal score.
+          </p>
+          {/* Stated in the footer as well as the landing band: the footer is on
+              every page, so this is the one place the claim is always visible. */}
+          <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-brand-800 px-3.5 py-1.5 text-xs font-bold text-white ring-1 ring-brand-400/50">
+            <Sparkles className="h-3.5 w-3.5 text-brand-200" strokeWidth={2.5} />
+            Free to use — no subscription, no paywall
           </p>
           <div className="mt-5 flex gap-3">
             <a href="#" aria-label="Twitter" className="tap grid h-9 w-9 place-items-center rounded-full bg-brand-800 text-white transition hover:bg-brand-400"><Twitter className="h-4 w-4" /></a>

@@ -2,6 +2,9 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { handleAiChat } from "./lib/ai/handler";
+import { checkMaintenance } from "./lib/maintenance";
+import { maintenanceResponse } from "./lib/maintenance-page";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -44,9 +47,31 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+/**
+ * This wrapper is the app's only server-side interception point. `@tanstack/
+ * react-start` 1.168.32 has no `createServerRoute` export — only
+ * `createServerFn`, which is RPC-shaped and can't stream SSE or return a 503 for
+ * a document request. vite.config.ts already redirects the server entry here, so
+ * both concerns hang off this `fetch` rather than fighting the router.
+ *
+ * Order matters: the AI route is handled before the maintenance gate, because
+ * `/api/*` is exempt from maintenance anyway and checking first would add a DB
+ * round trip to every chat token.
+ */
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const url = new URL(request.url);
+
+      if (url.pathname === "/api/ai/chat") {
+        return await handleAiChat(request, env);
+      }
+
+      const maintenance = await checkMaintenance(request, env, Date.now());
+      if (maintenance) {
+        return maintenanceResponse(maintenance.message);
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

@@ -602,6 +602,143 @@
   animation: rise-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* ---------------------------------------------------------------------------
+   Cursor-aware lighting
+
+   Two related effects, both driven by CSS custom properties written from JS
+   (src/hooks/usePointerGlow.ts) rather than React state — one style mutation per
+   animation frame instead of a re-render per pointer event.
+
+   `reveal-surface` lights a card under the pointer. `ambient-glow` is the
+   page-level spotlight. They read different variables (--px/--py vs --gx/--gy)
+   because one is element-relative and the other viewport-relative.
+
+   Both fall back to invisible when the variables are unset, which is what makes
+   the reduced-motion path work: the hook simply never writes them.
+   --------------------------------------------------------------------------- */
+
+/* Cards on this app are brand-blue with white text, so the highlight is a white
+   wash — a coloured glow would disappear into the surface. Two layers: a wide
+   soft one for the background, and a masked hairline for the border, because a
+   single gradient can't light a border and a fill independently. */
+@utility reveal-surface {
+  position: relative;
+  isolation: isolate;
+  --glow: 0;
+
+  /* Both layers sit at z-index -1 *inside* this element's own stacking context.
+     That is the whole trick, and it's why `isolation: isolate` above is
+     load-bearing: within a stacking context the paint order is (1) the
+     element's own background and border, (2) negative-z-index layers, (3)
+     in-flow content. So -1 lands exactly where it should — over the card's blue
+     fill, under every child.
+
+     The obvious alternative, pushing `& > *` to a positive z-index, was tried
+     and rejected: it needs `position: relative` on children, which collides
+     with the `absolute` on decorative children like <PanelGlow />. This version
+     imposes nothing on children at all, so it drops onto any card. */
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: var(--glow);
+    transition: opacity 0.3s ease;
+  }
+
+  /* Background wash. */
+  &::before {
+    background: radial-gradient(
+      circle 22rem at var(--px, 50%) var(--py, 50%),
+      rgba(255, 255, 255, 0.13),
+      transparent 42%
+    );
+  }
+
+  /* Border highlight — same mask trick as `ring-grad`, so it follows rounded
+     corners. Tighter radius than the wash so the edge reads as a distinct
+     light source rather than a second blur. */
+  &::after {
+    padding: 1px;
+    background: radial-gradient(
+      circle 12rem at var(--px, 50%) var(--py, 50%),
+      rgba(255, 255, 255, 0.55),
+      transparent 40%
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+}
+
+/* Page-level spotlight.
+
+   NOTE: master_plan.md specifies `mix-blend-mode: screen`. That is correct for a
+   dark page and a no-op here — `screen` lightens toward white, and this app's
+   page background already *is* #FFFFFF, so a screen-blended glow is invisible.
+   `multiply` with a light brand tint is the light-mode equivalent: it darkens
+   slightly toward blue, so the cursor reads as carrying a soft blue pool. */
+@utility ambient-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--glow, 0);
+  transition: opacity 0.6s ease;
+
+  /* Negative z-index, which needs two things from the page to work:
+
+     1. The mounting parent must be a stacking context (`isolate`). Without one,
+        -1 escapes to the root and paints *behind* the page background, invisible.
+     2. Sections above it must not set their own opaque `bg-white`. The page root
+        already paints white, so section-level `bg-white` is redundant — and it
+        would cover this layer completely.
+
+     The alternative — a positive z-index with `mix-blend-mode` — was rejected
+     because it tints the text it passes over. Decoration should never touch
+     legibility. This is also why the spec's `mix-blend-mode: screen` is absent:
+     `screen` lightens toward white and the backdrop here already is white, so it
+     would be a no-op even if the layer sat on top. */
+  z-index: -1;
+
+  /* Two falloff stops rather than one — a linear fade to transparent reads as a
+     grey smudge, while a fast inner falloff reads as light. Kept at ~10% of the
+     brand hue: the spec asks for "ultra-subtle", and anything stronger competes
+     with the cards. */
+  background: radial-gradient(
+    circle 34rem at var(--gx, 50%) var(--gy, 30%),
+    rgba(46, 67, 196, 0.1),
+    rgba(46, 67, 196, 0.045) 34%,
+    transparent 65%
+  );
+}
+
+/* Assistant output from Beyond AI. The model returns plain text with numbered
+   steps and KaTeX-delimited maths; without this everything collapses into one
+   block because the surrounding chat bubble sets no vertical rhythm. */
+@utility ai-prose {
+  white-space: pre-wrap;
+
+  /* Display maths gets its own line and room to breathe; KaTeX's own margin is
+     tuned for a document, not a chat bubble. */
+  & .katex-display {
+    margin: 0.75rem 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  & strong {
+    font-weight: 800;
+    color: #fff;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -649,5 +786,14 @@
     animation: none !important;
     background-image: none;
     background-color: #e3eaf3;
+  }
+
+  /* The pointer hooks already bail out under reduced motion, so --px/--py are
+     never written and the gradients stay at their default centre. These rules
+     are the belt to that braces: even if a variable were set, nothing paints. */
+  .reveal-surface::before,
+  .reveal-surface::after,
+  .ambient-glow {
+    display: none !important;
   }
 }

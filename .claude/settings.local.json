@@ -140,7 +140,11 @@
       "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require\\('fs'\\);const L=fs.readFileSync\\('c:/Users/javaz/Downloads/beyond-sat/supabase/FRESH_PROJECT_SCHEMA.sql','utf8'\\).split\\(/\\\\r?\\\\n/\\);let ctx=0;L.forEach\\(\\(l,i\\)=>{if\\(/GRANT|REVOKE|POLICY|ON public\\\\.questions/.test\\(l\\)&&/question/i.test\\(l\\)\\){ctx=6;}if\\(ctx>0\\){console.log\\(\\(i+1\\)+': '+l\\);ctx--;}}\\);\")",
       "Bash(\"C:/Program Files/nodejs/node.exe\" importcheck.cjs)",
       "Bash(\"C:/Program Files/nodejs/node.exe\" -e \"['typescript','sucrase','@babel/core','@babel/plugin-transform-typescript'].forEach\\(m=>{try{require.resolve\\(m,{paths:['c:/Users/javaz/Downloads/beyond-sat']}\\);console.log\\('have '+m\\)}catch\\(e\\){console.log\\('MISSING '+m\\)}}\\)\")",
-      "Bash(\"C:/Program Files/nodejs/node.exe\" tsprobe.cjs)"
+      "Bash(\"C:/Program Files/nodejs/node.exe\" tsprobe.cjs)",
+      "Bash(\"C:/Program Files/Git/usr/bin/grep.exe\" -n 'bg-white' src/routes/index.tsx)",
+      "Bash(\"C:/Program Files/Git/usr/bin/head.exe\" -60)",
+      "Bash(\"C:/Program Files/nodejs/npx.cmd\" eslint src/lib/ai src/lib/maintenance.ts src/lib/maintenance-page.ts src/lib/server-env.ts src/hooks/usePointerGlow.ts src/components/ai src/components/ui/reveal-card.tsx src/components/ui/panel.tsx src/components/ui/metric.tsx src/server.ts)",
+      "Bash(\"C:/Program Files/Git/usr/bin/tail.exe\" -45)"
     ]
   }
 }

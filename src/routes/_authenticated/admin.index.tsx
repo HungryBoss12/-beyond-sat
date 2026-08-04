@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Panel, PanelGlow, Skeleton } from "@/components/ui/panel";
+import { RevealLink } from "@/components/ui/reveal-card";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   component: AdminOverview,
@@ -112,7 +113,7 @@ function AdminOverview() {
         {cards.map((c) => {
           const Icon = c.icon;
           return (
-            <Link
+            <RevealLink
               key={c.label}
               to={c.to}
               className="group rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel lift"
@@ -127,7 +128,7 @@ function AdminOverview() {
                 {c.label}
                 <ArrowRight className="arrow-slide h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
               </div>
-            </Link>
+            </RevealLink>
           );
         })}
       </div>
@@ -138,7 +139,7 @@ function AdminOverview() {
           {SHORTCUTS.map((s) => {
             const Icon = s.icon;
             return (
-              <Link
+              <RevealLink
                 key={s.to}
                 to={s.to}
                 className="group flex items-center gap-4 rounded-2xl border border-brand-400/40 bg-brand-600 p-4 nudge hover:border-brand-200/60 hover:bg-brand-500"
@@ -151,7 +152,7 @@ function AdminOverview() {
                   <span className="block truncate text-xs text-brand-100">{s.desc}</span>
                 </span>
                 <ArrowRight className="arrow-slide h-4 w-4 shrink-0 text-brand-200 group-hover:text-white" />
-              </Link>
+              </RevealLink>
             );
           })}
         </div>

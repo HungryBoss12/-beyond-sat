@@ -28,6 +28,7 @@ import {
   type Difficulty,
 } from "@/lib/sat";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { AiChatPanel } from "@/components/ai/AiChatPanel";
 import { PageHead, Panel, Skeleton } from "@/components/ui/panel";
 import { HeadSkeleton, ListSkeleton, StatRowSkeleton } from "@/components/ui/skeletons";
 import { Badge, Delta, type Tone } from "@/components/ui/metric";
@@ -58,6 +59,37 @@ type AttemptRow = {
   selected_choice_id: string | null;
   grid_answer: string | null;
 };
+
+/**
+ * The student's own numbers, formatted for the AI's first message.
+ *
+ * Sent as part of the user turn rather than as a system instruction, because the
+ * system prompt is assembled server-side and must stay out of the client's
+ * reach — otherwise anything here could override the guardrails.
+ */
+function buildAiContext(
+  scores: { latest: number; average: number; best: number; count: number; rw: number; math: number },
+  totals: { correct: number; wrong: number; total: number },
+): string {
+  if (scores.count === 0 && totals.total === 0) {
+    return "Context: I haven't completed any practice questions or mock exams yet.";
+  }
+  const parts: string[] = [];
+  if (scores.count > 0) {
+    parts.push(
+      `latest mock score ${scores.latest}/1600 across ${scores.count} mock${scores.count === 1 ? "" : "s"}`,
+      `average ${scores.average}, best ${scores.best}`,
+    );
+    if (scores.rw || scores.math) {
+      parts.push(`average Reading & Writing ${scores.rw || "n/a"}, average Math ${scores.math || "n/a"}`);
+    }
+  }
+  if (totals.total > 0) {
+    const pct = Math.round((totals.correct / totals.total) * 100);
+    parts.push(`${totals.correct} of ${totals.total} practice questions correct (${pct}%)`);
+  }
+  return `Context about me — ${parts.join("; ")}. Use these numbers when they're relevant and don't ask me to repeat them.`;
+}
 
 type QuestionLite = {
   id: string;
@@ -224,6 +256,23 @@ function AnalysisPage() {
           hint={scores.count === 0 ? "No mock exams yet" : "Your personal record"}
         />
       </div>
+
+      {/* Beyond AI sits directly under the score counters: the numbers raise the
+          question and the chat is where it gets answered. The stats are passed
+          as a context prefix so the first reply can be specific without the
+          student having to type their own results in. */}
+      <AiChatPanel
+        className="rise-in"
+        task="reasoning"
+        title="Ask Beyond AI"
+        hint="Diagnostics on your own results"
+        contextPrefix={buildAiContext(scores, totals)}
+        quickActions={[
+          "Which topic should I work on first?",
+          "What's my fastest path to a higher score?",
+          "Explain a question I got wrong",
+        ]}
+      />
 
       <ScoreCalculator />
 

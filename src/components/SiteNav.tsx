@@ -118,7 +118,7 @@ export function SiteNav() {
             to="/signup"
             className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
           >
-            Sign Up
+            Sign Up Free
           </Link>
         </div>
 

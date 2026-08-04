@@ -4,6 +4,7 @@ import { BookText, Calculator, ClipboardList, CalendarClock, ArrowRight } from "
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { PageHead, Panel } from "@/components/ui/panel";
+import { RevealLink } from "@/components/ui/reveal-card";
 import { HeadSkeleton, CardGridSkeleton } from "@/components/ui/skeletons";
 
 export const Route = createFileRoute("/_authenticated/practice/")({
@@ -51,7 +52,11 @@ function PracticeLanding() {
         setMockCount((mockRows ?? []).length);
         setDailyExists(!!dt);
 
-        const uid = sess?.user?.id;
+        /* `getSession()` resolves to `{ data: { session }, error }`, so the user
+           hangs off `session`, not off `data` directly. Reading `sess.user` was
+           always undefined, which silently skipped the check below — today's
+           daily test kept offering "Start" after it had been completed. */
+        const uid = sess?.session?.user?.id;
         if (uid) {
           const { data: sp } = await supabase
             .from("student_profiles")
@@ -194,8 +199,10 @@ function SectionCard({
   title: string;
   count: number | null;
 }) {
+  /* RevealLink rather than Link: this card is cursor-lit like every <Panel>, but
+     it's a link, so the glow has to live on the anchor itself. */
   return (
-    <Link
+    <RevealLink
       to="/practice/$section"
       params={{ section }}
       className="group lift relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 p-6 text-white shadow-panel"
@@ -214,6 +221,6 @@ function SectionCard({
           Practice this section <ArrowRight className="arrow-slide h-4 w-4" />
         </div>
       </div>
-    </Link>
+    </RevealLink>
   );
 }

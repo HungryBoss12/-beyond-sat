@@ -19,6 +19,7 @@ import {
   Upload,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { RevealLink } from "@/components/ui/reveal-card";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   /* Runs again on every navigation within /admin, so it doubles as the
@@ -70,7 +71,12 @@ const NAV = [
 ] as const satisfies readonly NavItem[];
 
 function visibleNav(role: StaffRole) {
-  return NAV.filter((n) => role === "admin" || !n.adminOnly);
+  /* `n` is annotated because `as const` gives each entry its own literal type,
+     and the ones without `adminOnly` don't have the property at all — reading it
+     off the union is an error. Widening to NavItem here doesn't widen the
+     result: filter still returns the array's own element type, so `to` stays a
+     literal and <Link> keeps accepting it. */
+  return NAV.filter((n: NavItem) => role === "admin" || !n.adminOnly);
 }
 
 function isActive(n: NavItem, pathname: string) {
@@ -213,7 +219,7 @@ function SidebarBody({
                   const active = isActive(n, pathname);
                   const Icon = n.icon;
                   return (
-                    <Link
+                    <RevealLink
                       key={n.to}
                       to={n.to}
                       onClick={onNavigate}
@@ -235,7 +241,7 @@ function SidebarBody({
                         }
                       />
                       {n.label}
-                    </Link>
+                    </RevealLink>
                   );
                 })}
               </div>

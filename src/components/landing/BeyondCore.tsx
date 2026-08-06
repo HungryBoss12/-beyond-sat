@@ -1,4 +1,12 @@
-import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from "react";
+import {
+  Component,
+  Suspense,
+  lazy,
+  useEffect,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import { DashboardMockup } from "@/components/landing/DashboardMockup";
 
 /**
@@ -11,19 +19,46 @@ import { DashboardMockup } from "@/components/landing/DashboardMockup";
  *
  * The guards, all mandatory:
  *   1. lazy + Suspense      — WebGL never enters the initial bundle
- *   2. deferred until idle  — the chunk never competes with hydration
- *   3. dpr / antialias step — capped on small viewports, shadows off everywhere
- *   4. prefers-reduced-motion → a static poster frame, no render loop
- *   5. no WebGL context     → falls back to <DashboardMockup />
- *   6. error boundary       → a failed chunk or a scene throw also falls back
+ *   2. never in the SSR graph — see the import.meta.env.SSR branch below
+ *   3. deferred until idle  — the chunk never competes with hydration
+ *   4. dpr / antialias step — capped on small viewports, shadows off everywhere
+ *   5. prefers-reduced-motion → a static poster frame, no render loop
+ *   6. no WebGL context     → falls back to <DashboardMockup />
+ *   7. error boundary       → a failed chunk or a scene throw also falls back
  *
- * Guards 5 and 6 matter more than they look. Without them a machine with WebGL
+ * Guards 6 and 7 matter more than they look. Without them a machine with WebGL
  * disabled, or a browser that got a stale chunk URL after a deploy, gets a blank
  * column where the hero visual should be — which is worse than the 2D mockup it
  * replaced, and fails silently so nobody finds out.
  */
 
-const BeyondCoreScene = lazy(() => import("@/components/landing/BeyondCoreScene"));
+type SceneProps = { animate: boolean; highDpr: boolean };
+
+/**
+ * `React.lazy` alone does NOT keep three out of the server build.
+ *
+ * Rollup hoisted the scene's dependency into a shared chunk that the SSR route
+ * graph imported *statically*, so `three` evaluated while the Worker was still
+ * loading its global scope. Its module-level `new LoadingManager()` trips the
+ * Workers runtime rule that forbids I/O, timers and randomness outside a
+ * handler, and every document request 500'd before any of our code ran.
+ *
+ * `import.meta.env.SSR` is replaced with a literal at build time, so on the
+ * server this whole ternary folds to the stub and the `import()` becomes
+ * unreachable — the scene never enters the server module graph at all. A
+ * `typeof window` check would not work here: it is evaluated at runtime, so the
+ * bundler still has to keep the import.
+ *
+ * The stub is never rendered in practice — `support` only reaches "webgl" from
+ * a client effect — it exists so the SSR branch has something to type against.
+ */
+const BeyondCoreScene: ComponentType<SceneProps> = import.meta.env.SSR
+  ? function SceneSsrStub() {
+      return null;
+    }
+  : (lazy(
+      () => import("@/components/landing/BeyondCoreScene"),
+    ) as unknown as ComponentType<SceneProps>);
 
 /** Feature-detects a real WebGL context once, on the client. */
 function detectWebgl(): boolean {

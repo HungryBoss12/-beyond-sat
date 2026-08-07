@@ -125,6 +125,71 @@ export async function startDailySession(): Promise<{ sessionId: string; resumed:
   return { sessionId: sess.id as string, resumed: false };
 }
 
+/**
+ * Start (or resume) a session over one dated test set.
+ *
+ * The third caller of `questionsForTests`, and the reason the practice screen can
+ * stop listing question text: a student picks "December 2024" and the questions
+ * arrive through a session, where `grade_answer()` is the only thing that ever
+ * returns an answer. Nothing about the set's contents is readable before it
+ * starts.
+ *
+ * `type` stays `'practice'` — the set is identified by `metadata.test_id`, so
+ * this needs no enum migration and every existing consumer of a practice session
+ * (the runner, the review screen, analysis) keeps working unchanged. The resume
+ * check mirrors `startDailySession`: leaving a set half-finished and coming back
+ * must not create a second session and lose the answers already given.
+ */
+export async function startTestSetSession(
+  testId: string,
+): Promise<{ sessionId: string; resumed: boolean }> {
+  const uid = await currentUserId();
+
+  /* Readability check before anything else. `test_questions` stays readable to
+     everyone — locking it down would break dailies and mocks built on unpublished
+     sets, see PRACTICE_SETS.sql §2 — so this is what stops a student starting a
+     half-built set by pasting its id. The row simply isn't visible to them under
+     the `tests read published` policy, so `null` means "not yours to start". */
+  const { data: test } = await supabase
+    .from("tests")
+    .select("id")
+    .eq("id", testId)
+    .maybeSingle();
+  if (!test) throw new Error("That practice set isn't available.");
+
+  /* `metadata->>test_id` rather than a column: `test_sessions` has
+     `daily_test_id` and `mock_exam_id` but no `test_id`, and adding one would be
+     a migration for something the metadata JSON already carries. */
+  const { data: existing } = await supabase
+    .from("test_sessions")
+    .select("id")
+    .eq("user_id", uid)
+    .eq("type", "practice")
+    .is("completed_at", null)
+    .filter("metadata->>test_id", "eq", testId)
+    .order("started_at", { ascending: false })
+    .limit(1);
+  if (existing && existing.length > 0) {
+    return { sessionId: existing[0].id as string, resumed: true };
+  }
+
+  const ids = await questionsForTests([testId]);
+  if (ids.length === 0) throw new Error("This test set has no questions yet.");
+
+  const { data: sess, error } = await supabase
+    .from("test_sessions")
+    .insert({
+      user_id: uid,
+      type: "practice",
+      total_questions: ids.length,
+      metadata: { question_ids: ids, test_id: testId },
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return { sessionId: sess.id as string, resumed: false };
+}
+
 export async function startMockSession(mockExamId: string): Promise<{ sessionId: string; resumed: boolean }> {
   const uid = await currentUserId();
   const { data: existing } = await supabase

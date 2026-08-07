@@ -40,10 +40,15 @@ function Layout() {
      inside AppShell stacked the app header above it and put the mobile tab bar
      over its bottom nav — and, worse, AppShell's animated `route-enter` wrapper
      became the containing block for the runner's `position: fixed` root, which
-     squeezed it to a few pixels and left the rest of the screen blank. */
+     squeezed it to a few pixels and left the rest of the screen blank.
+
+     /beyond-ai is bare for the same reason: a two-pane `h-[100dvh]` chat would
+     be boxed in by AppShell's `max-w-7xl px-4 py-6` wrapper and pushed below its
+     header. It carries its own back link to /dashboard. */
   const bare =
     pathname.startsWith("/onboarding") ||
     pathname.startsWith("/admin") ||
+    pathname.startsWith("/beyond-ai") ||
     pathname.startsWith("/practice/session");
   if (bare) return <Outlet />;
   return (

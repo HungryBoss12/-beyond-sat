@@ -11,15 +11,23 @@ import {
   X,
   ChevronDown,
   BarChart3,
+  Sparkles,
 } from "lucide-react";
 import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 
+/**
+ * Six is the practical maximum for the mobile tab bar: at `grid-cols-6` on a
+ * 360px viewport each cell is 60px, which the `w-12` active pill and a short
+ * label still fit. A seventh needs a different pattern — a "More" tab — not
+ * another column.
+ */
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/practice", label: "Practice", icon: BookOpen },
   { to: "/analysis", label: "Analysis", icon: BarChart3 },
+  { to: "/beyond-ai", label: "Beyond AI", icon: Sparkles },
   { to: "/news", label: "News", icon: Newspaper },
   { to: "/profile", label: "Profile", icon: User },
 ] as const;
@@ -155,7 +163,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Top bar. A #11269D surface like the sidebar, with the lighter shade for
+      {/* Top bar. A #0B0761 surface like the sidebar, with the lighter shade for
           the controls sitting on it so they stay distinguishable. */}
       <header className="sticky top-0 z-20 border-b border-brand-400/30 bg-brand-600/95 backdrop-blur-md lg:pl-64">
         <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
@@ -304,7 +312,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile bottom tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-400/30 bg-brand-600/95 backdrop-blur-md lg:hidden">
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-6">
           {NAV.map((n) => {
             const active = pathname === n.to || pathname.startsWith(n.to + "/");
             const Icon = n.icon;
@@ -313,14 +321,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={n.to}
                 to={n.to}
                 className={
-                  "relative flex flex-col items-center justify-center py-2.5 text-[10px] font-semibold transition-colors duration-200 " +
+                  "relative flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 text-[10px] font-semibold transition-colors duration-200 " +
                   (active ? "text-white" : "text-brand-100 hover:text-white")
                 }
               >
                 {/* Active pill sits behind the icon to mark the active tab while
-                    keeping the bar's brand surface solid. */}
+                    keeping the bar's brand surface solid. Capped at the cell
+                    width so it can't overlap its neighbours at six columns. */}
                 {active && (
-                  <span className="pop-in absolute top-1.5 h-7 w-12 rounded-full bg-brand-400" />
+                  <span className="pop-in absolute top-1.5 h-7 w-12 max-w-full rounded-full bg-brand-400" />
                 )}
                 <Icon
                   className={
@@ -328,7 +337,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     (active ? "scale-110" : "")
                   }
                 />
-                {n.label}
+                {/* Six labels at 360px leaves ~58px a cell; truncating is better
+                    than a second line pushing the bar taller. */}
+                <span className="w-full truncate text-center leading-tight">{n.label}</span>
               </Link>
             );
           })}

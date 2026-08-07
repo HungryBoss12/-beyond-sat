@@ -1,8 +1,11 @@
 import {
   buildRequestBody,
   normalizeMessages,
+  resolveChatModelChoice,
   resolveModel,
+  resolveSurface,
   resolveTask,
+  CHAT_MODELS,
   type AiChatRequest,
 } from "./router";
 import {
@@ -128,8 +131,22 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
   const apiKey = readEnv(env, "OPENROUTER_API_KEY");
   if (!apiKey) {
     /* Deliberately explicit in the log and vague to the client: an admin needs
-       to know the secret is missing, a student doesn't need the internals. */
-    console.error("[ai] OPENROUTER_API_KEY is not set — run: wrangler secret put OPENROUTER_API_KEY");
+       to know the secret is missing, a student doesn't need the internals.
+
+       The remedy differs by runtime, so the message has to as well. `wrangler
+       secret put` writes to the deployed Worker and is invisible to a local dev
+       server — pointing at it from `vite dev` sends you to verify a secret that
+       is genuinely set and genuinely not the one being read.
+
+       `npx`, not a bare `wrangler`: this project has wrangler as a
+       devDependency, not a global install, so a bare invocation resolves to a
+       global path that was never populated and fails with
+       "Cannot find module ...\\npm\\node_modules\\wrangler\\bin\\wrangler.js". */
+    console.error(
+      import.meta.env.DEV
+        ? "[ai] OPENROUTER_API_KEY is not set — add it to .dev.vars or .env.local, then restart the dev server. (`wrangler secret put` only affects the deployed Worker.)"
+        : "[ai] OPENROUTER_API_KEY is not set — run: npx wrangler secret put OPENROUTER_API_KEY",
+    );
     return json({ error: "Beyond AI isn't available right now." }, 503);
   }
 
@@ -145,11 +162,18 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
     return json({ error: normalized.error }, 400);
   }
 
-  const task = resolveTask(payload.task);
+  // A `model` slug from the picker wins over `task` — the chat page always sends
+  // one, and it must never be accepted verbatim (see CHAT_MODELS). Unknown slugs
+  // fall back to the default rather than erroring.
+  const task =
+    payload.model !== undefined
+      ? CHAT_MODELS[resolveChatModelChoice(payload.model)].task
+      : resolveTask(payload.task);
   const stream = payload.stream !== false;
+  const surface = resolveSurface(payload.surface);
   const overrides = await loadModelOverrides(config, token);
   const model = resolveModel(task, overrides);
-  const body = buildRequestBody(task, normalized.messages, model, stream);
+  const body = buildRequestBody(task, normalized.messages, model, stream, surface);
 
   let upstream: Response;
   try {
@@ -200,9 +224,7 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
     // 404 means the configured model ID no longer exists — free models get
     // withdrawn without notice, which is the exact reason the IDs are settings.
     if (upstream.status === 404) {
-      console.error(
-        `[ai] model "${model}" was not found upstream. Update it at /admin/settings.`,
-      );
+      console.error(`[ai] model "${model}" was not found upstream. Update it at /admin/settings.`);
       return json({ error: "Beyond AI is unavailable right now. Please contact an admin." }, 503);
     }
 

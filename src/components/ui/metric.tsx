@@ -15,7 +15,7 @@ export type Tone = "excellent" | "good" | "fair" | "low" | "neutral";
 
 /**
  * Tones are steps of the brand ramp rather than hues — the palette is white +
- * #11269D only, so a green "Excellent" badge would be the one off-palette
+ * #0B0761 only, so a green "Excellent" badge would be the one off-palette
  * colour on the screen. Rank now reads through lightness: brighter = better.
  * The badge label itself still says which band it is, so no meaning is lost.
  */
@@ -90,7 +90,7 @@ export function Delta({
   const up = rounded > 0;
   const Icon = up ? TrendingUp : TrendingDown;
   /* Direction is carried by the arrow icon and the +/− sign rather than by
-     red/green, which would break the white + #11269D palette. A gain gets the
+     red/green, which would break the white + #0B0761 palette. A gain gets the
      brighter shade so it still reads as the positive state. */
   return (
     <span
@@ -129,7 +129,7 @@ export function StatTile({
   accent?: "brand" | "emerald" | "amber" | "slate";
 }) {
   /* All four accents now live in the brand family; they differ in depth only,
-     which is enough to tell the tiles apart on a #11269D surface. */
+     which is enough to tell the tiles apart on a #0B0761 surface. */
   const accents: Record<string, string> = {
     brand: "bg-brand-400 text-white",
     emerald: "bg-brand-300 text-white",

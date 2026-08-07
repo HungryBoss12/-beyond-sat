@@ -87,7 +87,7 @@ function AdminOverview() {
   return (
     <div className="space-y-8">
       {/* Banner. The soft brand surface carries white copy; the stat cards below
-          use the flat #11269D so they read as separate objects on the white page. */}
+          use the flat #0B0761 so they read as separate objects on the white page. */}
       <Panel tone="soft" className="ring-grad overflow-hidden rise-in">
         <PanelGlow />
         <div className="relative flex flex-wrap items-end justify-between gap-4">

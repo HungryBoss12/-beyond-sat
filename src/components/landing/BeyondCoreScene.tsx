@@ -15,13 +15,13 @@ import type { Mesh, Group } from "three";
  * R3F exposes directly; drei would have added three packages for nothing.
  *
  * Brand hexes are repeated here because three takes colours as values, not
- * classes. They match --color-brand-* in styles.css: 200 #8a98d6, 400 #2e43c4,
- * 600 #11269d, 700 #0e1f82.
+ * classes. They match --color-brand-* in styles.css: 200 #9f9fc2, 400 #535291,
+ * 500 #100e66, 600 #0b0761.
  */
 
-const BRAND_400 = "#2e43c4";
-const BRAND_600 = "#11269d";
-const BRAND_200 = "#8a98d6";
+const BRAND_400 = "#535291";
+const BRAND_600 = "#0b0761";
+const BRAND_200 = "#9f9fc2";
 
 /** Scroll progress through the hero, 0 → 1, clamped. */
 function heroProgress() {
@@ -32,13 +32,18 @@ function heroProgress() {
   return Math.min(1, Math.max(0, window.scrollY / denominator));
 }
 
+/** How far the pointer can turn the emblem, in radians, at the edge of the canvas. */
+const POINTER_YAW = 0.32;
+const POINTER_PITCH = 0.22;
+
 /**
  * The emblem: a faceted core inside a slowly counter-rotating wireframe shell.
  *
- * Scroll drives rotation and depth; time drives a slow idle spin so the object
- * is alive before the visitor touches anything. Both are applied to the group's
- * transform rather than the camera — moving the camera would also move the
- * lights, which are what give the facets their definition.
+ * Three inputs are summed onto the group's transform: time (a slow idle spin, so
+ * the object is alive before the visitor touches anything), scroll (rotation and
+ * depth), and the pointer (a small lean toward the cursor). All three go on the
+ * group rather than the camera — moving the camera would also move the lights,
+ * which are what give the facets their definition.
  */
 function Emblem() {
   const group = useRef<Group>(null);
@@ -50,6 +55,19 @@ function Emblem() {
      easing toward the target turns that into a glide. */
   const scroll = useRef(0);
 
+  /* The pointer is smoothed the same way and for the same reason: R3F's
+     `state.pointer` snaps to wherever the cursor is this frame, and a fast flick
+     across the canvas would jerk the mesh. Held as a pair rather than a Vector2
+     so nothing here has to construct a three object per frame. */
+  const aimX = useRef(0);
+  const aimY = useRef(0);
+
+  /* Hover is tracked as a ref, not state: the only thing that reads it is the
+     frame loop, and putting it in state would re-render the whole scene each time
+     the pointer crosses the mesh's silhouette. `swell` is its eased shadow. */
+  const hover = useRef(false);
+  const swell = useRef(0);
+
   useFrame((state, delta) => {
     if (!group.current || !core.current || !shell.current) return;
 
@@ -58,17 +76,37 @@ function Emblem() {
     const step = Math.min(delta, 0.05);
     scroll.current += (heroProgress() - scroll.current) * Math.min(1, step * 6);
 
+    /* `state.pointer` is already normalised to -1…1 over the canvas, so no
+       listener and no getBoundingClientRect is needed. It rests at (0, 0) until
+       the pointer first enters, which is also where a touch device leaves it —
+       so a phone gets the scroll and idle terms and nothing else. */
+    const ease = Math.min(1, step * 4);
+    aimX.current += (state.pointer.x - aimX.current) * ease;
+    aimY.current += (state.pointer.y - aimY.current) * ease;
+
     const t = state.clock.elapsedTime;
     const s = scroll.current;
 
-    group.current.rotation.y = t * 0.18 + s * Math.PI * 1.2;
-    group.current.rotation.x = Math.sin(t * 0.25) * 0.12 + s * 0.5;
+    group.current.rotation.y = t * 0.18 + s * Math.PI * 1.2 + aimX.current * POINTER_YAW;
+    group.current.rotation.x = Math.sin(t * 0.25) * 0.12 + s * 0.5 - aimY.current * POINTER_PITCH;
 
     // Recedes and shrinks as the page scrolls past — the parallax cue that ties
     // the object to the scroll position without moving the camera.
     const depth = s * -1.6;
     group.current.position.z = depth;
     group.current.position.y = Math.sin(t * 0.5) * 0.08 - s * 0.3;
+
+    /* Leans very slightly toward the cursor as well as turning. Rotation alone
+       reads as the object spinning; a little translation reads as it noticing.
+       Kept under a tenth of a unit so it never breaks the hero's layout. */
+    group.current.position.x = aimX.current * 0.09;
+
+    /* Swells slightly while the pointer is actually over the emblem. Eased in the
+       frame loop rather than set from the event handler, so a fast pointer-out
+       glides back instead of snapping — and eased through a ref rather than React
+       state, which would re-render the scene on every enter and leave. */
+    swell.current += ((hover.current ? 1 : 0) - swell.current) * Math.min(1, step * 5);
+    group.current.scale.setScalar(1 + swell.current * 0.05);
 
     // The shell counter-rotates so the two layers shear against each other;
     // rotating together would read as one solid object.
@@ -82,7 +120,18 @@ function Emblem() {
   const shellArgs = useMemo(() => [1.85, 1] as [number, number], []);
 
   return (
-    <group ref={group}>
+    /* The handlers are on the group so the wireframe shell counts as part of the
+       target — hovering only the inner core would mean the emblem stops responding
+       whenever the cursor sits between two facets of the shell. */
+    <group
+      ref={group}
+      onPointerOver={() => {
+        hover.current = true;
+      }}
+      onPointerOut={() => {
+        hover.current = false;
+      }}
+    >
       <mesh ref={core}>
         <icosahedronGeometry args={coreArgs} />
         {/* flatShading is what makes the facets legible — with smooth normals an

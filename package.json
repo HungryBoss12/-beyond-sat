@@ -11,6 +11,7 @@
     "cf:preview": "vite build && wrangler dev",
     "deploy": "vite build && wrangler deploy",
     "cf-typegen": "wrangler types",
+    "secret": "wrangler secret put",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -58,6 +59,7 @@
     "katex": "^0.18.1",
     "lucide-react": "^0.575.0",
     "mathlive": "^0.110.0",
+    "pdfjs-dist": "^4.10.38",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.0",

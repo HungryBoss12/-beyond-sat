@@ -43,9 +43,9 @@ const EMPTY: Settings = {
  * bundle, and importing it here would be the only reason to.
  */
 const MODEL_DEFAULTS = {
-  openrouter_model_chat: "meta-llama/llama-3.3-70b-instruct:free",
-  openrouter_model_quick: "meta-llama/llama-3.2-3b-instruct:free",
-  openrouter_model_reasoning: "deepseek/deepseek-chat-v3.1:free",
+  openrouter_model_chat: "nvidia/nemotron-3-super-120b-a12b:free",
+  openrouter_model_quick: "nvidia/nemotron-3-nano-30b-a3b:free",
+  openrouter_model_reasoning: "nvidia/nemotron-3-ultra-550b-a55b:free",
   openrouter_model_vision: "google/gemini-2.0-flash-exp:free",
 } as const;
 
@@ -235,10 +235,13 @@ function AdminSettings() {
             <div className="font-bold text-white">The API key isn't set here.</div>
             <p className="mt-1">
               It's a Cloudflare Worker secret, so it never reaches the browser or the database.
-              Set or rotate it from a terminal:
+              Set or rotate it from a terminal, in the project directory:
             </p>
+            {/* `npx` matters: wrangler is a devDependency here, not a global
+                install, so a bare `wrangler` resolves to a global path that
+                doesn't exist and fails with "Cannot find module". */}
             <code className="mt-2 block overflow-x-auto rounded-lg bg-brand-900/60 px-3 py-2 font-mono text-[11px] text-white">
-              wrangler secret put OPENROUTER_API_KEY
+              npx wrangler secret put OPENROUTER_API_KEY
             </code>
           </div>
         </div>

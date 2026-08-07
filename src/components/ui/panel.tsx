@@ -18,12 +18,12 @@ function cx(...parts: (string | false | null | undefined)[]) {
  * The base surface. Panels are brand-blue surfaces sitting on the white page
  * background — white is reserved for the page itself. `tone` picks which layer
  * of the blue ramp the panel occupies:
- *  - `plain`  #11269D base, for the majority of panels
+ *  - `plain`  #0B0761 base, for the majority of panels
  *  - `soft`   a subtle gradient over the base, for panels that should recede
  *  - `brand`  the full base→deep gradient, for a single focal panel per screen
  *
  * All three are dark, so text inside is white by default and secondary text
- * uses `text-brand-100` (#B8C0E8) rather than a reduced opacity.
+ * uses `text-brand-100` (#C6C5DA) rather than a reduced opacity.
  *
  * Every panel is cursor-lit: `reveal-surface` plus the pointer hook means the
  * card brightens under the cursor. It's applied here rather than at the ~20 call

@@ -16,6 +16,7 @@ import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAnalysisRouteImport } from './routes/_authenticated/analysis'
+import { Route as AuthenticatedBeyondAiRouteImport } from './routes/_authenticated/beyond-ai'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
@@ -72,6 +73,11 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
 const AuthenticatedAnalysisRoute = AuthenticatedAnalysisRouteImport.update({
   id: '/analysis',
   path: '/analysis',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBeyondAiRoute = AuthenticatedBeyondAiRouteImport.update({
+  id: '/beyond-ai',
+  path: '/beyond-ai',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -208,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/analysis': typeof AuthenticatedAnalysisRouteWithChildren
+  '/beyond-ai': typeof AuthenticatedBeyondAiRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/news': typeof AuthenticatedNewsRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/analysis': typeof AuthenticatedAnalysisRouteWithChildren
+  '/beyond-ai': typeof AuthenticatedBeyondAiRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/news': typeof AuthenticatedNewsRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
@@ -270,6 +278,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/analysis': typeof AuthenticatedAnalysisRouteWithChildren
+  '/_authenticated/beyond-ai': typeof AuthenticatedBeyondAiRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/news': typeof AuthenticatedNewsRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
@@ -303,6 +312,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/admin'
     | '/analysis'
+    | '/beyond-ai'
     | '/dashboard'
     | '/news'
     | '/onboarding'
@@ -333,6 +343,7 @@ export interface FileRouteTypes {
     | '/signin'
     | '/signup'
     | '/analysis'
+    | '/beyond-ai'
     | '/dashboard'
     | '/news'
     | '/onboarding'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_authenticated/admin'
     | '/_authenticated/analysis'
+    | '/_authenticated/beyond-ai'
     | '/_authenticated/dashboard'
     | '/_authenticated/news'
     | '/_authenticated/onboarding'
@@ -446,6 +458,13 @@ declare module '@tanstack/react-router' {
       path: '/analysis'
       fullPath: '/analysis'
       preLoaderRoute: typeof AuthenticatedAnalysisRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/beyond-ai': {
+      id: '/_authenticated/beyond-ai'
+      path: '/beyond-ai'
+      fullPath: '/beyond-ai'
+      preLoaderRoute: typeof AuthenticatedBeyondAiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -691,6 +710,7 @@ const AuthenticatedPracticeRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedAnalysisRoute: typeof AuthenticatedAnalysisRouteWithChildren
+  AuthenticatedBeyondAiRoute: typeof AuthenticatedBeyondAiRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRouteWithChildren
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
@@ -701,6 +721,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedAnalysisRoute: AuthenticatedAnalysisRouteWithChildren,
+  AuthenticatedBeyondAiRoute: AuthenticatedBeyondAiRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedNewsRoute: AuthenticatedNewsRouteWithChildren,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,

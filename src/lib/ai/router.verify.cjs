@@ -69,9 +69,9 @@ const USER = [{ role: "user", content: "solve 2x+3=9" }];
    ------------------------------------------------------------------------- */
 
 check("each task maps to its documented default model", () => {
-  assert.equal(router.resolveModel("chat", {}), "meta-llama/llama-3.3-70b-instruct:free");
-  assert.equal(router.resolveModel("quick", {}), "meta-llama/llama-3.2-3b-instruct:free");
-  assert.equal(router.resolveModel("reasoning", {}), "deepseek/deepseek-chat-v3.1:free");
+  assert.equal(router.resolveModel("chat", {}), "nvidia/nemotron-3-super-120b-a12b:free");
+  assert.equal(router.resolveModel("quick", {}), "nvidia/nemotron-3-nano-30b-a3b:free");
+  assert.equal(router.resolveModel("reasoning", {}), "nvidia/nemotron-3-ultra-550b-a55b:free");
   assert.equal(router.resolveModel("vision", {}), "google/gemini-2.0-flash-exp:free");
 });
 
@@ -245,6 +245,106 @@ check("every task has a settings key and a default", () => {
     assert.ok(router.DEFAULT_MODELS[task], `${task} has no default model`);
     assert.ok(router.isAiTask(task), `${task} not accepted by isAiTask`);
   }
+});
+
+/* -------------------------------------------------------------------------
+   The student-facing model picker
+
+   This is a trust boundary: the client picks a slug, the server picks the model.
+   A slug that resolved to nothing, or a picker that accepted a raw model ID,
+   would let a signed-in student bill the platform against any model on
+   OpenRouter.
+   ------------------------------------------------------------------------- */
+
+const NICKNAMES = {
+  "beyonder-2-0": ["Beyonder 2.0", "nvidia/nemotron-3-super-120b-a12b:free"],
+  "beyonder-2-0-flashy": ["Beyonder 2.0 Flashy", "nvidia/nemotron-3-nano-30b-a3b:free"],
+  "beyonder-2-1-think": ["Beyonder 2.1 Think", "nvidia/nemotron-3-ultra-550b-a55b:free"],
+  "beyonder-vision": ["Beyonder Vision", "google/gemini-2.0-flash-exp:free"],
+};
+
+check("the four nicknames are exactly the labels students were promised", () => {
+  assert.deepEqual(Object.keys(router.CHAT_MODELS).sort(), Object.keys(NICKNAMES).sort());
+  for (const [slug, [label]] of Object.entries(NICKNAMES)) {
+    assert.equal(router.CHAT_MODELS[slug].label, label, `${slug} has the wrong label`);
+  }
+});
+
+check("each nickname resolves to its documented model through the task map", () => {
+  for (const [slug, [, model]] of Object.entries(NICKNAMES)) {
+    const task = router.CHAT_MODELS[slug].task;
+    assert.ok(router.isAiTask(task), `${slug} maps to a task that isn't in the union`);
+    assert.equal(router.resolveModel(task, {}), model, `${slug} resolved to the wrong model`);
+  }
+});
+
+check("every nickname routes to a :free model and honours admin overrides", () => {
+  for (const slug of Object.keys(router.CHAT_MODELS)) {
+    const { task } = router.CHAT_MODELS[slug];
+    assert.ok(router.resolveModel(task, {}).endsWith(":free"), `${slug} is not on the free tier`);
+    // The override path is what makes a withdrawn free model a settings change
+    // rather than a redeploy, so the picker must not bypass it.
+    const key = router.MODEL_SETTING_KEYS[task];
+    assert.equal(router.resolveModel(task, { [key]: "x/y:free" }), "x/y:free", `${slug} ignores its override`);
+  }
+});
+
+check("an unknown or hostile slug falls back rather than throwing", () => {
+  assert.equal(router.resolveChatModelChoice("nonsense"), router.DEFAULT_CHAT_MODEL);
+  assert.equal(router.resolveChatModelChoice(undefined), router.DEFAULT_CHAT_MODEL);
+  // A raw model ID is exactly what must not be honoured.
+  assert.equal(router.resolveChatModelChoice("openai/gpt-4o"), router.DEFAULT_CHAT_MODEL);
+  // Object.prototype keys must not read as valid slugs.
+  assert.equal(router.resolveChatModelChoice("toString"), router.DEFAULT_CHAT_MODEL);
+  assert.equal(router.resolveChatModelChoice("__proto__"), router.DEFAULT_CHAT_MODEL);
+  assert.equal(router.resolveChatModelChoice("beyonder-2-1-think"), "beyonder-2-1-think");
+});
+
+check("the default and vision slugs are themselves valid choices", () => {
+  assert.ok(router.isChatModelChoice(router.DEFAULT_CHAT_MODEL));
+  assert.ok(router.isChatModelChoice(router.VISION_CHAT_MODEL));
+  // An attachment must land on the model that can actually read it.
+  assert.equal(router.CHAT_MODELS[router.VISION_CHAT_MODEL].task, "vision");
+});
+
+check("every choice carries a hint for the picker", () => {
+  for (const choice of router.CHAT_MODEL_CHOICES) {
+    assert.ok(router.isChatModelChoice(choice.slug), `${choice.slug} is not a valid slug`);
+    assert.ok(choice.hint && choice.hint.length, `${choice.slug} has no hint`);
+  }
+  assert.equal(router.CHAT_MODEL_CHOICES.length, 4);
+});
+
+/* -------------------------------------------------------------------------
+   Surface → token budget
+   ------------------------------------------------------------------------- */
+
+check("Flashy gets chat's room on a full page but keeps the panel's cap", () => {
+  /* The regression this guards: `quick`'s 400-token cap exists for the
+     fixed-height dashboard card. Reused in a full-screen chat it truncates
+     mid-sentence, which reads as a broken model rather than as a cap. */
+  const panel = router.buildRequestBody("quick", USER, "m", false, "panel");
+  const page = router.buildRequestBody("quick", USER, "m", false, "page");
+  assert.equal(panel.max_tokens, 400, "the dashboard cap must not move");
+  assert.equal(page.max_tokens, router.buildRequestBody("chat", USER, "m", false).max_tokens);
+  // Only the ceiling moves — the model and temperature stay the task's own.
+  assert.equal(page.temperature, panel.temperature);
+});
+
+check("surface changes nothing for the other three tasks", () => {
+  for (const task of ["chat", "reasoning", "vision"]) {
+    const panel = router.buildRequestBody(task, USER, "m", false, "panel");
+    const page = router.buildRequestBody(task, USER, "m", false, "page");
+    assert.equal(page.max_tokens, panel.max_tokens, `${task}'s budget must not depend on surface`);
+  }
+});
+
+check("surface defaults to panel and an unknown value is not trusted", () => {
+  // Omitted on every existing call site, so the default has to be the old value.
+  assert.equal(router.buildRequestBody("quick", USER, "m", false).max_tokens, 400);
+  assert.equal(router.resolveSurface("nonsense"), "panel");
+  assert.equal(router.resolveSurface(undefined), "panel");
+  assert.equal(router.resolveSurface("page"), "page");
 });
 
 if (!process.exitCode) console.log(`ok — ${passed} checks passed`);

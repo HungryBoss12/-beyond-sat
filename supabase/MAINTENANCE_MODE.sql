@@ -16,8 +16,10 @@
 -- These are SECURITY DEFINER functions exposing exactly those keys and nothing
 -- else — the same pattern as the existing get_desmos_api_key().
 --
--- The OpenRouter API key is deliberately NOT here. It is a Worker secret:
---   wrangler secret put OPENROUTER_API_KEY
+-- The OpenRouter API key is deliberately NOT here. It is a Worker secret, set
+-- from the project directory (npx, because wrangler is a devDependency here and
+-- a bare `wrangler` resolves to a global path that does not exist):
+--   npx wrangler secret put OPENROUTER_API_KEY
 -- A key stored in this table would be readable by every admin session and would
 -- travel to the browser on the settings page.
 -- ===========================================================================

@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Clock, Flag, Loader2, X } from "lucide-react";
+import {
+  Bookmark,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Clock,
+  Loader2,
+  MoreVertical,
+  NotebookPen,
+  X,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   QuestionCard,
@@ -55,9 +66,36 @@ export function TestPlayer({
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(durationSeconds);
+  /* Bluebook chrome state. Directions and the notes panel are disclosures in
+     the header; the clock has a Hide control because a visible countdown is a
+     documented source of test anxiety and the real app lets you turn it off. */
+  const [showDirections, setShowDirections] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+  const [hideTimer, setHideTimer] = useState(false);
+  const [studentName, setStudentName] = useState("");
   const startedRef = useRef<number>(Date.now());
   const questionStartRef = useRef<number>(Date.now());
   const timePerQ = useRef<number[]>(questions.map(() => 0));
+
+  /* The footer carries the candidate's name, as Bluebook's does. Fetched here
+     rather than threaded down from the route because both callers would
+     otherwise need it, and a failure is cosmetic — the slot just stays empty. */
+  useEffect(() => {
+    if (!userId) return;
+    let live = true;
+    void (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name,first_name")
+        .eq("id", userId)
+        .maybeSingle();
+      if (live && data) setStudentName(data.full_name || data.first_name || "");
+    })();
+    return () => {
+      live = false;
+    };
+  }, [userId]);
 
   // Keep a ref to the latest answers so the timer's auto-submit (whose closure
   // is captured on mount) reads current answers rather than the initial blanks.
@@ -118,8 +156,7 @@ export function TestPlayer({
       questions.map(async (q, i) => {
         const a = currentAnswers[i];
         let isCorrect: boolean | null = null;
-        const hasAnswer =
-          q.kind === "grid_in" ? !!a.gridAnswer.trim() : !!a.selectedChoiceId;
+        const hasAnswer = q.kind === "grid_in" ? !!a.gridAnswer.trim() : !!a.selectedChoiceId;
         if (hasAnswer) {
           const { data } = await supabase.rpc("grade_answer" as any, {
             p_question_id: q.id,
@@ -154,14 +191,12 @@ export function TestPlayer({
     const { error: aErr } = await supabase.from("attempts").insert(attempts);
     if (aErr) console.error(aErr);
 
-
     const scaled =
       type === "mock"
         ? {
             rw: scaledScore(rwC, rwT, "reading_writing"),
             math: scaledScore(mC, mT, "math"),
-            total:
-              scaledScore(rwC, rwT, "reading_writing") + scaledScore(mC, mT, "math"),
+            total: scaledScore(rwC, rwT, "reading_writing") + scaledScore(mC, mT, "math"),
           }
         : null;
 
@@ -207,13 +242,14 @@ export function TestPlayer({
   const answeredCount = answered.filter(Boolean).length;
   const marked = answers.map((a) => a.markedForReview);
 
-  if (result) return <ResultsView result={result} type={type} onExit={() => navigate({ to: "/practice" })} />;
+  if (result)
+    return <ResultsView result={result} type={type} onExit={() => navigate({ to: "/practice" })} />;
 
   if (!q || questions.length === 0) {
     return (
-      <div className="grid h-[100dvh] w-full place-items-center bg-test-canvas px-4 py-10">
-        <div className="w-full max-w-md rounded-xl border border-test-line bg-white p-8 text-center shadow-panel">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-test-tint text-test-accent ring-1 ring-test-edge">
+      <div className="grid h-[100dvh] w-full place-items-center bg-test-chrome px-4 py-10">
+        <div className="w-full max-w-md rounded-lg border border-test-line bg-white p-8 text-center shadow-panel">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-test-tint text-test-accent ring-1 ring-test-line">
             <X className="h-6 w-6" />
           </span>
           <h1 className="mt-5 text-xl font-black tracking-tight text-test-ink">
@@ -224,7 +260,7 @@ export function TestPlayer({
           </p>
           <button
             onClick={() => (onExit ? onExit() : navigate({ to: "/practice" }))}
-            className="btn-test mt-6 inline-flex items-center gap-2 rounded-lg bg-test-accent px-4 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep"
+            className="btn-test mt-6 inline-flex items-center gap-2 rounded-full bg-test-accent px-5 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep"
           >
             Back to practice
           </button>
@@ -233,73 +269,232 @@ export function TestPlayer({
     );
   }
 
+  const sectionLabel = q.section === "math" ? "Math" : "Reading and Writing";
+  const moduleLabel =
+    type === "mock"
+      ? `Section ${q.section === "math" ? 2 : 1}: ${sectionLabel}`
+      : `${type === "daily" ? "Daily Test" : "Practice"}: ${sectionLabel}`;
+
   /* Sized with dvh rather than `fixed inset-0` so the runner can't be collapsed
      by an animated/transformed ancestor turning into its containing block, and
      so mobile browser chrome doesn't clip the bottom nav row. */
   return (
     <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-test-canvas">
-      {/* top bar — Bluebook-style with centered timer. Deep navy chrome so the
-          workspace below reads as the only lit surface on the screen. */}
-      <div className="grid h-14 shrink-0 grid-cols-3 items-center bg-test-chrome px-4 sm:px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <button
-            onClick={() => (onExit ? onExit() : navigate({ to: "/practice" }))}
-            className="tap grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/20 text-white/80 hover:bg-white/10 hover:text-white"
-            aria-label="Exit"
-          >
-            <X className="h-4 w-4" />
-          </button>
-          <span className="truncate text-sm font-black tracking-tight text-white">
-            Beyond<span className="text-test-edge">SAT</span>
-          </span>
-          <span className="hidden truncate text-xs font-bold uppercase tracking-wider text-white/70 sm:inline">
-            {type === "mock" ? "Mock exam" : type === "daily" ? "Daily test" : "Practice"}
-          </span>
-        </div>
-        <div className="flex justify-center">
-          {durationSeconds > 0 ? (
-            <div className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-5 py-1.5 text-lg font-black tabular-nums tracking-wider text-white ring-1 ring-white/15">
-              <Clock className="h-4 w-4" /> {fmt(timeLeft)}
+      {/* ------------------------------------------------------------------
+          Header. Bluebook's is a light bar, not dark chrome: module name and a
+          Directions disclosure at the left, the clock dead centre with Hide
+          beneath it, and the tool buttons at the right. The dashed rule below
+          it is Bluebook's own separator and is the cue students read as "the
+          bar above is chrome, everything below is the exam".
+          ------------------------------------------------------------------ */}
+      <header className="shrink-0 bg-test-chrome">
+        <div className="grid grid-cols-3 items-start gap-2 px-4 pb-2 pt-3 sm:px-6">
+          <div className="flex min-w-0 flex-col items-start">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => (onExit ? onExit() : navigate({ to: "/practice" }))}
+                className="tap grid h-7 w-7 shrink-0 place-items-center rounded text-test-muted hover:bg-test-well hover:text-test-ink"
+                aria-label="Exit"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <span className="truncate text-[15px] font-bold text-test-ink">{moduleLabel}</span>
             </div>
-          ) : (
-            <span className="text-xs font-bold uppercase tracking-wider text-white/70">Untimed</span>
-          )}
+            <button
+              onClick={() => setShowDirections((v) => !v)}
+              aria-expanded={showDirections}
+              className="tap mt-0.5 inline-flex items-center gap-1 rounded pl-9 pr-1 text-[13px] text-test-ink hover:underline"
+            >
+              Directions
+              {showDirections ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </div>
+
+          <div className="flex flex-col items-center">
+            {durationSeconds > 0 ? (
+              <>
+                {/* The digits keep their box when hidden — a collapsing clock
+                    shifts the whole header every time you toggle it. */}
+                <div
+                  className={
+                    "text-[26px] font-bold leading-none tabular-nums text-test-ink " +
+                    (hideTimer ? "invisible" : "")
+                  }
+                >
+                  {fmt(timeLeft)}
+                </div>
+                <button
+                  onClick={() => setHideTimer((v) => !v)}
+                  className="tap mt-1 rounded-full border border-test-ink px-3 py-0.5 text-xs font-semibold text-test-ink hover:bg-test-well"
+                >
+                  {hideTimer ? "Show" : "Hide"}
+                </button>
+              </>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 pt-1 text-sm font-semibold text-test-muted">
+                <Clock className="h-4 w-4" /> Untimed
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-start justify-end gap-1">
+            <button
+              onClick={() => setShowNotes((v) => !v)}
+              aria-pressed={showNotes}
+              className={
+                "tap inline-flex flex-col items-center rounded px-2 py-1 text-[11px] font-semibold " +
+                (showNotes ? "bg-test-well text-test-accent" : "text-test-ink hover:bg-test-well")
+              }
+            >
+              <NotebookPen className="h-5 w-5" />
+              <span className="mt-0.5 hidden sm:inline">Notes</span>
+            </button>
+            {/* Bluebook's ⋮ is a menu, not a shortcut, and the two things a
+                student reaches for from it are the review page and the exit. */}
+            <div className="relative">
+              <button
+                onClick={() => setShowMore((v) => !v)}
+                aria-expanded={showMore}
+                className={
+                  "tap inline-flex flex-col items-center rounded px-2 py-1 text-[11px] font-semibold " +
+                  (showMore ? "bg-test-well text-test-accent" : "text-test-ink hover:bg-test-well")
+                }
+              >
+                <MoreVertical className="h-5 w-5" />
+                <span className="mt-0.5 hidden sm:inline">More</span>
+              </button>
+              {showMore && (
+                <>
+                  {/* A menu left open floats over the question and swallows
+                      clicks on the options underneath, which in a timed sitting
+                      reads as the app having frozen. The backdrop both dismisses
+                      it and absorbs that first stray click. */}
+                  <button
+                    aria-label="Close menu"
+                    onClick={() => setShowMore(false)}
+                    className="fixed inset-0 z-30 cursor-default"
+                  />
+                  <div className="pop-in absolute right-0 top-full z-40 mt-1 w-56 overflow-hidden rounded-lg border border-test-line bg-white py-1 text-left shadow-float">
+                    <button
+                      onClick={() => {
+                        setShowMore(false);
+                        setShowReview(true);
+                      }}
+                      className="tap block w-full px-4 py-2 text-left text-sm text-test-ink hover:bg-test-well"
+                    >
+                      Go to Review Page
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMore(false);
+                        setShowDirections((v) => !v);
+                      }}
+                      className="tap block w-full px-4 py-2 text-left text-sm text-test-ink hover:bg-test-well"
+                    >
+                      {showDirections ? "Hide" : "Show"} directions
+                    </button>
+                    <div className="my-1 border-t border-test-line" />
+                    <button
+                      onClick={() => (onExit ? onExit() : navigate({ to: "/practice" }))}
+                      className="tap block w-full px-4 py-2 text-left text-sm text-test-ink hover:bg-test-well"
+                    >
+                      Exit without submitting
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="flex justify-end">
-          <button
-            onClick={() => setShowReview((v) => !v)}
-            className="tap inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-test-accent hover:border-test-accent"
-          >
-            <Flag className="h-3.5 w-3.5" /> Review {answeredCount}/{questions.length}
-          </button>
-        </div>
+
+        {showDirections && (
+          <div className="rise-in max-h-[40vh] overflow-y-auto border-t border-test-line bg-white px-4 py-4 text-[15px] leading-relaxed text-test-ink sm:px-6">
+            {q.section === "math" ? (
+              <>
+                <p>
+                  The questions in this section address a number of important math skills. Use of a
+                  calculator is permitted for all questions.
+                </p>
+                <p className="mt-3">
+                  For multiple-choice questions, solve each problem and choose the correct answer
+                  from the choices provided. For student-produced response questions, solve each
+                  problem and enter your answer as described below.
+                </p>
+                <ul className="mt-3 list-disc space-y-1 pl-6">
+                  <li>If you find more than one correct answer, enter only one answer.</li>
+                  <li>
+                    You can enter up to 5 characters for a positive answer and up to 6 characters
+                    (including the negative sign) for a negative answer.
+                  </li>
+                  <li>
+                    If your answer is a fraction that doesn't fit in the space, enter the decimal
+                    equivalent.
+                  </li>
+                  <li>
+                    If your answer is a decimal that doesn't fit, truncate or round at the fourth
+                    digit.
+                  </li>
+                  <li>Don't enter symbols such as a percent sign, comma, or dollar sign.</li>
+                </ul>
+              </>
+            ) : (
+              <>
+                <p>
+                  The questions in this section address a number of important reading and writing
+                  skills. Each question includes one or more passages, which may include a table or
+                  graph. Read each passage and question carefully, then choose the best answer to
+                  the question based on the passage or passages.
+                </p>
+                <p className="mt-3">
+                  All questions in this section are multiple-choice with four answer options. Each
+                  question has a single best answer.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+        <div className="border-b border-dashed border-test-edge" />
+      </header>
+
+      {/* Bluebook's blue title strip. It carries the name of the thing you are
+          sitting, which is the one piece of orientation the header itself
+          doesn't give — the header names the section, not the test. */}
+      <div className="shrink-0 bg-test-banner px-4 py-1 text-center sm:px-6">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-white">
+          {type === "mock" ? "Mock Exam" : type === "daily" ? "Daily Test" : "Practice Test"}
+          <span className="hidden sm:inline"> · BeyondSAT</span>
+        </span>
       </div>
 
-      {/* body — min-h-0 is what lets this scroll instead of stretching the
-          column and pushing the nav row off-screen. */}
-      <div className="min-h-0 flex-1 overflow-y-auto bg-test-canvas">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 pb-24">
-          {showReview ? (
-            <ReviewPanel
-              questions={questions}
-              answered={answered}
-              marked={marked}
-              current={idx}
-              onGoto={(i) => goto(i)}
-              onSubmit={submit}
-              submitting={submitting}
-            />
-          ) : (
-            <QuestionCard
-              q={q}
-              index={idx}
-              total={questions.length}
-              answer={answers[idx]}
-              onChange={(a) => updateAnswer(idx, a)}
-            />
-          )}
+      {/* body — min-h-0 is what lets the panes scroll instead of stretching the
+          column and pushing the footer off-screen. */}
+      {showReview ? (
+        <div className="min-h-0 flex-1 overflow-y-auto bg-test-chrome px-4 py-8 sm:px-6">
+          <ReviewPanel
+            questions={questions}
+            answered={answered}
+            marked={marked}
+            current={idx}
+            moduleLabel={moduleLabel}
+            onGoto={(i) => goto(i)}
+            onSubmit={submit}
+            submitting={submitting}
+          />
         </div>
-      </div>
+      ) : (
+        <QuestionCard
+          q={q}
+          index={idx}
+          answer={answers[idx]}
+          onChange={(a) => updateAnswer(idx, a)}
+          showNotes={showNotes}
+          onCloseNotes={() => setShowNotes(false)}
+        />
+      )}
 
       {/* bottom bar with centered question navigator popover */}
       <BottomBar
@@ -309,6 +504,7 @@ export function TestPlayer({
         marked={marked}
         answeredCount={answeredCount}
         showReview={showReview}
+        studentName={studentName}
         onPrev={() => goto(Math.max(0, idx - 1))}
         onNext={() => (idx < questions.length - 1 ? goto(idx + 1) : setShowReview(true))}
         onGoto={(i) => goto(i)}
@@ -326,6 +522,7 @@ function BottomBar({
   marked,
   answeredCount,
   showReview,
+  studentName,
   onPrev,
   onNext,
   onGoto,
@@ -337,6 +534,7 @@ function BottomBar({
   marked: boolean[];
   answeredCount: number;
   showReview: boolean;
+  studentName: string;
   onPrev: () => void;
   onNext: () => void;
   onGoto: (i: number) => void;
@@ -344,38 +542,46 @@ function BottomBar({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    /* Footer sits on white with only a hairline above it, so the controls read
-       as part of the workspace rather than a second bar of chrome. */
-    <div className="relative flex h-16 shrink-0 items-center justify-between border-t border-test-line bg-white px-4 sm:px-6">
-      <button
-        onClick={onPrev}
-        disabled={idx === 0 || showReview}
-        className="tap group inline-flex items-center gap-2 rounded-lg border border-test-edge bg-white px-4 py-2 text-sm font-bold text-test-accent hover:bg-test-tint disabled:pointer-events-none disabled:opacity-40"
-      >
-        <ChevronLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
-        Back
-      </button>
+    /* Bluebook's footer: candidate name at the left, the question navigator as
+       a dark pill dead centre, Back and Next at the right. Same light grey as
+       the header so the exam itself is the only white region on the screen. */
+    <div className="relative flex h-16 shrink-0 items-center justify-between border-t border-test-line bg-test-chrome px-4 sm:px-6">
+      <span className="hidden min-w-0 flex-1 truncate text-sm font-bold text-test-ink sm:block">
+        {studentName}
+      </span>
 
       <div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="tap inline-flex items-center gap-2 rounded-lg bg-test-canvas px-4 py-2 text-sm font-bold tabular-nums text-test-ink hover:bg-test-tint"
+          aria-expanded={open}
+          className="tap inline-flex items-center gap-2 rounded-md bg-test-dark px-4 py-1.5 text-sm font-semibold tabular-nums text-white hover:bg-test-accent-deep"
         >
           Question {idx + 1} of {total}
-          <ChevronRight
-            className={
-              "h-4 w-4 transition-transform duration-300 " + (open ? "-rotate-90" : "rotate-90")
-            }
-          />
+          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
         </button>
         {open && (
-          <div className="rise-in absolute bottom-full mb-3 w-[min(92vw,520px)] rounded-2xl border border-test-line bg-white p-4 shadow-float">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-test-muted">
-                Jump to question
+          <div className="rise-in absolute bottom-full mb-3 w-[min(92vw,540px)] rounded-lg border border-test-line bg-white p-4 shadow-float">
+            <div className="border-b border-test-line pb-3 text-center text-sm font-bold text-test-ink">
+              Jump to question
+            </div>
+            {/* The legend is not decoration: an unanswered question is a dashed
+                outline and an answered one is filled, and without the key that
+                distinction is guessable rather than readable. */}
+            <div className="flex flex-wrap items-center justify-center gap-4 py-3 text-xs text-test-ink">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3.5 w-3.5 rounded-sm border border-dashed border-test-ink" />
+                Unanswered
               </span>
-              <span className="text-xs tabular-nums text-test-muted">
-                {answeredCount}/{total} answered
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3.5 w-3.5 rounded-sm bg-test-dark" />
+                Answered
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Bookmark className="h-3.5 w-3.5 fill-test-accent text-test-accent" />
+                For review
+              </span>
+              <span className="tabular-nums text-test-muted">
+                {answeredCount}/{total}
               </span>
             </div>
             <div className="grid grid-cols-8 gap-2 stagger-fast sm:grid-cols-10">
@@ -391,18 +597,16 @@ function BottomBar({
                       setOpen(false);
                     }}
                     className={
-                      "tap relative h-10 rounded-lg text-sm font-bold tabular-nums " +
+                      "tap relative h-9 rounded-sm text-sm font-semibold tabular-nums " +
                       (cur ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "") +
                       (a
-                        ? "bg-test-accent text-white "
-                        : "border border-test-edge bg-white text-test-muted hover:bg-test-tint hover:text-test-ink ")
+                        ? "bg-test-dark text-white "
+                        : "border border-dashed border-test-ink text-test-ink hover:bg-test-well ")
                     }
                   >
                     {i + 1}
-                    {/* Marked-for-review dot, keyed to the accent so it matches
-                        the bookmark toggle on the card. */}
                     {m && (
-                      <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-test-accent" />
+                      <Bookmark className="absolute -right-1 -top-1.5 h-3.5 w-3.5 fill-test-accent text-test-accent" />
                     )}
                   </button>
                 );
@@ -412,13 +616,23 @@ function BottomBar({
         )}
       </div>
 
-      <button
-        onClick={onNext}
-        disabled={showReview}
-        className="btn-test group inline-flex items-center gap-2 rounded-lg bg-test-accent px-4 py-2 text-sm font-bold text-white hover:bg-test-accent-deep disabled:pointer-events-none disabled:opacity-40"
-      >
-        {isLast ? "Finish" : "Next"} <ChevronRight className="arrow-slide h-4 w-4" />
-      </button>
+      <div className="flex flex-1 items-center justify-end gap-2">
+        <button
+          onClick={onPrev}
+          disabled={idx === 0 || showReview}
+          className="tap group inline-flex items-center gap-1.5 rounded-full border border-test-accent bg-white px-5 py-2 text-sm font-bold text-test-accent hover:bg-test-tint disabled:pointer-events-none disabled:opacity-40"
+        >
+          <ChevronLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
+          Back
+        </button>
+        <button
+          onClick={onNext}
+          disabled={showReview}
+          className="btn-test group inline-flex items-center gap-1.5 rounded-full bg-test-accent px-5 py-2 text-sm font-bold text-white hover:bg-test-accent-deep disabled:pointer-events-none disabled:opacity-40"
+        >
+          {isLast ? "Review" : "Next"} <ChevronRight className="arrow-slide h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -428,6 +642,7 @@ function ReviewPanel({
   answered,
   marked,
   current,
+  moduleLabel,
   onGoto,
   onSubmit,
   submitting,
@@ -436,52 +651,82 @@ function ReviewPanel({
   answered: boolean[];
   marked: boolean[];
   current: number;
+  moduleLabel: string;
   onGoto: (i: number) => void;
   onSubmit: () => void;
   submitting: boolean;
 }) {
   const unanswered = answered.filter((x) => !x).length;
   return (
-    <div className="rise-in rounded-xl border border-test-line bg-white p-6 shadow-panel">
-      <h2 className="text-xl font-black tracking-tight text-test-ink">Review your answers</h2>
-      <p className="mt-1 text-sm text-test-muted">
-        {unanswered > 0
-          ? `${unanswered} unanswered. Tap any number to jump back.`
-          : "All questions answered. Submit when you're ready."}
-      </p>
-      <div className="mt-5 grid grid-cols-6 gap-2 stagger-fast sm:grid-cols-8 md:grid-cols-10">
-        {questions.map((_, i) => {
-          const a = answered[i];
-          const m = marked[i];
-          const cur = i === current;
-          return (
-            <button
-              key={i}
-              onClick={() => onGoto(i)}
-              className={
-                "tap relative aspect-square rounded-lg text-sm font-bold tabular-nums " +
-                (cur ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "") +
-                (a
-                  ? "bg-test-accent text-white "
-                  : "border border-test-edge bg-white text-test-muted hover:bg-test-tint hover:text-test-ink ")
-              }
-            >
-              {i + 1}
-              {m && (
-                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-test-accent" />
-              )}
-            </button>
-          );
-        })}
+    /* Bluebook's Review Page: a centred column on the grey field, headed by the
+       module name, with the same grid and legend as the footer navigator. */
+    <div className="rise-in mx-auto max-w-3xl">
+      <div className="text-center">
+        <h2 className="text-3xl font-bold tracking-tight text-test-ink">Check Your Work</h2>
+        <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-test-ink">
+          On test day, you won't be able to move on to the next module until time expires. For these
+          practice questions, you can click <strong>Submit</strong> when you're ready to move on.
+        </p>
       </div>
-      <div className="mt-6 flex justify-end">
+
+      <div className="mt-8 rounded-lg border border-test-line bg-white p-6">
+        <div className="border-b border-test-line pb-3 text-center text-sm font-bold text-test-ink">
+          {moduleLabel}
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-4 py-4 text-xs text-test-ink">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3.5 w-3.5 rounded-sm border border-dashed border-test-ink" />
+            Unanswered
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3.5 w-3.5 rounded-sm bg-test-dark" />
+            Answered
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Bookmark className="h-3.5 w-3.5 fill-test-accent text-test-accent" />
+            For review
+          </span>
+        </div>
+        <div className="grid grid-cols-6 gap-2.5 stagger-fast sm:grid-cols-8 md:grid-cols-10">
+          {questions.map((_, i) => {
+            const a = answered[i];
+            const m = marked[i];
+            const cur = i === current;
+            return (
+              <button
+                key={i}
+                onClick={() => onGoto(i)}
+                className={
+                  "tap relative aspect-square rounded-sm text-sm font-semibold tabular-nums " +
+                  (cur ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "") +
+                  (a
+                    ? "bg-test-dark text-white "
+                    : "border border-dashed border-test-ink text-test-ink hover:bg-test-well ")
+                }
+              >
+                {i + 1}
+                {m && (
+                  <Bookmark className="absolute -right-1 -top-1.5 h-3.5 w-3.5 fill-test-accent text-test-accent" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-6 flex flex-col items-center gap-3">
+        <p className="text-sm text-test-muted">
+          {unanswered > 0
+            ? `${unanswered} unanswered. Click any number to jump back.`
+            : "All questions answered."}
+        </p>
         <button
           onClick={onSubmit}
           disabled={submitting}
-          className="btn-test inline-flex items-center gap-2 rounded-lg bg-test-accent px-5 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep disabled:pointer-events-none disabled:opacity-60"
+          className="btn-test inline-flex items-center gap-2 rounded-full bg-test-accent px-8 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep disabled:pointer-events-none disabled:opacity-60"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Submit test
+          Submit
         </button>
       </div>
     </div>
@@ -533,7 +778,9 @@ function ResultsView({
         {result.scaled && (
           <div className="grid grid-cols-2 gap-4 stagger">
             <div className="rounded-2xl bg-brand-800 p-5 ring-1 ring-brand-300/40">
-              <div className="text-xs font-bold uppercase tracking-wider text-brand-100">R&amp;W</div>
+              <div className="text-xs font-bold uppercase tracking-wider text-brand-100">
+                R&amp;W
+              </div>
               <div className="mt-2 text-4xl font-black">
                 <AnimatedNumber value={result.scaled.rw} duration={1100} />
               </div>
@@ -554,13 +801,17 @@ function ResultsView({
         )}
         <div className="rise-in flex items-center justify-between rounded-2xl bg-brand-800 p-5 ring-1 ring-brand-300/40">
           <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-brand-100">Accuracy</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-brand-100">
+              Accuracy
+            </div>
             <div className="mt-1 text-2xl font-black">
               <AnimatedNumber value={pct} suffix="%" duration={900} />
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs font-bold uppercase tracking-wider text-brand-100">Answered</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-brand-100">
+              Answered
+            </div>
             <div className="mt-1 text-2xl font-black tabular-nums">
               {result.correct}/{result.total}
             </div>

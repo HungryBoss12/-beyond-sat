@@ -33,7 +33,7 @@ export function renderMaintenancePage(message: string): string {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
     <style>
-      :root { --brand: #11269D; --brand-mid: #2E43C4; --brand-soft: #B8C0E8; }
+      :root { --brand: #0B0761; --brand-mid: #535291; --brand-soft: #C6C5DA; }
       * { box-sizing: border-box; }
       body {
         margin: 0; min-height: 100vh; padding: 1.5rem;
@@ -45,15 +45,15 @@ export function renderMaintenancePage(message: string): string {
          under the cursor, fixed in place here since there's no JS. */
       body::before {
         content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
-        background: radial-gradient(circle 40rem at 50% 12%, rgba(46,67,196,.10), rgba(46,67,196,.04) 38%, transparent 68%);
+        background: radial-gradient(circle 40rem at 50% 12%, rgba(83,82,145,.12), rgba(83,82,145,.05) 38%, transparent 68%);
       }
       .card {
         position: relative; z-index: 1;
         width: 100%; max-width: 30rem; text-align: center;
         border-radius: 1.25rem; padding: 2.5rem 2rem;
-        background: linear-gradient(160deg, var(--brand) 0%, #0C1B70 100%);
-        border: 1px solid rgba(46,67,196,.5);
-        box-shadow: 0 18px 48px -12px rgba(17,38,157,.45);
+        background: linear-gradient(160deg, var(--brand) 0%, #0D0D4C 100%);
+        border: 1px solid rgba(83,82,145,.5);
+        box-shadow: 0 18px 48px -12px rgba(11,7,97,.45);
         color: #fff;
       }
       .badge {
@@ -72,7 +72,7 @@ export function renderMaintenancePage(message: string): string {
         background: #fff; color: var(--brand);
         box-shadow: 0 6px 18px -6px rgba(0,0,0,.4);
       }
-      button:hover { background: #EEF1FB; }
+      button:hover { background: #EAE9F1; }
       .foot { margin-top: 1.5rem; font-size: .75rem; color: #64748b; position: relative; z-index: 1; text-align: center; }
       .foot a { color: var(--brand-mid); }
     </style>

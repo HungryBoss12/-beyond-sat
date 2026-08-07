@@ -379,16 +379,16 @@ function ProgressPanel({
                     the data reads first and the fill is only atmosphere. */}
                 <defs>
                   <linearGradient id="dashTrend" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#B8C0E8" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#B8C0E8" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#C6C5DA" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#C6C5DA" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#2E43C4" strokeOpacity={0.3} vertical={false} />
+                <CartesianGrid stroke="#535291" strokeOpacity={0.55} vertical={false} />
                 <XAxis
                   dataKey="label"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#B8C0E8", fontSize: 11, fontWeight: 600 }}
+                  tick={{ fill: "#C6C5DA", fontSize: 11, fontWeight: 600 }}
                   dy={6}
                 />
                 <YAxis
@@ -396,17 +396,17 @@ function ProgressPanel({
                   ticks={[400, 800, 1200, 1600]}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#B8C0E8", fontSize: 10 }}
+                  tick={{ fill: "#C6C5DA", fontSize: 10 }}
                 />
                 <Tooltip content={<ChartTip suffix=" / 1600" />} />
                 <Area
                   type="monotone"
                   dataKey="score"
-                  stroke="#B8C0E8"
+                  stroke="#C6C5DA"
                   strokeWidth={2.5}
                   fill="url(#dashTrend)"
-                  dot={{ r: 3.5, fill: "#11269D", stroke: "#B8C0E8", strokeWidth: 2 }}
-                  activeDot={{ r: 6, fill: "#2E43C4", stroke: "#fff", strokeWidth: 2.5 }}
+                  dot={{ r: 3.5, fill: "#0B0761", stroke: "#C6C5DA", strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: "#535291", stroke: "#fff", strokeWidth: 2.5 }}
                   animationDuration={900}
                 />
               </AreaChart>
@@ -445,10 +445,10 @@ function AccuracyPanel({
           >
             <defs>
               {/* Light end of the ramp, so the arc stays legible against the
-                  #0c1b70 track it sits on. */}
+                  #090654 track it sits on. */}
               <linearGradient id="dashGauge" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stopColor="#FFFFFF" />
-                <stop offset="100%" stopColor="#B8C0E8" />
+                <stop offset="100%" stopColor="#C6C5DA" />
               </linearGradient>
             </defs>
             <PolarAngleAxis type="number" domain={[0, 100]} tick={false} axisLine={false} />
@@ -456,7 +456,7 @@ function AccuracyPanel({
               dataKey="value"
               cornerRadius={14}
               fill="url(#dashGauge)"
-              background={{ fill: "#0C1B70" }}
+              background={{ fill: "#090654" }}
               animationDuration={1100}
             />
           </RadialBarChart>
@@ -510,7 +510,7 @@ function DailyPanel({ done, streak }: { done: boolean; streak: number }) {
             </p>
           </div>
           {/* Lit state reads through fill rather than a warm hue — the palette
-              is white + #11269D only. */}
+              is white + #0B0761 only. */}
           <Flame
             className={
               "h-11 w-11 shrink-0 " + (done ? "fill-white text-white" : "text-brand-200")
@@ -618,13 +618,13 @@ function RadarPanel({
               <defs>
                 <linearGradient id="dashRadar" x1="0" y1="0" x2="1" y2="1">
                   <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="#B8C0E8" stopOpacity={0.16} />
+                  <stop offset="100%" stopColor="#C6C5DA" stopOpacity={0.16} />
                 </linearGradient>
               </defs>
-              <PolarGrid stroke="#2E43C4" />
+              <PolarGrid stroke="#535291" />
               <PolarAngleAxis
                 dataKey="skill"
-                tick={{ fill: "#B8C0E8", fontSize: 10.5, fontWeight: 600 }}
+                tick={{ fill: "#C6C5DA", fontSize: 10.5, fontWeight: 600 }}
               />
               <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
               <Tooltip content={<ChartTip suffix="% accuracy" />} />

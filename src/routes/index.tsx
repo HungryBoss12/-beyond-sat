@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -22,7 +22,7 @@ import { BeyondCore } from "@/components/landing/BeyondCore";
 import { SectionSkeleton } from "@/components/ui/skeletons";
 import { RevealCard, AmbientGlow } from "@/components/ui/reveal-card";
 import { MathText } from "@/components/MathText";
-import { useInView } from "@/hooks/useInView";
+import { useInView, useScrollProgress } from "@/hooks/useInView";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -153,7 +153,11 @@ function SectionRenderer({ section }: { section: Section }) {
   switch (section.kind) {
     case "hero":
       return (
-        <section>
+        /* The hero is above the fold, so it keeps its mount animation — gating it
+           on IntersectionObserver would hold the first thing a visitor sees until
+           an observer callback fires. `HeroProgress` only publishes `--p` so the
+           emblem column can drift as the page leaves. */
+        <HeroProgress>
           <div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 md:py-20 lg:grid-cols-2 lg:gap-12">
             <div className="rise-in">
               {/* Headings sit on the white page, so they stay dark; every card
@@ -203,16 +207,20 @@ function SectionRenderer({ section }: { section: Section }) {
               </div>
             </div>
 
-            <BeyondCore />
+            {/* Drifts down as the hero scrolls away, so the emblem and the copy
+                separate slightly instead of leaving as one block. */}
+            <div className="parallax-drift">
+              <BeyondCore />
+            </div>
           </div>
-        </section>
+        </HeroProgress>
       );
     case "stats":
       return (
-        <section id="stats" className="py-12 md:py-16">
+        <Reveal as="section" from="scale" id="stats" className="py-12 md:py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <RevealCard className="rise-in rounded-2xl border border-brand-400/40 bg-brand-600 p-6 shadow-panel md:p-10">
-              <div className="grid grid-cols-1 gap-8 stagger sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+            <RevealCard className="rounded-2xl border border-brand-400/40 bg-brand-600 p-6 shadow-panel md:p-10">
+              <StaggerGrid className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
                 {(d.items ?? []).map((s: any, i: number) => {
                   const Icon = ICONS[s.icon] ?? Sparkles;
                   return (
@@ -229,14 +237,14 @@ function SectionRenderer({ section }: { section: Section }) {
                     </div>
                   );
                 })}
-              </div>
+              </StaggerGrid>
             </RevealCard>
           </div>
-        </section>
+        </Reveal>
       );
     case "press":
       return (
-        <section className="pb-12 md:pb-16">
+        <Reveal as="section" from="fade" className="pb-12 md:pb-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
             <div className="flex flex-col items-center gap-6 md:flex-row md:justify-center md:gap-10">
               {d.label && (
@@ -254,17 +262,17 @@ function SectionRenderer({ section }: { section: Section }) {
               </div>
             </div>
           </div>
-        </section>
+        </Reveal>
       );
     case "features":
       return (
-        <section id="features" className="py-16 md:py-24">
+        <Reveal as="section" from="left" id="features" className="py-16 md:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <div className="mb-12 text-center">
+            <div className="parallax-rise mb-12 text-center">
               <h2 className="text-3xl text-slate-900 md:text-4xl">{d.title}</h2>
               {d.subtitle && <p className="mt-3 text-slate-500">{d.subtitle}</p>}
             </div>
-            <div className="grid gap-6 stagger md:grid-cols-3">
+            <StaggerGrid className="grid gap-6 md:grid-cols-3">
               {(d.items ?? []).map((f: any, i: number) => {
                 const Icon = ICONS[f.icon] ?? Sparkles;
                 return (
@@ -280,18 +288,18 @@ function SectionRenderer({ section }: { section: Section }) {
                   </RevealCard>
                 );
               })}
-            </div>
+            </StaggerGrid>
           </div>
-        </section>
+        </Reveal>
       );
     case "how":
       return (
-        <section id="how" className="py-16 md:py-24">
+        <Reveal as="section" from="right" id="how" className="py-16 md:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <div className="mb-12 text-center">
+            <div className="parallax-rise mb-12 text-center">
               <h2 className="text-3xl text-slate-900 md:text-4xl">{d.title}</h2>
             </div>
-            <div className="grid gap-6 stagger md:grid-cols-3">
+            <StaggerGrid className="grid gap-6 md:grid-cols-3">
               {(d.items ?? []).map((s: any, i: number) => (
                 <RevealCard
                   key={i}
@@ -304,9 +312,9 @@ function SectionRenderer({ section }: { section: Section }) {
                   <p className="text-sm leading-relaxed text-brand-100">{s.description}</p>
                 </RevealCard>
               ))}
-            </div>
+            </StaggerGrid>
           </div>
-        </section>
+        </Reveal>
       );
     case "cta":
       return (
@@ -352,10 +360,12 @@ function SectionRenderer({ section }: { section: Section }) {
       );
     case "showcase":
       return (
-        <Reveal as="section" id="showcase" className="py-16 md:py-24">
+        /* `blur` rather than a slide: this section's job is "look at the product",
+           and coming into focus says that where arriving from an edge doesn't. */
+        <Reveal as="section" from="blur" id="showcase" className="py-16 md:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
             {(d.title || d.subtitle) && (
-              <div className="mb-12 text-center">
+              <div className="parallax-rise mb-12 text-center">
                 {d.title && <h2 className="text-3xl text-slate-900 md:text-4xl">{d.title}</h2>}
                 {d.subtitle && <p className="mt-3 text-slate-500">{d.subtitle}</p>}
               </div>
@@ -371,9 +381,13 @@ function SectionRenderer({ section }: { section: Section }) {
 
     case "ai_demo":
       return (
-        <Reveal as="section" id="ai" className="py-16 md:py-24">
+        /* The only section whose halves arrive separately: the copy comes in from
+           the left and the transcript from the right, so they meet in the middle.
+           The outer Reveal animates nothing — it publishes `--p` and gates the two
+           nested ones. */
+        <Reveal as="section" from="none" id="ai" className="py-16 md:py-24">
           <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-14">
-            <div>
+            <Reveal as="div" from="left">
               {d.eyebrow && (
                 <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-25 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-600">
                   <Sparkles className="h-3.5 w-3.5" /> {d.eyebrow}
@@ -403,50 +417,52 @@ function SectionRenderer({ section }: { section: Section }) {
                   {d.button_label} <ArrowRight className="arrow-slide h-4 w-4" />
                 </CtaLink>
               )}
-            </div>
+            </Reveal>
 
             {/* A scripted transcript, not a live call: this section renders for
                 logged-out visitors, and /api/ai/chat requires a session. */}
-            <RevealCard className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
-              <div className="mb-4 flex items-center gap-2.5">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-400 text-white">
-                  <Sparkles className="h-4 w-4" />
-                </span>
-                <span className="text-sm font-bold text-white">
-                  {d.chat_title || "Beyond AI"}
-                </span>
-              </div>
-              <div className="space-y-3">
-                {(d.messages ?? []).map((m: any, i: number) =>
-                  m.role === "user" ? (
-                    <div key={i} className="flex justify-end">
-                      <p className="max-w-[85%] rounded-2xl rounded-br-sm bg-brand-400 px-3.5 py-2.5 text-sm text-white">
-                        {m.text}
-                      </p>
-                    </div>
-                  ) : (
-                    <div key={i} className="flex justify-start">
-                      <div className="max-w-[90%] rounded-2xl rounded-bl-sm bg-brand-800 px-3.5 py-2.5">
-                        {/* MathText so a scripted answer can carry real LaTeX,
-                            same renderer the live chat uses. */}
-                        <MathText block className="ai-prose text-sm text-brand-100">
-                          {m.text ?? ""}
-                        </MathText>
+            <Reveal as="div" from="right">
+              <RevealCard className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
+                <div className="mb-4 flex items-center gap-2.5">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-400 text-white">
+                    <Sparkles className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm font-bold text-white">
+                    {d.chat_title || "Beyond AI"}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {(d.messages ?? []).map((m: any, i: number) =>
+                    m.role === "user" ? (
+                      <div key={i} className="flex justify-end">
+                        <p className="max-w-[85%] rounded-2xl rounded-br-sm bg-brand-400 px-3.5 py-2.5 text-sm text-white">
+                          {m.text}
+                        </p>
                       </div>
-                    </div>
-                  ),
-                )}
-              </div>
-            </RevealCard>
+                    ) : (
+                      <div key={i} className="flex justify-start">
+                        <div className="max-w-[90%] rounded-2xl rounded-bl-sm bg-brand-800 px-3.5 py-2.5">
+                          {/* MathText so a scripted answer can carry real LaTeX,
+                              same renderer the live chat uses. */}
+                          <MathText block className="ai-prose text-sm text-brand-100">
+                            {m.text ?? ""}
+                          </MathText>
+                        </div>
+                      </div>
+                    ),
+                  )}
+                </div>
+              </RevealCard>
+            </Reveal>
           </div>
         </Reveal>
       );
 
     case "programs":
       return (
-        <Reveal as="section" id="programs" className="py-16 md:py-24">
+        <Reveal as="section" from="scale" id="programs" className="py-16 md:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <div className="mb-12 text-center">
+            <div className="parallax-rise mb-12 text-center">
               {d.title && <h2 className="text-3xl text-slate-900 md:text-4xl">{d.title}</h2>}
               {d.subtitle && <p className="mt-3 text-slate-500">{d.subtitle}</p>}
             </div>
@@ -488,9 +504,9 @@ function SectionRenderer({ section }: { section: Section }) {
 
     case "reviews":
       return (
-        <Reveal as="section" id="reviews" className="py-16 md:py-24">
+        <Reveal as="section" from="scale" id="reviews" className="py-16 md:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <div className="mb-12 text-center">
+            <div className="parallax-rise mb-12 text-center">
               {d.title && <h2 className="text-3xl text-slate-900 md:text-4xl">{d.title}</h2>}
               {d.subtitle && <p className="mt-3 text-slate-500">{d.subtitle}</p>}
             </div>
@@ -539,7 +555,9 @@ function SectionRenderer({ section }: { section: Section }) {
      */
     case "free":
       return (
-        <Reveal as="section" id="free" className="py-16 md:py-24">
+        /* Held longer than the sections above it — it's the last thing on the page
+           before the footer, so it lands rather than passes. */
+        <Reveal as="section" from="scale-hold" id="free" className="py-16 md:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
             <RevealCard className="relative overflow-hidden rounded-3xl border border-brand-400/50 bg-grad-brand p-8 text-center shadow-brand md:p-14">
               {d.eyebrow && (
@@ -609,6 +627,27 @@ function initials(name: any): string {
 }
 
 /**
+ * Which path a section takes on arrival. Sections alternate deliberately: one
+ * repeated move down a page this long reads as a template, where alternating
+ * directions read as a sequence someone authored.
+ */
+type RevealFrom = "up" | "left" | "right" | "scale" | "scale-hold" | "blur" | "fade" | "none";
+
+const FROM_CLASS: Record<RevealFrom, string> = {
+  up: "rise-in",
+  left: "slide-from-left",
+  right: "slide-from-right",
+  scale: "zoom-in-soft",
+  "scale-hold": "zoom-in-hold",
+  blur: "unblur-in",
+  fade: "fade-in",
+  /* For a section whose halves animate separately: the wrapper still publishes
+     `--p` and gates the nested reveals, but moves nothing itself. Two entrances
+     on the same element read as a stumble. */
+  none: "",
+};
+
+/**
  * A section that plays its entrance animation when it scrolls into view.
  *
  * The `rise-in` / `stagger` utilities animate on mount, which is correct for the
@@ -618,20 +657,35 @@ function initials(name: any): string {
  */
 function Reveal({
   as: Tag = "section",
+  from = "up",
   className,
   children,
   ...rest
 }: {
   as?: "section" | "div";
+  from?: RevealFrom;
   className?: string;
   children: React.ReactNode;
 } & React.HTMLAttributes<HTMLElement>) {
   const { ref, inView } = useInView<HTMLElement>();
+  /* The same element also publishes its scroll progress as `--p`, which any
+     descendant with `parallax-rise` / `parallax-drift` picks up by inheritance.
+     One observer and one rAF handler per section rather than per moving part. */
+  const progressRef = useScrollProgress<HTMLElement>();
+
+  const attach = useCallback(
+    (node: HTMLElement | null) => {
+      ref.current = node;
+      progressRef.current = node;
+    },
+    [ref, progressRef],
+  );
+
   return (
     <RevealContext.Provider value={inView}>
       <Tag
-        ref={ref as React.Ref<never>}
-        className={`${className ?? ""}${inView ? " rise-in" : ""}`}
+        ref={attach as React.Ref<never>}
+        className={`${className ?? ""}${inView ? ` ${FROM_CLASS[from]}` : ""}`}
         {...rest}
       >
         {children}
@@ -656,4 +710,20 @@ const RevealContext = createContext(false);
 function StaggerGrid({ className, children }: { className: string; children: React.ReactNode }) {
   const inView = useContext(RevealContext);
   return <div className={`${className}${inView ? " stagger" : ""}`}>{children}</div>;
+}
+
+/**
+ * The hero's section wrapper: publishes `--p` without gating anything on scroll.
+ *
+ * The hero is the one section that must animate on mount — it's the first thing
+ * rendered, and waiting for an IntersectionObserver callback to reveal it would
+ * show a blank column for a frame or two on a slow device. So it can't use
+ * <Reveal>, but it still needs a `--p` writer for the emblem column's drift.
+ *
+ * It publishes no RevealContext because it has no in-view signal to publish;
+ * anything added inside that needs one belongs in a <Reveal> of its own.
+ */
+function HeroProgress({ children }: { children: React.ReactNode }) {
+  const ref = useScrollProgress<HTMLElement>();
+  return <section ref={ref}>{children}</section>;
 }

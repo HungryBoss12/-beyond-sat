@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ArrowUp, Loader2, RotateCcw, Sparkles, Square, Zap } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { MathText } from "@/components/MathText";
+import { ChatTurn } from "@/components/ai/ChatTurn";
 import { Panel, PanelHead } from "@/components/ui/panel";
 import { askOnce, useBeyondAi } from "@/lib/ai/client";
 
@@ -207,7 +208,14 @@ export function FocusNextPanel({
           aria-atomic="false"
         >
           {messages.map((m, i) => (
-            <Turn key={i} role={m.role} content={m.content} />
+            /* The stats prefix is machinery, not something the student typed, so
+               it's stripped from the transcript they read back. */
+            <ChatTurn
+              key={i}
+              role={m.role}
+              content={m.content}
+              strip={/^My current stats — [^\n]*\n\n/}
+            />
           ))}
         </div>
       )}
@@ -281,45 +289,15 @@ export function FocusNextPanel({
         )}
       </form>
 
-      {chatting && (
-        <Link
-          to="/analysis"
-          className="group mt-3 inline-flex w-fit items-center gap-1.5 text-xs font-bold text-brand-100 hover:text-white"
-        >
-          Go deeper on the analysis page
-          <ArrowRight className="arrow-slide h-3.5 w-3.5" />
-        </Link>
-      )}
+      {/* This panel is the glanceable surface; the full section is where a
+          conversation actually lives, with saved chats and image upload. */}
+      <Link
+        to="/beyond-ai"
+        className="group mt-3 inline-flex w-fit items-center gap-1.5 text-xs font-bold text-brand-100 hover:text-white"
+      >
+        {chatting ? "Continue in Beyond AI" : "Open Beyond AI"}
+        <ArrowRight className="arrow-slide h-3.5 w-3.5" />
+      </Link>
     </Panel>
-  );
-}
-
-function Turn({ role, content }: { role: "user" | "assistant"; content: string }) {
-  if (role === "user") {
-    return (
-      <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-brand-400 px-3.5 py-2.5 text-sm font-medium text-white">
-          {/* The stats prefix is machinery, not something the student typed, so
-              it's hidden from the transcript they read back. */}
-          {content.replace(/^My current stats — [^\n]*\n\n/, "")}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex justify-start">
-      <div className="max-w-[92%] rounded-2xl rounded-bl-sm bg-brand-800 px-3.5 py-2.5 text-sm leading-relaxed text-white ring-1 ring-brand-400/30">
-        {content ? (
-          <MathText block className="ai-prose">
-            {content}
-          </MathText>
-        ) : (
-          <span className="inline-flex items-center gap-2 text-brand-100">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking…
-          </span>
-        )}
-      </div>
-    </div>
   );
 }

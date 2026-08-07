@@ -11,9 +11,7 @@ function loadDesmos(apiKey: string): Promise<void> {
   if (scriptPromise) return scriptPromise;
   scriptPromise = new Promise<void>((resolve, reject) => {
     const s = document.createElement("script");
-    s.src = `https://www.desmos.com/api/v1.11/calculator.js?apiKey=${encodeURIComponent(
-      apiKey,
-    )}`;
+    s.src = `https://www.desmos.com/api/v1.11/calculator.js?apiKey=${encodeURIComponent(apiKey)}`;
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => reject(new Error("Failed to load Desmos"));
@@ -24,10 +22,9 @@ function loadDesmos(apiKey: string): Promise<void> {
 
 async function fetchDesmosKey(): Promise<string | null> {
   const { data } = await supabase.rpc("get_desmos_api_key" as any);
-  const v = (data as unknown as string | null | undefined);
+  const v = data as unknown as string | null | undefined;
   return v && v.trim() ? v.trim() : null;
 }
-
 
 /**
  * Floating Desmos calculator button + panel.
@@ -107,7 +104,7 @@ export function DesmosCalculator() {
               : "bottom-6 right-6 w-[min(92vw,720px)] h-[min(80vh,640px)]")
           }
         >
-          <div className="flex h-11 shrink-0 items-center justify-between border-b border-test-line bg-test-canvas px-3">
+          <div className="flex h-11 shrink-0 items-center justify-between border-b border-test-line bg-test-chrome px-3">
             <div className="flex items-center gap-2 text-sm font-bold text-test-ink">
               <Calculator className="h-4 w-4 text-test-accent" /> Desmos Calculator
             </div>

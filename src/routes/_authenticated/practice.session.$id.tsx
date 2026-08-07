@@ -104,37 +104,51 @@ function SessionRunner() {
     })();
   }, [id, navigate]);
 
-  /* Sketch the player's chrome — timer bar, question card, nav row — so the
-     wait reads as "your test is coming up" instead of a bare spinner.
-     This route renders outside AppShell, so it supplies its own page padding. */
+  /* Sketch the player's chrome — header bar, dashed rule, split panes, footer —
+     so the wait reads as "your test is coming up" instead of a bare spinner.
+     This route renders outside AppShell, so it supplies its own page padding.
+     It has to track TestPlayer's chrome: a skeleton that paints the wrong bars
+     flashes one layout and then swaps to another. */
   /* The runner is a light surface, so these use `skeleton-light` rather than the
      app-wide `Skeleton` — that one shimmers through the dark blue ramp and would
      flash a navy slab before the white test UI paints. */
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-test-canvas">
-        <div className="h-14 w-full bg-test-chrome" />
-        <div className="mx-auto max-w-7xl space-y-4 px-4 py-6 sm:px-6">
-          <div className="skeleton-light h-[60vh] rounded-xl" />
-          <div className="flex justify-between gap-3">
-            <div className="skeleton-light h-10 w-28 rounded-lg" />
-            <div className="skeleton-light h-10 w-28 rounded-lg" />
+      <div className="flex h-[100dvh] flex-col overflow-hidden bg-test-canvas">
+        <div className="h-16 w-full shrink-0 border-b border-dashed border-test-edge bg-test-chrome" />
+        <div className="h-6 w-full shrink-0 bg-test-banner" />
+        <div className="flex min-h-0 flex-1">
+          <div className="hidden flex-1 border-r border-test-line p-6 md:block">
+            <div className="skeleton-light h-full rounded" />
           </div>
+          <div className="flex-1 space-y-4 p-6">
+            <div className="skeleton-light h-7 w-32 rounded" />
+            <div className="skeleton-light h-20 rounded" />
+            <div className="skeleton-light h-14 rounded-lg" />
+            <div className="skeleton-light h-14 rounded-lg" />
+            <div className="skeleton-light h-14 rounded-lg" />
+            <div className="skeleton-light h-14 rounded-lg" />
+          </div>
+        </div>
+        <div className="flex h-16 shrink-0 items-center justify-between border-t border-test-line bg-test-chrome px-4 sm:px-6">
+          <div className="skeleton-light h-6 w-32 rounded" />
+          <div className="skeleton-light h-9 w-40 rounded-md" />
+          <div className="skeleton-light h-10 w-28 rounded-full" />
         </div>
       </div>
     );
   }
   if (err) {
     return (
-      <div className="grid min-h-[100dvh] place-items-center bg-test-canvas px-4 py-6 sm:px-6">
-        <div className="w-full max-w-md rounded-xl border border-test-line bg-white p-8 text-center shadow-panel">
+      <div className="grid min-h-[100dvh] place-items-center bg-test-chrome px-4 py-6 sm:px-6">
+        <div className="w-full max-w-md rounded-lg border border-test-line bg-white p-8 text-center shadow-panel">
           <h1 className="text-xl font-black tracking-tight text-test-ink">{err}</h1>
           <p className="mt-2 text-sm text-test-muted">
             The session may have been removed, or it belongs to another account.
           </p>
           <button
             onClick={() => navigate({ to: "/practice" })}
-            className="btn-test mt-6 rounded-lg bg-test-accent px-4 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep"
+            className="btn-test mt-6 rounded-full bg-test-accent px-5 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep"
           >
             Back to practice
           </button>

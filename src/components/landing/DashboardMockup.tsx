@@ -28,7 +28,11 @@ import {
  *
  * Recharts takes colours as props rather than classes, so the brand ramp is
  * repeated as hexes here. They are the same values as --color-brand-* in
- * styles.css: 100 #b8c0e8, 200 #8a98d6, 400 #2e43c4, 500 #1a2fa8, 700 #0e1f82.
+ * styles.css: 100 #c6c5da, 200 #9f9fc2, 300 #7978a9, 400 #535291, 800 #090654.
+ *
+ * Everything drawn *on* the card pulls from 100-400. The 500-900 steps are the
+ * five brand indigos, all within a few percent of each other in lightness, so a
+ * gridline or dot in one of them would vanish against the card behind it.
  */
 
 const SCORE_TREND = [
@@ -61,17 +65,17 @@ function TrendDot({ cx, cy, index }: { cx?: number; cy?: number; index?: number 
   if (cx == null || cy == null) return null;
   const isLast = index === SCORE_TREND.length - 1;
   if (!isLast) {
-    return <circle cx={cx} cy={cy} r={3} fill="#ffffff" stroke="#2e43c4" strokeWidth={1.5} />;
+    return <circle cx={cx} cy={cy} r={3} fill="#ffffff" stroke="#535291" strokeWidth={1.5} />;
   }
   return (
     <g>
-      <circle cx={cx} cy={cy} r={4.5} fill="#ffffff" stroke="#2e43c4" strokeWidth={2} />
+      <circle cx={cx} cy={cy} r={4.5} fill="#ffffff" stroke="#535291" strokeWidth={2} />
       {/* The bubble inverts — light chip, deep text — so it reads on the blue card. */}
-      <rect x={cx - 34} y={cy - 42} width={68} height={30} rx={6} fill="#ffffff" stroke="#8a98d6" />
-      <text x={cx} y={cy - 29} textAnchor="middle" fontSize={11} fontWeight={700} fill="#0e1f82">
+      <rect x={cx - 34} y={cy - 42} width={68} height={30} rx={6} fill="#ffffff" stroke="#9f9fc2" />
+      <text x={cx} y={cy - 29} textAnchor="middle" fontSize={11} fontWeight={700} fill="#0b0761">
         1520
       </text>
-      <text x={cx} y={cy - 18} textAnchor="middle" fontSize={8} fill="#1a2fa8">
+      <text x={cx} y={cy - 18} textAnchor="middle" fontSize={8} fill="#535291">
         Jun 1, 2024
       </text>
     </g>
@@ -124,19 +128,19 @@ export function DashboardMockup() {
             <div className="mt-3 h-[124px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={SCORE_TREND} margin={{ top: 34, right: 18, bottom: 0, left: -14 }}>
-                  <CartesianGrid stroke="#1a2fa8" vertical={false} />
+                  <CartesianGrid stroke="#535291" vertical={false} />
                   <XAxis
                     dataKey="month"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: "#b8c0e8", fontSize: 9 }}
+                    tick={{ fill: "#c6c5da", fontSize: 9 }}
                   />
                   <YAxis
                     domain={[1000, 1600]}
                     ticks={[1000, 1200, 1400, 1600]}
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: "#b8c0e8", fontSize: 9 }}
+                    tick={{ fill: "#c6c5da", fontSize: 9 }}
                   />
                   <Line
                     type="monotone"
@@ -168,7 +172,7 @@ export function DashboardMockup() {
                   <RadialBar
                     dataKey="value"
                     cornerRadius={10}
-                    background={{ fill: "#0e1f82" }}
+                    background={{ fill: "#535291" }}
                     isAnimationActive={false}
                   />
                 </RadialBarChart>

@@ -6,6 +6,16 @@ import { handleAiChat } from "./lib/ai/handler";
 import { checkMaintenance } from "./lib/maintenance";
 import { maintenanceResponse } from "./lib/maintenance-page";
 
+/* Load .dev.vars/.env.local/.env into process.env for `vite dev`.
+   This is dead code on the edge — the `if (import.meta.env.DEV)` literal is
+   substituted at build time so Rollup drops the entire branch, including the
+   import("node:fs") call that would otherwise pull a Node builtin into the
+   Worker. */
+if (import.meta.env.DEV) {
+  const { loadDevEnv } = await import("./lib/dev-env");
+  await loadDevEnv();
+}
+
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };

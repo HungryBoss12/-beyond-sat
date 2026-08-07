@@ -443,7 +443,13 @@ export function parseJson(text: string): ParseResult {
 // Shared validation
 // ---------------------------------------------------------------------------
 
-function validateRecord(rec: Record<string, string>, index: number): RowResult {
+/**
+ * Exported for the document-import path (`src/lib/import/`), which builds the
+ * same string record from a .docx or PDF and needs the *same* verdicts a pasted
+ * spreadsheet gets. Two validators would drift, and the one that drifts is
+ * always the one nobody re-reads.
+ */
+export function validateRecord(rec: Record<string, string>, index: number): RowResult {
   const errors: string[] = [];
   const warnings: string[] = [];
   const get = (k: string) => (rec[k] ?? "").trim();

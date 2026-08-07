@@ -1,0 +1,467 @@
+[33mThe plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the [1mresolve.tsconfigPaths[22m option. You can remove the plugin and set [1mresolve.tsconfigPaths: true[22m in your Vite config instead.[39m
+[36mvite v8.1.5 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 3015 modules transformed.
+rendering chunks...
+computing gzip size...
+.output/public/assets/KaTeX_Size3-Regular-CTq5MqoE.woff             4.42 kB
+.output/public/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2            4.92 kB
+.output/public/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2            5.20 kB
+.output/public/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2            5.46 kB
+.output/public/assets/KaTeX_Size4-Regular-BF-4gkZK.woff             5.98 kB
+.output/public/assets/KaTeX_Size2-Regular-oD1tc_U0.woff             6.18 kB
+.output/public/assets/KaTeX_Size1-Regular-C195tn64.woff             6.49 kB
+.output/public/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2      6.90 kB
+.output/public/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2         6.91 kB
+.output/public/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf              7.58 kB
+.output/public/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff       7.65 kB
+.output/public/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff          7.71 kB
+.output/public/assets/KaTeX_Script-Regular-D3wIWfF6.woff2           9.64 kB
+.output/public/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2       10.34 kB
+.output/public/assets/KaTeX_Size4-Regular-DWFBv043.ttf             10.36 kB
+.output/public/assets/KaTeX_Script-Regular-D5yQViql.woff           10.58 kB
+.output/public/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2         11.31 kB
+.output/public/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2            11.34 kB
+.output/public/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf             11.50 kB
+.output/public/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2        12.02 kB
+.output/public/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2          12.21 kB
+.output/public/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf             12.22 kB
+.output/public/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff        12.31 kB
+.output/public/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf       12.34 kB
+.output/public/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf          12.36 kB
+.output/public/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff          13.20 kB
+.output/public/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff             13.29 kB
+.output/public/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2      13.56 kB
+.output/public/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff         14.11 kB
+.output/public/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff           14.40 kB
+.output/public/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff       16.02 kB
+.output/public/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2         16.40 kB
+.output/public/assets/KaTeX_Math-Italic-t53AETM-.woff2             16.44 kB
+.output/public/assets/KaTeX_Script-Regular-C5JkGWo-.ttf            16.64 kB
+.output/public/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2         16.78 kB
+.output/public/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2             16.98 kB
+.output/public/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff          18.66 kB
+.output/public/assets/KaTeX_Math-Italic-DA0__PXp.woff              18.74 kB
+.output/public/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff          19.41 kB
+.output/public/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf         19.43 kB
+.output/public/assets/KaTeX_Fraktur-Regular-CB_wures.ttf           19.57 kB
+.output/public/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf              19.58 kB
+.output/public/assets/KaTeX_Main-Italic-BMLOBm91.woff              19.67 kB
+.output/public/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf          22.36 kB
+.output/public/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf            24.50 kB
+.output/public/assets/KaTeX_Main-Bold-Cx986IdX.woff2               25.32 kB
+.output/public/assets/KaTeX_Main-Regular-B22Nviop.woff2            26.27 kB
+.output/public/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf        27.55 kB
+.output/public/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2             28.07 kB
+.output/public/assets/KaTeX_Main-Bold-Jm3AIy58.woff                29.91 kB
+.output/public/assets/KaTeX_Main-Regular-Dr94JaBh.woff             30.77 kB
+.output/public/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf           31.19 kB
+.output/public/assets/KaTeX_Math-Italic-flOr_0UB.ttf               31.30 kB
+.output/public/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf           32.96 kB
+.output/public/assets/KaTeX_AMS-Regular-DMm9YOAa.woff              33.51 kB
+.output/public/assets/KaTeX_Main-Italic-3WenGoN9.ttf               33.58 kB
+.output/public/assets/KaTeX_Main-Bold-waoOVXN0.ttf                 51.33 kB
+.output/public/assets/KaTeX_Main-Regular-ypZvNtVU.ttf              53.58 kB
+.output/public/assets/KaTeX_AMS-Regular-DRggAlZN.ttf               63.63 kB
+.output/public/assets/pdf.worker.min-yatZIOMy.mjs               1,375.83 kB
+.output/public/assets/admin-BTI43Bzw.css                           18.08 kB │ gzip:   7.04 kB
+.output/public/assets/MathText-ClQbWekD.css                        29.73 kB │ gzip:   7.94 kB
+.output/public/assets/styles-DiYQLK6h.css                         114.01 kB │ gzip:  19.70 kB
+.output/public/assets/pdf.worker.min-Crr82RAx.js                    0.06 kB │ gzip:   0.08 kB
+.output/public/assets/minus-DNjtomKi.js                             0.10 kB │ gzip:   0.12 kB
+.output/public/assets/check-gDPd0BfI.js                             0.11 kB │ gzip:   0.13 kB
+.output/public/assets/chevron-down-DSsWlgVr.js                      0.11 kB │ gzip:   0.13 kB
+.output/public/assets/chevron-up-BpW2dIHj.js                        0.11 kB │ gzip:   0.13 kB
+.output/public/assets/not-found-i5RsCZif.js                         0.11 kB │ gzip:   0.11 kB
+.output/public/assets/chevron-right-B6wmERqC.js                     0.11 kB │ gzip:   0.13 kB
+.output/public/assets/matchContext-CHLjWpr0.js                      0.13 kB │ gzip:   0.11 kB
+.output/public/assets/loader-circle-6kK7Axhi.js                     0.13 kB │ gzip:   0.14 kB
+.output/public/assets/square-D5lIjTx1.js                            0.13 kB │ gzip:   0.14 kB
+.output/public/assets/useRouter-sHo46cOv.js                         0.14 kB │ gzip:   0.13 kB
+.output/public/assets/practice-Z1SKEykg.js                          0.14 kB │ gzip:   0.14 kB
+.output/public/assets/plus-D-G5OVVz.js                              0.14 kB │ gzip:   0.14 kB
+.output/public/assets/x-Dd7Socoi.js                                 0.14 kB │ gzip:   0.14 kB
+.output/public/assets/arrow-left-Cs6pK5IB.js                        0.15 kB │ gzip:   0.15 kB
+.output/public/assets/arrow-right-DLISqJDg.js                       0.15 kB │ gzip:   0.15 kB
+.output/public/assets/clock-BK-okP_5.js                             0.15 kB │ gzip:   0.15 kB
+.output/public/assets/circle-check-DPX19Hgo.js                      0.16 kB │ gzip:   0.16 kB
+.output/public/assets/ban-CTgUsuc8.js                               0.17 kB │ gzip:   0.16 kB
+.output/public/assets/menu-9nQCYzUv.js                              0.17 kB │ gzip:   0.14 kB
+.output/public/assets/play-CuJfOrUP.js                              0.17 kB │ gzip:   0.17 kB
+.output/public/assets/flame-6yjO0ccv.js                             0.18 kB │ gzip:   0.17 kB
+.output/public/assets/circle-x-Da3o4fjH.js                          0.19 kB │ gzip:   0.17 kB
+.output/public/assets/target-DK8Rl_JE.js                            0.21 kB │ gzip:   0.15 kB
+.output/public/assets/log-out-D6j8BqS2.js                           0.21 kB │ gzip:   0.18 kB
+.output/public/assets/upload-DEdnR0oY.js                            0.21 kB │ gzip:   0.18 kB
+.output/public/assets/copy-B82Ng-uf.js                              0.22 kB │ gzip:   0.19 kB
+.output/public/assets/chart-column-D9kTm6hU.js                      0.24 kB │ gzip:   0.18 kB
+.output/public/assets/shield-CONd70YI.js                            0.26 kB │ gzip:   0.21 kB
+.output/public/assets/pencil-k5iARMoC.js                            0.26 kB │ gzip:   0.21 kB
+.output/public/assets/pen-line-C4mktbhV.js                          0.26 kB │ gzip:   0.21 kB
+.output/public/assets/users-Cz2exjG-.js                             0.29 kB │ gzip:   0.21 kB
+.output/public/assets/save-BoTIqrGt.js                              0.31 kB │ gzip:   0.22 kB
+.output/public/assets/trash-2-BtDaW-Pz.js                           0.31 kB │ gzip:   0.20 kB
+.output/public/assets/newspaper-DOtcbdKJ.js                         0.33 kB │ gzip:   0.23 kB
+.output/public/assets/layout-dashboard-BaI1f2ke.js                  0.34 kB │ gzip:   0.19 kB
+.output/public/assets/key-round-DonJuKPp.js                         0.34 kB │ gzip:   0.25 kB
+.output/public/assets/calendar-clock-CoPuIxOt.js                    0.36 kB │ gzip:   0.24 kB
+.output/public/assets/clsx-CjueKrWZ.js                              0.36 kB │ gzip:   0.23 kB
+.output/public/assets/file-text-CV3RH5zr.js                         0.37 kB │ gzip:   0.24 kB
+.output/public/assets/clipboard-list-Bxoq275b.js                    0.40 kB │ gzip:   0.25 kB
+.output/public/assets/layers-jpR6sXeS.js                            0.41 kB │ gzip:   0.23 kB
+.output/public/assets/user-fL_eoUg4.js                              0.41 kB │ gzip:   0.26 kB
+.output/public/assets/jsx-runtime-DJVDe6nZ.js                       0.42 kB │ gzip:   0.29 kB
+.output/public/assets/house-BWL5FmVh.js                             0.46 kB │ gzip:   0.30 kB
+.output/public/assets/trophy-DHU840Zt.js                            0.46 kB │ gzip:   0.26 kB
+.output/public/assets/calendar-days-Br20ZJ1Q.js                     0.48 kB │ gzip:   0.25 kB
+.output/public/assets/sparkles-BdXnmxyc.js                          0.48 kB │ gzip:   0.27 kB
+.output/public/assets/calculator-BvyjpFoN.js                        0.51 kB │ gzip:   0.27 kB
+.output/public/assets/redirect-1Dss4sOM.js                          0.53 kB │ gzip:   0.32 kB
+.output/public/assets/reveal-card-R7LHjUdI.js                       0.55 kB │ gzip:   0.30 kB
+.output/public/assets/eye-Dl19BooJ.js                               0.62 kB │ gzip:   0.33 kB
+.output/public/assets/useMatch-B2JPq5qk.js                          0.64 kB │ gzip:   0.39 kB
+.output/public/assets/star-DDi56YwS.js                              0.74 kB │ gzip:   0.40 kB
+.output/public/assets/presence-L6KhgZLI.js                          0.77 kB │ gzip:   0.45 kB
+.output/public/assets/AnimatedNumber-BbDEuIzL.js                    0.84 kB │ gzip:   0.53 kB
+.output/public/assets/preload-helper-Czpn1I53.js                    1.19 kB │ gzip:   0.67 kB
+.output/public/assets/ChatTurn-BE_FQue9.js                          1.29 kB │ gzip:   0.66 kB
+.output/public/assets/highlightBindings-0bLWloFG.js                 1.38 kB │ gzip:   0.72 kB
+.output/public/assets/usePointerGlow-C1y3sNTW.js                    1.42 kB │ gzip:   0.49 kB
+.output/public/assets/with-selector-AnzX9dpB.js                     1.61 kB │ gzip:   0.71 kB
+.output/public/assets/banned-BvcyTVzy.js                            1.76 kB │ gzip:   0.85 kB
+.output/public/assets/sat-DE82oDw_.js                               1.90 kB │ gzip:   0.95 kB
+.output/public/assets/news._slug-B71A8tUW.js                        1.94 kB │ gzip:   0.96 kB
+.output/public/assets/news-k0QJWx_n.js                              2.24 kB │ gzip:   1.06 kB
+.output/public/assets/pdf-Bmir8IjF.js                               2.40 kB │ gzip:   1.27 kB
+.output/public/assets/practice.daily-BKybepHT.js                    3.19 kB │ gzip:   1.28 kB
+.output/public/assets/client-BauT4tzC.js                            3.46 kB │ gzip:   1.49 kB
+.output/public/assets/metric-DBuHmisE.js                            3.52 kB │ gzip:   1.39 kB
+.output/public/assets/practice.mock-BEj76QfC.js                     3.57 kB │ gzip:   1.45 kB
+.output/public/assets/admin.examdates-BHyVmG9w.js                   3.93 kB │ gzip:   1.48 kB
+.output/public/assets/useStore-DtPDND3m.js                          3.95 kB │ gzip:   1.79 kB
+.output/public/assets/signin-BEFazHfR.js                            4.26 kB │ gzip:   1.69 kB
+.output/public/assets/session-QkaU8oWV.js                           4.78 kB │ gzip:   1.42 kB
+.output/public/assets/practice.index-BGc_Tt2l.js                    5.59 kB │ gzip:   1.89 kB
+.output/public/assets/admin.index-BzJ5NNT8.js                       6.00 kB │ gzip:   2.05 kB
+.output/public/assets/analysis.session._id-Bkn-iz0X.js              6.13 kB │ gzip:   2.01 kB
+.output/public/assets/admin.news-BS0mv_qB.js                        6.38 kB │ gzip:   1.91 kB
+.output/public/assets/vision-DvS7dTaY.js                            6.51 kB │ gzip:   3.06 kB
+.output/public/assets/admin-C4h8Pkqm.js                             7.28 kB │ gzip:   2.47 kB
+.output/public/assets/admin.daily-B2bx0Cfj.js                       7.70 kB │ gzip:   2.17 kB
+.output/public/assets/onboarding-2j3ncSq3.js                        7.87 kB │ gzip:   2.75 kB
+.output/public/assets/link-CHBKB4nS.js                              7.93 kB │ gzip:   3.37 kB
+.output/public/assets/signup-DVcmLCsE.js                            7.94 kB │ gzip:   2.59 kB
+.output/public/assets/react-mKr9-DnF.js                             8.16 kB │ gzip:   3.15 kB
+.output/public/assets/admin.users-QAzsFGrU.js                       8.40 kB │ gzip:   3.02 kB
+.output/public/assets/admin.settings-BQl__X7S.js                    9.64 kB │ gzip:   3.42 kB
+.output/public/assets/practice._section-Dyfs8RD4.js                 9.76 kB │ gzip:   3.25 kB
+.output/public/assets/admin.mocks-CHLKt84c.js                      10.20 kB │ gzip:   2.89 kB
+.output/public/assets/route-C0zLx799.js                            10.49 kB │ gzip:   2.86 kB
+.output/public/assets/admin.tests-CmRfEFb1.js                      11.62 kB │ gzip:   3.19 kB
+.output/public/assets/QuestionCard-CUkGL6wg.js                     12.52 kB │ gzip:   4.01 kB
+.output/public/assets/ClientOnly-DsZhJjUX.js                       13.71 kB │ gzip:   4.82 kB
+.output/public/assets/profile-Cy6PWS3v.js                          16.13 kB │ gzip:   4.77 kB
+.output/public/assets/format-BcGSa_Z5.js                           19.26 kB │ gzip:   5.53 kB
+.output/public/assets/beyond-ai-CVqO8oFU.js                        20.45 kB │ gzip:   6.62 kB
+.output/public/assets/practice.session._id-CfFuF3kd.js             26.44 kB │ gzip:   7.26 kB
+.output/public/assets/admin.homepage-ChOar-OD.js                   26.90 kB │ gzip:   6.41 kB
+.output/public/assets/utils-B9URw_CD.js                            26.93 kB │ gzip:   8.59 kB
+.output/public/assets/analysis-Zer9vRf1.js                         29.78 kB │ gzip:   9.51 kB
+.output/public/assets/RadialBarChart-_dKR30fk.js                   34.71 kB │ gzip:   8.37 kB
+.output/public/assets/routes-BQJup0OP.js                           40.72 kB │ gzip:  11.97 kB
+.output/public/assets/dashboard-DVZya0Ih.js                        46.17 kB │ gzip:  13.52 kB
+.output/public/assets/admin.import-Ey03RxYY.js                     55.51 kB │ gzip:  16.92 kB
+.output/public/assets/SiteFooter-DE9TR5_O.js                       98.05 kB │ gzip:  31.95 kB
+.output/public/assets/client-Cfngf7nS.js                          206.02 kB │ gzip:  53.10 kB
+.output/public/assets/MathText-BpP271C1.js                        259.38 kB │ gzip:  77.83 kB
+.output/public/assets/pdf-DbgjhmMl.js                             330.03 kB │ gzip:  97.05 kB
+.output/public/assets/generateCategoricalChart-ByljHiHt.js        360.43 kB │ gzip:  95.80 kB
+.output/public/assets/index-BS8WbWWi.js                           390.85 kB │ gzip: 117.22 kB
+.output/public/assets/admin.questions-trgKPRvW.js                 820.33 kB │ gzip: 224.40 kB
+.output/public/assets/BeyondCoreScene-Bcbh3p3_.js                 849.88 kB │ gzip: 225.91 kB
+
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+  - vite-tsconfig-paths (69%)
+  - tanstack-start-core:import-protection (26%)
+  - tanstack-start-core:import-protection-transform-cache (4%)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 6.50s[39m
+[36mvite v8.1.5 [32mbuilding ssr environment for production...[36m[39m
+[2Ktransforming...✓ 168 modules transformed.
+rendering chunks...
+computing gzip size...
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Size3-Regular-CTq5MqoE.woff           4.42 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2          4.92 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2          5.20 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2          5.46 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Size4-Regular-BF-4gkZK.woff           5.98 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Size2-Regular-oD1tc_U0.woff           6.18 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Size1-Regular-C195tn64.woff           6.49 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2    6.90 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2       6.91 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf            7.58 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff     7.65 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff        7.71 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Script-Regular-D3wIWfF6.woff2         9.64 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2     10.34 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Size4-Regular-DWFBv043.ttf           10.36 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Script-Regular-D5yQViql.woff         10.58 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2       11.31 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2          11.34 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf           11.50 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2      12.02 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2        12.21 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf           12.22 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff      12.31 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf     12.34 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf        12.36 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff        13.20 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff           13.29 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2    13.56 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff       14.11 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff         14.40 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff     16.02 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2       16.40 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Math-Italic-t53AETM-.woff2           16.44 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Script-Regular-C5JkGWo-.ttf          16.64 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2       16.78 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2           16.98 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff        18.66 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Math-Italic-DA0__PXp.woff            18.74 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff        19.41 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf       19.43 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Fraktur-Regular-CB_wures.ttf         19.57 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf            19.58 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Main-Italic-BMLOBm91.woff            19.67 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf        22.36 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf          24.50 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Main-Bold-Cx986IdX.woff2             25.32 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Main-Regular-B22Nviop.woff2          26.27 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf      27.55 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2           28.07 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Main-Bold-Jm3AIy58.woff              29.91 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Main-Regular-Dr94JaBh.woff           30.77 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf         31.19 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Math-Italic-flOr_0UB.ttf             31.30 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf         32.96 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_AMS-Regular-DMm9YOAa.woff            33.51 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Main-Italic-3WenGoN9.ttf             33.58 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Main-Bold-waoOVXN0.ttf               51.33 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_Main-Regular-ypZvNtVU.ttf            53.58 kB
+node_modules/.nitro/vite/services/ssr/assets/KaTeX_AMS-Regular-DRggAlZN.ttf             63.63 kB
+node_modules/.nitro/vite/services/ssr/assets/admin-BTI43Bzw.css                         18.08 kB │ gzip:  7.04 kB
+node_modules/.nitro/vite/services/ssr/assets/MathText-ClQbWekD.css                      29.73 kB │ gzip:  7.94 kB
+node_modules/.nitro/vite/services/ssr/assets/styles-DiYQLK6h.css                       114.01 kB │ gzip: 19.70 kB
+node_modules/.nitro/vite/services/ssr/assets/utils-C_uf36nf.js                           0.18 kB │ gzip:  0.15 kB
+node_modules/.nitro/vite/services/ssr/assets/empty-plugin-adapters-D9UWiqvJ.js           0.22 kB │ gzip:  0.16 kB
+node_modules/.nitro/vite/services/ssr/assets/practice-DCQBP1GT.js                        0.27 kB │ gzip:  0.20 kB
+node_modules/.nitro/vite/services/ssr/assets/practice.session._id-BT3uDCP0.js            0.47 kB │ gzip:  0.29 kB
+node_modules/.nitro/vite/services/ssr/assets/analysis.session._id-CM9vHhfF.js            0.47 kB │ gzip:  0.29 kB
+node_modules/.nitro/vite/services/ssr/assets/createMiddleware-B_4t7rW1.js                0.83 kB │ gzip:  0.32 kB
+node_modules/.nitro/vite/services/ssr/assets/practice._section-BXVYn8tH.js               0.99 kB │ gzip:  0.59 kB
+node_modules/.nitro/vite/services/ssr/assets/admin-EWnNZwW-.js                           1.17 kB │ gzip:  0.66 kB
+node_modules/.nitro/vite/services/ssr/assets/admin-BLcmUIX7.js                           1.48 kB │ gzip:  0.84 kB
+node_modules/.nitro/vite/services/ssr/assets/client-DfKvIl-9.js                          1.56 kB │ gzip:  0.85 kB
+node_modules/.nitro/vite/services/ssr/assets/highlightBindings-BPqkZffP.js               1.78 kB │ gzip:  0.71 kB
+node_modules/.nitro/vite/services/ssr/assets/start-5Q5xbUv5.js                           1.86 kB │ gzip:  0.83 kB
+node_modules/.nitro/vite/services/ssr/assets/presence-Dy6JREoN.js                        1.93 kB │ gzip:  0.99 kB
+node_modules/.nitro/vite/services/ssr/assets/AnimatedNumber-DdHRLejK.js                  1.95 kB │ gzip:  1.00 kB
+node_modules/.nitro/vite/services/ssr/assets/ChatTurn-B1v6uhVO.js                        2.00 kB │ gzip:  0.95 kB
+node_modules/.nitro/vite/services/ssr/assets/MathText-CAlJsjnS.js                        2.31 kB │ gzip:  1.08 kB
+node_modules/.nitro/vite/services/ssr/assets/banned-_AH3_f9w.js                          2.34 kB │ gzip:  0.98 kB
+node_modules/.nitro/vite/services/ssr/assets/reveal-card-Dv6aGPIM.js                     2.59 kB │ gzip:  1.25 kB
+node_modules/.nitro/vite/services/ssr/assets/news._slug-DSEjFr8g.js                      2.64 kB │ gzip:  1.11 kB
+node_modules/.nitro/vite/services/ssr/assets/news-BCbbQ446.js                            3.05 kB │ gzip:  1.26 kB
+node_modules/.nitro/vite/services/ssr/assets/usePointerGlow-B8kHk_ak.js                  3.47 kB │ gzip:  1.24 kB
+node_modules/.nitro/vite/services/ssr/assets/sat-BKzbEEnQ.js                             4.15 kB │ gzip:  1.79 kB
+node_modules/.nitro/vite/services/ssr/assets/practice.daily-h3f--S2C.js                  4.53 kB │ gzip:  1.55 kB
+node_modules/.nitro/vite/services/ssr/assets/metric-BnfJSsrZ.js                          5.13 kB │ gzip:  1.90 kB
+node_modules/.nitro/vite/services/ssr/assets/practice.mock-D36f5tBh.js                   5.15 kB │ gzip:  1.77 kB
+node_modules/.nitro/vite/services/ssr/assets/skeletons-BwsvvEFl.js                       5.25 kB │ gzip:  1.67 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.examdates-BK0-36Il.js                 5.35 kB │ gzip:  1.78 kB
+node_modules/.nitro/vite/services/ssr/assets/pdf-BpLbDQ-k.js                             5.49 kB │ gzip:  2.55 kB
+node_modules/.nitro/vite/services/ssr/assets/panel-0HFK86kS.js                           6.29 kB │ gzip:  2.48 kB
+node_modules/.nitro/vite/services/ssr/assets/vision-DSyFR8Zk.js                          6.38 kB │ gzip:  2.76 kB
+node_modules/.nitro/vite/services/ssr/assets/signin-qOcOqHZu.js                          6.39 kB │ gzip:  2.02 kB
+node_modules/.nitro/vite/services/ssr/assets/client-BppCD_OU.js                          7.36 kB │ gzip:  2.69 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.index-YK8AOZuf.js                     7.86 kB │ gzip:  2.25 kB
+node_modules/.nitro/vite/services/ssr/assets/practice.index-B6BWZQby.js                  7.97 kB │ gzip:  2.29 kB
+node_modules/.nitro/vite/services/ssr/assets/session-BE98OR2X.js                         8.24 kB │ gzip:  2.44 kB
+node_modules/.nitro/vite/services/ssr/assets/analysis.session._id-CmFxwOzf.js            8.63 kB │ gzip:  2.46 kB
+node_modules/.nitro/vite/services/ssr/assets/admin-PL-EiNK-.js                           9.27 kB │ gzip:  2.78 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.news-dK6TaFq5.js                      9.47 kB │ gzip:  2.37 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.daily-OfIJezAh.js                    11.07 kB │ gzip:  2.71 kB
+node_modules/.nitro/vite/services/ssr/assets/onboarding-0FGVBIXI.js                     11.93 kB │ gzip:  3.36 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.users-Dk6wVb3h.js                    12.39 kB │ gzip:  3.84 kB
+node_modules/.nitro/vite/services/ssr/assets/signup-Be4wDTOp.js                         12.92 kB │ gzip:  3.17 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.settings-szigmek6.js                 13.78 kB │ gzip:  4.09 kB
+node_modules/.nitro/vite/services/ssr/assets/practice._section-By3t_zzY.js              14.66 kB │ gzip:  4.28 kB
+node_modules/.nitro/vite/services/ssr/assets/_tanstack-start-manifest_v-BaVlXV99.js     14.87 kB │ gzip:  2.51 kB
+node_modules/.nitro/vite/services/ssr/assets/route-Pzq0_LyP.js                          14.99 kB │ gzip:  3.56 kB
+node_modules/.nitro/vite/services/ssr/assets/SiteFooter-Brs5dW7n.js                     16.00 kB │ gzip:  3.54 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.mocks-DqnsA9Jb.js                    16.05 kB │ gzip:  3.75 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.tests-cCrlRePI.js                    17.83 kB │ gzip:  4.09 kB
+node_modules/.nitro/vite/services/ssr/assets/QuestionCard-BMmyBdot.js                   18.03 kB │ gzip:  4.95 kB
+node_modules/.nitro/vite/services/ssr/assets/profile-DMF0xj7e.js                        24.64 kB │ gzip:  6.02 kB
+node_modules/.nitro/vite/services/ssr/assets/analysis-DuGZVy88.js                       28.65 kB │ gzip:  7.30 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.questions-TzyFsxNx.js                29.35 kB │ gzip:  6.46 kB
+node_modules/.nitro/vite/services/ssr/assets/beyond-ai-R4qxAea6.js                      32.46 kB │ gzip:  9.11 kB
+node_modules/.nitro/vite/services/ssr/assets/router-B4AaQ7-x.js                         33.14 kB │ gzip:  8.44 kB
+node_modules/.nitro/vite/services/ssr/assets/dashboard-BJaEP-nj.js                      35.93 kB │ gzip:  9.90 kB
+node_modules/.nitro/vite/services/ssr/assets/practice.session._id-DIp9EABZ.js           37.80 kB │ gzip:  8.65 kB
+node_modules/.nitro/vite/services/ssr/index.js                                          38.69 kB │ gzip: 14.57 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.homepage-Kwi1qTTl.js                 40.22 kB │ gzip:  7.51 kB
+node_modules/.nitro/vite/services/ssr/assets/routes-DJuasLpd.js                         46.84 kB │ gzip: 11.72 kB
+node_modules/.nitro/vite/services/ssr/assets/server-gvuUTUwA.js                         58.73 kB │ gzip: 15.12 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.import-D-_3AfIS.js                   88.08 kB │ gzip: 23.78 kB
+
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+  - tanstack-start-core:import-protection-transform-cache (31%)
+  - tanstack-router:code-splitter:compile-reference-file (22%)
+  - tanstack-start-core:import-protection (20%)
+  - tanstack-router:code-splitter:compile-virtual-file (12%)
+  - vite-tsconfig-paths (12%)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+[39m
+[32m✓ built in 3.74s[39m
+
+[90m[[90mnitro[90m][39m [35m◐[39m Building [[35mNitro[39m] [2m(preset: [36mcloudflare-module[39m, compatibility: [36m2026-08-07[39m)[22m
+[90m[[90mnitro[90m][39m [32m✔[39m Generated public [36m.output/public[39m
+[36mvite v8.1.5 [32mbuilding nitro environment for production...[36m[39m
+
+[43m[30m WARN [39m[49m [36minlineDynamicImports[39m option is ignored because the [36mcodeSplitting[39m option is specified.
+
+[2Ktransforming...✓ 2990 modules transformed.
+rendering chunks...
+computing gzip size...
+.output/server/_ssr/empty-plugin-adapters-D9UWiqvJ.mjs                0.23 kB │ gzip:   0.16 kB
+.output/server/_ssr/utils-C_uf36nf.mjs                                0.27 kB │ gzip:   0.19 kB
+.output/server/_ssr/practice-DCQBP1GT.mjs                             0.42 kB │ gzip:   0.27 kB
+.output/server/_ssr/practice.session._id-BT3uDCP0.mjs                 0.52 kB │ gzip:   0.34 kB
+.output/server/_ssr/analysis.session._id-CM9vHhfF.mjs                 0.52 kB │ gzip:   0.34 kB
+.output/server/_libs/clsx.mjs                                         0.55 kB │ gzip:   0.31 kB
+.output/server/_chunks/ssr-renderer.mjs                               0.60 kB │ gzip:   0.36 kB
+.output/server/_ssr/practice._section-BXVYn8tH.mjs                    0.73 kB │ gzip:   0.46 kB
+.output/server/_libs/radix-ui__react-direction.mjs                    0.76 kB │ gzip:   0.40 kB
+.output/server/_libs/tanstack__react-query.mjs                        0.78 kB │ gzip:   0.38 kB
+.output/server/_ssr/createMiddleware-B_4t7rW1.mjs                     0.83 kB │ gzip:   0.33 kB
+.output/server/_ssr/admin-EWnNZwW-.mjs                                1.02 kB │ gzip:   0.57 kB
+.output/server/_libs/hookable.mjs                                     1.16 kB │ gzip:   0.51 kB
+.output/server/_ssr/admin-BLcmUIX7.mjs                                1.53 kB │ gzip:   0.88 kB
+.output/server/_runtime.mjs                                           1.57 kB │ gzip:   0.74 kB
+.output/server/_ssr/client-DfKvIl-9.mjs                               1.61 kB │ gzip:   0.88 kB
+.output/server/_libs/react-is.mjs                                     1.71 kB │ gzip:   0.66 kB
+.output/server/_ssr/start-5Q5xbUv5.mjs                                1.76 kB │ gzip:   0.81 kB
+.output/server/_ssr/highlightBindings-BPqkZffP.mjs                    1.83 kB │ gzip:   0.74 kB
+.output/server/_libs/radix-ui__primitive.mjs                          1.83 kB │ gzip:   0.72 kB
+.output/server/_ssr/presence-Dy6JREoN.mjs                             2.15 kB │ gzip:   1.10 kB
+.output/server/_libs/prop-types.mjs                                   2.27 kB │ gzip:   0.84 kB
+.output/server/_ssr/ChatTurn-B1v6uhVO.mjs                             2.37 kB │ gzip:   1.04 kB
+.output/server/_ssr/AnimatedNumber-DdHRLejK.mjs                       2.40 kB │ gzip:   1.17 kB
+.output/server/_ssr/MathText-CAlJsjnS.mjs                             2.71 kB │ gzip:   1.21 kB
+.output/server/_ssr/reveal-card-Dv6aGPIM.mjs                          2.81 kB │ gzip:   1.34 kB
+.output/server/_ssr/banned-_AH3_f9w.mjs                               2.90 kB │ gzip:   1.11 kB
+.output/server/_libs/d3-path.mjs                                      3.25 kB │ gzip:   1.16 kB
+.output/server/_ssr/news._slug-DSEjFr8g.mjs                           3.28 kB │ gzip:   1.25 kB
+.output/server/_ssr/usePointerGlow-B8kHk_ak.mjs                       3.74 kB │ gzip:   1.37 kB
+.output/server/_ssr/news-BCbbQ446.mjs                                 3.82 kB │ gzip:   1.38 kB
+.output/server/_ssr/sat-BKzbEEnQ.mjs                                  4.19 kB │ gzip:   1.82 kB
+.output/server/_libs/d3-interpolate.mjs                               5.02 kB │ gzip:   1.61 kB
+.output/server/_ssr/practice.daily-h3f--S2C.mjs                       5.38 kB │ gzip:   1.69 kB
+.output/server/_ssr/pdf-BpLbDQ-k.mjs                                  5.53 kB │ gzip:   2.59 kB
+.output/server/_ssr/metric-BnfJSsrZ.mjs                               5.79 kB │ gzip:   1.99 kB
+.output/server/_ssr/practice.mock-D36f5tBh.mjs                        6.07 kB │ gzip:   1.91 kB
+.output/server/_ssr/skeletons-BwsvvEFl.mjs                            6.28 kB │ gzip:   1.76 kB
+.output/server/_ssr/admin.examdates-BK0-36Il.mjs                      6.29 kB │ gzip:   1.91 kB
+.output/server/_ssr/vision-DSyFR8Zk.mjs                               6.42 kB │ gzip:   2.79 kB
+.output/server/_ssr/panel-0HFK86kS.mjs                                7.14 kB │ gzip:   2.63 kB
+.output/server/_ssr/signin-qOcOqHZu.mjs                               7.48 kB │ gzip:   2.17 kB
+.output/server/_ssr/client-BppCD_OU.mjs                               7.71 kB │ gzip:   2.81 kB
+.output/server/_libs/d3-array.mjs                                     8.05 kB │ gzip:   2.25 kB
+.output/server/_ssr/session-BE98OR2X.mjs                              8.31 kB │ gzip:   2.49 kB
+.output/server/_libs/eventemitter3.mjs                                8.31 kB │ gzip:   2.05 kB
+.output/server/_ssr/admin.index-YK8AOZuf.mjs                          9.23 kB │ gzip:   2.42 kB
+.output/server/_ssr/practice.index-B6BWZQby.mjs                       9.52 kB │ gzip:   2.45 kB
+.output/server/_libs/h3-v2+rou3+srvx.mjs                              9.87 kB │ gzip:   3.06 kB
+.output/server/_ssr/analysis.session._id-CmFxwOzf.mjs                10.01 kB │ gzip:   2.59 kB
+.output/server/_libs/d3-color.mjs                                    10.38 kB │ gzip:   3.57 kB
+.output/server/_libs/d3-format.mjs                                   10.59 kB │ gzip:   3.02 kB
+.output/server/_ssr/admin-PL-EiNK-.mjs                               10.77 kB │ gzip:   2.96 kB
+.output/server/_ssr/admin.news-dK6TaFq5.mjs                          10.94 kB │ gzip:   2.51 kB
+.output/server/_libs/tanstack__history.mjs                           12.09 kB │ gzip:   3.48 kB
+.output/server/_libs/supabase__functions-js.mjs                      12.53 kB │ gzip:   3.48 kB
+.output/server/_libs/@radix-ui/react-dismissable-layer+[...].mjs     12.58 kB │ gzip:   2.77 kB
+.output/server/_ssr/admin.daily-OfIJezAh.mjs                         12.71 kB │ gzip:   2.85 kB
+.output/server/_ssr/onboarding-0FGVBIXI.mjs                          13.58 kB │ gzip:   3.52 kB
+.output/server/_ssr/admin.users-Dk6wVb3h.mjs                         13.79 kB │ gzip:   3.98 kB
+.output/server/_libs/fast-equals.mjs                                 14.37 kB │ gzip:   3.62 kB
+.output/server/_tanstack-start-manifest_v-BaVlXV99.mjs               14.93 kB │ gzip:   2.55 kB
+.output/server/_ssr/signup-Be4wDTOp.mjs                              15.00 kB │ gzip:   3.35 kB
+.output/server/_ssr/admin.settings-szigmek6.mjs                      15.73 kB │ gzip:   4.26 kB
+.output/server/_libs/radix-ui__react-collection.mjs                  16.52 kB │ gzip:   3.69 kB
+.output/server/_ssr/practice._section-By3t_zzY.mjs                   16.57 kB │ gzip:   4.45 kB
+.output/server/_ssr/route-Pzq0_LyP.mjs                               17.30 kB │ gzip:   3.74 kB
+.output/server/_ssr/SiteFooter-Brs5dW7n.mjs                          18.13 kB │ gzip:   3.76 kB
+.output/server/_ssr/admin.mocks-DqnsA9Jb.mjs                         18.14 kB │ gzip:   3.91 kB
+.output/server/_libs/@radix-ui/react-avatar+[...].mjs                18.72 kB │ gzip:   4.77 kB
+.output/server/_ssr/admin.tests-cCrlRePI.mjs                         20.16 kB │ gzip:   4.25 kB
+.output/server/_ssr/QuestionCard-BMmyBdot.mjs                        20.23 kB │ gzip:   5.13 kB
+.output/server/_libs/h3+rou3+srvx+unenv.mjs                          22.67 kB │ gzip:   6.11 kB
+.output/server/_libs/decimal.js-light.mjs                            23.31 kB │ gzip:   6.89 kB
+.output/server/_libs/d3-shape.mjs                                    24.72 kB │ gzip:   5.02 kB
+.output/server/_libs/@floating-ui/dom+[...].mjs                      25.38 kB │ gzip:   6.57 kB
+.output/server/_libs/@floating-ui/core+[...].mjs                     25.57 kB │ gzip:   6.33 kB
+.output/server/_ssr/profile-DMF0xj7e.mjs                             28.53 kB │ gzip:   6.23 kB
+.output/server/_libs/@floating-ui/react-dom+[...].mjs                31.30 kB │ gzip:   7.98 kB
+.output/server/_ssr/router-B4AaQ7-x.mjs                              32.76 kB │ gzip:   8.43 kB
+.output/server/_ssr/admin.questions-TzyFsxNx.mjs                     32.96 kB │ gzip:   6.65 kB
+.output/server/_ssr/analysis-DuGZVy88.mjs                            33.03 kB │ gzip:   7.52 kB
+.output/server/_ssr/beyond-ai-R4qxAea6.mjs                           35.31 kB │ gzip:   9.27 kB
+.output/server/_libs/supabase__supabase-js.mjs                       36.30 kB │ gzip:  10.75 kB
+.output/server/_libs/react-smooth.mjs                                37.83 kB │ gzip:   8.15 kB
+.output/server/_ssr/ssr.mjs                                          38.41 kB │ gzip:  14.50 kB
+.output/server/_ssr/dashboard-BJaEP-nj.mjs                           40.99 kB │ gzip:  10.15 kB
+.output/server/_ssr/practice.session._id-DIp9EABZ.mjs                42.99 kB │ gzip:   8.86 kB
+.output/server/_ssr/admin.homepage-Kwi1qTTl.mjs                      46.60 kB │ gzip:   7.87 kB
+.output/server/_libs/tanstack__query-core.mjs                        48.17 kB │ gzip:  10.70 kB
+.output/server/_libs/lucide-react.mjs                                48.62 kB │ gzip:   8.89 kB
+.output/server/_libs/supabase__phoenix.mjs                           50.54 kB │ gzip:  12.76 kB
+.output/server/index.mjs                                             50.98 kB │ gzip:  12.15 kB
+.output/server/_ssr/routes-DJuasLpd.mjs                              53.01 kB │ gzip:  12.03 kB
+.output/server/_ssr/server-gvuUTUwA.mjs                              56.99 kB │ gzip:  14.98 kB
+.output/server/_libs/d3-scale+[...].mjs                              58.25 kB │ gzip:  12.11 kB
+.output/server/_libs/date-fns.mjs                                    76.56 kB │ gzip:  14.63 kB
+.output/server/_libs/supabase__realtime-js+unenv.mjs                 78.55 kB │ gzip:  20.10 kB
+.output/server/_libs/@tanstack/router-core+[...].mjs                 80.28 kB │ gzip:  20.18 kB
+.output/server/_libs/tailwind-merge.mjs                              88.13 kB │ gzip:  15.66 kB
+.output/server/_ssr/admin.import-D-_3AfIS.mjs                        94.29 kB │ gzip:  24.07 kB
+.output/server/_libs/zod.mjs                                         99.88 kB │ gzip:  17.26 kB
+.output/server/_libs/supabase__postgrest-js.mjs                     105.41 kB │ gzip:  21.66 kB
+.output/server/_libs/@radix-ui/react-dropdown-menu+[...].mjs        110.50 kB │ gzip:  24.76 kB
+.output/server/_libs/@supabase/storage-js+[...].mjs                 119.50 kB │ gzip:  22.34 kB
+.output/server/_libs/lodash.mjs                                     164.78 kB │ gzip:  29.79 kB
+.output/server/_libs/supabase__auth-js.mjs                          302.34 kB │ gzip:  60.31 kB
+.output/server/_libs/katex.mjs                                      497.46 kB │ gzip: 109.92 kB
+.output/server/_libs/recharts+[...].mjs                             633.36 kB │ gzip: 113.18 kB
+.output/server/_libs/@tanstack/react-router+[...].mjs               658.12 kB │ gzip: 138.57 kB
+.output/server/_libs/mathlive.mjs                                 1,028.57 kB │ gzip: 248.03 kB
+
+[32m✓ built in 1.47s[39m
+
+[90m[[90mnitro[90m][39m [43m[30m WARN [39m[49m [cloudflare] Wrangler config [36mmain[39m is overridden and will be ignored.
+
+
+[90m[[90mnitro[90m][39m [43m[30m WARN [39m[49m [cloudflare] Wrangler config [36massets[39m is overridden and will be ignored.
+
+[36mℹ[39m Generated [36m.output/server/wrangler.json[39m
+[36mℹ[39m Generated [36m.wrangler/deploy/config.json[39m
+[36mℹ[39m Generated [36m.output/public/_headers[39m
+[36mℹ[39m Generated [36m.output/nitro.json[39m
+
+[90m[[90mnitro[90m][39m [32m✔[39m You can preview this build using [36mnpx vite preview[39m
+[90m[[90mnitro[90m][39m [32m✔[39m You can deploy this build using [36mnpx nitro deploy --prebuilt[39m

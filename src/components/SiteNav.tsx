@@ -27,8 +27,8 @@ function LogoMark() {
   return (
     <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white">
       <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden="true">
-        <path d="M12 3 21 7.5 12 12 3 7.5 12 3Z" fill="#11269d" />
-        <path d="M3 12.5 12 17l9-4.5V16l-9 4.5L3 16v-3.5Z" fill="#2e43c4" />
+        <path d="M12 3 21 7.5 12 12 3 7.5 12 3Z" fill="#0b0761" />
+        <path d="M3 12.5 12 17l9-4.5V16l-9 4.5L3 16v-3.5Z" fill="#535291" />
       </svg>
     </span>
   );

@@ -28,7 +28,6 @@ import {
   type Difficulty,
 } from "@/lib/sat";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
-import { AiChatPanel } from "@/components/ai/AiChatPanel";
 import { PageHead, Panel, Skeleton } from "@/components/ui/panel";
 import { HeadSkeleton, ListSkeleton, StatRowSkeleton } from "@/components/ui/skeletons";
 import { Badge, Delta, type Tone } from "@/components/ui/metric";
@@ -60,36 +59,9 @@ type AttemptRow = {
   grid_answer: string | null;
 };
 
-/**
- * The student's own numbers, formatted for the AI's first message.
- *
- * Sent as part of the user turn rather than as a system instruction, because the
- * system prompt is assembled server-side and must stay out of the client's
- * reach — otherwise anything here could override the guardrails.
- */
-function buildAiContext(
-  scores: { latest: number; average: number; best: number; count: number; rw: number; math: number },
-  totals: { correct: number; wrong: number; total: number },
-): string {
-  if (scores.count === 0 && totals.total === 0) {
-    return "Context: I haven't completed any practice questions or mock exams yet.";
-  }
-  const parts: string[] = [];
-  if (scores.count > 0) {
-    parts.push(
-      `latest mock score ${scores.latest}/1600 across ${scores.count} mock${scores.count === 1 ? "" : "s"}`,
-      `average ${scores.average}, best ${scores.best}`,
-    );
-    if (scores.rw || scores.math) {
-      parts.push(`average Reading & Writing ${scores.rw || "n/a"}, average Math ${scores.math || "n/a"}`);
-    }
-  }
-  if (totals.total > 0) {
-    const pct = Math.round((totals.correct / totals.total) * 100);
-    parts.push(`${totals.correct} of ${totals.total} practice questions correct (${pct}%)`);
-  }
-  return `Context about me — ${parts.join("; ")}. Use these numbers when they're relevant and don't ask me to repeat them.`;
-}
+/* The chat that used to sit under the score counters now has its own section at
+   /beyond-ai. `buildAiContext` moved with it, to src/lib/ai/context.ts — the
+   first reply is still specific to the student's own numbers. */
 
 type QuestionLite = {
   id: string;
@@ -179,12 +151,16 @@ function AnalysisPage() {
   }, [sessions]);
 
   /* Recharts takes literal colours, not tokens, so these are the brand ramp's
-     hexes by hand: the bright #2e43c4 for correct, the deepest #08135a for
-     wrong. Both sit on the #11269d card, so they read as two ends of the ramp
-     rather than needing green and red. */
+     hexes by hand: the light #9f9fc2 for correct, the deepest #0d0d4c for
+     wrong. Both sit on the #0b0761 card, so they read as two ends of the ramp
+     rather than needing green and red.
+
+     "Correct" pulls from the derived light steps rather than one of the five
+     brand indigos: those are all within a few percent of the card's own
+     lightness, so a slice in any of them would be invisible. */
   const pieData = [
-    { name: "Correct", value: totals.correct, color: "#2e43c4" },
-    { name: "Wrong", value: totals.wrong, color: "#08135a" },
+    { name: "Correct", value: totals.correct, color: "#9f9fc2" },
+    { name: "Wrong", value: totals.wrong, color: "#0d0d4c" },
   ];
 
   const completedCount = sessions.length;
@@ -257,23 +233,6 @@ function AnalysisPage() {
         />
       </div>
 
-      {/* Beyond AI sits directly under the score counters: the numbers raise the
-          question and the chat is where it gets answered. The stats are passed
-          as a context prefix so the first reply can be specific without the
-          student having to type their own results in. */}
-      <AiChatPanel
-        className="rise-in"
-        task="reasoning"
-        title="Ask Beyond AI"
-        hint="Diagnostics on your own results"
-        contextPrefix={buildAiContext(scores, totals)}
-        quickActions={[
-          "Which topic should I work on first?",
-          "What's my fastest path to a higher score?",
-          "Explain a question I got wrong",
-        ]}
-      />
-
       <ScoreCalculator />
 
       {/* Overview */}
@@ -312,24 +271,24 @@ function AnalysisPage() {
                   outerRadius={90}
                   paddingAngle={2}
                   animationDuration={900}
-                  labelLine={{ stroke: "#8a98d6" }}
+                  labelLine={{ stroke: "#9f9fc2" }}
                   label={(e: any) => `${e.name}: ${e.value} (${Math.round((e.value / totals.total) * 100)}%)`}
                 >
                   {pieData.map((d) => (
                     /* Stroke matches the card behind it, so the gap between
                        slices reads as a seam rather than a white outline. */
-                    <Cell key={d.name} fill={d.color} stroke="#11269d" strokeWidth={2} />
+                    <Cell key={d.name} fill={d.color} stroke="#0b0761" strokeWidth={2} />
                   ))}
                 </Pie>
                 <Tooltip
                   contentStyle={{
-                    background: "#0c1b70",
-                    border: "1px solid #2e43c4",
+                    background: "#090654",
+                    border: "1px solid #535291",
                     borderRadius: 12,
                     color: "#FFFFFF",
                   }}
                   itemStyle={{ color: "#FFFFFF" }}
-                  labelStyle={{ color: "#B8C0E8" }}
+                  labelStyle={{ color: "#C6C5DA" }}
                 />
                 <Legend />
               </PieChart>

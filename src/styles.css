@@ -35,25 +35,42 @@
   --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Lora", ui-serif, Georgia, serif;
 
-  /* Brand ramp anchored on #11269D (base), with darker (#0C1B70) and
-     lighter (#2E43C4) variations for layering. Used everywhere except the
+  /* Brand ramp anchored on #0B0761 (base), with darker (#090654) and
+     lighter (#100E66) variations for layering. Used everywhere except the
      white page background.
+
+     The five brand colours — #100E66, #0B0761, #040459, #090654, #0D0D4C —
+     occupy 500-900, ordered by lightness. They are all deep indigos within
+     ~5% lightness of each other, which is why they are *all* surface steps
+     and none of them is the accent:
+
+       - Steps 400 and below are derived by tinting #100E66 toward white.
+         They carry every job that needs to be visible *against* a brand
+         surface — borders, dividers, active chips, chart gridlines, muted
+         text. Assigning a given colour to 400 would make `border-brand-400`
+         on a `bg-brand-600` card a 1.05:1 contrast ratio, i.e. invisible,
+         in the 172 places that class is used.
+       - The derived steps reproduce the previous ramp's lightness ladder
+         almost exactly, so contrast relationships across the app are
+         unchanged: brand-100 on a brand-600 card is 10.2:1, white on
+         brand-400 is 7.0:1, and a brand-400 divider on a brand-600 card is
+         2.45:1.
 
      NOTE: we deliberately re-point Tailwind's `blue-*` scale at this same
      ramp. The app uses `blue-600`/`blue-50`/etc. in ~50 places, so remapping
      the scale re-themes every one of them from a single source of truth
      instead of scattering brand hexes through the codebase. */
-  --color-brand-25: #e8ebf5;
-  --color-brand-50: #d1d7eb;
-  --color-brand-100: #b8c0e8;
-  --color-brand-200: #8a98d6;
-  --color-brand-300: #5c70c4;
-  --color-brand-400: #2e43c4;
-  --color-brand-500: #1a2fa8;
-  --color-brand-600: #11269d;
-  --color-brand-700: #0e1f82;
-  --color-brand-800: #0c1b70;
-  --color-brand-900: #08135a;
+  --color-brand-25: #eae9f1;
+  --color-brand-50: #dbdbe8;
+  --color-brand-100: #c6c5da;
+  --color-brand-200: #9f9fc2;
+  --color-brand-300: #7978a9;
+  --color-brand-400: #535291;
+  --color-brand-500: #100e66;
+  --color-brand-600: #0b0761;
+  --color-brand-700: #040459;
+  --color-brand-800: #090654;
+  --color-brand-900: #0d0d4c;
 
   --color-blue-50: var(--color-brand-50);
   --color-blue-100: var(--color-brand-100);
@@ -69,88 +86,106 @@
   /* -------------------------------------------------------------------------
      Test-taking surface
 
-     The practice / mock / review runner inverts the app's usual scheme. Instead
-     of brand-blue cards on a white page, it's white cards on a soft ice-blue
-     canvas with deep navy text. Two reasons this surface gets its own palette:
+     The practice / mock / review runner drops the app's scheme entirely and
+     reproduces Bluebook, the College Board's own digital SAT app. Students sit
+     the real exam in that interface, so anything else here is a variable they
+     have to absorb on test day. That is a stronger constraint than house style,
+     which is why this is the one surface with its own palette.
 
-     1. Fatigue. A test sitting is 30-70 minutes of sustained reading. A large
-        saturated #11269D field is fine for a dashboard glanced at for seconds
+     What that means concretely, and why each token exists:
+
+     1. The workspace is plain #FFFFFF, edge to edge. Bluebook has no card, no
+        canvas behind a card, and no margin — the passage runs to the left edge
+        of the window and the question to the right. `test-canvas` is therefore
+        white, and the only greys on screen are the header/footer bars
+        (`test-chrome`) and the hairlines between regions (`test-line`).
+     2. Fatigue. A sitting is 30-70 minutes of sustained reading. A large
+        saturated #0B0761 field is fine for a dashboard glanced at for seconds
         and punishing for an hour.
-     2. Contrast. Answer and passage text runs at 18-19px and has to stay
-        comfortably readable — #0F172A on #FFFFFF is ~16.9:1, where the old
-        white-on-#0C1B70 was ~12:1 and dropped further on the lighter steps.
+     3. Contrast. Answer and passage text runs at 18-19px — #1B1B1B on white is
+        ~16.1:1.
+
+     `test-edge` is grey (#A3A6AD), not blue. In Bluebook an unselected answer
+     option is outlined in neutral grey and *only* the selected one turns blue,
+     which is what makes the selection readable at a glance; a blue resting
+     outline would flatten that distinction.
 
      These are declared as their own `test-*` family rather than reusing
      `blue-*` because the block above re-points Tailwind's blue scale at the
-     brand ramp: `blue-200` in this project is #8A98D6, not the #BFDBFE this
+     brand ramp: `blue-600` in this project is #0B0761, not the #324DC7 this
      surface needs. `slate-*` is untouched by that remap and is used directly
      where a token would add nothing.
      ------------------------------------------------------------------------- */
-  --color-test-canvas: #f0f4f9;      /* page field behind the cards */
-  --color-test-chrome: #0f172a;      /* top nav / header bar */
-  --color-test-ink: #0f172a;         /* primary body text */
-  --color-test-muted: #475569;       /* secondary / meta text */
-  --color-test-line: #e2e8f0;        /* neutral card border, dividers */
-  --color-test-edge: #bfdbfe;        /* answer-option border, softer blue */
-  --color-test-accent: #1d4ed8;      /* selected state, primary action */
-  --color-test-accent-deep: #1a43ba; /* accent hover / pressed */
-  --color-test-tint: #eff6ff;        /* option hover wash */
+  --color-test-canvas: #ffffff;      /* the exam workspace itself — full bleed */
+  --color-test-chrome: #f4f5f7;      /* header / footer bars */
+  --color-test-well: #f1f3f6;        /* nested wells: hover washes, jump grid */
+  --color-test-banner: #324dc7;      /* module banner strip under the header */
+  --color-test-dark: #1e1e5a;        /* question-number badge, footer pill */
+  --color-test-ink: #1b1b1b;         /* primary body text */
+  --color-test-muted: #55575d;       /* secondary / meta text */
+  --color-test-line: #d7d9dd;        /* neutral border, dividers */
+  --color-test-edge: #a3a6ad;        /* answer-option outline — grey, not blue */
+  --color-test-accent: #324dc7;      /* selected state, primary action */
+  --color-test-accent-deep: #253a9e; /* accent hover / pressed */
+  --color-test-tint: #eaeefb;        /* option hover wash */
 }
 
 :root {
   color-scheme: light;
   --radius: 0.75rem;
 
-  /* White + #11269D only. White is reserved for the page background; every
+  /* White + #0B0761 only. White is reserved for the page background; every
      other surface (chrome, cards, widgets) is the brand blue or a darker /
-     lighter variation of it. Text on those surfaces is white or #B8C0E8 at
+     lighter variation of it. Text on those surfaces is white or #C6C5DA at
      full opacity — never a faded white. */
   --background: #FFFFFF;      /* the only white surface */
   --foreground: #0F172A;      /* text on the white page background */
 
-  --card: #11269d;            /* brand base — cards sit on the white page */
+  --card: #0b0761;            /* brand base — cards sit on the white page */
   --card-foreground: #FFFFFF;
 
-  --primary: #11269d;         /* brand-600, base surface */
+  --primary: #0b0761;         /* brand-600, base surface */
   --primary-foreground: #ffffff;
-  --primary-tint: #2e43c4;    /* brand-400, buttons / active states */
+  --primary-tint: #535291;    /* brand-400, buttons / active states */
 
-  --secondary: #e8ebf5;       /* lightest tint, for light section bands */
-  --secondary-foreground: #0c1b70;
+  --secondary: #eae9f1;       /* lightest tint, for light section bands */
+  --secondary-foreground: #090654;
 
-  --muted: #0c1b70;           /* darker nested surface inside a brand card */
-  --muted-foreground: #B8C0E8; /* legible secondary text on brand surfaces */
+  --muted: #090654;           /* darker nested surface inside a brand card */
+  --muted-foreground: #C6C5DA; /* legible secondary text on brand surfaces */
 
-  --accent: #2e43c4;          /* lighter shade for highlights */
+  --accent: #535291;          /* lighter shade for highlights */
   --accent-foreground: #FFFFFF;
 
-  --popover: #0e1f82;         /* floating menus sit a step above a brand card */
+  --popover: #040459;         /* floating menus sit a step above a brand card */
   --popover-foreground: #FFFFFF;
 
   /* No red in the palette, so "destructive" is the deepest brand step; the
      danger read comes from the icon and wording, not the hue. */
-  --destructive: #08135a;
+  --destructive: #0d0d4c;
   --destructive-foreground: #FFFFFF;
 
-  --border: #2e43c4;          /* visible divider on a brand surface */
-  --input: #2e43c4;
-  --ring: #2e43c4;
+  --border: #535291;          /* visible divider on a brand surface */
+  --input: #535291;
+  --ring: #535291;
 
   /* Named surface layers, so components don't repeat raw hexes. */
-  --surface-base: #11269d;
-  --surface-deep: #0c1b70;
-  --surface-lift: #2e43c4;
+  --surface-base: #0b0761;
+  --surface-deep: #090654;
+  --surface-lift: #100e66;
   --on-surface: #FFFFFF;
-  --on-surface-muted: #B8C0E8;
+  --on-surface-muted: #C6C5DA;
 
   /* Gradient primitives. Kept as tokens so panels, buttons and chart fills all
      pull from the same ramp — changing the brand here changes every gradient.
-     These are deliberately *light*: tinted whites rather than saturated blues,
-     so large surfaces read as paper with a wash of colour rather than as slabs
-     of brand. Only `--grad-brand` (used on small CTAs) is fully saturated. */
-  --grad-brand: linear-gradient(135deg, #2e43c4 0%, #11269d 55%, #0c1b70 100%);
-  --grad-brand-soft: linear-gradient(135deg, #16309f 0%, #0c1b70 100%);
-  --grad-surface: linear-gradient(180deg, #14299f 0%, #0f2288 100%);
+     The five brand colours sit within a few percent of each other in
+     lightness, so a gradient between any two of them reads as flat. These
+     lean on hue rotation instead: #100E66 is the bluest, #0D0D4C the most
+     violet, and running between them gives a visible shift at the same
+     depth. */
+  --grad-brand: linear-gradient(135deg, #100e66 0%, #0b0761 55%, #0d0d4c 100%);
+  --grad-brand-soft: linear-gradient(135deg, #100e66 0%, #090654 100%);
+  --grad-surface: linear-gradient(180deg, #0b0761 0%, #040459 100%);
   --grad-sheen: linear-gradient(
     120deg,
     transparent 20%,
@@ -213,8 +248,8 @@
    instead of going grey, which is what sells a button as "lit". */
 @utility shadow-brand {
   box-shadow:
-    0 1px 2px rgba(17, 38, 157, 0.24),
-    0 8px 20px -6px rgba(46, 67, 196, 0.4);
+    0 1px 2px rgba(11, 7, 97, 0.24),
+    0 8px 20px -6px rgba(83, 82, 145, 0.4);
 }
 
 /* ---------------------------------------------------------------------------
@@ -327,6 +362,36 @@
   to { transform: rotate(360deg); }
 }
 
+/* ---------------------------------------------------------------------------
+   Landing-page entrances
+   Longer and further-travelling than `rise-in`, and each section picks a
+   different one so the page reads as an authored sequence rather than as
+   content finishing loading. Offsets are large enough to register as a path
+   but small enough not to trigger a horizontal scrollbar mid-flight.
+   --------------------------------------------------------------------------- */
+
+@keyframes slide-from-left {
+  from { opacity: 0; transform: translate3d(-48px, 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes slide-from-right {
+  from { opacity: 0; transform: translate3d(48px, 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes zoom-in-soft {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Comes into focus rather than into place — used where the point is "look at
+   this thing" rather than "here is the next block". */
+@keyframes unblur-in {
+  from { opacity: 0; filter: blur(10px); transform: scale(1.02); }
+  to   { opacity: 1; filter: blur(0); transform: none; }
+}
+
 /* Cards / sections easing up into place. */
 @utility rise-in {
   animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -385,6 +450,49 @@
   & > *:nth-child(9) { animation-delay: 240ms; }
   & > *:nth-child(10) { animation-delay: 270ms; }
   & > *:nth-child(n + 11) { animation-delay: 300ms; }
+}
+
+/* Landing-page entrances, applied by `<Reveal from="…">` on arrival. 0.7s
+   against `rise-in`'s 0.5s: the extra time is what separates "presented" from
+   "loaded". Same easing as everything else, so it still feels like one product. */
+@utility slide-from-left {
+  animation: slide-from-left 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility slide-from-right {
+  animation: slide-from-right 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility zoom-in-soft {
+  animation: zoom-in-soft 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility unblur-in {
+  animation: unblur-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The closing beat, held a little longer than the sections above it. */
+@utility zoom-in-hold {
+  animation: zoom-in-soft 0.95s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Parallax driven by `--p` (0→1) from `useScrollProgress`. Transform only, so
+   every frame stays on the compositor — a `top` or `margin` equivalent on a page
+   this long stutters on mid-range Android. `--p` defaults to 0.5, the resting
+   mid-travel position, so an element renders unshifted before the first scroll
+   event and under reduced motion, where nothing writes the property at all. */
+@utility parallax-rise {
+  --p: 0.5;
+  transform: translate3d(0, calc((0.5 - var(--p)) * 40px), 0);
+  will-change: transform;
+}
+
+/* Counter-drift for decorative blobs: moves against the content it sits behind,
+   which is what reads as depth. */
+@utility parallax-drift {
+  --p: 0.5;
+  transform: translate3d(0, calc((var(--p) - 0.5) * 60px), 0);
+  will-change: transform;
 }
 
 /* Hover lift for interactive cards. */
@@ -449,8 +557,8 @@
     box-shadow 0.24s ease,
     filter 0.24s ease;
   box-shadow:
-    0 1px 2px rgba(12, 27, 112, 0.3),
-    0 8px 20px -6px rgba(46, 67, 196, 0.45);
+    0 1px 2px rgba(9, 6, 84, 0.3),
+    0 8px 20px -6px rgba(83, 82, 145, 0.45);
 
   &::after {
     content: "";
@@ -464,8 +572,8 @@
   &:hover {
     transform: translateY(-2px);
     box-shadow:
-      0 2px 4px rgba(12, 27, 112, 0.36),
-      0 14px 32px -8px rgba(46, 67, 196, 0.6);
+      0 2px 4px rgba(9, 6, 84, 0.36),
+      0 14px 32px -8px rgba(83, 82, 145, 0.6);
   }
   &:hover::after {
     transform: translateX(120%);
@@ -560,7 +668,7 @@
 }
 
 /* Primary action on the light test surface. Same motion as `btn-brand`, but the
-   glow is keyed to #1D4ED8 — `btn-brand`'s shadow is mixed from the #11269D
+   glow is keyed to #1D4ED8 — `btn-brand`'s shadow is mixed from the #0B0761
    ramp and turns muddy over the ice canvas. */
 @utility btn-test {
   position: relative;
@@ -711,11 +819,16 @@
   /* Two falloff stops rather than one — a linear fade to transparent reads as a
      grey smudge, while a fast inner falloff reads as light. Kept at ~10% of the
      brand hue: the spec asks for "ultra-subtle", and anything stronger competes
-     with the cards. */
+     with the cards.
+
+     Mixed from brand-400 (#535291), not one of the five brand colours. Those
+     are all near-black indigos, and a near-black at 10% over white is
+     indistinguishable from grey — the hue only survives the dilution if it
+     starts light. */
   background: radial-gradient(
     circle 34rem at var(--gx, 50%) var(--gy, 30%),
-    rgba(46, 67, 196, 0.1),
-    rgba(46, 67, 196, 0.045) 34%,
+    rgba(83, 82, 145, 0.12),
+    rgba(83, 82, 145, 0.05) 34%,
     transparent 65%
   );
 }
@@ -795,5 +908,28 @@
   .reveal-surface::after,
   .ambient-glow {
     display: none !important;
+  }
+
+  /* Landing entrances: the blanket rule at the top of this block collapses their
+     duration, but `both` would still apply the from-frame's opacity for that
+     tick. Dropping the animation entirely leaves the section simply present. */
+  .slide-from-left,
+  .slide-from-right,
+  .zoom-in-soft,
+  .zoom-in-hold,
+  .unblur-in {
+    animation: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+  }
+
+  /* useScrollProgress never writes --p under reduced motion, so these already
+     resolve to their resting offset. Zero the transform anyway so a stale
+     inline --p from a media-query change mid-session can't shift anything. */
+  .parallax-rise,
+  .parallax-drift {
+    transform: none !important;
+    will-change: auto;
   }
 }

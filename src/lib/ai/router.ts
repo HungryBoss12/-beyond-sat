@@ -22,9 +22,9 @@ export type AiTask = "chat" | "quick" | "reasoning" | "vision";
  * OpenRouter's free tier changes without notice.
  */
 export const DEFAULT_MODELS: Record<AiTask, string> = {
-  chat: "meta-llama/llama-3.3-70b-instruct:free",
-  quick: "meta-llama/llama-3.2-3b-instruct:free",
-  reasoning: "deepseek/deepseek-chat-v3.1:free",
+  chat: "nvidia/nemotron-3-super-120b-a12b:free",
+  quick: "nvidia/nemotron-3-nano-30b-a3b:free",
+  reasoning: "nvidia/nemotron-3-ultra-550b-a55b:free",
   vision: "google/gemini-2.0-flash-exp:free",
 };
 
@@ -35,6 +35,50 @@ export const MODEL_SETTING_KEYS: Record<AiTask, string> = {
   reasoning: "openrouter_model_reasoning",
   vision: "openrouter_model_vision",
 };
+
+/**
+ * The student-facing model picker.
+ *
+ * The client sends a slug from this table and never a model ID. That is the whole
+ * point: an endpoint that accepted `model` verbatim would let any signed-in
+ * student bill the platform against any model on OpenRouter. Each slug resolves
+ * through the existing `resolveModel(task, overrides)`, so the `/admin/settings`
+ * override still wins and a withdrawn `:free` model stays a settings change.
+ *
+ * The nicknames are the only names a student ever sees; `IDENTITY_RULE` in
+ * prompts.ts separately forbids the model from naming its own backend.
+ */
+export const CHAT_MODELS = {
+  "beyonder-2-0": { label: "Beyonder 2.0", hint: "balanced", task: "chat" },
+  "beyonder-2-0-flashy": { label: "Beyonder 2.0 Flashy", hint: "fastest", task: "quick" },
+  "beyonder-2-1-think": {
+    label: "Beyonder 2.1 Think",
+    hint: "deepest reasoning",
+    task: "reasoning",
+  },
+  "beyonder-vision": { label: "Beyonder Vision", hint: "reads images", task: "vision" },
+} as const satisfies Record<string, { label: string; hint: string; task: AiTask }>;
+
+export type ChatModelChoice = keyof typeof CHAT_MODELS;
+
+export const DEFAULT_CHAT_MODEL: ChatModelChoice = "beyonder-2-0";
+
+/** The slug an image attachment forces — a text-only model would guess at a figure. */
+export const VISION_CHAT_MODEL: ChatModelChoice = "beyonder-vision";
+
+export const CHAT_MODEL_CHOICES = Object.entries(CHAT_MODELS).map(([slug, meta]) => ({
+  slug: slug as ChatModelChoice,
+  ...meta,
+}));
+
+export function isChatModelChoice(value: unknown): value is ChatModelChoice {
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(CHAT_MODELS, value);
+}
+
+/** Falls back rather than erroring, matching `resolveTask`'s posture on a bad route. */
+export function resolveChatModelChoice(value: unknown): ChatModelChoice {
+  return isChatModelChoice(value) ? value : DEFAULT_CHAT_MODEL;
+}
 
 /** Upper bound on generated tokens, per task. Reasoning needs the most room. */
 const MAX_TOKENS: Record<AiTask, number> = {
@@ -60,8 +104,7 @@ const TEMPERATURE: Record<AiTask, number> = {
 
 /** OpenRouter accepts either a plain string or the multimodal content array. */
 export type AiContentPart =
-  | { type: "text"; text: string }
-  | { type: "image_url"; image_url: { url: string } };
+  { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
 
 export type AiMessage = {
   role: "user" | "assistant";
@@ -70,9 +113,25 @@ export type AiMessage = {
 
 export type AiChatRequest = {
   task?: string;
+  /** A `CHAT_MODELS` slug from the picker. Takes precedence over `task`. */
+  model?: string;
+  /** Where the answer is rendered — see `AiSurface`. */
+  surface?: string;
   messages?: unknown;
   stream?: boolean;
 };
+
+/**
+ * Where the reply will be shown. This exists only to decouple the token budget
+ * from the task: `quick`'s 400-token cap was written for the fixed-height
+ * dashboard card, and reusing it in a full-screen chat truncates mid-sentence,
+ * which reads as a broken model rather than as a cap.
+ */
+export type AiSurface = "panel" | "page";
+
+export function resolveSurface(value: unknown): AiSurface {
+  return value === "page" ? "page" : "panel";
+}
 
 /** Guards against unbounded context growth — and unbounded cost. */
 const MAX_MESSAGES = 24;
@@ -87,7 +146,10 @@ export function resolveTask(value: unknown): AiTask {
   return isAiTask(value) ? value : "chat";
 }
 
-export function resolveModel(task: AiTask, overrides: Record<string, string | null | undefined>): string {
+export function resolveModel(
+  task: AiTask,
+  overrides: Record<string, string | null | undefined>,
+): string {
   const override = overrides[MODEL_SETTING_KEYS[task]];
   // An empty-string setting means "unset" — the admin form saves "" when a field
   // is cleared, and sending that to OpenRouter would be a 400.
@@ -202,12 +264,23 @@ export function buildRequestBody(
   messages: AiMessage[],
   model: string,
   stream: boolean,
+  surface: AiSurface = "panel",
 ): OpenRouterBody {
   return {
     model,
     messages: [{ role: "system", content: buildSystemPrompt(task) }, ...messages],
     temperature: TEMPERATURE[task],
-    max_tokens: MAX_TOKENS[task],
+    max_tokens: resolveMaxTokens(task, surface),
     stream,
   };
+}
+
+/**
+ * The task keeps its own model and temperature everywhere; only the ceiling moves.
+ * On a full page nothing overflows, so `quick` gets `chat`'s room instead of the
+ * cap the dashboard card needs.
+ */
+export function resolveMaxTokens(task: AiTask, surface: AiSurface): number {
+  if (surface === "page" && task === "quick") return MAX_TOKENS.chat;
+  return MAX_TOKENS[task];
 }

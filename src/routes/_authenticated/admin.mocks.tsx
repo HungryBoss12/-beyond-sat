@@ -254,7 +254,7 @@ function AdminMocks() {
       )}
 
       {/* Modal. The scrim is the deepest brand step so the dialog above it still
-          reads as a #11269D surface rather than a white sheet. */}
+          reads as a #0B0761 surface rather than a white sheet. */}
       {editing && (
         <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-brand-900/60 p-4 backdrop-blur-sm">
           <div className="pop-in my-8 flex max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl border border-brand-400/40 bg-brand-600 shadow-float">

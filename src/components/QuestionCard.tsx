@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bookmark, BookmarkCheck, Check, Highlighter, StickyNote, Trash2, X as XIcon } from "lucide-react";
+import {
+  Bookmark,
+  BookmarkCheck,
+  Check,
+  Highlighter,
+  StickyNote,
+  Trash2,
+  X as XIcon,
+} from "lucide-react";
 import { MathText } from "@/components/MathText";
 import {
   DEFAULT_HIGHLIGHT_BINDINGS,
@@ -53,22 +61,34 @@ const LETTERS = ["A", "B", "C", "D", "E", "F"];
 export function QuestionCard({
   q,
   index,
-  total,
   answer,
   onChange,
   reveal,
   correctChoiceId,
+  showNotes,
+  onCloseNotes,
 }: {
   q: QuestionRow;
   index: number;
-  total: number;
   answer: AnswerState;
   onChange: (a: AnswerState) => void;
   reveal?: boolean;
   correctChoiceId?: string | null;
+  /* Bluebook keeps highlights and notes behind a header control rather than
+     listing them under the passage, and that control lives in the chrome — so
+     the open state is owned by the caller and passed down. Omitting it (the
+     review screen does) simply never opens the panel. */
+  showNotes?: boolean;
+  onCloseNotes?: () => void;
 }) {
   const choices = useMemo(() => (Array.isArray(q.choices) ? q.choices : []), [q.choices]);
   const hasPassage = !!q.prompt;
+
+  /* Bluebook hides the cross-out controls until the student turns them on, and
+     the setting then persists for the rest of the sitting. This component
+     instance is reused as `index` changes — TestPlayer renders it without a
+     key — so plain state is already per-sitting rather than per-question. */
+  const [crossOut, setCrossOut] = useState(false);
 
   // Resizable split
   const containerRef = useRef<HTMLDivElement>(null);
@@ -127,10 +147,9 @@ export function QuestionCard({
     setToolbar(tb);
   }
 
-
   function addHighlight(withNote: boolean) {
     if (!toolbar) return;
-    const note = withNote ? window.prompt("Add a note for this highlight:", "") ?? "" : "";
+    const note = withNote ? (window.prompt("Add a note for this highlight:", "") ?? "") : "";
     const h: Highlight = {
       id: crypto.randomUUID(),
       text: toolbar.text,
@@ -166,7 +185,7 @@ export function QuestionCard({
       if (!tb) return;
       e.preventDefault();
       const withNote = isNote;
-      const note = withNote ? window.prompt("Add a note for this highlight:", "") ?? "" : "";
+      const note = withNote ? (window.prompt("Add a note for this highlight:", "") ?? "") : "";
       const h: Highlight = { id: crypto.randomUUID(), text: tb.text, note };
       onChange({ ...answer, highlights: [...answer.highlights, h] });
       setToolbar(null);
@@ -176,13 +195,10 @@ export function QuestionCard({
     return () => window.removeEventListener("keydown", onKey);
   }, [answer, onChange, bindings]);
 
-
-
-
   // Render passage with highlight underlines
   const renderedPassage = useMemo(() => {
     if (!q.prompt) return null;
-    let text = q.prompt;
+    const text = q.prompt;
     // For visual highlight, wrap each highlight substring (first occurrence)
     // Build a list of ranges
     type R = { start: number; end: number; hid: string; note: string };
@@ -200,7 +216,8 @@ export function QuestionCard({
     const parts: React.ReactNode[] = [];
     let cursor = 0;
     clean.forEach((r, i) => {
-      if (r.start > cursor) parts.push(<MathText key={`t-${i}`}>{text.slice(cursor, r.start)}</MathText>);
+      if (r.start > cursor)
+        parts.push(<MathText key={`t-${i}`}>{text.slice(cursor, r.start)}</MathText>);
       parts.push(
         <mark
           key={`h-${i}`}
@@ -219,58 +236,31 @@ export function QuestionCard({
   }, [q.prompt, answer.highlights]);
 
   return (
-    /* White card on the ice canvas. `rounded-xl` (12px) per spec, with a
-       neutral hairline rather than a blue one so the border doesn't compete
-       with the answer options' softer blue edges. */
-    <div className="overflow-hidden rounded-xl border border-test-line bg-white shadow-panel">
-      <div className="flex items-center justify-between border-b border-test-line bg-white px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="text-sm font-bold tabular-nums text-test-ink">
-            Question {index + 1} of {total}
-          </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-test-muted">
-            {q.section === "math" ? "Math" : "R&W"} · {q.skill}
-          </span>
-        </div>
-        {/* Active state is the electric-blue accent; the resting state is a
-            quiet outline so it doesn't pull attention from the question. */}
-        <button
-          onClick={() => onChange({ ...answer, markedForReview: !answer.markedForReview })}
-          className={
-            "tap inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-bold transition " +
-            (answer.markedForReview
-              ? "bg-test-accent text-white"
-              : "border border-test-edge bg-white text-test-accent hover:bg-test-tint")
-          }
-        >
-          {answer.markedForReview ? (
-            <BookmarkCheck className="h-4 w-4" />
-          ) : (
-            <Bookmark className="h-4 w-4" />
-          )}
-          Mark for review
-        </button>
-      </div>
-
+    /* Full bleed, no card. Bluebook has no panel and no page margin: the
+       passage runs to the left edge of the window and the question to the
+       right, with a single hairline between them. `min-h-0` on every level of
+       this column is what lets the two panes scroll independently instead of
+       stretching the runner and pushing the footer off-screen. */
+    <div className="relative flex min-h-0 flex-1 flex-col bg-test-canvas">
       {hasPassage ? (
-        <div ref={containerRef} className="flex flex-col md:flex-row min-h-[680px]">
+        <div ref={containerRef} className="flex min-h-0 flex-1 flex-col md:flex-row">
           {/* Passage */}
           <div
-            className="relative overflow-y-auto border-b border-test-line md:border-b-0 md:border-r"
+            className="relative min-h-0 flex-1 overflow-y-auto border-b border-test-line md:flex-none md:border-b-0 md:border-r"
             style={{ flexBasis: `${leftPct}%` }}
           >
             <div
               ref={passageRef}
               onMouseUp={handlePassageMouseUp}
               onContextMenu={handlePassageContextMenu}
-              className="whitespace-pre-wrap p-8 text-[18px] leading-8 text-test-ink selection:bg-test-edge md:p-10 md:text-[19px]"
+              className="whitespace-pre-wrap px-6 py-6 text-[18px] leading-[1.7] text-test-ink selection:bg-test-tint md:px-10 md:py-8 md:text-[19px]"
             >
               {renderedPassage}
               {q.image_url ? (
                 <img
                   src={q.image_url}
                   alt=""
-                  className="mt-5 max-w-full rounded-lg border border-test-line"
+                  className="mt-5 max-w-full rounded border border-test-line"
                 />
               ) : null}
             </div>
@@ -287,8 +277,10 @@ export function QuestionCard({
                   <Highlighter className="h-3.5 w-3.5 text-test-accent" /> Highlight
                   <kbd
                     title="Change in Profile → Highlight shortcuts"
-                    className="ml-1 rounded bg-test-canvas px-1 font-mono text-[10px] text-test-muted"
-                  >{formatBinding(bindings.highlight)}</kbd>
+                    className="ml-1 rounded bg-test-well px-1 font-mono text-[10px] text-test-muted"
+                  >
+                    {formatBinding(bindings.highlight)}
+                  </kbd>
                 </button>
                 <button
                   onClick={() => addHighlight(true)}
@@ -297,112 +289,229 @@ export function QuestionCard({
                   <StickyNote className="h-3.5 w-3.5 text-test-accent" /> Note
                   <kbd
                     title="Change in Profile → Highlight shortcuts"
-                    className="ml-1 rounded bg-test-canvas px-1 font-mono text-[10px] text-test-muted"
-                  >{formatBinding(bindings.note)}</kbd>
-                </button>
-              </div>
-            )}
-
-            {answer.highlights.length > 0 && (
-              <div className="space-y-2 border-t border-test-line bg-test-canvas p-4">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-test-muted">
-                  Highlights & notes
-                </div>
-                {answer.highlights.map((h) => (
-                  <div
-                    key={h.id}
-                    className="flex items-start gap-2 rounded-md border border-test-line bg-white p-2"
+                    className="ml-1 rounded bg-test-well px-1 font-mono text-[10px] text-test-muted"
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="line-clamp-2 text-sm text-test-ink">
-                        {/* Same treatment as in the passage. */}
-                        <mark className="rounded bg-test-tint px-0.5 text-test-ink ring-1 ring-test-edge"><MathText>{h.text}</MathText></mark>
-                      </div>
-                      {h.note && (
-                        <div className="mt-1 text-xs italic text-test-muted">“{h.note}”</div>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => removeHighlight(h.id)}
-                      className="tap rounded p-1 text-test-muted hover:bg-test-tint hover:text-test-accent"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
+                    {formatBinding(bindings.note)}
+                  </kbd>
+                </button>
               </div>
             )}
           </div>
 
-          {/* Drag handle */}
+          {/* Drag handle — Bluebook's is a thin rail with a grip, sitting on the
+              divider itself rather than taking a column of its own. */}
           <div
             onMouseDown={() => {
               draggingRef.current = true;
               document.body.style.cursor = "col-resize";
               document.body.style.userSelect = "none";
             }}
-            className="hidden w-1.5 cursor-col-resize items-center justify-center bg-test-canvas transition hover:bg-test-edge md:flex"
+            className="hidden w-1.5 cursor-col-resize items-center justify-center bg-test-chrome transition hover:bg-test-tint md:flex"
             title="Drag to resize"
           >
-            <div className="h-10 w-1 rounded-full bg-slate-300" />
+            <div className="h-10 w-1 rounded-full bg-test-edge" />
           </div>
 
           {/* Question */}
-          <div className="flex-1 overflow-y-auto" style={{ flexBasis: `${100 - leftPct}%` }}>
+          <div
+            className="min-h-0 flex-1 overflow-y-auto"
+            style={{ flexBasis: `${100 - leftPct}%` }}
+          >
             <QuestionBody
               q={q}
+              index={index}
               choices={choices}
               answer={answer}
               onChange={onChange}
               reveal={reveal}
               correctChoiceId={correctChoiceId}
+              crossOut={crossOut}
+              onToggleCrossOut={() => setCrossOut((v) => !v)}
             />
           </div>
         </div>
       ) : (
-        <div className="p-8 md:p-10">
-          <QuestionBody
-            q={q}
-            choices={choices}
-            answer={answer}
-            onChange={onChange}
-            reveal={reveal}
-            correctChoiceId={correctChoiceId}
-          />
+        /* No passage — Bluebook centres the question in the window instead of
+           stretching a one-line equation across the full width. */
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-3xl">
+            <QuestionBody
+              q={q}
+              index={index}
+              choices={choices}
+              answer={answer}
+              onChange={onChange}
+              reveal={reveal}
+              correctChoiceId={correctChoiceId}
+              crossOut={crossOut}
+              onToggleCrossOut={() => setCrossOut((v) => !v)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Highlights & notes — a floating panel, opened from the header, rather
+          than a list appended under the passage. Rendered at this level so it
+          also reaches a question that has no passage pane to sit in. */}
+      {showNotes && (
+        <div className="pop-in absolute right-4 top-4 z-30 w-[min(92vw,22rem)] overflow-hidden rounded-lg border border-test-line bg-white shadow-float">
+          <div className="flex items-center justify-between border-b border-test-line bg-test-chrome px-3 py-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-test-muted">
+              Highlights &amp; notes
+            </span>
+            <button
+              onClick={onCloseNotes}
+              className="tap rounded p-1 text-test-muted hover:bg-test-well hover:text-test-ink"
+              aria-label="Close highlights and notes"
+            >
+              <XIcon className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="max-h-[50vh] space-y-2 overflow-y-auto p-3">
+            {answer.highlights.length === 0 ? (
+              <p className="px-1 py-2 text-xs text-test-muted">
+                Select text in the passage, then choose Highlight or Note.
+              </p>
+            ) : (
+              answer.highlights.map((h) => (
+                <div
+                  key={h.id}
+                  className="flex items-start gap-2 rounded border border-test-line bg-white p-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="line-clamp-2 text-sm text-test-ink">
+                      {/* Same treatment as in the passage. */}
+                      <mark className="rounded bg-test-tint px-0.5 text-test-ink ring-1 ring-test-edge">
+                        <MathText>{h.text}</MathText>
+                      </mark>
+                    </div>
+                    {h.note && (
+                      <div className="mt-1 text-xs italic text-test-muted">“{h.note}”</div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => removeHighlight(h.id)}
+                    className="tap rounded p-1 text-test-muted hover:bg-test-well hover:text-test-accent"
+                    aria-label="Remove highlight"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
+/**
+ * The Bluebook cross-out glyph: a capital A inside a circle with a rule struck
+ * through it. lucide has no equivalent, and it's the control students actually
+ * look for, so it's drawn here rather than approximated with an X.
+ */
+function CrossOutIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" />
+      <path
+        d="M8.6 15.4 12 7.8l3.4 7.6M9.7 13.2h4.6"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M4.5 19.5 19.5 4.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function QuestionBody({
   q,
+  index,
   choices,
   answer,
   onChange,
   reveal,
   correctChoiceId,
+  crossOut,
+  onToggleCrossOut,
 }: {
   q: QuestionRow;
+  index: number;
   choices: Choice[];
   answer: AnswerState;
   onChange: (a: AnswerState) => void;
   reveal?: boolean;
   correctChoiceId?: string | null;
+  crossOut: boolean;
+  onToggleCrossOut: () => void;
 }) {
   function toggleEliminate(id: string) {
     const has = answer.eliminated.includes(id);
     onChange({
       ...answer,
       eliminated: has ? answer.eliminated.filter((x) => x !== id) : [...answer.eliminated, id],
-      selectedChoiceId:
-        !has && answer.selectedChoiceId === id ? null : answer.selectedChoiceId,
+      selectedChoiceId: !has && answer.selectedChoiceId === id ? null : answer.selectedChoiceId,
+    });
+  }
+
+  function select(id: string) {
+    onChange({
+      ...answer,
+      selectedChoiceId: id,
+      eliminated: answer.eliminated.filter((x) => x !== id),
     });
   }
 
   return (
-    <div className="p-8 md:p-10">
-      <MathText block className="whitespace-pre-wrap text-[18px] font-semibold leading-8 text-test-ink md:text-[19px]">
+    <div className="px-6 pb-10 pt-6 md:px-10 md:pt-8">
+      {/* Bluebook's question header: the number in a dark square, the review
+          bookmark beside it, and the cross-out toggle pushed to the far right.
+          This lives in the question pane, not in the page chrome, because it
+          belongs to the question — moving it up to the top bar is the single
+          biggest thing that makes a clone read as "not Bluebook". */}
+      <div className="flex items-center gap-3 pb-2.5">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-sm bg-test-dark text-sm font-bold tabular-nums text-white">
+          {index + 1}
+        </span>
+        <button
+          onClick={() => onChange({ ...answer, markedForReview: !answer.markedForReview })}
+          className="tap inline-flex items-center gap-1.5 rounded px-1.5 py-1 text-sm font-semibold text-test-ink hover:bg-test-well"
+          aria-pressed={answer.markedForReview}
+        >
+          {answer.markedForReview ? (
+            <BookmarkCheck className="h-4 w-4 text-test-accent" />
+          ) : (
+            <Bookmark className="h-4 w-4 text-test-muted" />
+          )}
+          Mark for Review
+        </button>
+        <span className="ml-auto hidden truncate text-xs font-semibold uppercase tracking-wider text-test-muted lg:inline">
+          {q.skill}
+        </span>
+        {!reveal && q.kind !== "grid_in" && (
+          <button
+            onClick={onToggleCrossOut}
+            title="Cross out answer choices"
+            aria-pressed={crossOut}
+            className={
+              "tap ml-auto grid h-8 w-8 shrink-0 place-items-center rounded lg:ml-3 " +
+              (crossOut ? "bg-test-accent text-white" : "text-test-accent hover:bg-test-well")
+            }
+          >
+            <CrossOutIcon className="h-5 w-5" />
+          </button>
+        )}
+      </div>
+
+      <div className="border-t border-test-line" />
+
+      <MathText
+        block
+        className="whitespace-pre-wrap pt-5 text-[18px] font-medium leading-[1.7] text-test-ink md:text-[19px]"
+      >
         {q.question_text}
       </MathText>
 
@@ -415,7 +524,7 @@ function QuestionBody({
             value={answer.gridAnswer}
             onChange={(e) => onChange({ ...answer, gridAnswer: e.target.value })}
             inputMode="numeric"
-            className="mt-2 block w-full max-w-xs rounded-lg border border-test-edge bg-white px-4 py-3 text-xl font-bold tabular-nums text-test-ink placeholder:text-slate-400 focus:border-test-accent focus:outline-none focus:ring-2 focus:ring-test-tint"
+            className="mt-2 block w-full max-w-xs rounded border-2 border-test-edge bg-white px-4 py-3 text-xl font-bold tabular-nums text-test-ink placeholder:text-test-muted/60 focus:border-test-accent focus:outline-none"
             placeholder="e.g. 3.14 or 5/8"
           />
         </div>
@@ -427,91 +536,81 @@ function QuestionBody({
             const isCorrect = reveal && correctChoiceId === c.id;
             const isWrong = reveal && selected && correctChoiceId !== c.id;
             return (
-              <li key={c.id}>
-                {/* Default is a white card with a soft blue edge; hover washes to
-                    #EFF6FF and pulls the border to the accent; selected fills
-                    with the accent. Review mode keeps hue out of correct/wrong —
-                    the ✓/✗ on the letter circle carries it, with weight from a
-                    ring rather than green/red. */}
-                <div
+              <li key={i} className="flex items-stretch gap-2">
+                {/* The option itself. Bluebook fills only the letter circle on
+                    selection and leaves the option white with a 2px blue rule —
+                    a fully filled row would invert the text and cost contrast on
+                    the thing the student is actually reading. Review mode keeps
+                    hue out of correct/wrong; the ✓/✗ on the circle carries it. */}
+                <button
+                  disabled={reveal}
+                  onClick={() => select(c.id)}
                   className={
-                    "flex items-start gap-4 rounded-xl border p-4 transition md:p-5 " +
+                    "flex flex-1 items-start gap-3 rounded-lg border-2 bg-white px-4 py-3 text-left transition disabled:cursor-default " +
                     (isCorrect
-                      ? "border-test-accent bg-test-tint ring-2 ring-test-accent"
+                      ? "border-test-accent"
                       : isWrong
-                      ? "border-slate-400 bg-slate-100"
-                      : selected
-                      ? "border-test-accent bg-test-accent"
-                      : eliminated
-                      ? "border-test-line bg-test-canvas"
-                      : "border-test-edge bg-white hover:border-test-accent hover:bg-test-tint")
+                        ? "border-test-muted"
+                        : selected
+                          ? "border-test-accent"
+                          : eliminated
+                            ? "border-test-line"
+                            : "border-test-edge hover:border-test-accent hover:bg-test-tint")
                   }
                 >
-                  <button
-                    disabled={reveal}
-                    onClick={() =>
-                      onChange({
-                        ...answer,
-                        selectedChoiceId: c.id,
-                        eliminated: answer.eliminated.filter((x) => x !== c.id),
-                      })
-                    }
+                  <span
                     className={
-                      "tap grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 text-base font-black transition " +
-                      (selected && !isCorrect && !isWrong
-                        ? "border-white bg-white text-test-accent"
-                        : isCorrect
+                      "mt-0.5 grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full border text-sm font-bold " +
+                      (isCorrect
                         ? "border-test-accent bg-test-accent text-white"
                         : isWrong
-                        ? "border-slate-500 bg-slate-500 text-white"
-                        : "border-test-edge text-test-accent hover:border-test-accent hover:bg-test-tint")
+                          ? "border-test-muted bg-test-muted text-white"
+                          : selected
+                            ? "border-test-accent bg-test-accent text-white"
+                            : "border-test-ink text-test-ink")
                     }
                   >
                     {isCorrect ? (
-                      <Check className="h-5 w-5" />
+                      <Check className="h-4 w-4" />
                     ) : isWrong ? (
-                      <XIcon className="h-5 w-5" />
+                      <XIcon className="h-4 w-4" />
                     ) : (
                       LETTERS[i]
                     )}
-                  </button>
-                  <button
-                    disabled={reveal}
-                    onClick={() =>
-                      onChange({
-                        ...answer,
-                        selectedChoiceId: c.id,
-                        eliminated: answer.eliminated.filter((x) => x !== c.id),
-                      })
-                    }
+                  </span>
+                  <span
                     className={
-                      "flex-1 pt-1.5 text-left text-[18px] leading-8 md:text-[19px] " +
-                      (eliminated
-                        ? "text-slate-400 line-through"
-                        : selected && !isCorrect && !isWrong
-                        ? "text-white"
-                        : "text-test-ink")
+                      "flex-1 text-[17px] leading-[1.6] md:text-[18px] " +
+                      (eliminated ? "text-test-muted line-through" : "text-test-ink")
                     }
                   >
                     <MathText>{c.text}</MathText>
+                  </span>
+                </button>
+
+                {/* Outside the option, exactly where Bluebook puts it — a
+                    cross-out is a note to yourself about the choice, not a way
+                    of answering, so it must not be reachable by a stray click
+                    inside the option. Hidden until the toggle is on. */}
+                {!reveal && crossOut && (
+                  <button
+                    onClick={() => toggleEliminate(c.id)}
+                    title={eliminated ? "Undo cross-out" : `Cross out ${LETTERS[i]}`}
+                    className="tap grid w-11 shrink-0 place-items-center rounded text-test-accent hover:bg-test-well"
+                  >
+                    {eliminated ? (
+                      <span className="text-xs font-bold underline">Undo</span>
+                    ) : (
+                      <span className="relative grid h-[26px] w-[26px] place-items-center rounded-full border border-current text-sm font-bold">
+                        {LETTERS[i]}
+                        <span className="absolute left-0 right-0 top-1/2 h-px bg-current" />
+                      </span>
+                    )}
                   </button>
-                  {!reveal && (
-                    <button
-                      onClick={() => toggleEliminate(c.id)}
-                      title="Cross out"
-                      className={
-                        "tap shrink-0 rounded-md p-2 transition " +
-                        (eliminated
-                          ? "bg-slate-200 text-slate-600"
-                          : selected
-                          ? "text-white/80 hover:bg-white/20 hover:text-white"
-                          : "text-slate-400 hover:bg-test-canvas hover:text-test-ink")
-                      }
-                    >
-                      <XIcon className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
+                )}
+                {/* Reserves the gutter so turning the toggle on doesn't reflow
+                    the option widths mid-question. */}
+                {!reveal && !crossOut && <span aria-hidden="true" className="w-11 shrink-0" />}
               </li>
             );
           })}

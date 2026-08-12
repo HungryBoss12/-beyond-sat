@@ -1,12 +1,11 @@
-import { askWithImage } from "@/lib/ai/client";
-import { VISION_EXTRACTION_PROMPT } from "@/lib/ai/prompts";
+import { extractPageWithGemini } from "./gemini-client";
 import { renderPdfPages, pdfPageCount } from "./pdf";
 import type { Draft, ParseDefaults } from "./parse";
 import { skillsFor, type Section } from "@/lib/sat";
 
 /**
- * The scanned-PDF import path: render a page, send it to the vision model, turn
- * the JSON back into drafts.
+ * The scanned-PDF import path: render a page, send it to Gemini, turn the JSON
+ * back into drafts.
  *
  * Only reached when `readPdfText` finds no text layer. A text PDF goes through
  * the deterministic reader — this costs a model call per page and can be wrong,
@@ -166,8 +165,7 @@ export async function extractByVision(
       lastPage = image.page;
       let content: string;
       try {
-        content = await askWithImage(VISION_EXTRACTION_PROMPT, image.dataUrl, {
-          task: "vision",
+        content = await extractPageWithGemini(image.dataUrl, {
           signal: opts.signal,
         });
       } catch (err) {

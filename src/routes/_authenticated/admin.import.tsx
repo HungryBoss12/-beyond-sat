@@ -235,7 +235,7 @@ function AdminImport() {
              panel rather than producing 108 pages of empty blocks. */
           setReading(null);
           setNotes([
-            `This PDF has no text layer — it's a scan of ${out.pages} page${out.pages === 1 ? "" : "s"}. Reading it needs Beyond AI, one page at a time.`,
+            `This PDF has no text layer — it's a scan of ${out.pages} page${out.pages === 1 ? "" : "s"}. Reading it uses Gemini, one page at a time.`,
           ]);
           setVision({
             file: f,
@@ -672,7 +672,7 @@ function AdminImport() {
                 straight out of the file: a numbered paragraph starts a question, the{" "}
                 <code className="text-white">A) B) C) D)</code> line becomes its choices, and
                 everything above the stem becomes the passage. A scanned PDF with no text in it is
-                read by Beyond AI instead, one page at a time.
+                read by Gemini instead, one page at a time.
               </p>
 
               <input
@@ -1013,8 +1013,7 @@ function TabButton({
  * The scanned-PDF panel.
  *
  * The page range is front and centre rather than hidden behind an "advanced"
- * toggle, because running all 108 pages of a scan through a free-tier vision
- * model is the wrong default in every case: it rate-limits, it takes an hour, and
+ * toggle, because running all 108 pages of a scan through Gemini in one go
  * the editor can't see whether the extraction is any good until it's over. Ten
  * pages, check the preview, then continue.
  */
@@ -1038,7 +1037,7 @@ function VisionPanel({
         <ScanEye className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
         <div className="text-xs leading-relaxed text-brand-100">
           <strong className="text-white">This is a scan.</strong> There's no text in the file, so
-          each page is sent to Beyond AI as an image and read back. That takes a few seconds a page
+          each page is sent to Gemini as an image and read back. That takes a few seconds a page
           and can misread a figure — check every row in the preview before importing. Run a small
           range first.
         </div>

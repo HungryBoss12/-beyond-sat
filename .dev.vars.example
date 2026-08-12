@@ -8,3 +8,7 @@ SUPABASE_PUBLISHABLE_KEY="your-anon-publishable-key"
 # Secret — only needed if you start using the admin (service-role) Supabase client.
 # In production set it with: wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 # SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+#
+# Google AI Studio — admin import vision (/api/import/vision)
+# In production: wrangler secret put GEMINI_API_KEY
+# GEMINI_API_KEY="your-gemini-api-key"

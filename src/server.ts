@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleAiChat } from "./lib/ai/handler";
+import { handleImportVision } from "./lib/import/vision-handler";
 import { checkMaintenance } from "./lib/maintenance";
 import { maintenanceResponse } from "./lib/maintenance-page";
 
@@ -75,6 +76,10 @@ export default {
 
       if (url.pathname === "/api/ai/chat") {
         return await handleAiChat(request, env);
+      }
+
+      if (url.pathname === "/api/import/vision") {
+        return await handleImportVision(request, env);
       }
 
       const maintenance = await checkMaintenance(request, env, Date.now());

@@ -84,7 +84,7 @@ function SignUp() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: parsed.data.email,
       password: parsed.data.password,
       options: {
@@ -104,8 +104,22 @@ function SignUp() {
       setFormError(error.message);
       return;
     }
+    // Supabase returns success without sending mail when the address is already registered.
+    if (data.user && data.user.identities?.length === 0) {
+      setFormError(
+        "An account with this email may already exist. Try signing in, or use Forgot password if you need access.",
+      );
+      return;
+    }
+    // Email confirmation disabled in Supabase → session is issued immediately.
+    if (data.session) {
+      navigate({ to: "/dashboard", replace: true });
+      return;
+    }
     setStep("verify");
-    setInfo(`We sent a 6-digit verification code to ${parsed.data.email}.`);
+    setInfo(
+      `Check ${parsed.data.email} for a verification code or confirmation link. If nothing arrives within a few minutes, check spam or contact support.`,
+    );
   }
 
   async function handleVerify(e: React.FormEvent) {
@@ -314,7 +328,7 @@ function SignUp() {
 }
 
 const inputCls =
-  "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2.5 text-sm text-white outline-none transition [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200";
+  "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2.5 text-sm text-white outline-none transition duration-200 [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:ring-2 focus:ring-brand-300/50";
 
 function Field({
   label,

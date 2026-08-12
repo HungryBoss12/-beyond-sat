@@ -1101,14 +1101,14 @@ function VisionPanel({
           {state.running ? (
             <button
               onClick={onStop}
-              className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/60 bg-brand-900 px-4 py-2 text-sm font-semibold text-white"
+              className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/60 bg-brand-900 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
             >
               <Square className="h-3.5 w-3.5" /> Stop
             </button>
           ) : (
             <button
               onClick={onStart}
-              className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
+              className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-800"
             >
               <ScanEye className="h-4 w-4" /> Read pages {state.from}–{state.to}
             </button>
@@ -1117,7 +1117,12 @@ function VisionPanel({
       </div>
 
       {state.running && (
-        <div className="space-y-3">
+        <div
+          className="space-y-3"
+          role="status"
+          aria-live="polite"
+          aria-label="Import progress"
+        >
           <div>
             <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-brand-100">
               <span>Overall</span>

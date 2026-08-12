@@ -38,3 +38,8 @@ pnpm-lock.yaml
 *.njsproj
 *.sln
 *.sw?
+
+# Python bytecode from Cursor skills
+**/__pycache__/
+*.pyc
+

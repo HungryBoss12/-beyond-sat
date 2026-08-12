@@ -220,6 +220,30 @@
     font-weight: 700;
     letter-spacing: -0.02em;
   }
+
+  /* UI UX Pro Max: pointer affordance + keyboard focus (preserve brand colors) */
+  a,
+  button,
+  [role="button"],
+  summary,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  input[type="checkbox"],
+  input[type="radio"],
+  select,
+  label[for] {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-300);
+    outline-offset: 2px;
+  }
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none;
+  }
 }
 
 /* ---------------------------------------------------------------------------

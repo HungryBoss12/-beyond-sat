@@ -115,7 +115,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={n.to}
                 to={n.to}
                 className={
-                  "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold " +
+                  "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600 " +
                   (active
                     ? "bg-brand-400 text-white shadow-brand"
                     : "text-brand-100 nudge hover:bg-brand-800 hover:text-white")
@@ -140,7 +140,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
               className={
-                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold " +
+                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600 " +
                 (pathname.startsWith("/admin")
                   ? "bg-brand-400 text-white shadow-brand"
                   : "text-brand-100 nudge hover:bg-brand-800 hover:text-white")
@@ -175,7 +175,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setDrawerOpen(true)}
-              className="tap grid h-9 w-9 place-items-center rounded-lg border border-brand-400/50 text-white hover:bg-brand-400 lg:hidden"
+              className="tap grid h-9 w-9 place-items-center rounded-lg border border-brand-400/50 text-white transition-colors duration-200 hover:bg-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 lg:hidden"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />

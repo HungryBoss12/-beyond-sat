@@ -37,7 +37,10 @@ function parseEnvFile(source: string): Record<string, string> {
     const eq = line.indexOf("=");
     if (eq < 1) continue;
 
-    const key = line.slice(0, eq).trim().replace(/^export\s+/, "");
+    const key = line
+      .slice(0, eq)
+      .trim()
+      .replace(/^export\s+/, "");
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
 
     let value = line.slice(eq + 1).trim();

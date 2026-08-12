@@ -103,24 +103,25 @@ function Profile() {
       if (!u) return;
       setUid(u.id);
       setEmail(u.email ?? "");
-      const [{ data: p }, { data: sp }, { data: sess }, { data: att }, { data: dates }] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", u.id).maybeSingle(),
-        supabase.from("student_profiles").select("*").eq("user_id", u.id).maybeSingle(),
-        supabase
-          .from("test_sessions")
-          .select("id,type,score,rw_score,math_score,correct_count,total_questions,completed_at")
-          .eq("user_id", u.id)
-          .not("completed_at", "is", null)
-          .order("completed_at", { ascending: false })
-          .limit(50),
-        supabase.from("attempts").select("is_correct").eq("user_id", u.id),
-        supabase
-          .from("exam_dates")
-          .select("id,exam_date,label")
-          .eq("active", true)
-          .gte("exam_date", todayYmd())
-          .order("exam_date", { ascending: true }),
-      ]);
+      const [{ data: p }, { data: sp }, { data: sess }, { data: att }, { data: dates }] =
+        await Promise.all([
+          supabase.from("profiles").select("*").eq("id", u.id).maybeSingle(),
+          supabase.from("student_profiles").select("*").eq("user_id", u.id).maybeSingle(),
+          supabase
+            .from("test_sessions")
+            .select("id,type,score,rw_score,math_score,correct_count,total_questions,completed_at")
+            .eq("user_id", u.id)
+            .not("completed_at", "is", null)
+            .order("completed_at", { ascending: false })
+            .limit(50),
+          supabase.from("attempts").select("is_correct").eq("user_id", u.id),
+          supabase
+            .from("exam_dates")
+            .select("id,exam_date,label")
+            .eq("active", true)
+            .gte("exam_date", todayYmd())
+            .order("exam_date", { ascending: true }),
+        ]);
       setProfile(p as ProfileRow | null);
       setStudent(sp as StudentRow | null);
       setSessions((sess ?? []) as Session[]);
@@ -287,7 +288,9 @@ function Profile() {
               <Field label="Grade" value={profile?.grade != null ? String(profile.grade) : null} />
               <Field
                 label="Birth date"
-                value={profile?.birth_date ? format(new Date(profile.birth_date), "MMM d, yyyy") : null}
+                value={
+                  profile?.birth_date ? format(new Date(profile.birth_date), "MMM d, yyyy") : null
+                }
               />
             </dl>
           )}
@@ -326,7 +329,9 @@ function Profile() {
                 value={
                   student?.exam_date
                     ? `${format(parseLocalDate(student.exam_date), "MMM d, yyyy")}${
-                        daysToExam != null ? ` (${daysToExam} day${daysToExam === 1 ? "" : "s"} left)` : ""
+                        daysToExam != null
+                          ? ` (${daysToExam} day${daysToExam === 1 ? "" : "s"} left)`
+                          : ""
                       }`
                     : null
                 }
@@ -347,7 +352,10 @@ function Profile() {
         {sessions.length === 0 ? (
           <p className="mt-4 text-sm text-brand-100">
             You haven't finished any tests yet.{" "}
-            <Link to="/practice" className="font-bold text-white underline-offset-2 hover:underline">
+            <Link
+              to="/practice"
+              className="font-bold text-white underline-offset-2 hover:underline"
+            >
               Start practicing
             </Link>
             .
@@ -545,7 +553,12 @@ function GoalsForm({
       className="space-y-3"
     >
       <div className="grid grid-cols-2 gap-3">
-        <Input label="English (R&W) 200–800" value={targetRw} onChange={setTargetRw} type="number" />
+        <Input
+          label="English (R&W) 200–800"
+          value={targetRw}
+          onChange={setTargetRw}
+          type="number"
+        />
         <Input label="Math 200–800" value={targetMath} onChange={setTargetMath} type="number" />
       </div>
       <div className="flex justify-between rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm">

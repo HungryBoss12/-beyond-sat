@@ -13,13 +13,13 @@ All Cloudflare config lives in [`wrangler.jsonc`](./wrangler.jsonc).
 
 ## Environment variables — how they split
 
-| Variable | When | Where it's set | Secret? |
-|---|---|---|---|
-| `VITE_SUPABASE_URL` | build time (inlined into JS) | `.env` (committed) | no (public) |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | build time (inlined) | `.env` (committed) | no (public) |
-| `SUPABASE_URL` | runtime (SSR) | `wrangler.jsonc` → `vars` | no (public) |
-| `SUPABASE_PUBLISHABLE_KEY` | runtime (SSR) | `wrangler.jsonc` → `vars` | no (public) |
-| `SUPABASE_SERVICE_ROLE_KEY` | runtime (optional) | `wrangler secret put` | **YES** |
+| Variable                        | When                         | Where it's set            | Secret?     |
+| ------------------------------- | ---------------------------- | ------------------------- | ----------- |
+| `VITE_SUPABASE_URL`             | build time (inlined into JS) | `.env` (committed)        | no (public) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | build time (inlined)         | `.env` (committed)        | no (public) |
+| `SUPABASE_URL`                  | runtime (SSR)                | `wrangler.jsonc` → `vars` | no (public) |
+| `SUPABASE_PUBLISHABLE_KEY`      | runtime (SSR)                | `wrangler.jsonc` → `vars` | no (public) |
+| `SUPABASE_SERVICE_ROLE_KEY`     | runtime (optional)           | `wrangler secret put`     | **YES**     |
 
 The `VITE_*` values are baked into the client bundle at build time, so they must
 be present whenever you run `vite build` (they already are, via `.env`).
@@ -37,14 +37,17 @@ admin/server feature needs it.
 ## First-time setup
 
 1. **Install dependencies**
+
    ```bash
    npm install       # or: bun install
    ```
 
 2. **Install Wrangler & log in** (Wrangler is already a devDependency)
+
    ```bash
    npx wrangler login
    ```
+
    This opens a browser to authorize Wrangler against your Cloudflare account.
 
 3. **(Optional) Pick a Worker name.** Edit `"name"` in `wrangler.jsonc` if you

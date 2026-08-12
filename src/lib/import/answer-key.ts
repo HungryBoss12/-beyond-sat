@@ -23,7 +23,8 @@ export type AnswerKey = {
 
 /* `12. B` and friends. The answer runs to the next question number or the end,
    so grid-in values with spaces or slashes ("3/4", "1.5") survive. */
-const ENTRY = /(\d{1,3})\s*(?:[.):\]-]|\s)\s*([^\s][^\n]*?)(?=\s+\d{1,3}\s*(?:[.):\]-]|\s)\s*[^\s]|\s*$)/g;
+const ENTRY =
+  /(\d{1,3})\s*(?:[.):\]-]|\s)\s*([^\s][^\n]*?)(?=\s+\d{1,3}\s*(?:[.):\]-]|\s)\s*[^\s]|\s*$)/g;
 
 export function parseAnswerKey(text: string): AnswerKey {
   const answers = new Map<number, string>();
@@ -33,7 +34,10 @@ export function parseAnswerKey(text: string): AnswerKey {
 
   /* Line-oriented first: one entry per line is the common case and parsing it
      line by line means a stray word on one line can't swallow the next. */
-  const lines = src.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines = src
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   const perLine = lines.every((l) => /^\s*\(?\d{1,3}\)?\s*[.):\]-]?\s+\S/.test(l));
 
   const scan = (chunk: string) => {
@@ -85,7 +89,12 @@ export function applyAnswerKey(
 }
 
 /** Human summary of what a key did, for the line under the paste box. */
-export function describeKey(key: AnswerKey, filled: number, total: number, unmatched: number[]): string {
+export function describeKey(
+  key: AnswerKey,
+  filled: number,
+  total: number,
+  unmatched: number[],
+): string {
   const parts = [`Filled ${filled} of ${total} question${total === 1 ? "" : "s"}.`];
   if (unmatched.length) {
     const shown = unmatched.slice(0, 8).join(", ");
@@ -94,7 +103,12 @@ export function describeKey(key: AnswerKey, filled: number, total: number, unmat
     );
   }
   if (key.unparsed.length) {
-    parts.push(`Couldn't read: ${key.unparsed.slice(0, 3).map((u) => `"${u}"`).join(", ")}.`);
+    parts.push(
+      `Couldn't read: ${key.unparsed
+        .slice(0, 3)
+        .map((u) => `"${u}"`)
+        .join(", ")}.`,
+    );
   }
   return parts.join(" ");
 }

@@ -51,7 +51,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       setEmail(u.email ?? "");
       const [{ data: prof }, { data: sp }, role] = await Promise.all([
         supabase.from("profiles").select("full_name,first_name").eq("id", u.id).maybeSingle(),
-        supabase.from("student_profiles").select("current_streak").eq("user_id", u.id).maybeSingle(),
+        supabase
+          .from("student_profiles")
+          .select("current_streak")
+          .eq("user_id", u.id)
+          .maybeSingle(),
         getStaffRole(u.id),
       ]);
       setName(prof?.full_name || prof?.first_name || u.email?.split("@")[0] || "Student");
@@ -75,12 +79,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     navigate({ to: "/signin", replace: true });
   }
 
-  const initials = name
-    .split(" ")
-    .map((s) => s[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() || "S";
+  const initials =
+    name
+      .split(" ")
+      .map((s) => s[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "S";
 
   // The shell's own surface is the one white page; the inherited text colour is
   // a dark brand step so anything that doesn't set its own still reads.

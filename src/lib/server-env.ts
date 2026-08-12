@@ -18,8 +18,7 @@ export function readEnv(env: unknown, key: string): string | undefined {
   const fromArg = env && typeof env === "object" ? (env as WorkerEnv)[key] : undefined;
   if (typeof fromArg === "string" && fromArg.trim()) return fromArg.trim();
 
-  const fromProcess =
-    typeof process !== "undefined" && process.env ? process.env[key] : undefined;
+  const fromProcess = typeof process !== "undefined" && process.env ? process.env[key] : undefined;
   return fromProcess?.trim() || undefined;
 }
 

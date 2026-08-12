@@ -14,7 +14,7 @@ functions, every RLS policy, and the seeded homepage content.
 **What does not:** every existing user account. Password hashes live in
 `auth.users`, which no API exposes, so they cannot be copied. Everyone
 re-registers, including you. Questions, mock exams, daily tests and news
-articles are also not carried over by these steps — see *Rescuing old content*
+articles are also not carried over by these steps — see _Rescuing old content_
 at the end if you want them.
 
 ---
@@ -44,12 +44,12 @@ do not split it up.
 > from the raw migration folder in three ways, all necessary:
 >
 > - Two early migrations are omitted. `20260718183907` creates `public.profiles`
->   and two triggers that `20260718230822` then creates *again* with more
+>   and two triggers that `20260718230822` then creates _again_ with more
 >   columns, and nothing drops them in between — replaying both fails with
 >   `relation "public.profiles" already exists`. The security REVOKEs from the
 >   second file are preserved at the bottom of the generated schema.
 > - Every `ALTER TYPE … ADD VALUE` is folded into its original `CREATE TYPE`.
->   Postgres refuses to *use* an enum label in the same transaction that added
+>   Postgres refuses to _use_ an enum label in the same transaction that added
 >   it, and the SQL editor runs one transaction per execution. **This is why
 >   there is no two-step run any more** — `app_role` is created as
 >   `('student', 'admin', 'editor')` from the start.
@@ -190,7 +190,7 @@ Two details worth knowing:
 
 - **The answer key needs a special path.** Migration `20260721232119` revokes
   `SELECT` on `correct_choice_id`, `correct_grid_answers` and `explanation` at
-  the *column* level, so no query can read them, admin or not. The script goes
+  the _column_ level, so no query can read them, admin or not. The script goes
   through the `admin_get_question_answers` RPC — one call per question, which
   is slow for a large bank but is the only route that exists.
 - **`homepage_sections` is cleared before import.** The schema already seeds
@@ -212,12 +212,12 @@ they live in the old bucket — re-upload anything you want to keep.
 
 ## If something goes wrong
 
-| Symptom | Cause |
-|---|---|
-| `relation "public.profiles" already exists` | You ran the raw migration folder instead of `FRESH_PROJECT_SCHEMA.sql`. Reset the database (Settings → General → Reset) and run the generated file. |
-| `unsafe use of new value "editor"` | Same cause. The generated file cannot produce this error — it has no `ALTER TYPE … ADD VALUE` left. |
+| Symptom                                                               | Cause                                                                                                                                                |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `relation "public.profiles" already exists`                           | You ran the raw migration folder instead of `FRESH_PROJECT_SCHEMA.sql`. Reset the database (Settings → General → Reset) and run the generated file.  |
+| `unsafe use of new value "editor"`                                    | Same cause. The generated file cannot produce this error — it has no `ALTER TYPE … ADD VALUE` left.                                                  |
 | Onboarding says "no exam dates published" and Continue stays disabled | `exam_dates` is empty — run [supabase/SEED_EXAM_DATES.sql](supabase/SEED_EXAM_DATES.sql). On the current code you can also just type a date instead. |
-| Admin panel missing after step 6 | You did not sign out and back in. |
-| Images 404 | Step 3 skipped, or the bucket name is not exactly `question-images`. |
-| Site still shows old data after deploy | `wrangler.jsonc` not updated, or a Cloudflare dashboard variable is overriding it. |
-| Login works locally but not on the live site | Step 4c — the deployed Worker has its own copy of the env vars. |
+| Admin panel missing after step 6                                      | You did not sign out and back in.                                                                                                                    |
+| Images 404                                                            | Step 3 skipped, or the bucket name is not exactly `question-images`.                                                                                 |
+| Site still shows old data after deploy                                | `wrangler.jsonc` not updated, or a Cloudflare dashboard variable is overriding it.                                                                   |
+| Login works locally but not on the live site                          | Step 4c — the deployed Worker has its own copy of the env vars.                                                                                      |

@@ -56,7 +56,7 @@ function AdminNews() {
   async function save() {
     if (!editing) return;
     const slug = editing.slug || slugify(editing.title);
-    const payload: any = {
+    const payload = {
       title: editing.title,
       slug,
       excerpt: editing.excerpt || null,

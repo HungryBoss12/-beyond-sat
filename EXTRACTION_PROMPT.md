@@ -11,7 +11,7 @@ with zero errors. Format reference: [QUESTION_IMPORT.md](QUESTION_IMPORT.md).
 
 ## The prompt
 
-````
+```
 You are extracting SAT practice questions from the attached material into JSON for a
 question-bank importer. Accuracy matters more than speed: this content is shown to
 students as-is, so never guess, never paraphrase, and never invent a question.
@@ -162,7 +162,7 @@ SKIPPED: <count> — <brief reason for each>
 ]
 
 The material to extract from is attached.
-````
+```
 
 ---
 
@@ -176,12 +176,12 @@ The material to extract from is attached.
 
 ### If a row comes back with an error
 
-| Error | Cause |
-|---|---|
-| `Skill "..." isn't a valid Math skill` | The AI used a Reading & Writing skill on a math row, or invented one. Correct it to a name from the list. |
-| `Correct answer "..." doesn't match any choice` | The answer letter points at a choice that isn't there. Check the choices array has all four. |
-| `Choices must be filled in order without gaps` | A choice came back as an empty string. |
-| `isn't valid JSON` | Usually a trailing comma, or smart quotes — ask the AI to re-emit as strict JSON. |
+| Error                                           | Cause                                                                                                     |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `Skill "..." isn't a valid Math skill`          | The AI used a Reading & Writing skill on a math row, or invented one. Correct it to a name from the list. |
+| `Correct answer "..." doesn't match any choice` | The answer letter points at a choice that isn't there. Check the choices array has all four.              |
+| `Choices must be filled in order without gaps`  | A choice came back as an empty string.                                                                    |
+| `isn't valid JSON`                              | Usually a trailing comma, or smart quotes — ask the AI to re-emit as strict JSON.                         |
 
 A warning about an odd number of `$` means a math expression was left unclosed — worth fixing, since
 it renders as literal text.

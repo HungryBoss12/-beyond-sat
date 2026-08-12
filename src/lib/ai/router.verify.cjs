@@ -90,8 +90,14 @@ check("an app_settings override wins over the default", () => {
 
 check("a blank or whitespace override falls back to the default", () => {
   // The admin form saves "" when a field is cleared; sending that upstream is a 400.
-  assert.equal(router.resolveModel("chat", { openrouter_model_chat: "" }), router.DEFAULT_MODELS.chat);
-  assert.equal(router.resolveModel("chat", { openrouter_model_chat: "   " }), router.DEFAULT_MODELS.chat);
+  assert.equal(
+    router.resolveModel("chat", { openrouter_model_chat: "" }),
+    router.DEFAULT_MODELS.chat,
+  );
+  assert.equal(
+    router.resolveModel("chat", { openrouter_model_chat: "   " }),
+    router.DEFAULT_MODELS.chat,
+  );
 });
 
 check("an unknown task falls back to chat rather than throwing", () => {
@@ -199,7 +205,10 @@ check("the domain rule allows conversation instead of refusing it", () => {
      work. */
   assert.ok(/how are you/i.test(prompts.DOMAIN_RULE), "small talk must be explicitly allowed");
   assert.ok(/Never refuse a friendly message/i.test(prompts.DOMAIN_RULE));
-  assert.ok(/redirect/i.test(prompts.DOMAIN_RULE), "substantive off-topic work must still redirect");
+  assert.ok(
+    /redirect/i.test(prompts.DOMAIN_RULE),
+    "substantive off-topic work must still redirect",
+  );
   assert.ok(/essay/i.test(prompts.DOMAIN_RULE) && /code/i.test(prompts.DOMAIN_RULE));
 });
 
@@ -285,7 +294,11 @@ check("every nickname routes to a :free model and honours admin overrides", () =
     // The override path is what makes a withdrawn free model a settings change
     // rather than a redeploy, so the picker must not bypass it.
     const key = router.MODEL_SETTING_KEYS[task];
-    assert.equal(router.resolveModel(task, { [key]: "x/y:free" }), "x/y:free", `${slug} ignores its override`);
+    assert.equal(
+      router.resolveModel(task, { [key]: "x/y:free" }),
+      "x/y:free",
+      `${slug} ignores its override`,
+    );
   }
 });
 

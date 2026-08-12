@@ -23,6 +23,7 @@ import {
 import { startPracticeSession, startTestSetSession } from "@/lib/session";
 import { Panel, EmptyState } from "@/components/ui/panel";
 import { ListSkeleton } from "@/components/ui/skeletons";
+import { errorMessage } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/practice/$section")({
   parseParams: (p) => {
@@ -118,7 +119,10 @@ function SectionBrowse() {
         supabase.from("questions").select("skill,difficulty").eq("section", section).limit(5000),
       ]);
 
-      const rows = (testsResult.data ?? []) as Omit<TestSet, "count" | "status" | "sessionId" | "score">[];
+      const rows = (testsResult.data ?? []) as Omit<
+        TestSet,
+        "count" | "status" | "sessionId" | "score"
+      >[];
       const ids = rows.map((r) => r.id);
 
       /* Question counts and the student's sessions in two queries rather than one
@@ -146,7 +150,12 @@ function SectionBrowse() {
          their own progress and nobody else's. */
       const byTest = new Map<
         string,
-        { id: string; completed_at: string | null; correct_count: number | null; total_questions: number | null }
+        {
+          id: string;
+          completed_at: string | null;
+          correct_count: number | null;
+          total_questions: number | null;
+        }
       >();
       for (const s of (sessionsResult.data ?? []) as {
         id: string;
@@ -236,8 +245,8 @@ function SectionBrowse() {
     try {
       const { sessionId } = await startTestSetSession(set.id);
       navigate({ to: `/practice/session/${sessionId}` });
-    } catch (e: any) {
-      alert(e?.message ?? "Could not start this set.");
+    } catch (e: unknown) {
+      alert(errorMessage(e, "Could not start this set."));
       setStarting(null);
     }
   }
@@ -252,8 +261,8 @@ function SectionBrowse() {
         limit: 20,
       });
       navigate({ to: `/practice/session/${sessionId}` });
-    } catch (e: any) {
-      alert(e?.message ?? "Could not start practice.");
+    } catch (e: unknown) {
+      alert(errorMessage(e, "Could not start practice."));
       setStarting(null);
     }
   }
@@ -429,7 +438,10 @@ function SetCard({
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-sm font-bold text-white">{set.title}</h3>
           {set.status === "done" && (
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" aria-label="Completed" />
+            <CheckCircle2
+              className="mt-0.5 h-4 w-4 shrink-0 text-brand-200"
+              aria-label="Completed"
+            />
           )}
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">

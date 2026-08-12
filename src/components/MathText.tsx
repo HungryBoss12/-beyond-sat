@@ -21,23 +21,13 @@ export function MathText({
 }) {
   const html = useMemo(() => renderMath(children ?? ""), [children]);
   const Tag = block ? "div" : "span";
-  return (
-    <Tag
-      className={className}
-      // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
+  return <Tag className={className} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-const PATTERN =
-  /(\$\$[\s\S]+?\$\$)|(\\\[[\s\S]+?\\\])|(\$[^\n$]+?\$)|(\\\([\s\S]+?\\\))/g;
+const PATTERN = /(\$\$[\s\S]+?\$\$)|(\\\[[\s\S]+?\\\])|(\$[^\n$]+?\$)|(\\\([\s\S]+?\\\))/g;
 
 function escapeHtml(s: string) {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function renderMath(input: string): string {
@@ -89,10 +79,7 @@ export function MathPreview({ value }: { value: string }) {
     );
   }
   return (
-    <MathText
-      block
-      className="whitespace-pre-wrap text-sm leading-7 text-white"
-    >
+    <MathText block className="whitespace-pre-wrap text-sm leading-7 text-white">
       {value}
     </MathText>
   );

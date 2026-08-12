@@ -69,11 +69,16 @@ function asText(value: unknown): string {
  * less reliably picks a taxonomy label, and a Math skill on a Reading row is a
  * row the importer rejects with an error the editor then has to hand-fix.
  */
-function itemToDraft(item: Record<string, unknown>, fallbackNumber: number, defaults: ParseDefaults): Draft {
+function itemToDraft(
+  item: Record<string, unknown>,
+  fallbackNumber: number,
+  defaults: ParseDefaults,
+): Draft {
   const warnings: string[] = [];
 
   const rawNumber = Number(item.number ?? item.question_number ?? NaN);
-  const number = Number.isFinite(rawNumber) && rawNumber > 0 ? Math.round(rawNumber) : fallbackNumber;
+  const number =
+    Number.isFinite(rawNumber) && rawNumber > 0 ? Math.round(rawNumber) : fallbackNumber;
   if (!Number.isFinite(rawNumber)) {
     warnings.push("The model didn't give a question number — an answer key won't match this row.");
   }
@@ -87,7 +92,8 @@ function itemToDraft(item: Record<string, unknown>, fallbackNumber: number, defa
   const claimed = asText(item.skill).trim();
   let skill = defaults.skill;
   if (valid.includes(claimed)) skill = claimed;
-  else if (claimed) warnings.push(`Skill "${claimed}" isn't valid for this section — using "${defaults.skill}".`);
+  else if (claimed)
+    warnings.push(`Skill "${claimed}" isn't valid for this section — using "${defaults.skill}".`);
 
   const choices = Array.isArray(item.choices)
     ? item.choices.map((c) => asText(c).trim()).filter(Boolean)
@@ -111,7 +117,9 @@ function itemToDraft(item: Record<string, unknown>, fallbackNumber: number, defa
 
   if (!rec.question_text) warnings.push("The model returned no question text for this row.");
   if (rec.prompt.includes("[FIGURE NEEDED")) {
-    warnings.push("This question depends on a figure. Add an image URL, or the question will be unanswerable.");
+    warnings.push(
+      "This question depends on a figure. Add an image URL, or the question will be unanswerable.",
+    );
   }
 
   return { number, rec, warnings };
@@ -175,7 +183,12 @@ export async function extractByVision(
           );
           throw new StopRun();
         }
-        opts.onProgress?.({ page: image.page, pagesDone: index + 1, pagesTotal: total, questionsFound: drafts.length });
+        opts.onProgress?.({
+          page: image.page,
+          pagesDone: index + 1,
+          pagesTotal: total,
+          questionsFound: drafts.length,
+        });
         return;
       }
 
@@ -186,10 +199,17 @@ export async function extractByVision(
       } else {
         for (const raw of items) {
           if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
-          drafts.push(itemToDraft(raw as Record<string, unknown>, drafts.length + 1, opts.defaults));
+          drafts.push(
+            itemToDraft(raw as Record<string, unknown>, drafts.length + 1, opts.defaults),
+          );
         }
       }
-      opts.onProgress?.({ page: image.page, pagesDone: index + 1, pagesTotal: total, questionsFound: drafts.length });
+      opts.onProgress?.({
+        page: image.page,
+        pagesDone: index + 1,
+        pagesTotal: total,
+        questionsFound: drafts.length,
+      });
     },
   }).catch((err) => {
     if (err instanceof StopRun) return { rendered: pagesRead, total: pagesRead, stopped: true };
@@ -207,13 +227,19 @@ export async function extractByVision(
     return true;
   });
   if (unique.length !== drafts.length) {
-    notes.push(`${drafts.length - unique.length} duplicate question number(s) across page boundaries were dropped.`);
+    notes.push(
+      `${drafts.length - unique.length} duplicate question number(s) across page boundaries were dropped.`,
+    );
   }
 
   unique.sort((a, b) => a.number - b.number);
-  notes.unshift(`Read ${unique.length} question${unique.length === 1 ? "" : "s"} from ${pagesRead} page(s).`);
+  notes.unshift(
+    `Read ${unique.length} question${unique.length === 1 ? "" : "s"} from ${pagesRead} page(s).`,
+  );
   if (result.stopped && lastPage) {
-    notes.push(`Stopped at page ${lastPage}. Run the rest by setting the page range to start at ${lastPage + 1}.`);
+    notes.push(
+      `Stopped at page ${lastPage}. Run the rest by setting the page range to start at ${lastPage + 1}.`,
+    );
   }
 
   return { drafts: unique, notes, stopped: result.stopped, pagesRead };

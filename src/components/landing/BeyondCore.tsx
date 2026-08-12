@@ -86,7 +86,10 @@ function detectWebgl(): boolean {
  * Without this the whole landing route would white-screen because a decorative
  * graphic failed to download.
  */
-class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
+class SceneBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { failed: boolean }
+> {
   state = { failed: false };
 
   static getDerivedStateFromError() {

@@ -1,11 +1,12 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Ban, CircleCheck, Search } from "lucide-react";
 import { format } from "date-fns";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { getStaffRole } from "@/lib/admin";
 import { isOnline, lastSeenLabel } from "@/lib/presence";
+import { errorMessage } from "@/lib/utils";
 
 type Role = "student" | "editor" | "admin";
 
@@ -17,6 +18,15 @@ type UserRow = {
   last_seen_at: string | null;
   banned: boolean;
   role: Role;
+};
+
+type ProfileBase = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  created_at: string;
+  last_seen_at?: string | null;
+  banned?: boolean | null;
 };
 
 type Filter = "all" | "online" | "staff" | "banned";
@@ -67,7 +77,7 @@ function AdminUsers() {
      user who closed their tab would stay green until the next reload. */
   const [, setTick] = useState(0);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setErr(null);
     try {
@@ -81,7 +91,7 @@ function AdminUsers() {
 
          So: try the full select, and fall back to the columns that predate the
          migration if the server rejects it. */
-      let profs: any[] = [];
+      let profs: ProfileBase[] = [];
       let hasPresence = true;
       const full = await supabase
         .from("profiles")
@@ -119,7 +129,7 @@ function AdminUsers() {
           roleOf.set(r.user_id, "editor");
       }
       setRows(
-        profs.map((p: any) => ({
+        profs.map((p) => ({
           id: p.id,
           email: p.email,
           full_name: p.full_name,
@@ -129,17 +139,17 @@ function AdminUsers() {
           role: roleOf.get(p.id) ?? "student",
         })),
       );
-    } catch (e: any) {
-      setErr(e?.message ?? "Could not load users.");
+    } catch (e: unknown) {
+      setErr(errorMessage(e, "Could not load users."));
       setRows([]);
     } finally {
       setLoading(false);
     }
-  }
+  }, [filter]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   useEffect(() => {
     const t = setInterval(() => setTick((n) => n + 1), 30000);
@@ -248,9 +258,7 @@ function AdminUsers() {
     ["staff", "Staff"],
     ["banned", "Banned"],
   ];
-  const tabs = presenceReady
-    ? allTabs
-    : allTabs.filter(([k]) => k === "all" || k === "staff");
+  const tabs = presenceReady ? allTabs : allTabs.filter(([k]) => k === "all" || k === "staff");
 
   return (
     <div>

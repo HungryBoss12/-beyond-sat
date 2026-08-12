@@ -37,7 +37,9 @@ export function saveHighlightBindings(next: HighlightBindings) {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     window.dispatchEvent(new CustomEvent(EVENT));
-  } catch {}
+  } catch {
+    void 0;
+  }
 }
 
 export function subscribeHighlightBindings(cb: (b: HighlightBindings) => void) {
@@ -61,7 +63,12 @@ export function formatBinding(b: Binding): string {
 }
 
 export function matchesBinding(e: KeyboardEvent, b: Binding): boolean {
-  if (e.shiftKey !== b.shift || e.altKey !== b.alt || e.ctrlKey !== b.ctrl || e.metaKey !== b.meta) {
+  if (
+    e.shiftKey !== b.shift ||
+    e.altKey !== b.alt ||
+    e.ctrlKey !== b.ctrl ||
+    e.metaKey !== b.meta
+  ) {
     return false;
   }
   return e.key.toLowerCase() === b.key.toLowerCase();

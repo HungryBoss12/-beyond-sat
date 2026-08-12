@@ -9,21 +9,21 @@ page at `/admin/import`. The parser is tolerant of column-name variations and co
 
 Copy from Google Sheets or Excel and paste directly. The first row must be a header.
 
-| Column | Required | Notes |
-|---|---|---|
-| `section` | ✓ | `math` or `reading_writing` (also accepts `rw`, `english`, `reading`, etc.) |
-| `skill` | ✓ | See skill lists below. Partial matches work (`Algebra`, `Craft`, etc.) |
-| `question_text` | ✓ | Also accepted: `question`, `text`, `stem` |
-| `A` `B` `C` `D` | MC only | Also accepted: `choice_a`, `option_a`, `answer_a`, `choice_1` … |
-| `correct` | ✓ | Letter (`B`), number (`2`), or the choice's own text. For grid-in: comma/semicolon-separated values |
-| `difficulty` | | `C` `D` `B` `A` `S`, easiest to hardest. Or `easy`/`medium`/`hard`. Defaults to `C` |
-| `kind` | | `multiple_choice` or `grid_in`. Inferred from choices if omitted |
-| `prompt` | | Passage / stimulus. Also accepted: `passage`, `stimulus`, `context` |
-| `explanation` | | Also accepted: `rationale`, `solution`, `why` |
-| `source_month` | | Number (3) or name (March) |
-| `source_year` | | Four-digit year |
-| `time_limit_minutes` | | Decimal OK (`1.5` → 90 s). Also accepted: `time_limit` |
-| `image_url` | | Must start with `https://` |
+| Column               | Required | Notes                                                                                               |
+| -------------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| `section`            | ✓        | `math` or `reading_writing` (also accepts `rw`, `english`, `reading`, etc.)                         |
+| `skill`              | ✓        | See skill lists below. Partial matches work (`Algebra`, `Craft`, etc.)                              |
+| `question_text`      | ✓        | Also accepted: `question`, `text`, `stem`                                                           |
+| `A` `B` `C` `D`      | MC only  | Also accepted: `choice_a`, `option_a`, `answer_a`, `choice_1` …                                     |
+| `correct`            | ✓        | Letter (`B`), number (`2`), or the choice's own text. For grid-in: comma/semicolon-separated values |
+| `difficulty`         |          | `C` `D` `B` `A` `S`, easiest to hardest. Or `easy`/`medium`/`hard`. Defaults to `C`                 |
+| `kind`               |          | `multiple_choice` or `grid_in`. Inferred from choices if omitted                                    |
+| `prompt`             |          | Passage / stimulus. Also accepted: `passage`, `stimulus`, `context`                                 |
+| `explanation`        |          | Also accepted: `rationale`, `solution`, `why`                                                       |
+| `source_month`       |          | Number (3) or name (March)                                                                          |
+| `source_year`        |          | Four-digit year                                                                                     |
+| `time_limit_minutes` |          | Decimal OK (`1.5` → 90 s). Also accepted: `time_limit`                                              |
+| `image_url`          |          | Must start with `https://`                                                                          |
 
 Cells with embedded newlines (e.g. multi-paragraph passages) must be quoted — Google Sheets does
 this automatically when you copy. Use `""` inside a quoted cell for a literal quote character.
@@ -53,6 +53,7 @@ An array of objects, or `{ "questions": [...] }`. Each object:
 ```
 
 `choices` accepts three shapes:
+
 - Array of strings: `["3", "5", "15", "25"]` → assigned A, B, C, D
 - Array of objects: `[{"id": "A", "text": "3"}, ...]`
 - Object: `{"A": "3", "B": "5", "C": "15", "D": "25"}`
@@ -64,12 +65,14 @@ An array of objects, or `{ "questions": [...] }`. Each object:
 ## Skill lists
 
 **Math**
+
 - Algebra
 - Advanced Math
 - Problem-Solving and Data Analysis
 - Geometry and Trigonometry
 
 **Reading & Writing**
+
 - Craft and Structure
 - Information and Ideas
 - Standard English Conventions

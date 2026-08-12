@@ -33,13 +33,35 @@ export const SECTION_SCORE_MAX = 800;
 
 /** Anchor points as [raw correct, scaled score], interpolated between. */
 const RW_CURVE: readonly [number, number][] = [
-  [0, 200], [5, 230], [10, 290], [15, 350], [20, 410], [25, 470],
-  [30, 530], [35, 590], [40, 650], [45, 710], [49, 760], [52, 790], [54, 800],
+  [0, 200],
+  [5, 230],
+  [10, 290],
+  [15, 350],
+  [20, 410],
+  [25, 470],
+  [30, 530],
+  [35, 590],
+  [40, 650],
+  [45, 710],
+  [49, 760],
+  [52, 790],
+  [54, 800],
 ];
 
 const MATH_CURVE: readonly [number, number][] = [
-  [0, 200], [4, 240], [8, 300], [12, 360], [16, 420], [20, 480],
-  [24, 540], [28, 600], [32, 660], [36, 710], [40, 760], [42, 780], [44, 800],
+  [0, 200],
+  [4, 240],
+  [8, 300],
+  [12, 360],
+  [16, 420],
+  [20, 480],
+  [24, 540],
+  [28, 600],
+  [32, 660],
+  [36, 710],
+  [40, 760],
+  [42, 780],
+  [44, 800],
 ];
 
 function interpolate(curve: readonly [number, number][], raw: number): number {
@@ -100,7 +122,10 @@ export function scoreProgress(total: number): number {
 }
 
 /** Qualitative band used for badges next to a total score. */
-export function scoreBand(total: number): { label: string; tone: "excellent" | "good" | "fair" | "low" } {
+export function scoreBand(total: number): {
+  label: string;
+  tone: "excellent" | "good" | "fair" | "low";
+} {
   if (total >= 1400) return { label: "Excellent", tone: "excellent" };
   if (total >= 1200) return { label: "Good", tone: "good" };
   if (total >= 1000) return { label: "Fair", tone: "fair" };
@@ -123,8 +148,18 @@ export function skillsFor(section: Section): readonly string[] {
 }
 
 export const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ] as const;
 
 export function formatSourceDate(month?: number | null, year?: number | null): string | null {
@@ -150,11 +185,17 @@ export function difficultyLabel(d: Difficulty | string | null | undefined): stri
 export function difficultyColor(d: Difficulty | string | null | undefined): string {
   const label = difficultyLabel(d);
   switch (label) {
-    case "S": return "bg-brand-300 text-white";
-    case "A": return "bg-brand-400 text-white";
-    case "B": return "bg-brand-500 text-white";
-    case "D": return "bg-brand-700 text-white";
-    case "C": return "bg-brand-800 text-brand-100";
-    default: return "bg-brand-800 text-brand-100";
+    case "S":
+      return "bg-brand-300 text-white";
+    case "A":
+      return "bg-brand-400 text-white";
+    case "B":
+      return "bg-brand-500 text-white";
+    case "D":
+      return "bg-brand-700 text-white";
+    case "C":
+      return "bg-brand-800 text-brand-100";
+    default:
+      return "bg-brand-800 text-brand-100";
   }
 }

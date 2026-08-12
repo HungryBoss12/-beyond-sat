@@ -9,7 +9,8 @@ export function SiteFooter() {
         <div className="md:col-span-2">
           <div className="text-2xl font-bold text-white">BeyondSAT</div>
           <p className="mt-3 max-w-sm text-sm text-brand-100">
-            The digital SAT prep platform built to feel exactly like test day. Practice, track, and reach your goal score.
+            The digital SAT prep platform built to feel exactly like test day. Practice, track, and
+            reach your goal score.
           </p>
           {/* Stated in the footer as well as the landing band: the footer is on
               every page, so this is the one place the claim is always visible. */}
@@ -18,25 +19,67 @@ export function SiteFooter() {
             Free to use — no subscription, no paywall
           </p>
           <div className="mt-5 flex gap-3">
-            <a href="#" aria-label="Twitter" className="tap grid h-9 w-9 place-items-center rounded-full bg-brand-800 text-white transition hover:bg-brand-400"><Twitter className="h-4 w-4" /></a>
-            <a href="#" aria-label="Instagram" className="tap grid h-9 w-9 place-items-center rounded-full bg-brand-800 text-white transition hover:bg-brand-400"><Instagram className="h-4 w-4" /></a>
-            <a href="#" aria-label="YouTube" className="tap grid h-9 w-9 place-items-center rounded-full bg-brand-800 text-white transition hover:bg-brand-400"><Youtube className="h-4 w-4" /></a>
+            <a
+              href="#"
+              aria-label="Twitter"
+              className="tap grid h-9 w-9 place-items-center rounded-full bg-brand-800 text-white transition hover:bg-brand-400"
+            >
+              <Twitter className="h-4 w-4" />
+            </a>
+            <a
+              href="#"
+              aria-label="Instagram"
+              className="tap grid h-9 w-9 place-items-center rounded-full bg-brand-800 text-white transition hover:bg-brand-400"
+            >
+              <Instagram className="h-4 w-4" />
+            </a>
+            <a
+              href="#"
+              aria-label="YouTube"
+              className="tap grid h-9 w-9 place-items-center rounded-full bg-brand-800 text-white transition hover:bg-brand-400"
+            >
+              <Youtube className="h-4 w-4" />
+            </a>
           </div>
         </div>
         <div>
           <div className="mb-3 text-sm font-semibold text-white">Programs</div>
           <ul className="space-y-2 text-sm text-brand-100">
-            <li><a href="#" className="hover:text-white">Digital SAT</a></li>
-            <li><a href="#" className="hover:text-white">Mock Exams</a></li>
-            <li><a href="#" className="hover:text-white">Question Bank</a></li>
+            <li>
+              <a href="#" className="hover:text-white">
+                Digital SAT
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-white">
+                Mock Exams
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-white">
+                Question Bank
+              </a>
+            </li>
           </ul>
         </div>
         <div>
           <div className="mb-3 text-sm font-semibold text-white">Contact</div>
           <ul className="space-y-2 text-sm text-brand-100">
-            <li><a href="#" className="hover:text-white">Support</a></li>
-            <li><a href="#" className="hover:text-white">Privacy</a></li>
-            <li><a href="#" className="hover:text-white">Terms</a></li>
+            <li>
+              <a href="#" className="hover:text-white">
+                Support
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-white">
+                Privacy
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-white">
+                Terms
+              </a>
+            </li>
           </ul>
         </div>
       </div>

@@ -57,14 +57,27 @@ type NavItem = {
 /** `as const` keeps each `to` a string literal so TanStack's <Link> accepts it;
     `satisfies` still checks every entry against the NavItem shape. */
 const NAV = [
-  { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true, group: "General", adminOnly: true },
+  {
+    to: "/admin",
+    label: "Overview",
+    icon: LayoutDashboard,
+    exact: true,
+    group: "General",
+    adminOnly: true,
+  },
   { to: "/admin/homepage", label: "Homepage", icon: Home, group: "General", adminOnly: true },
   { to: "/admin/questions", label: "Questions", icon: HelpCircle, group: "Content" },
   { to: "/admin/import", label: "Import", icon: Upload, group: "Content" },
   { to: "/admin/tests", label: "Tests", icon: FileStack, group: "Content", adminOnly: true },
   { to: "/admin/daily", label: "Daily Tests", icon: CalendarDays, group: "Content" },
   { to: "/admin/mocks", label: "Mock Exams", icon: ClipboardList, group: "Content" },
-  { to: "/admin/examdates", label: "Exam Dates", icon: CalendarDays, group: "Content", adminOnly: true },
+  {
+    to: "/admin/examdates",
+    label: "Exam Dates",
+    icon: CalendarDays,
+    group: "Content",
+    adminOnly: true,
+  },
   { to: "/admin/news", label: "News", icon: Newspaper, group: "Content" },
   { to: "/admin/users", label: "Users", icon: Users, group: "Manage", adminOnly: true },
   { to: "/admin/settings", label: "Settings", icon: Settings, group: "Manage", adminOnly: true },

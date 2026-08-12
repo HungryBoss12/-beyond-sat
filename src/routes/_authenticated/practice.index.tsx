@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { PageHead, Panel } from "@/components/ui/panel";
 import { RevealLink } from "@/components/ui/reveal-card";
 import { HeadSkeleton, CardGridSkeleton } from "@/components/ui/skeletons";
+import { errorMessage } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/practice/")({
   component: PracticeLanding,
@@ -32,20 +33,25 @@ function PracticeLanding() {
            problem — and for a question bank under a few thousand rows it adds no
            meaningful latency. The `skill` query in `practice.$section.tsx` already
            uses this pattern successfully. */
-        const [{ data: rwRows }, { data: mRows }, { data: mockRows }, { data: dt }, { data: sess }] =
-          await Promise.all([
-            supabase.from("questions").select("id").eq("section", "reading_writing"),
-            supabase.from("questions").select("id").eq("section", "math"),
-            supabase.from("mock_exams").select("id").eq("published", true),
-            supabase.from("daily_tests").select("id").eq("date", today).maybeSingle(),
-            /* `getSession()` reads the token from localStorage — it never makes a
+        const [
+          { data: rwRows },
+          { data: mRows },
+          { data: mockRows },
+          { data: dt },
+          { data: sess },
+        ] = await Promise.all([
+          supabase.from("questions").select("id").eq("section", "reading_writing"),
+          supabase.from("questions").select("id").eq("section", "math"),
+          supabase.from("mock_exams").select("id").eq("published", true),
+          supabase.from("daily_tests").select("id").eq("date", today).maybeSingle(),
+          /* `getSession()` reads the token from localStorage — it never makes a
                network call. `getUser()` hits the auth API, so putting it inside
                Promise.all blocked the counts from rendering until the auth server
                responded. We only need the user id to check whether today's daily
                is already completed; that's a single cheap request after the counts
                are already on screen. */
-            supabase.auth.getSession(),
-          ]);
+          supabase.auth.getSession(),
+        ]);
 
         setRwCount((rwRows ?? []).length);
         setMathCount((mRows ?? []).length);
@@ -65,8 +71,8 @@ function PracticeLanding() {
             .maybeSingle();
           setDailyDone(sp?.last_daily_completed_date === today);
         }
-      } catch (e: any) {
-        setErr(e.message ?? "Could not load practice data.");
+      } catch (e: unknown) {
+        setErr(errorMessage(e, "Could not load practice data."));
       } finally {
         setLoading(false);
       }
@@ -215,7 +221,8 @@ function SectionCard({
         </div>
         <h2 className="mt-4 text-2xl font-black text-white">{title}</h2>
         <div className="mt-1 text-sm text-brand-100">
-          <span className="font-black tabular-nums text-white">{count ?? 0}</span> questions available
+          <span className="font-black tabular-nums text-white">{count ?? 0}</span> questions
+          available
         </div>
         <div className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-white">
           Practice this section <ArrowRight className="arrow-slide h-4 w-4" />

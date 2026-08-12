@@ -1,10 +1,4 @@
-import {
-  LETTER_DIFFICULTIES,
-  MONTHS,
-  skillsFor,
-  type Difficulty,
-  type Section,
-} from "@/lib/sat";
+import { LETTER_DIFFICULTIES, MONTHS, skillsFor, type Difficulty, type Section } from "@/lib/sat";
 
 /**
  * Bulk question import: parsing and validation.
@@ -75,7 +69,10 @@ function normKey(s: string): string {
 }
 
 function normValue(s: string): string {
-  return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
 }
 
 /** Canonical field name for a header cell, or null if unrecognised. */
@@ -349,15 +346,19 @@ export function parseDelimited(text: string): ParseResult {
 // ---------------------------------------------------------------------------
 
 /** Flatten a JSON question object into the same string record the TSV path builds. */
-function jsonToRecord(item: any): { rec: Record<string, string>; unknown: string[] } {
+function jsonToRecord(item: unknown): { rec: Record<string, string>; unknown: string[] } {
   const rec: Record<string, string> = {};
   const unknown: string[] = [];
-  const str = (v: any): string => {
+  const str = (v: unknown): string => {
     if (v == null) return "";
     if (Array.isArray(v)) return v.join(", ");
     if (typeof v === "object") return "";
     return String(v);
   };
+
+  if (!item || typeof item !== "object" || Array.isArray(item)) {
+    return { rec, unknown };
+  }
 
   for (const [rawKey, value] of Object.entries(item)) {
     const field = canonicalField(rawKey);
@@ -366,18 +367,21 @@ function jsonToRecord(item: any): { rec: Record<string, string>; unknown: string
        different ways: ["3","5"], [{id,text}], or {A:"3",B:"5"}. Accept all. */
     if (field === null && normKey(rawKey) === "choices") {
       if (Array.isArray(value)) {
-        value.forEach((c: any, i) => {
+        value.forEach((c: unknown, i) => {
           if (i >= CHOICE_IDS.length) return;
-          if (c && typeof c === "object") {
-            const id = String(c.id ?? c.label ?? CHOICE_IDS[i]).trim().toUpperCase();
+          if (c && typeof c === "object" && !Array.isArray(c)) {
+            const choice = c as Record<string, unknown>;
+            const id = String(choice.id ?? choice.label ?? CHOICE_IDS[i])
+              .trim()
+              .toUpperCase();
             const slot = (CHOICE_IDS as readonly string[]).includes(id) ? id : CHOICE_IDS[i];
-            rec[`choice_${slot}`] = str(c.text ?? c.value ?? c.content);
+            rec[`choice_${slot}`] = str(choice.text ?? choice.value ?? choice.content);
           } else {
             rec[`choice_${CHOICE_IDS[i]}`] = str(c);
           }
         });
       } else if (value && typeof value === "object") {
-        for (const [k, v] of Object.entries(value as Record<string, any>)) {
+        for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
           const id = normValue(k).toUpperCase();
           if ((CHOICE_IDS as readonly string[]).includes(id)) rec[`choice_${id}`] = str(v);
         }
@@ -398,25 +402,29 @@ export function parseJson(text: string): ParseResult {
   const empty: ParseResult = { rows: [], fatal: null, ignoredColumns: [] };
   if (!text.trim()) return { ...empty, fatal: "Nothing pasted yet." };
 
-  let data: any;
+  let data: unknown;
   try {
     data = JSON.parse(text);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return {
       ...empty,
-      fatal: `That isn't valid JSON — ${e?.message ?? "parse failed"}. A common cause is a trailing comma after the last item, or smart quotes pasted from a document.`,
+      fatal: `That isn't valid JSON — ${e instanceof Error ? e.message : "parse failed"}. A common cause is a trailing comma after the last item, or smart quotes pasted from a document.`,
     };
   }
 
   /* Accept a bare array, or an object wrapping one under a plausible key. */
-  let list: any = data;
+  let list: unknown = data;
   if (!Array.isArray(list) && list && typeof list === "object") {
-    const key = ["questions", "items", "data", "rows"].find((k) => Array.isArray(list[k]));
-    if (key) list = list[key];
+    const obj = list as Record<string, unknown>;
+    const key = ["questions", "items", "data", "rows"].find((k) => Array.isArray(obj[k]));
+    if (key) list = obj[key];
     else list = [list];
   }
   if (!Array.isArray(list)) {
-    return { ...empty, fatal: "Expected a JSON array of question objects, or an object with a `questions` array." };
+    return {
+      ...empty,
+      fatal: "Expected a JSON array of question objects, or an object with a `questions` array.",
+    };
   }
   if (list.length === 0) return { ...empty, fatal: "That JSON array is empty." };
   if (list.length > MAX_ROWS) {
@@ -427,7 +435,7 @@ export function parseJson(text: string): ParseResult {
   }
 
   const unknownAll = new Set<string>();
-  const rows = list.map((item: any, i: number) => {
+  const rows = list.map((item: unknown, i: number) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) {
       return { index: i + 1, question: null, errors: ["Not a JSON object."], warnings: [] };
     }
@@ -461,7 +469,7 @@ export function validateRecord(rec: Record<string, string>, index: number): RowR
     errors.push(
       sectionRaw
         ? `Section "${sectionRaw}" isn't recognised — use "math" or "reading_writing".`
-        : "Section is missing — use \"math\" or \"reading_writing\".",
+        : 'Section is missing — use "math" or "reading_writing".',
     );
   }
 
@@ -570,7 +578,8 @@ export function validateRecord(rec: Record<string, string>, index: number): RowR
       errors.push("No accepted answer given for this grid-in question.");
     } else {
       correct_grid_answers = splitAnswers(correctRaw);
-      if (correct_grid_answers.length === 0) errors.push("No accepted answer given for this grid-in question.");
+      if (correct_grid_answers.length === 0)
+        errors.push("No accepted answer given for this grid-in question.");
     }
   }
 
@@ -602,11 +611,13 @@ export function validateRecord(rec: Record<string, string>, index: number): RowR
   const minRaw = get("time_limit_minutes");
   if (secRaw) {
     const n = Number(secRaw);
-    if (!Number.isFinite(n) || n <= 0) warnings.push(`Time limit "${secRaw}" isn't a positive number — left blank.`);
+    if (!Number.isFinite(n) || n <= 0)
+      warnings.push(`Time limit "${secRaw}" isn't a positive number — left blank.`);
     else time_limit_seconds = Math.round(n);
   } else if (minRaw) {
     const n = Number(minRaw);
-    if (!Number.isFinite(n) || n <= 0) warnings.push(`Time limit "${minRaw}" isn't a positive number — left blank.`);
+    if (!Number.isFinite(n) || n <= 0)
+      warnings.push(`Time limit "${minRaw}" isn't a positive number — left blank.`);
     else time_limit_seconds = Math.round(n * 60);
   }
 
@@ -622,7 +633,8 @@ export function validateRecord(rec: Record<string, string>, index: number): RowR
     ["explanation", get("explanation")],
   ] as const) {
     const singles = (value.match(/(?<!\$)\$(?!\$)/g) ?? []).length;
-    if (singles % 2 === 1) warnings.push(`Odd number of $ in the ${label} — check the math delimiters.`);
+    if (singles % 2 === 1)
+      warnings.push(`Odd number of $ in the ${label} — check the math delimiters.`);
   }
 
   if (errors.length > 0) return { index, question: null, errors, warnings };
@@ -750,7 +762,7 @@ export const TSV_TEMPLATE = [
     "B",
     "multiple_choice",
     "Naturalists once assumed the cuttlefish changed colour only to hide. Recent work suggests the displays are also social.",
-    "As used in the text, \"social\" most nearly means",
+    'As used in the text, "social" most nearly means',
     "communicative",
     "friendly",
     "public",

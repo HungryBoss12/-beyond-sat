@@ -80,16 +80,33 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "BeyondSAT — Master the Digital SAT" },
       {
         name: "description",
-        content: "Practice like it's test day. Track your progress. Reach your goal score with BeyondSAT's Digital SAT prep.",
+        content:
+          "Practice like it's test day. Track your progress. Reach your goal score with BeyondSAT's Digital SAT prep.",
       },
       { property: "og:title", content: "BeyondSAT — Master the Digital SAT" },
-      { property: "og:description", content: "Practice like it's test day. Track your progress. Reach your goal score with BeyondSAT's Digital SAT prep." },
+      {
+        property: "og:description",
+        content:
+          "Practice like it's test day. Track your progress. Reach your goal score with BeyondSAT's Digital SAT prep.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "BeyondSAT — Master the Digital SAT" },
-      { name: "twitter:description", content: "Practice like it's test day. Track your progress. Reach your goal score with BeyondSAT's Digital SAT prep." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e394838f-6ccb-415e-9098-9f2d20b5ca8a/id-preview-49c0175c--aaab0b16-e494-4172-9ce0-d0020de19284.lovable.app-1784425483421.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e394838f-6ccb-415e-9098-9f2d20b5ca8a/id-preview-49c0175c--aaab0b16-e494-4172-9ce0-d0020de19284.lovable.app-1784425483421.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Practice like it's test day. Track your progress. Reach your goal score with BeyondSAT's Digital SAT prep.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e394838f-6ccb-415e-9098-9f2d20b5ca8a/id-preview-49c0175c--aaab0b16-e494-4172-9ce0-d0020de19284.lovable.app-1784425483421.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e394838f-6ccb-415e-9098-9f2d20b5ca8a/id-preview-49c0175c--aaab0b16-e494-4172-9ce0-d0020de19284.lovable.app-1784425483421.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

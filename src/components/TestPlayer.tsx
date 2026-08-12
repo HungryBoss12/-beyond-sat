@@ -158,10 +158,10 @@ export function TestPlayer({
         let isCorrect: boolean | null = null;
         const hasAnswer = q.kind === "grid_in" ? !!a.gridAnswer.trim() : !!a.selectedChoiceId;
         if (hasAnswer) {
-          const { data } = await supabase.rpc("grade_answer" as any, {
+          const { data } = await supabase.rpc("grade_answer", {
             p_question_id: q.id,
-            p_choice_id: a.selectedChoiceId ?? null,
-            p_grid_answer: a.gridAnswer || null,
+            p_choice_id: a.selectedChoiceId ?? "",
+            p_grid_answer: a.gridAnswer || "",
           });
           isCorrect = (data as boolean | null) ?? null;
         }

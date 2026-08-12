@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   RW_SKILLS,
@@ -76,7 +76,7 @@ function AdminQuestions() {
   const [carryOver, setCarryOver] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     let q = supabase
       .from("questions")
@@ -88,23 +88,24 @@ function AdminQuestions() {
     if (filter !== "all") q = q.eq("section", filter);
     const { data } = await q;
     setItems(
-      ((data ?? []) as any[]).map((r) => ({
+      (data ?? []).map((r) => ({
         ...r,
+        choices: (r.choices ?? []) as Choice[],
         correct_choice_id: null,
         correct_grid_answers: [],
         explanation: null,
-      })) as unknown as Question[],
+      })),
     );
     setLoading(false);
-  }
+  }, [filter]);
 
   useEffect(() => {
     load();
-  }, [filter]);
+  }, [load]);
 
   async function save(opts: { addAnother?: boolean; carryOver?: boolean } = {}) {
     if (!editing) return;
-    const payload: any = {
+    const payload = {
       section: editing.section,
       skill: editing.skill,
       difficulty: editing.difficulty,
@@ -125,7 +126,9 @@ function AdminQuestions() {
       if (error) return alert(error.message);
     } else {
       const { data: u } = await supabase.auth.getUser();
-      const { error } = await supabase.from("questions").insert({ ...payload, created_by: u.user?.id });
+      const { error } = await supabase
+        .from("questions")
+        .insert({ ...payload, created_by: u.user?.id });
       if (error) return alert(error.message);
     }
     if (opts.addAnother) {
@@ -162,10 +165,14 @@ function AdminQuestions() {
      SELECT returns them. Both Edit and Duplicate have to fetch them through the
      RPC one question at a time. */
   async function withAnswers(q: Question): Promise<Question> {
-    const { data } = await supabase.rpc("admin_get_question_answers" as any, {
+    const { data } = await supabase.rpc("admin_get_question_answers", {
       p_question_id: q.id,
     });
-    const ans = (data as any[])?.[0] ?? {};
+    const ans = data?.[0] ?? {
+      correct_choice_id: null as string | null,
+      correct_grid_answers: [] as string[],
+      explanation: null as string | null,
+    };
     return {
       ...q,
       choices: q.choices || [],
@@ -392,7 +399,9 @@ function AdminQuestions() {
                 <Field label="Kind">
                   <select
                     value={editing.kind}
-                    onChange={(e) => setEditing({ ...editing, kind: e.target.value as any })}
+                    onChange={(e) =>
+                      setEditing({ ...editing, kind: e.target.value as Question["kind"] })
+                    }
                     className={CONTROL_CLASS}
                   >
                     <option value="multiple_choice">Multiple choice</option>
@@ -493,7 +502,11 @@ function AdminQuestions() {
                       ) : (
                         <Upload className="h-3.5 w-3.5" />
                       )}
-                      {uploading ? "Uploading…" : editing.image_url ? "Replace image" : "Upload image"}
+                      {uploading
+                        ? "Uploading…"
+                        : editing.image_url
+                          ? "Replace image"
+                          : "Upload image"}
                     </button>
                     {editing.image_url && (
                       <button

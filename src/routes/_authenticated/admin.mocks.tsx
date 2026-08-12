@@ -93,7 +93,10 @@ function AdminMocks() {
   const [testPool, setTestPool] = useState<Test[]>([]);
 
   async function load() {
-    const { data } = await supabase.from("mock_exams").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase
+      .from("mock_exams")
+      .select("*")
+      .order("created_at", { ascending: false });
     setItems((data ?? []) as Mock[]);
   }
   useEffect(() => {
@@ -103,11 +106,7 @@ function AdminMocks() {
   async function openEditor(m?: Mock) {
     const target = m ?? empty();
     setEditing(target);
-    const { data: tests } = await supabase
-      .from("tests")
-      .select("*")
-      .order("module")
-      .order("title");
+    const { data: tests } = await supabase.from("tests").select("*").order("module").order("title");
     setTestPool((tests ?? []) as Test[]);
     if (target.id) {
       const { data: mes } = await supabase
@@ -131,8 +130,7 @@ function AdminMocks() {
 
   async function save() {
     if (!editing) return;
-    const payload = { ...editing } as any;
-    delete payload.id;
+    const { id, ...payload } = editing;
     let mockId = editing.id;
     if (mockId) {
       const { error } = await supabase.from("mock_exams").update(payload).eq("id", mockId);
@@ -177,9 +175,7 @@ function AdminMocks() {
 
   function updateSlot(module: 1 | 2, idx: 1 | 2 | 3 | 4, patch: Partial<SectionSlot>) {
     setSlots(
-      slots.map((s) =>
-        s.module === module && s.section_index === idx ? { ...s, ...patch } : s,
-      ),
+      slots.map((s) => (s.module === module && s.section_index === idx ? { ...s, ...patch } : s)),
     );
   }
 
@@ -222,7 +218,9 @@ function AdminMocks() {
                       </span>
                     </div>
                     {m.description && (
-                      <div className="mt-0.5 line-clamp-1 text-xs text-brand-100">{m.description}</div>
+                      <div className="mt-0.5 line-clamp-1 text-xs text-brand-100">
+                        {m.description}
+                      </div>
                     )}
                   </div>
                   <button
@@ -295,9 +293,7 @@ function AdminMocks() {
                   </div>
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {[1, 2, 3, 4].map((idx) => {
-                      const slot = slots.find(
-                        (s) => s.module === mod && s.section_index === idx,
-                      )!;
+                      const slot = slots.find((s) => s.module === mod && s.section_index === idx)!;
                       const availableTests = testPool.filter((t) => t.module === mod);
                       const currentTest = testPool.find((t) => t.id === slot.test_id);
                       return (

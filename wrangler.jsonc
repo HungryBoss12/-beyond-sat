@@ -11,10 +11,10 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": ".output/server/index.mjs",
   "assets": {
-    "directory": ".output/public"
+    "directory": ".output/public",
   },
   "observability": {
-    "enabled": true
+    "enabled": true,
   },
   // Runtime env for SSR (exposed to the Worker as process.env via nodejs_compat).
   // These are the PUBLIC Supabase values (anon/publishable) — safe to commit.
@@ -22,6 +22,6 @@
   //   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
   "vars": {
     "SUPABASE_URL": "https://qlzvngegsemrzmyxwykl.supabase.co",
-    "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsenZuZ2Vnc2VtcnpteXh3eWtsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjY3OTMsImV4cCI6MjA5OTg0Mjc5M30.Sf8sS6xglwog8DrsKfKQnpngxdCpjvyW32Lwbax_V_8"
-  }
+    "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsenZuZ2Vnc2VtcnpteXh3eWtsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjY3OTMsImV4cCI6MjA5OTg0Mjc5M30.Sf8sS6xglwog8DrsKfKQnpngxdCpjvyW32Lwbax_V_8",
+  },
 }

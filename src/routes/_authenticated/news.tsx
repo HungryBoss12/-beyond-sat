@@ -82,9 +82,7 @@ function News() {
                 <div className="text-xs font-semibold uppercase tracking-wider text-brand-200">
                   {a.published_at ? format(new Date(a.published_at), "MMM d, yyyy") : ""}
                 </div>
-                <h2 className="mt-1.5 text-lg font-bold text-white">
-                  {a.title}
-                </h2>
+                <h2 className="mt-1.5 text-lg font-bold text-white">{a.title}</h2>
                 {a.excerpt && (
                   <p className="mt-1.5 line-clamp-2 text-sm text-brand-100">{a.excerpt}</p>
                 )}

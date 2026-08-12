@@ -108,7 +108,8 @@ const USER_FK = {
 async function req(url, opts = {}) {
   const res = await fetch(url, opts);
   const body = await res.text();
-  if (!res.ok) throw new Error(`HTTP ${res.status} ${url.split("?")[0]}\n    ${body.slice(0, 400)}`);
+  if (!res.ok)
+    throw new Error(`HTTP ${res.status} ${url.split("?")[0]}\n    ${body.slice(0, 400)}`);
   if (!body) return null;
   try {
     return JSON.parse(body);
@@ -165,11 +166,16 @@ async function fetchAnswerKeys(p, token, ids) {
     );
     done += batch.length;
     if (done % 120 === 0 || done === ids.length) {
-      process.stdout.write(`\r      answer keys: ${done}/${ids.length}${failed ? ` (${failed} failed)` : ""}   `);
+      process.stdout.write(
+        `\r      answer keys: ${done}/${ids.length}${failed ? ` (${failed} failed)` : ""}   `,
+      );
     }
   }
   process.stdout.write("\n");
-  if (failed) console.warn(`      WARNING: ${failed} answer keys could not be read - those questions import unanswered`);
+  if (failed)
+    console.warn(
+      `      WARNING: ${failed} answer keys could not be read - those questions import unanswered`,
+    );
   return out;
 }
 
@@ -209,7 +215,11 @@ async function doExport() {
     process.stdout.write(`${rows.length} rows\n`);
 
     if (name === "questions" && rows.length) {
-      const keys = await fetchAnswerKeys(OLD, token, rows.map((r) => r.id));
+      const keys = await fetchAnswerKeys(
+        OLD,
+        token,
+        rows.map((r) => r.id),
+      );
       rows.forEach((r) => Object.assign(r, keys.get(r.id) || {}));
     }
 
@@ -291,7 +301,15 @@ async function doImport() {
 
 async function main() {
   const mode = (process.argv[2] || "both").toLowerCase();
-  const placeholders = [OLD.key, OLD.email, OLD.password, NEW.url, NEW.key, NEW.email, NEW.password];
+  const placeholders = [
+    OLD.key,
+    OLD.email,
+    OLD.password,
+    NEW.url,
+    NEW.key,
+    NEW.email,
+    NEW.password,
+  ];
   if (placeholders.some((v) => v.includes("PASTE_"))) {
     console.error("Fill in the CONFIG block at the top of this file first.");
     process.exit(1);

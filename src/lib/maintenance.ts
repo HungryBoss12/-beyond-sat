@@ -30,7 +30,9 @@ async function loadState(config: { url: string; anonKey: string }): Promise<Main
     "get_maintenance_state",
     null,
   );
-  const row = Array.isArray(rows) ? rows[0] : (rows as { enabled?: boolean; message?: string } | null);
+  const row = Array.isArray(rows)
+    ? rows[0]
+    : (rows as { enabled?: boolean; message?: string } | null);
   return {
     enabled: row?.enabled === true,
     message: typeof row?.message === "string" ? row.message : "",

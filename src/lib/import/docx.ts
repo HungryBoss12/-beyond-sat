@@ -83,7 +83,9 @@ async function inflateEntry(buf: ArrayBuffer, entry: ZipEntry): Promise<string> 
     );
   }
 
-  const stream = new Blob([raw as BlobPart]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  const stream = new Blob([raw as BlobPart])
+    .stream()
+    .pipeThrough(new DecompressionStream("deflate-raw"));
   return new Response(stream).text();
 }
 
@@ -154,7 +156,11 @@ function paragraphText(xml: string): string {
     if (head.startsWith("<w:tab")) out += "\t";
     else if (head.startsWith("<w:br")) out += "\n";
     else if (head.startsWith("<w:noBreakHyphen")) out += "-";
-    else if (head.startsWith("<w:drawing") || head.startsWith("<w:pict") || head.startsWith("<v:imagedata")) {
+    else if (
+      head.startsWith("<w:drawing") ||
+      head.startsWith("<w:pict") ||
+      head.startsWith("<v:imagedata")
+    ) {
       figure = true;
     } else out += decodeEntities(m[1] ?? "");
   }

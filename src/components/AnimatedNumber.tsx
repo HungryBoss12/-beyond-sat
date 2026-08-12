@@ -72,10 +72,7 @@ export function AnimatedNumber({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, duration]);
 
-  const shown =
-    decimals > 0
-      ? display.toFixed(decimals)
-      : Math.round(display).toLocaleString();
+  const shown = decimals > 0 ? display.toFixed(decimals) : Math.round(display).toLocaleString();
 
   return (
     <span className={className} style={{ fontVariantNumeric: "tabular-nums" }}>

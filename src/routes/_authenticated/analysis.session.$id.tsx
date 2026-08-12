@@ -2,7 +2,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { QuestionCard, emptyAnswer, type AnswerState, type QuestionRow } from "@/components/QuestionCard";
+import {
+  QuestionCard,
+  emptyAnswer,
+  type AnswerState,
+  type QuestionRow,
+} from "@/components/QuestionCard";
 
 export const Route = createFileRoute("/_authenticated/analysis/session/$id")({
   component: SessionReview,
@@ -40,7 +45,9 @@ function SessionReview() {
       if (!uid) return;
       const { data: att, error: aErr } = await supabase
         .from("attempts")
-        .select("id,question_id,is_correct,selected_choice_id,grid_answer,marked_for_review,eliminated_choice_ids")
+        .select(
+          "id,question_id,is_correct,selected_choice_id,grid_answer,marked_for_review,eliminated_choice_ids",
+        )
         .eq("session_id", id)
         .eq("user_id", uid);
       if (aErr) {
@@ -48,9 +55,7 @@ function SessionReview() {
         setLoading(false);
         return;
       }
-      const ids = (att ?? [])
-        .map((a) => a.question_id)
-        .filter((x): x is string => !!x);
+      const ids = (att ?? []).map((a) => a.question_id).filter((x): x is string => !!x);
       if (ids.length === 0) {
         setErr("No answers found for this session.");
         setLoading(false);
@@ -60,18 +65,16 @@ function SessionReview() {
         .from("questions")
         .select("id,section,skill,difficulty,kind,prompt,question_text,choices,image_url")
         .in("id", ids);
-      const { data: ans } = await supabase.rpc("get_answers_for_review" as any, {
+      const { data: ans } = await supabase.rpc("get_answers_for_review", {
         p_question_ids: ids,
       });
-      const ansById = new Map(
-        ((ans as any[]) ?? []).map((r) => [r.question_id, r]),
-      );
+      const ansById = new Map((ans ?? []).map((r) => [r.question_id, r]));
       const merged = (qs ?? []).map((q) => {
-        const a = ansById.get(q.id) ?? {};
+        const a = ansById.get(q.id);
         return {
-          ...(q as any),
-          correct_choice_id: a.correct_choice_id ?? null,
-          correct_grid_answers: a.correct_grid_answers ?? null,
+          ...q,
+          correct_choice_id: a?.correct_choice_id ?? null,
+          correct_grid_answers: a?.correct_grid_answers ?? null,
         } as QuestionFull;
       });
       const byId = new Map(merged.map((q) => [q.id, q]));

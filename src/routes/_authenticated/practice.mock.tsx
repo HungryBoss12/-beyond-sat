@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { startMockSession } from "@/lib/session";
 import { EmptyState } from "@/components/ui/panel";
 import { ListSkeleton } from "@/components/ui/skeletons";
+import { errorMessage } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/practice/mock")({
   component: MockList,
@@ -31,7 +32,9 @@ function MockList() {
     (async () => {
       const { data } = await supabase
         .from("mock_exams")
-        .select("id,title,description,rw_module1_time_seconds,rw_module2_time_seconds,math_module1_time_seconds,math_module2_time_seconds")
+        .select(
+          "id,title,description,rw_module1_time_seconds,rw_module2_time_seconds,math_module1_time_seconds,math_module2_time_seconds",
+        )
         .eq("published", true)
         .order("created_at", { ascending: false });
       const rows = (data ?? []) as Omit<Mock, "questionCount">[];
@@ -74,8 +77,8 @@ function MockList() {
     try {
       const { sessionId } = await startMockSession(id);
       navigate({ to: `/practice/session/${sessionId}` });
-    } catch (e: any) {
-      alert(e.message ?? "Could not start mock exam.");
+    } catch (e: unknown) {
+      alert(errorMessage(e, "Could not start mock exam."));
       setStarting(null);
     }
   }
@@ -92,8 +95,12 @@ function MockList() {
         </button>
         <div>
           {/* Was text-white, which made the heading invisible against the white page. */}
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">Mock Exams</h1>
-          <p className="text-sm text-slate-500">Full-length practice tests. Timed, scored, adaptive-style.</p>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
+            Mock Exams
+          </h1>
+          <p className="text-sm text-slate-500">
+            Full-length practice tests. Timed, scored, adaptive-style.
+          </p>
         </div>
       </div>
 

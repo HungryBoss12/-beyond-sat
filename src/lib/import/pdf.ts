@@ -18,7 +18,9 @@
 type PdfPageProxy = {
   getTextContent(): Promise<{ items: unknown[] }>;
   getViewport(opts: { scale: number }): { width: number; height: number };
-  render(opts: { canvasContext: CanvasRenderingContext2D; viewport: unknown }): { promise: Promise<void> };
+  render(opts: { canvasContext: CanvasRenderingContext2D; viewport: unknown }): {
+    promise: Promise<void>;
+  };
   cleanup(): void;
 };
 
@@ -154,7 +156,10 @@ export async function readPdfText(
       const page = await doc.getPage(n);
       const content = await page.getTextContent();
       const items = content.items as TextItem[];
-      characters += items.reduce((sum, i) => sum + (typeof i.str === "string" ? i.str.length : 0), 0);
+      characters += items.reduce(
+        (sum, i) => sum + (typeof i.str === "string" ? i.str.length : 0),
+        0,
+      );
       all.push(...itemsToBlocks(items));
       page.cleanup();
       onProgress?.(n, doc.numPages);
@@ -210,7 +215,8 @@ export async function renderPdfPages(
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
       const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("This browser wouldn't give a 2D canvas, so PDF pages can't be rendered.");
+      if (!ctx)
+        throw new Error("This browser wouldn't give a 2D canvas, so PDF pages can't be rendered.");
 
       /* White first: a PDF page is transparent where nothing was drawn, and JPEG
          has no alpha — without this every page arrives as black on black. */

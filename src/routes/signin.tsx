@@ -17,8 +17,10 @@ export const Route = createFileRoute("/signin")({
 
 function friendlyError(msg: string): string {
   const m = msg.toLowerCase();
-  if (m.includes("invalid login credentials")) return "That email and password don't match. Please try again.";
-  if (m.includes("email not confirmed")) return "Please verify your email before signing in. Check your inbox for the code.";
+  if (m.includes("invalid login credentials"))
+    return "That email and password don't match. Please try again.";
+  if (m.includes("email not confirmed"))
+    return "Please verify your email before signing in. Check your inbox for the code.";
   return msg;
 }
 
@@ -77,7 +79,9 @@ function SignIn() {
       <SiteNav />
       <main className="grid flex-1 place-items-center px-4 py-14">
         <div className="rise-in w-full max-w-md rounded-2xl border border-brand-400/40 bg-brand-600 p-8 shadow-panel md:p-10">
-          <h1 className="text-center text-2xl font-black tracking-tight text-white md:text-3xl">Welcome back</h1>
+          <h1 className="text-center text-2xl font-black tracking-tight text-white md:text-3xl">
+            Welcome back
+          </h1>
           <p className="mt-2 text-center text-sm text-brand-100">Sign in to continue your prep.</p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>

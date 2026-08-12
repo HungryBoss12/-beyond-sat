@@ -209,9 +209,7 @@ export function DashboardMockup() {
                 <Icon className="h-3.5 w-3.5" strokeWidth={2} />
               </span>
               <span className="min-w-0">
-                <span className="block text-sm font-black leading-tight text-white">
-                  {value}
-                </span>
+                <span className="block text-sm font-black leading-tight text-white">{value}</span>
                 <span className="block truncate text-[10px] text-brand-100">{label}</span>
               </span>
             </div>

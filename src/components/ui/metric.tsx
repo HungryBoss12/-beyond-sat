@@ -55,7 +55,9 @@ export function Badge({
         className,
       )}
     >
-      {dot && <span className={cx("h-1.5 w-1.5 rounded-full", TONE_DOT[tone] ?? TONE_DOT.neutral)} />}
+      {dot && (
+        <span className={cx("h-1.5 w-1.5 rounded-full", TONE_DOT[tone] ?? TONE_DOT.neutral)} />
+      )}
       {label}
     </span>
   );
@@ -191,7 +193,10 @@ export function MeterRow({
       {/* Track is the deep shade so the lighter fill reads against it. */}
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-brand-800">
         <div
-          className={cx("sweep-right h-full rounded-full transition-[width] duration-700", barClass)}
+          className={cx(
+            "sweep-right h-full rounded-full transition-[width] duration-700",
+            barClass,
+          )}
           style={{ width: `${pct}%` }}
         />
       </div>

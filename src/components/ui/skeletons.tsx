@@ -79,13 +79,7 @@ export function SectionSkeleton() {
 }
 
 /** Card grid — practice landing, mock list, news index. */
-export function CardGridSkeleton({
-  count = 4,
-  height = 200,
-}: {
-  count?: number;
-  height?: number;
-}) {
+export function CardGridSkeleton({ count = 4, height = 200 }: { count?: number; height?: number }) {
   return (
     <div className="grid gap-5 md:grid-cols-2">
       {range(count).map((i) => (
@@ -156,4 +150,3 @@ export function RoutePending() {
     </div>
   );
 }
-

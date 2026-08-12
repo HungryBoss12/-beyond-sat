@@ -10,7 +10,10 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
   head: () => ({
     meta: [
       { title: "Welcome — BeyondSAT" },
-      { name: "description", content: "Set your target score and exam date to personalize your BeyondSAT prep." },
+      {
+        name: "description",
+        content: "Set your target score and exam date to personalize your BeyondSAT prep.",
+      },
     ],
   }),
 });
@@ -162,20 +165,18 @@ function Onboarding() {
     }
     setSaving(true);
     setErr(null);
-    const { error: spErr } = await supabase
-      .from("student_profiles")
-      .upsert(
-        {
-          user_id: uid,
-          exam_date: examDate,
-          target_rw: rwNum,
-          target_math: mathNum,
-          target_score: rwNum + mathNum,
-          step: 1,
-          intro_completed_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" },
-      );
+    const { error: spErr } = await supabase.from("student_profiles").upsert(
+      {
+        user_id: uid,
+        exam_date: examDate,
+        target_rw: rwNum,
+        target_math: mathNum,
+        target_score: rwNum + mathNum,
+        step: 1,
+        intro_completed_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
     if (spErr) {
       setSaving(false);
       setErr(spErr.message);
@@ -243,7 +244,8 @@ function Onboarding() {
           Set your SAT goals
         </h1>
         <p className="mt-2 text-sm text-brand-100">
-          Pick your exam date and set separate targets for English and Math. You can update these any time from your profile.
+          Pick your exam date and set separate targets for English and Math. You can update these
+          any time from your profile.
         </p>
 
         <div className="mt-6 grid grid-cols-2 gap-3">
@@ -280,7 +282,9 @@ function Onboarding() {
         </div>
 
         <div className="mt-3 flex items-center justify-between rounded-xl border border-brand-400/40 bg-brand-800 px-4 py-2.5">
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-100">Total target</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-brand-100">
+            Total target
+          </span>
           <span className="text-lg font-black tabular-nums text-white">
             {totalNum || "—"} <span className="text-xs font-bold text-brand-200">/ 1600</span>
           </span>
@@ -336,7 +340,9 @@ function Onboarding() {
           <div className="pop-in mt-4 flex items-center gap-2 rounded-xl border border-brand-200/50 bg-brand-400 px-4 py-3">
             <Sparkles className="h-4 w-4 text-white" />
             <span className="text-sm font-bold text-white">
-              {daysLeft === 0 ? "Exam is today!" : `${daysLeft} day${daysLeft === 1 ? "" : "s"} until your exam`}
+              {daysLeft === 0
+                ? "Exam is today!"
+                : `${daysLeft} day${daysLeft === 1 ? "" : "s"} until your exam`}
             </span>
           </div>
         )}

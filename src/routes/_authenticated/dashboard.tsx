@@ -42,7 +42,10 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
       { title: "Dashboard — BeyondSAT" },
-      { name: "description", content: "Your SAT prep dashboard: streak, scores, and recommendations." },
+      {
+        name: "description",
+        content: "Your SAT prep dashboard: streak, scores, and recommendations.",
+      },
     ],
   }),
 });
@@ -98,27 +101,30 @@ function Dashboard() {
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id;
       if (!uid) return;
-      const [{ data: prof }, { data: spData }, { data: sess }, { data: att }, role] = await Promise.all([
-        supabase.from("profiles").select("full_name,first_name").eq("id", uid).maybeSingle(),
-        supabase
-          .from("student_profiles")
-          .select("target_score,exam_date,level,fears,current_streak,longest_streak,last_daily_completed_date")
-          .eq("user_id", uid)
-          .maybeSingle(),
-        supabase
-          .from("test_sessions")
-          .select("id,type,score,rw_score,math_score,completed_at,started_at")
-          .eq("user_id", uid)
-          .not("completed_at", "is", null)
-          .order("completed_at", { ascending: false })
-          .limit(20),
-        supabase
-          .from("attempts")
-          .select("is_correct, questions(section,skill)")
-          .eq("user_id", uid)
-          .limit(1000),
-        getStaffRole(uid),
-      ]);
+      const [{ data: prof }, { data: spData }, { data: sess }, { data: att }, role] =
+        await Promise.all([
+          supabase.from("profiles").select("full_name,first_name").eq("id", uid).maybeSingle(),
+          supabase
+            .from("student_profiles")
+            .select(
+              "target_score,exam_date,level,fears,current_streak,longest_streak,last_daily_completed_date",
+            )
+            .eq("user_id", uid)
+            .maybeSingle(),
+          supabase
+            .from("test_sessions")
+            .select("id,type,score,rw_score,math_score,completed_at,started_at")
+            .eq("user_id", uid)
+            .not("completed_at", "is", null)
+            .order("completed_at", { ascending: false })
+            .limit(20),
+          supabase
+            .from("attempts")
+            .select("is_correct, questions(section,skill)")
+            .eq("user_id", uid)
+            .limit(1000),
+          getStaffRole(uid),
+        ]);
       setName(prof?.full_name || prof?.first_name || "Student");
       setSp((spData as StudentProfile) ?? null);
       setSessions((sess as Session[]) ?? []);
@@ -303,7 +309,13 @@ function ProgressPanel({
   trend,
   target,
 }: {
-  latest: { score: number; rw: number | null; math: number | null; delta: number | null; at: string | null } | null;
+  latest: {
+    score: number;
+    rw: number | null;
+    math: number | null;
+    delta: number | null;
+    at: string | null;
+  } | null;
   trend: { label: string; score: number }[];
   target: number | null;
 }) {
@@ -319,7 +331,11 @@ function ProgressPanel({
         <PanelHead
           label="Your progress"
           icon={Gauge}
-          hint={latest?.at ? `Latest mock · ${format(new Date(latest.at), "MMM d, yyyy")}` : "No mocks yet"}
+          hint={
+            latest?.at
+              ? `Latest mock · ${format(new Date(latest.at), "MMM d, yyyy")}`
+              : "No mocks yet"
+          }
           action={
             target != null ? (
               <span className="rounded-full bg-brand-800 px-2.5 py-1 text-[10px] font-bold text-white ring-1 ring-brand-400/40">
@@ -340,9 +356,7 @@ function ProgressPanel({
           {band && <Badge label={band.label} tone={band.tone as Tone} />}
           {latest?.delta != null && <Delta value={latest.delta} suffix="vs last test" />}
           {gap != null && gap > 0 && (
-            <span className="text-[11px] font-semibold text-brand-100">
-              {gap} points to target
-            </span>
+            <span className="text-[11px] font-semibold text-brand-100">{gap} points to target</span>
           )}
           {gap != null && gap <= 0 && <Badge label="Target reached" tone="excellent" />}
           {!latest && (
@@ -425,10 +439,17 @@ function AccuracyPanel({
   accuracy: { overall: number; rw: number | null; math: number | null; answered: number } | null;
 }) {
   const pct = accuracy?.overall ?? 0;
-  const tone: Tone =
-    pct >= 90 ? "excellent" : pct >= 75 ? "good" : pct >= 60 ? "fair" : "low";
+  const tone: Tone = pct >= 90 ? "excellent" : pct >= 75 ? "good" : pct >= 60 ? "fair" : "low";
   const label =
-    pct >= 90 ? "Excellent" : pct >= 75 ? "Strong" : pct >= 60 ? "Fair" : pct > 0 ? "Building" : "No data";
+    pct >= 90
+      ? "Excellent"
+      : pct >= 75
+        ? "Strong"
+        : pct >= 60
+          ? "Fair"
+          : pct > 0
+            ? "Building"
+            : "No data";
 
   return (
     <Panel className="lg:col-span-2">
@@ -481,7 +502,9 @@ function AccuracyPanel({
           ? `Across ${accuracy.answered.toLocaleString()} graded answers.`
           : "Answer some questions to see this."}
       </p>
-      <span className="sr-only">Accuracy {pct} percent, rated {label}.</span>
+      <span className="sr-only">
+        Accuracy {pct} percent, rated {label}.
+      </span>
     </Panel>
   );
 }
@@ -512,9 +535,7 @@ function DailyPanel({ done, streak }: { done: boolean; streak: number }) {
           {/* Lit state reads through fill rather than a warm hue — the palette
               is white + #0B0761 only. */}
           <Flame
-            className={
-              "h-11 w-11 shrink-0 " + (done ? "fill-white text-white" : "text-brand-200")
-            }
+            className={"h-11 w-11 shrink-0 " + (done ? "fill-white text-white" : "text-brand-200")}
           />
         </div>
         <Link

@@ -1,15 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Plus,
-  Trash2,
-  Edit3,
-  X,
-  ChevronUp,
-  ChevronDown,
-  AlertCircle,
-} from "lucide-react";
+import { Plus, Trash2, Edit3, X, ChevronUp, ChevronDown, AlertCircle } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import {
   SECTION_LABEL,
@@ -97,7 +89,7 @@ function AdminTests() {
           .limit(400),
       ]);
       setPool((p ?? []) as QRow[]);
-      setEditingQs((tq ?? []).map((r: any) => r.question_id as string));
+      setEditingQs((tq ?? []).map((r) => r.question_id as string));
     } else {
       const { data: p } = await supabase
         .from("questions")
@@ -154,9 +146,11 @@ function AdminTests() {
     }
     await supabase.from("test_questions").delete().eq("test_id", testId);
     if (editingQs.length > 0) {
-      await supabase.from("test_questions").insert(
-        editingQs.map((qid, i) => ({ test_id: testId, question_id: qid, position: i + 1 })),
-      );
+      await supabase
+        .from("test_questions")
+        .insert(
+          editingQs.map((qid, i) => ({ test_id: testId, question_id: qid, position: i + 1 })),
+        );
     }
     setEditing(null);
     setEditingQs(null);
@@ -186,7 +180,10 @@ function AdminTests() {
     setEditingQs(next);
   }
 
-  const grouped = { 1: items.filter((t) => t.module === 1), 2: items.filter((t) => t.module === 2) };
+  const grouped = {
+    1: items.filter((t) => t.module === 1),
+    2: items.filter((t) => t.module === 2),
+  };
 
   return (
     <div>
@@ -194,7 +191,8 @@ function AdminTests() {
           dark; every card below is a brand surface and carries white copy. */}
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-slate-500">
-          Group questions into tests. Add as many questions as you need. Tests are used by daily tests and mock exams.
+          Group questions into tests. Add as many questions as you need. Tests are used by daily
+          tests and mock exams.
         </p>
         <button
           onClick={() => openEditor()}
@@ -318,7 +316,9 @@ function AdminTests() {
                 <Field label="Module">
                   <select
                     value={editing.module}
-                    onChange={(e) => setEditing({ ...editing, module: Number(e.target.value) as 1 | 2 })}
+                    onChange={(e) =>
+                      setEditing({ ...editing, module: Number(e.target.value) as 1 | 2 })
+                    }
                     className={CONTROL_CLASS}
                   >
                     <option value={1}>Module 1</option>

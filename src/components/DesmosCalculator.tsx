@@ -4,9 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 
 let scriptPromise: Promise<void> | null = null;
 
+interface DesmosCalculatorInstance {
+  destroy(): void;
+}
+
+interface DesmosGlobal {
+  GraphingCalculator: (el: HTMLElement, opts: Record<string, boolean>) => DesmosCalculatorInstance;
+}
+
+type DesmosWindow = Window & { Desmos?: DesmosGlobal };
+
 function loadDesmos(apiKey: string): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
-  const w = window as any;
+  const w = window as DesmosWindow;
   if (w.Desmos?.GraphingCalculator) return Promise.resolve();
   if (scriptPromise) return scriptPromise;
   scriptPromise = new Promise<void>((resolve, reject) => {
@@ -21,8 +31,8 @@ function loadDesmos(apiKey: string): Promise<void> {
 }
 
 async function fetchDesmosKey(): Promise<string | null> {
-  const { data } = await supabase.rpc("get_desmos_api_key" as any);
-  const v = data as unknown as string | null | undefined;
+  const { data } = await supabase.rpc("get_desmos_api_key");
+  const v = data as string | null | undefined;
   return v && v.trim() ? v.trim() : null;
 }
 
@@ -36,7 +46,7 @@ export function DesmosCalculator() {
   const [minimized, setMinimized] = useState(false);
   const [ready, setReady] = useState(false);
   const mountRef = useRef<HTMLDivElement>(null);
-  const calcRef = useRef<any>(null);
+  const calcRef = useRef<DesmosCalculatorInstance | null>(null);
 
   useEffect(() => {
     fetchDesmosKey().then(setKey);
@@ -48,8 +58,8 @@ export function DesmosCalculator() {
     loadDesmos(key)
       .then(() => {
         if (cancelled || !mountRef.current) return;
-        const w = window as any;
-        if (!calcRef.current) {
+        const w = window as DesmosWindow;
+        if (!calcRef.current && w.Desmos) {
           calcRef.current = w.Desmos.GraphingCalculator(mountRef.current, {
             expressions: true,
             keypad: true,
@@ -70,7 +80,9 @@ export function DesmosCalculator() {
       if (calcRef.current) {
         try {
           calcRef.current.destroy();
-        } catch {}
+        } catch {
+          void 0;
+        }
         calcRef.current = null;
       }
     };

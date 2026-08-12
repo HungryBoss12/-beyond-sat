@@ -25,10 +25,30 @@ type Stats = { questions: number; daily: number; mocks: number; news: number; us
 
 /** Quick links surfaced under the stat cards. */
 const SHORTCUTS = [
-  { to: "/admin/questions", label: "Add a question", desc: "Grow the question bank", icon: HelpCircle },
-  { to: "/admin/mocks", label: "Build a mock exam", desc: "Assemble a full-length test", icon: ClipboardList },
-  { to: "/admin/homepage", label: "Edit the homepage", desc: "Hero, stats and sections", icon: Home },
-  { to: "/admin/news", label: "Post an article", desc: "Publish to the news feed", icon: Newspaper },
+  {
+    to: "/admin/questions",
+    label: "Add a question",
+    desc: "Grow the question bank",
+    icon: HelpCircle,
+  },
+  {
+    to: "/admin/mocks",
+    label: "Build a mock exam",
+    desc: "Assemble a full-length test",
+    icon: ClipboardList,
+  },
+  {
+    to: "/admin/homepage",
+    label: "Edit the homepage",
+    desc: "Hero, stats and sections",
+    icon: Home,
+  },
+  {
+    to: "/admin/news",
+    label: "Post an article",
+    desc: "Publish to the news feed",
+    icon: Newspaper,
+  },
 ] as const;
 
 function AdminOverview() {

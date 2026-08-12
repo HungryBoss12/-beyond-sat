@@ -117,9 +117,12 @@ function AdminImport() {
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
-  const [result, setResult] = useState<
-    { inserted: number; failed: number; errors: string[]; setTitle?: string } | null
-  >(null);
+  const [result, setResult] = useState<{
+    inserted: number;
+    failed: number;
+    errors: string[];
+    setTitle?: string;
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
 
@@ -137,7 +140,10 @@ function AdminImport() {
      the answer-key columns are revoked at column level. */
   async function fetchExisting(): Promise<Set<string>> {
     const keys = new Set<string>();
-    const { data, error } = await supabase.from("questions").select("section,question_text").limit(5000);
+    const { data, error } = await supabase
+      .from("questions")
+      .select("section,question_text")
+      .limit(5000);
     if (!error) {
       for (const r of (data ?? []) as { section: string; question_text: string }[]) {
         keys.add(dedupeKey(r.section, r.question_text));
@@ -297,7 +303,12 @@ function AdminImport() {
             v
               ? {
                   ...v,
-                  progress: { page: p.page, done: p.pagesDone, total: p.pagesTotal, found: p.questionsFound },
+                  progress: {
+                    page: p.page,
+                    done: p.pagesDone,
+                    total: p.pagesTotal,
+                    found: p.questionsFound,
+                  },
                 }
               : v,
           ),
@@ -453,10 +464,16 @@ function AdminImport() {
         );
       } else {
         const { error: le } = await supabase.from("test_questions").insert(
-          insertedIds.map((qid, i) => ({ test_id: t.id as string, question_id: qid, position: i + 1 })),
+          insertedIds.map((qid, i) => ({
+            test_id: t.id as string,
+            question_id: qid,
+            position: i + 1,
+          })),
         );
         if (le) {
-          errors.push(`The test set was created but its questions couldn't be linked: ${le.message}.`);
+          errors.push(
+            `The test set was created but its questions couldn't be linked: ${le.message}.`,
+          );
         } else {
           createdSet = title.trim();
         }
@@ -499,8 +516,8 @@ function AdminImport() {
           <div>
             <h2 className="text-sm font-bold text-white">Name and date this test</h2>
             <p className="mt-1 max-w-2xl text-xs leading-relaxed text-brand-100">
-              These settings label every question in the upload and, if you leave the box ticked, group
-              them into one test set. Students pick sets by date on the practice screen —{" "}
+              These settings label every question in the upload and, if you leave the box ticked,
+              group them into one test set. Students pick sets by date on the practice screen —{" "}
               <strong className="text-white">{sourceLabel ?? "set a month and year"}</strong>.
             </p>
           </div>
@@ -592,7 +609,11 @@ function AdminImport() {
             </select>
           </Field>
           <Field label="Default skill">
-            <select value={skill} onChange={(e) => setSkill(e.target.value)} className={CONTROL_CLASS}>
+            <select
+              value={skill}
+              onChange={(e) => setSkill(e.target.value)}
+              className={CONTROL_CLASS}
+            >
               {skills.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -602,9 +623,9 @@ function AdminImport() {
           </Field>
         </div>
         <p className="mt-2 text-[11px] leading-relaxed text-brand-200">
-          Reading &amp; Writing skills are read from each question's wording where the phrasing makes it
-          clear; the default is used for the rest, and for every Math question. Fix any row afterwards in
-          the question bank.
+          Reading &amp; Writing skills are read from each question's wording where the phrasing
+          makes it clear; the default is used for the rest, and for every Math question. Fix any row
+          afterwards in the question bank.
         </p>
       </div>
 
@@ -647,11 +668,11 @@ function AdminImport() {
             <>
               <p className="text-sm text-brand-100">
                 Upload the exam paper itself — a <strong className="text-white">.docx</strong>, a{" "}
-                <strong className="text-white">.pdf</strong>, or plain text. Questions are read straight
-                out of the file: a numbered paragraph starts a question, the{" "}
-                <code className="text-white">A) B) C) D)</code> line becomes its choices, and everything
-                above the stem becomes the passage. A scanned PDF with no text in it is read by Beyond
-                AI instead, one page at a time.
+                <strong className="text-white">.pdf</strong>, or plain text. Questions are read
+                straight out of the file: a numbered paragraph starts a question, the{" "}
+                <code className="text-white">A) B) C) D)</code> line becomes its choices, and
+                everything above the stem becomes the passage. A scanned PDF with no text in it is
+                read by Beyond AI instead, one page at a time.
               </p>
 
               <input
@@ -683,7 +704,11 @@ function AdminImport() {
                   disabled={reading != null || vision?.running}
                   className="btn-brand mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
                 >
-                  {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
+                  {reading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileUp className="h-4 w-4" />
+                  )}
                   {reading ?? "Choose a file"}
                 </button>
                 <p className="mt-2 text-[11px] text-brand-200">.docx · .pdf · .txt · .md</p>
@@ -718,9 +743,10 @@ function AdminImport() {
             </>
           ) : mode === "sheet" ? (
             <p className="text-sm text-brand-100">
-              Select your rows in Google Sheets or Excel — <strong className="text-white">including
-              the header row</strong> — and paste them below. Tabs separate columns, so commas inside
-              a question are fine. Comma-separated text works too.
+              Select your rows in Google Sheets or Excel —{" "}
+              <strong className="text-white">including the header row</strong> — and paste them
+              below. Tabs separate columns, so commas inside a question are fine. Comma-separated
+              text works too.
             </p>
           ) : (
             <p className="text-sm text-brand-100">
@@ -738,7 +764,9 @@ function AdminImport() {
                 <div className="mt-3 space-y-3">
                   {mode === "sheet" && (
                     <div className="text-xs text-brand-100">
-                      <div className="font-bold uppercase tracking-wider text-brand-200">Columns</div>
+                      <div className="font-bold uppercase tracking-wider text-brand-200">
+                        Columns
+                      </div>
                       <p className="mt-1 leading-relaxed">{TSV_COLUMNS.join(" · ")}</p>
                       <p className="mt-2 leading-relaxed">
                         Only <strong className="text-white">section</strong>,{" "}
@@ -746,21 +774,23 @@ function AdminImport() {
                         <strong className="text-white">question_text</strong> and{" "}
                         <strong className="text-white">correct</strong> are required. Column order
                         doesn't matter — the header row is read. Unknown columns are ignored, and{" "}
-                        <code className="text-white">kind</code> is inferred from whether you filled in
-                        choices.
+                        <code className="text-white">kind</code> is inferred from whether you filled
+                        in choices.
                       </p>
                     </div>
                   )}
                   <CopyBox text={mode === "sheet" ? TSV_TEMPLATE : JSON_TEMPLATE} />
                   <div className="text-xs text-brand-100">
-                    <div className="font-bold uppercase tracking-wider text-brand-200">Valid values</div>
+                    <div className="font-bold uppercase tracking-wider text-brand-200">
+                      Valid values
+                    </div>
                     <ul className="mt-1 space-y-0.5 leading-relaxed">
                       <li>
                         <code className="text-white">section</code>: math · reading_writing
                       </li>
                       <li>
-                        <code className="text-white">difficulty</code>: C · B · D · A · S (S hardest),
-                        or easy/medium/hard
+                        <code className="text-white">difficulty</code>: C · B · D · A · S (S
+                        hardest), or easy/medium/hard
                       </li>
                       <li>
                         <code className="text-white">kind</code>: multiple_choice · grid_in
@@ -772,8 +802,8 @@ function AdminImport() {
                         <code className="text-white">skill</code> (R&amp;W): {RW_SKILLS.join(" · ")}
                       </li>
                       <li>
-                        <code className="text-white">correct</code>: a letter (B), a number (2), or the
-                        exact choice text. For grid-ins, comma-separate every accepted form.
+                        <code className="text-white">correct</code>: a letter (B), a number (2), or
+                        the exact choice text. For grid-ins, comma-separate every accepted form.
                       </li>
                     </ul>
                     <p className="mt-2 leading-relaxed">
@@ -801,7 +831,9 @@ function AdminImport() {
                     ? "section\tskill\tdifficulty\tquestion_text\tA\tB\tC\tD\tcorrect\nmath\tAlgebra\tB\tIf $3x + 5 = 20$…\t3\t5\t15\t25\tB"
                     : '[\n  { "section": "math", "skill": "Algebra", "question_text": "…", "choices": ["3","5","15","25"], "correct": "B" }\n]'
                 }
-                className={CONTROL_CLASS + " min-h-[220px] resize-y font-mono text-xs leading-relaxed"}
+                className={
+                  CONTROL_CLASS + " min-h-[220px] resize-y font-mono text-xs leading-relaxed"
+                }
               />
 
               <div className="flex flex-wrap items-center gap-2">
@@ -1005,9 +1037,10 @@ function VisionPanel({
       <div className="flex items-start gap-2.5">
         <ScanEye className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
         <div className="text-xs leading-relaxed text-brand-100">
-          <strong className="text-white">This is a scan.</strong> There's no text in the file, so each
-          page is sent to Beyond AI as an image and read back. That takes a few seconds a page and can
-          misread a figure — check every row in the preview before importing. Run a small range first.
+          <strong className="text-white">This is a scan.</strong> There's no text in the file, so
+          each page is sent to Beyond AI as an image and read back. That takes a few seconds a page
+          and can misread a figure — check every row in the preview before importing. Run a small
+          range first.
         </div>
       </div>
 
@@ -1236,7 +1269,11 @@ function PreviewPanel({
           disabled={importing || stats.importable === 0}
           className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
         >
-          {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {importing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Upload className="h-4 w-4" />
+          )}
           {importing
             ? `Importing ${progress.done}/${progress.total}…`
             : `Import ${stats.importable} question${stats.importable === 1 ? "" : "s"}`}
@@ -1246,15 +1283,15 @@ function PreviewPanel({
       {setLabel && (
         <div className="rounded-lg bg-brand-800 px-3 py-2 text-xs text-brand-100">
           These will also be grouped into the test set{" "}
-          <span className="font-semibold text-white">{setLabel}</span>, in the order shown, so students
-          see them as one dated paper.
+          <span className="font-semibold text-white">{setLabel}</span>, in the order shown, so
+          students see them as one dated paper.
         </div>
       )}
 
       {stats.invalid > 0 && (
         <div className="rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
-          {stats.invalid} row{stats.invalid === 1 ? "" : "s"} {stats.invalid === 1 ? "has" : "have"} an
-          error and won't be imported.
+          {stats.invalid} row{stats.invalid === 1 ? "" : "s"} {stats.invalid === 1 ? "has" : "have"}{" "}
+          an error and won't be imported.
           {onAnswerChange
             ? " Most will be a missing answer — paste a key above, or set the answer on the row itself."
             : " Fix them in your source and paste again — the rows that are ready can be imported now either way."}
@@ -1313,7 +1350,9 @@ function RowPreview({
      error has no `question` at all — and a missing answer is exactly the error
      this selector exists to fix. */
   const choiceIds = draft
-    ? ["A", "B", "C", "D", "E", "F", "G", "H"].filter((id) => (draft.rec[`choice_${id}`] ?? "").trim())
+    ? ["A", "B", "C", "D", "E", "F", "G", "H"].filter((id) =>
+        (draft.rec[`choice_${id}`] ?? "").trim(),
+      )
     : [];
   const answer = draft?.rec.correct ?? "";
 

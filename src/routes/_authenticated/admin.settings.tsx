@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Loader2, Save, Calculator, Sparkles, Wrench, KeyRound } from "lucide-react";
+import type { Json } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
@@ -60,7 +61,7 @@ function AdminSettings() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase
-        .from("app_settings" as any)
+        .from("app_settings")
         .select("key,value")
         .in("key", SETTING_KEYS as unknown as string[]);
       const next = { ...EMPTY };
@@ -83,9 +84,7 @@ function AdminSettings() {
     setSavedCard(null);
     const source = { ...settings, ...overrides };
     const rows = keys.map((key) => ({ key, value: source[key].trim() }));
-    const { error } = await supabase
-      .from("app_settings" as any)
-      .upsert(rows, { onConflict: "key" });
+    const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "key" });
     setSavingCard(null);
     if (error) return alert(error.message);
     setSavedCard(card);
@@ -100,9 +99,7 @@ function AdminSettings() {
           cards below are brand surfaces and carry white copy. */}
       <div className="rise-in">
         <h2 className="text-2xl font-black tracking-tight text-slate-900">Site settings</h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Configure integrations and site-wide options.
-        </p>
+        <p className="text-sm text-slate-500 mt-1">Configure integrations and site-wide options.</p>
       </div>
 
       {/* ---------------------------------------------------------------- */}
@@ -111,8 +108,8 @@ function AdminSettings() {
         title="Desmos calculator"
         description={
           <>
-            Paste your Desmos API key. When set, a floating Desmos calculator appears inside
-            Math questions, daily tests, and mock exams. Get a free API key at{" "}
+            Paste your Desmos API key. When set, a floating Desmos calculator appears inside Math
+            questions, daily tests, and mock exams. Get a free API key at{" "}
             <a
               href="https://www.desmos.com/api/v1.11/docs/index.html#document-api-keys"
               target="_blank"
@@ -142,7 +139,9 @@ function AdminSettings() {
           saving={savingCard === "desmos"}
           saved={savedCard === "desmos"}
           disabled={loading}
-          hint={!settings.desmos_api_key.trim() ? "Leave empty to disable the calculator." : undefined}
+          hint={
+            !settings.desmos_api_key.trim() ? "Leave empty to disable the calculator." : undefined
+          }
         />
       </Card>
 
@@ -152,8 +151,8 @@ function AdminSettings() {
         title="Beyond AI models"
         description={
           <>
-            Each task routes to its own OpenRouter model. Leave a field empty to use the
-            built-in default. Browse IDs at{" "}
+            Each task routes to its own OpenRouter model. Leave a field empty to use the built-in
+            default. Browse IDs at{" "}
             <a
               href="https://openrouter.ai/models"
               target="_blank"
@@ -162,8 +161,8 @@ function AdminSettings() {
             >
               openrouter.ai/models
             </a>
-            . Free-tier models are rate-limited and can be withdrawn without notice — if Beyond
-            AI stops answering, swapping the ID here fixes it without a redeploy.
+            . Free-tier models are rate-limited and can be withdrawn without notice — if Beyond AI
+            stops answering, swapping the ID here fixes it without a redeploy.
           </>
         }
       >
@@ -234,8 +233,8 @@ function AdminSettings() {
           <div className="min-w-0 text-xs text-brand-100">
             <div className="font-bold text-white">The API key isn't set here.</div>
             <p className="mt-1">
-              It's a Cloudflare Worker secret, so it never reaches the browser or the database.
-              Set or rotate it from a terminal, in the project directory:
+              It's a Cloudflare Worker secret, so it never reaches the browser or the database. Set
+              or rotate it from a terminal, in the project directory:
             </p>
             {/* `npx` matters: wrangler is a devDependency here, not a global
                 install, so a bare `wrangler` resolves to a global path that

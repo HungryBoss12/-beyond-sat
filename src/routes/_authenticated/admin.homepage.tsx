@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
+import type { LucideIcon } from "lucide-react";
 import {
   ChevronUp,
   ChevronDown,
@@ -38,12 +40,15 @@ type Section = {
   kind: string;
   position: number;
   visible: boolean;
-  data: any;
+  data: Json;
 };
+
+type SectionData = Record<string, Json | undefined>;
+type DraftUpdater = (prev: SectionData) => SectionData;
 
 const KIND_META: Record<
   string,
-  { label: string; icon: any; description: string; template: any }
+  { label: string; icon: LucideIcon; description: string; template: SectionData }
 > = {
   hero: {
     label: "Hero banner",
@@ -68,7 +73,7 @@ const KIND_META: Record<
   press: {
     label: "Press / logo bar",
     icon: Newspaper,
-    description: "A \"Featured in\" strip of publication names.",
+    description: 'A "Featured in" strip of publication names.',
     template: {
       label: "Featured in",
       items: [{ name: "Forbes" }],
@@ -103,7 +108,12 @@ const KIND_META: Record<
     label: "Custom block",
     icon: FileText,
     description: "A free-form block with a title, body text, and optional button.",
-    template: { title: "Custom title", body: "Write anything here.", button_label: "", button_href: "" },
+    template: {
+      title: "Custom title",
+      body: "Write anything here.",
+      button_label: "",
+      button_href: "",
+    },
   },
   showcase: {
     label: "Dashboard showcase",
@@ -159,7 +169,13 @@ const KIND_META: Record<
       title: "What students say",
       subtitle: "",
       items: [
-        { stars: 5, quote: "Write the testimonial here.", name: "Student name", detail: "1520 · +180 points", avatar: "" },
+        {
+          stars: 5,
+          quote: "Write the testimonial here.",
+          name: "Student name",
+          detail: "1520 · +180 points",
+          avatar: "",
+        },
       ],
     },
   },
@@ -195,7 +211,7 @@ function AdminHomepage() {
   const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<Record<string, any>>({});
+  const [drafts, setDrafts] = useState<Record<string, SectionData>>({});
   const [dirty, setDirty] = useState<Record<string, boolean>>({});
   const [newKind, setNewKind] = useState("custom");
   const [savedFlash, setSavedFlash] = useState<string | null>(null);
@@ -208,8 +224,8 @@ function AdminHomepage() {
       .order("position", { ascending: true });
     if (!error && data) {
       setSections(data as Section[]);
-      const d: Record<string, any> = {};
-      (data as Section[]).forEach((s) => (d[s.id] = structuredClone(s.data ?? {})));
+      const d: Record<string, SectionData> = {};
+      (data as Section[]).forEach((s) => (d[s.id] = structuredClone(asSectionData(s.data))));
       setDrafts(d);
       setDirty({});
     }
@@ -219,7 +235,7 @@ function AdminHomepage() {
     load();
   }, []);
 
-  function updateDraft(id: string, updater: (prev: any) => any) {
+  function updateDraft(id: string, updater: DraftUpdater) {
     setDrafts((d) => ({ ...d, [id]: updater(d[id] ?? {}) }));
     setDirty((x) => ({ ...x, [id]: true }));
   }
@@ -271,7 +287,6 @@ function AdminHomepage() {
 
   return (
     <div className="space-y-6">
-
       <div className="rise-in rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[220px] flex-1">
@@ -407,19 +422,33 @@ function Field({
   );
 }
 
+function asSectionData(data: Json | null | undefined): SectionData {
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    return data as SectionData;
+  }
+  return {};
+}
+
+function jsonFieldText(v: Json | undefined): string {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  return "";
+}
+
 function TextInput({
   value,
   onChange,
   placeholder,
 }: {
-  value: any;
+  value: Json | undefined;
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
   return (
     <input
       type="text"
-      value={value ?? ""}
+      value={jsonFieldText(value)}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       className={CONTROL_CLASS}
@@ -433,14 +462,14 @@ function TextArea({
   placeholder,
   rows = 4,
 }: {
-  value: any;
+  value: Json | undefined;
   onChange: (v: string) => void;
   placeholder?: string;
   rows?: number;
 }) {
   return (
     <textarea
-      value={value ?? ""}
+      value={jsonFieldText(value)}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
@@ -454,14 +483,14 @@ function NumberInput({
   onChange,
   placeholder,
 }: {
-  value: any;
+  value: Json | undefined;
   onChange: (v: number) => void;
   placeholder?: string;
 }) {
   return (
     <input
       type="number"
-      value={value ?? ""}
+      value={jsonFieldText(value)}
       onChange={(e) => onChange(e.target.value === "" ? 0 : Number(e.target.value))}
       placeholder={placeholder}
       className={CONTROL_CLASS}
@@ -473,34 +502,42 @@ function NumberInput({
 
 type EditorProps = {
   kind: string;
-  value: any;
-  onChange: (updater: (prev: any) => any) => void;
+  value: SectionData;
+  onChange: (updater: DraftUpdater) => void;
 };
 
-function SectionEditor({ kind, value, onChange }: EditorProps) {
-  const set = (key: string) => (v: any) => onChange((prev) => ({ ...prev, [key]: v }));
-  const items: any[] = Array.isArray(value.items) ? value.items : [];
+function sectionItems(data: SectionData, key = "items"): SectionData[] {
+  const raw = data[key];
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (x): x is SectionData => typeof x === "object" && x !== null && !Array.isArray(x),
+  );
+}
 
-  function updateItem(i: number, patch: any) {
+function SectionEditor({ kind, value, onChange }: EditorProps) {
+  const set = (key: string) => (v: Json | undefined) => onChange((prev) => ({ ...prev, [key]: v }));
+  const items = sectionItems(value);
+
+  function updateItem(i: number, patch: SectionData) {
     onChange((prev) => {
-      const next = [...(prev.items ?? [])];
+      const next = [...sectionItems(prev)];
       next[i] = { ...next[i], ...patch };
       return { ...prev, items: next };
     });
   }
-  function addItem(tpl: any) {
-    onChange((prev) => ({ ...prev, items: [...(prev.items ?? []), tpl] }));
+  function addItem(tpl: SectionData) {
+    onChange((prev) => ({ ...prev, items: [...sectionItems(prev), tpl] }));
   }
   function removeItem(i: number) {
     onChange((prev) => {
-      const next = [...(prev.items ?? [])];
+      const next = [...sectionItems(prev)];
       next.splice(i, 1);
       return { ...prev, items: next };
     });
   }
   function moveItem(i: number, dir: -1 | 1) {
     onChange((prev) => {
-      const next = [...(prev.items ?? [])];
+      const next = [...sectionItems(prev)];
       const j = i + dir;
       if (j < 0 || j >= next.length) return prev;
       [next[i], next[j]] = [next[j], next[i]];
@@ -511,14 +548,55 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
   if (kind === "hero") {
     return (
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Headline"><TextInput value={value.title} onChange={set("title")} placeholder="Ace the SAT..." /></Field>
-        <Field label="Highlighted words" hint="Part of the headline to show in the blue gradient, e.g. Digital SAT. Must match the headline exactly."><TextInput value={value.highlight} onChange={set("highlight")} placeholder="Digital SAT" /></Field>
-        <Field label="Subheadline"><TextInput value={value.subtitle} onChange={set("subtitle")} placeholder="Supporting text" /></Field>
+        <Field label="Headline">
+          <TextInput value={value.title} onChange={set("title")} placeholder="Ace the SAT..." />
+        </Field>
+        <Field
+          label="Highlighted words"
+          hint="Part of the headline to show in the blue gradient, e.g. Digital SAT. Must match the headline exactly."
+        >
+          <TextInput
+            value={value.highlight}
+            onChange={set("highlight")}
+            placeholder="Digital SAT"
+          />
+        </Field>
+        <Field label="Subheadline">
+          <TextInput
+            value={value.subtitle}
+            onChange={set("subtitle")}
+            placeholder="Supporting text"
+          />
+        </Field>
         <div />
-        <Field label="Primary button text"><TextInput value={value.primary_cta_label} onChange={set("primary_cta_label")} placeholder="Get started" /></Field>
-        <Field label="Primary button link" hint="e.g. /signup or https://…"><TextInput value={value.primary_cta_href} onChange={set("primary_cta_href")} placeholder="/signup" /></Field>
-        <Field label="Secondary button text"><TextInput value={value.secondary_cta_label} onChange={set("secondary_cta_label")} placeholder="Sign in" /></Field>
-        <Field label="Secondary button link"><TextInput value={value.secondary_cta_href} onChange={set("secondary_cta_href")} placeholder="/signin" /></Field>
+        <Field label="Primary button text">
+          <TextInput
+            value={value.primary_cta_label}
+            onChange={set("primary_cta_label")}
+            placeholder="Get started"
+          />
+        </Field>
+        <Field label="Primary button link" hint="e.g. /signup or https://…">
+          <TextInput
+            value={value.primary_cta_href}
+            onChange={set("primary_cta_href")}
+            placeholder="/signup"
+          />
+        </Field>
+        <Field label="Secondary button text">
+          <TextInput
+            value={value.secondary_cta_label}
+            onChange={set("secondary_cta_label")}
+            placeholder="Sign in"
+          />
+        </Field>
+        <Field label="Secondary button link">
+          <TextInput
+            value={value.secondary_cta_href}
+            onChange={set("secondary_cta_href")}
+            placeholder="/signin"
+          />
+        </Field>
       </div>
     );
   }
@@ -526,14 +604,31 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
   if (kind === "press") {
     return (
       <div className="space-y-4">
-        <Field label="Label" hint="Shown before the logos."><TextInput value={value.label} onChange={set("label")} placeholder="Featured in" /></Field>
+        <Field label="Label" hint="Shown before the logos.">
+          <TextInput value={value.label} onChange={set("label")} placeholder="Featured in" />
+        </Field>
         <div className="space-y-3">
           {items.map((it, i) => (
-            <ItemRow key={i} index={i} count={items.length} onMove={(d) => moveItem(i, d)} onRemove={() => removeItem(i)}>
-              <Field label="Publication name"><TextInput value={it.name} onChange={(v) => updateItem(i, { name: v })} placeholder="Forbes" /></Field>
+            <ItemRow
+              key={i}
+              index={i}
+              count={items.length}
+              onMove={(d) => moveItem(i, d)}
+              onRemove={() => removeItem(i)}
+            >
+              <Field label="Publication name">
+                <TextInput
+                  value={it.name}
+                  onChange={(v) => updateItem(i, { name: v })}
+                  placeholder="Forbes"
+                />
+              </Field>
             </ItemRow>
           ))}
-          <AddItemButton label="Add a publication" onClick={() => addItem({ name: "Publication" })} />
+          <AddItemButton
+            label="Add a publication"
+            onClick={() => addItem({ name: "Publication" })}
+          />
         </div>
       </div>
     );
@@ -542,10 +637,20 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
   if (kind === "cta") {
     return (
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Title"><TextInput value={value.title} onChange={set("title")} /></Field>
+        <Field label="Title">
+          <TextInput value={value.title} onChange={set("title")} />
+        </Field>
         <div />
-        <Field label="Button text"><TextInput value={value.button_label} onChange={set("button_label")} /></Field>
-        <Field label="Button link"><TextInput value={value.button_href} onChange={set("button_href")} placeholder="/signup" /></Field>
+        <Field label="Button text">
+          <TextInput value={value.button_label} onChange={set("button_label")} />
+        </Field>
+        <Field label="Button link">
+          <TextInput
+            value={value.button_href}
+            onChange={set("button_href")}
+            placeholder="/signup"
+          />
+        </Field>
       </div>
     );
   }
@@ -553,11 +658,19 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
   if (kind === "custom") {
     return (
       <div className="grid gap-4">
-        <Field label="Title"><TextInput value={value.title} onChange={set("title")} /></Field>
-        <Field label="Body text"><TextArea value={value.body} onChange={set("body")} rows={5} /></Field>
+        <Field label="Title">
+          <TextInput value={value.title} onChange={set("title")} />
+        </Field>
+        <Field label="Body text">
+          <TextArea value={value.body} onChange={set("body")} rows={5} />
+        </Field>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Button text (optional)"><TextInput value={value.button_label} onChange={set("button_label")} /></Field>
-          <Field label="Button link (optional)"><TextInput value={value.button_href} onChange={set("button_href")} /></Field>
+          <Field label="Button text (optional)">
+            <TextInput value={value.button_label} onChange={set("button_label")} />
+          </Field>
+          <Field label="Button link (optional)">
+            <TextInput value={value.button_href} onChange={set("button_href")} />
+          </Field>
         </div>
       </div>
     );
@@ -567,16 +680,45 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
     return (
       <div className="space-y-3">
         {items.map((it, i) => (
-          <ItemRow key={i} index={i} count={items.length} onMove={(d) => moveItem(i, d)} onRemove={() => removeItem(i)}>
+          <ItemRow
+            key={i}
+            index={i}
+            count={items.length}
+            onMove={(d) => moveItem(i, d)}
+            onRemove={() => removeItem(i)}
+          >
             <div className="grid gap-3 md:grid-cols-4">
-              <Field label="Number"><NumberInput value={it.n} onChange={(v) => updateItem(i, { n: v })} placeholder="98" /></Field>
-              <Field label="Suffix" hint="e.g. %, +, k"><TextInput value={it.s} onChange={(v) => updateItem(i, { s: v })} placeholder="%" /></Field>
-              <Field label="Icon name" hint="Any Lucide icon name, e.g. Target"><TextInput value={it.icon} onChange={(v) => updateItem(i, { icon: v })} placeholder="Target" /></Field>
-              <Field label="Label"><TextInput value={it.l} onChange={(v) => updateItem(i, { l: v })} placeholder="Students improved" /></Field>
+              <Field label="Number">
+                <NumberInput
+                  value={it.n}
+                  onChange={(v) => updateItem(i, { n: v })}
+                  placeholder="98"
+                />
+              </Field>
+              <Field label="Suffix" hint="e.g. %, +, k">
+                <TextInput value={it.s} onChange={(v) => updateItem(i, { s: v })} placeholder="%" />
+              </Field>
+              <Field label="Icon name" hint="Any Lucide icon name, e.g. Target">
+                <TextInput
+                  value={it.icon}
+                  onChange={(v) => updateItem(i, { icon: v })}
+                  placeholder="Target"
+                />
+              </Field>
+              <Field label="Label">
+                <TextInput
+                  value={it.l}
+                  onChange={(v) => updateItem(i, { l: v })}
+                  placeholder="Students improved"
+                />
+              </Field>
             </div>
           </ItemRow>
         ))}
-        <AddItemButton label="Add a stat" onClick={() => addItem({ n: 0, s: "", l: "New stat", icon: "Target" })} />
+        <AddItemButton
+          label="Add a stat"
+          onClick={() => addItem({ n: 0, s: "", l: "New stat", icon: "Target" })}
+        />
       </div>
     );
   }
@@ -585,22 +727,47 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
     return (
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Section title"><TextInput value={value.title} onChange={set("title")} /></Field>
-          <Field label="Section subtitle"><TextInput value={value.subtitle} onChange={set("subtitle")} /></Field>
+          <Field label="Section title">
+            <TextInput value={value.title} onChange={set("title")} />
+          </Field>
+          <Field label="Section subtitle">
+            <TextInput value={value.subtitle} onChange={set("subtitle")} />
+          </Field>
         </div>
         <div className="space-y-3">
           {items.map((it, i) => (
-            <ItemRow key={i} index={i} count={items.length} onMove={(d) => moveItem(i, d)} onRemove={() => removeItem(i)}>
+            <ItemRow
+              key={i}
+              index={i}
+              count={items.length}
+              onMove={(d) => moveItem(i, d)}
+              onRemove={() => removeItem(i)}
+            >
               <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Feature title"><TextInput value={it.title} onChange={(v) => updateItem(i, { title: v })} /></Field>
-                <Field label="Icon name" hint="Any Lucide icon name, e.g. GraduationCap"><TextInput value={it.icon} onChange={(v) => updateItem(i, { icon: v })} /></Field>
+                <Field label="Feature title">
+                  <TextInput value={it.title} onChange={(v) => updateItem(i, { title: v })} />
+                </Field>
+                <Field label="Icon name" hint="Any Lucide icon name, e.g. GraduationCap">
+                  <TextInput value={it.icon} onChange={(v) => updateItem(i, { icon: v })} />
+                </Field>
                 <div className="md:col-span-2">
-                  <Field label="Description"><TextArea value={it.description} onChange={(v) => updateItem(i, { description: v })} rows={2} /></Field>
+                  <Field label="Description">
+                    <TextArea
+                      value={it.description}
+                      onChange={(v) => updateItem(i, { description: v })}
+                      rows={2}
+                    />
+                  </Field>
                 </div>
               </div>
             </ItemRow>
           ))}
-          <AddItemButton label="Add a feature" onClick={() => addItem({ icon: "Sparkles", title: "New feature", description: "Describe it." })} />
+          <AddItemButton
+            label="Add a feature"
+            onClick={() =>
+              addItem({ icon: "Sparkles", title: "New feature", description: "Describe it." })
+            }
+          />
         </div>
       </div>
     );
@@ -609,22 +776,49 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
   if (kind === "how") {
     return (
       <div className="space-y-4">
-        <Field label="Section title"><TextInput value={value.title} onChange={set("title")} /></Field>
+        <Field label="Section title">
+          <TextInput value={value.title} onChange={set("title")} />
+        </Field>
         <div className="space-y-3">
           {items.map((it, i) => (
-            <ItemRow key={i} index={i} count={items.length} onMove={(d) => moveItem(i, d)} onRemove={() => removeItem(i)}>
+            <ItemRow
+              key={i}
+              index={i}
+              count={items.length}
+              onMove={(d) => moveItem(i, d)}
+              onRemove={() => removeItem(i)}
+            >
               <div className="grid gap-3 md:grid-cols-3">
-                <Field label="Step number"><TextInput value={it.n} onChange={(v) => updateItem(i, { n: v })} placeholder="1" /></Field>
+                <Field label="Step number">
+                  <TextInput
+                    value={it.n}
+                    onChange={(v) => updateItem(i, { n: v })}
+                    placeholder="1"
+                  />
+                </Field>
                 <div className="md:col-span-2">
-                  <Field label="Step title"><TextInput value={it.title} onChange={(v) => updateItem(i, { title: v })} /></Field>
+                  <Field label="Step title">
+                    <TextInput value={it.title} onChange={(v) => updateItem(i, { title: v })} />
+                  </Field>
                 </div>
                 <div className="md:col-span-3">
-                  <Field label="Description"><TextArea value={it.description} onChange={(v) => updateItem(i, { description: v })} rows={2} /></Field>
+                  <Field label="Description">
+                    <TextArea
+                      value={it.description}
+                      onChange={(v) => updateItem(i, { description: v })}
+                      rows={2}
+                    />
+                  </Field>
                 </div>
               </div>
             </ItemRow>
           ))}
-          <AddItemButton label="Add a step" onClick={() => addItem({ n: String(items.length + 1), title: "New step", description: "" })} />
+          <AddItemButton
+            label="Add a step"
+            onClick={() =>
+              addItem({ n: String(items.length + 1), title: "New step", description: "" })
+            }
+          />
         </div>
       </div>
     );
@@ -633,8 +827,12 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
   if (kind === "showcase") {
     return (
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Title (optional)" hint="Leave both blank to show just the graphic."><TextInput value={value.title} onChange={set("title")} /></Field>
-        <Field label="Subtitle (optional)"><TextInput value={value.subtitle} onChange={set("subtitle")} /></Field>
+        <Field label="Title (optional)" hint="Leave both blank to show just the graphic.">
+          <TextInput value={value.title} onChange={set("title")} />
+        </Field>
+        <Field label="Subtitle (optional)">
+          <TextInput value={value.subtitle} onChange={set("subtitle")} />
+        </Field>
       </div>
     );
   }
@@ -643,27 +841,27 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
     /* The scripted transcript is a second list alongside `items`, so it can't
        reuse the updateItem/addItem helpers above — those are hard-wired to
        `items`. These three are the same operations against `messages`. */
-    const messages: any[] = Array.isArray(value.messages) ? value.messages : [];
-    const updateMessage = (i: number, patch: any) =>
+    const messages = sectionItems(value, "messages");
+    const updateMessage = (i: number, patch: SectionData) =>
       onChange((prev) => {
-        const next = [...(prev.messages ?? [])];
+        const next = [...sectionItems(prev, "messages")];
         next[i] = { ...next[i], ...patch };
         return { ...prev, messages: next };
       });
     const addMessage = (role: string) =>
       onChange((prev) => ({
         ...prev,
-        messages: [...(prev.messages ?? []), { role, text: "" }],
+        messages: [...sectionItems(prev, "messages"), { role, text: "" }],
       }));
     const removeMessage = (i: number) =>
       onChange((prev) => {
-        const next = [...(prev.messages ?? [])];
+        const next = [...sectionItems(prev, "messages")];
         next.splice(i, 1);
         return { ...prev, messages: next };
       });
     const moveMessage = (i: number, dir: -1 | 1) =>
       onChange((prev) => {
-        const next = [...(prev.messages ?? [])];
+        const next = [...sectionItems(prev, "messages")];
         const j = i + dir;
         if (j < 0 || j >= next.length) return prev;
         [next[i], next[j]] = [next[j], next[i]];
@@ -673,34 +871,68 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
     return (
       <div className="space-y-5">
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Eyebrow" hint="Small label above the title."><TextInput value={value.eyebrow} onChange={set("eyebrow")} placeholder="Beyond AI" /></Field>
-          <Field label="Title"><TextInput value={value.title} onChange={set("title")} /></Field>
+          <Field label="Eyebrow" hint="Small label above the title.">
+            <TextInput value={value.eyebrow} onChange={set("eyebrow")} placeholder="Beyond AI" />
+          </Field>
+          <Field label="Title">
+            <TextInput value={value.title} onChange={set("title")} />
+          </Field>
           <div className="md:col-span-2">
-            <Field label="Subtitle"><TextArea value={value.subtitle} onChange={set("subtitle")} rows={2} /></Field>
+            <Field label="Subtitle">
+              <TextArea value={value.subtitle} onChange={set("subtitle")} rows={2} />
+            </Field>
           </div>
-          <Field label="Button text"><TextInput value={value.button_label} onChange={set("button_label")} /></Field>
-          <Field label="Button link"><TextInput value={value.button_href} onChange={set("button_href")} placeholder="/signup" /></Field>
+          <Field label="Button text">
+            <TextInput value={value.button_label} onChange={set("button_label")} />
+          </Field>
+          <Field label="Button link">
+            <TextInput
+              value={value.button_href}
+              onChange={set("button_href")}
+              placeholder="/signup"
+            />
+          </Field>
         </div>
 
         <SubHeading label="Bullet points" />
         <div className="space-y-3">
           {items.map((it, i) => (
-            <ItemRow key={i} index={i} count={items.length} onMove={(dir) => moveItem(i, dir)} onRemove={() => removeItem(i)}>
-              <Field label="Bullet text"><TextInput value={it.text} onChange={(v) => updateItem(i, { text: v })} /></Field>
+            <ItemRow
+              key={i}
+              index={i}
+              count={items.length}
+              onMove={(dir) => moveItem(i, dir)}
+              onRemove={() => removeItem(i)}
+            >
+              <Field label="Bullet text">
+                <TextInput value={it.text} onChange={(v) => updateItem(i, { text: v })} />
+              </Field>
             </ItemRow>
           ))}
           <AddItemButton label="Add a bullet" onClick={() => addItem({ text: "" })} />
         </div>
 
         <SubHeading label="Example conversation" />
-        <Field label="Chat header"><TextInput value={value.chat_title} onChange={set("chat_title")} placeholder="Beyond AI" /></Field>
+        <Field label="Chat header">
+          <TextInput
+            value={value.chat_title}
+            onChange={set("chat_title")}
+            placeholder="Beyond AI"
+          />
+        </Field>
         <div className="space-y-3">
           {messages.map((m, i) => (
-            <ItemRow key={i} index={i} count={messages.length} onMove={(dir) => moveMessage(i, dir)} onRemove={() => removeMessage(i)}>
+            <ItemRow
+              key={i}
+              index={i}
+              count={messages.length}
+              onMove={(dir) => moveMessage(i, dir)}
+              onRemove={() => removeMessage(i)}
+            >
               <div className="grid gap-3 md:grid-cols-4">
                 <Field label="Who's speaking">
                   <select
-                    value={m.role ?? "user"}
+                    value={jsonFieldText(m.role) || "user"}
                     onChange={(e) => updateMessage(i, { role: e.target.value })}
                     className={CONTROL_CLASS}
                   >
@@ -712,7 +944,11 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
                   {/* Maths is written the same way as in questions, so an admin
                       who has entered a question already knows this syntax. */}
                   <Field label="Message" hint="Maths goes in dollar signs, e.g. $2x + 3 = 9$.">
-                    <TextArea value={m.text} onChange={(v) => updateMessage(i, { text: v })} rows={2} />
+                    <TextArea
+                      value={m.text}
+                      onChange={(v) => updateMessage(i, { text: v })}
+                      rows={2}
+                    />
                   </Field>
                 </div>
               </div>
@@ -731,27 +967,77 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
     return (
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Section title"><TextInput value={value.title} onChange={set("title")} /></Field>
-          <Field label="Section subtitle"><TextInput value={value.subtitle} onChange={set("subtitle")} /></Field>
+          <Field label="Section title">
+            <TextInput value={value.title} onChange={set("title")} />
+          </Field>
+          <Field label="Section subtitle">
+            <TextInput value={value.subtitle} onChange={set("subtitle")} />
+          </Field>
         </div>
         <div className="space-y-3">
           {items.map((it, i) => (
-            <ItemRow key={i} index={i} count={items.length} onMove={(dir) => moveItem(i, dir)} onRemove={() => removeItem(i)}>
+            <ItemRow
+              key={i}
+              index={i}
+              count={items.length}
+              onMove={(dir) => moveItem(i, dir)}
+              onRemove={() => removeItem(i)}
+            >
               <div className="grid gap-3 md:grid-cols-3">
-                <Field label="Program name"><TextInput value={it.title} onChange={(v) => updateItem(i, { title: v })} /></Field>
-                <Field label="Duration" hint="Shown under the name."><TextInput value={it.duration} onChange={(v) => updateItem(i, { duration: v })} placeholder="8 weeks" /></Field>
-                <Field label="Icon name" hint="Any Lucide icon name."><TextInput value={it.icon} onChange={(v) => updateItem(i, { icon: v })} placeholder="GraduationCap" /></Field>
+                <Field label="Program name">
+                  <TextInput value={it.title} onChange={(v) => updateItem(i, { title: v })} />
+                </Field>
+                <Field label="Duration" hint="Shown under the name.">
+                  <TextInput
+                    value={it.duration}
+                    onChange={(v) => updateItem(i, { duration: v })}
+                    placeholder="8 weeks"
+                  />
+                </Field>
+                <Field label="Icon name" hint="Any Lucide icon name.">
+                  <TextInput
+                    value={it.icon}
+                    onChange={(v) => updateItem(i, { icon: v })}
+                    placeholder="GraduationCap"
+                  />
+                </Field>
                 <div className="md:col-span-3">
-                  <Field label="Description"><TextArea value={it.description} onChange={(v) => updateItem(i, { description: v })} rows={2} /></Field>
+                  <Field label="Description">
+                    <TextArea
+                      value={it.description}
+                      onChange={(v) => updateItem(i, { description: v })}
+                      rows={2}
+                    />
+                  </Field>
                 </div>
-                <Field label="Button text (optional)"><TextInput value={it.button_label} onChange={(v) => updateItem(i, { button_label: v })} /></Field>
-                <Field label="Button link"><TextInput value={it.button_href} onChange={(v) => updateItem(i, { button_href: v })} placeholder="/signup" /></Field>
+                <Field label="Button text (optional)">
+                  <TextInput
+                    value={it.button_label}
+                    onChange={(v) => updateItem(i, { button_label: v })}
+                  />
+                </Field>
+                <Field label="Button link">
+                  <TextInput
+                    value={it.button_href}
+                    onChange={(v) => updateItem(i, { button_href: v })}
+                    placeholder="/signup"
+                  />
+                </Field>
               </div>
             </ItemRow>
           ))}
           <AddItemButton
             label="Add a program"
-            onClick={() => addItem({ icon: "GraduationCap", title: "New program", duration: "", description: "", button_label: "Learn more", button_href: "/signup" })}
+            onClick={() =>
+              addItem({
+                icon: "GraduationCap",
+                title: "New program",
+                duration: "",
+                description: "",
+                button_label: "Learn more",
+                button_href: "/signup",
+              })
+            }
           />
         </div>
       </div>
@@ -762,21 +1048,56 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
     return (
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Section title"><TextInput value={value.title} onChange={set("title")} /></Field>
-          <Field label="Section subtitle"><TextInput value={value.subtitle} onChange={set("subtitle")} /></Field>
+          <Field label="Section title">
+            <TextInput value={value.title} onChange={set("title")} />
+          </Field>
+          <Field label="Section subtitle">
+            <TextInput value={value.subtitle} onChange={set("subtitle")} />
+          </Field>
         </div>
         <div className="space-y-3">
           {items.map((it, i) => (
-            <ItemRow key={i} index={i} count={items.length} onMove={(dir) => moveItem(i, dir)} onRemove={() => removeItem(i)}>
+            <ItemRow
+              key={i}
+              index={i}
+              count={items.length}
+              onMove={(dir) => moveItem(i, dir)}
+              onRemove={() => removeItem(i)}
+            >
               <div className="grid gap-3 md:grid-cols-3">
-                <Field label="Student name"><TextInput value={it.name} onChange={(v) => updateItem(i, { name: v })} /></Field>
-                <Field label="Detail" hint="Score, school, anything short."><TextInput value={it.detail} onChange={(v) => updateItem(i, { detail: v })} placeholder="1520 · +180 points" /></Field>
-                <Field label="Stars" hint="0 to 5."><NumberInput value={it.stars} onChange={(v) => updateItem(i, { stars: v })} placeholder="5" /></Field>
+                <Field label="Student name">
+                  <TextInput value={it.name} onChange={(v) => updateItem(i, { name: v })} />
+                </Field>
+                <Field label="Detail" hint="Score, school, anything short.">
+                  <TextInput
+                    value={it.detail}
+                    onChange={(v) => updateItem(i, { detail: v })}
+                    placeholder="1520 · +180 points"
+                  />
+                </Field>
+                <Field label="Stars" hint="0 to 5.">
+                  <NumberInput
+                    value={it.stars}
+                    onChange={(v) => updateItem(i, { stars: v })}
+                    placeholder="5"
+                  />
+                </Field>
                 <div className="md:col-span-3">
-                  <Field label="Quote" hint="Quotation marks are added automatically."><TextArea value={it.quote} onChange={(v) => updateItem(i, { quote: v })} rows={3} /></Field>
+                  <Field label="Quote" hint="Quotation marks are added automatically.">
+                    <TextArea
+                      value={it.quote}
+                      onChange={(v) => updateItem(i, { quote: v })}
+                      rows={3}
+                    />
+                  </Field>
                 </div>
                 <div className="md:col-span-3">
-                  <Field label="Photo URL (optional)" hint="Leave blank to show their initials instead."><TextInput value={it.avatar} onChange={(v) => updateItem(i, { avatar: v })} /></Field>
+                  <Field
+                    label="Photo URL (optional)"
+                    hint="Leave blank to show their initials instead."
+                  >
+                    <TextInput value={it.avatar} onChange={(v) => updateItem(i, { avatar: v })} />
+                  </Field>
                 </div>
               </div>
             </ItemRow>
@@ -794,7 +1115,7 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
     /* One flat list of short strings, so it's a textarea rather than ItemRows —
        a box-per-bullet for four words each is more chrome than content. */
     const featuresText = items
-      .map((f: any) => (typeof f === "string" ? f : (f?.text ?? "")))
+      .map((f) => (typeof f === "string" ? f : String(f.text ?? "")))
       .join("\n");
 
     return (
@@ -807,7 +1128,9 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
             <TextInput value={value.title} onChange={set("title")} />
           </Field>
           <div className="md:col-span-2">
-            <Field label="Subtitle"><TextInput value={value.subtitle} onChange={set("subtitle")} /></Field>
+            <Field label="Subtitle">
+              <TextInput value={value.subtitle} onChange={set("subtitle")} />
+            </Field>
           </div>
           <div className="md:col-span-2">
             <Field label="What's included" hint="One per line. Shown as a two-column tick list.">
@@ -816,7 +1139,7 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
                 onChange={(v) =>
                   // Blank lines are dropped so a trailing newline doesn't render
                   // an empty bullet with a tick beside it.
-                  onChange((prev: any) => ({
+                  onChange((prev) => ({
                     ...prev,
                     items: v
                       .split("\n")
@@ -830,14 +1153,26 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
             </Field>
           </div>
           <Field label="Button text">
-            <TextInput value={value.button_label} onChange={set("button_label")} placeholder="Create a free account" />
+            <TextInput
+              value={value.button_label}
+              onChange={set("button_label")}
+              placeholder="Create a free account"
+            />
           </Field>
           <Field label="Button link">
-            <TextInput value={value.button_href} onChange={set("button_href")} placeholder="/signup" />
+            <TextInput
+              value={value.button_href}
+              onChange={set("button_href")}
+              placeholder="/signup"
+            />
           </Field>
           <div className="md:col-span-2">
             <Field label="Footnote (optional)" hint="Small print under the button.">
-              <TextInput value={value.footnote} onChange={set("footnote")} placeholder="No card required." />
+              <TextInput
+                value={value.footnote}
+                onChange={set("footnote")}
+                placeholder="No card required."
+              />
             </Field>
           </div>
         </div>
@@ -881,7 +1216,9 @@ function ItemRow({
   return (
     <div className="rounded-xl border border-brand-400/40 bg-brand-700 p-4">
       <div className="mb-3 flex items-center gap-2">
-        <span className="text-xs font-bold uppercase tracking-wider text-brand-200">Item {index + 1}</span>
+        <span className="text-xs font-bold uppercase tracking-wider text-brand-200">
+          Item {index + 1}
+        </span>
         <div className="ml-auto flex items-center gap-1">
           <button
             onClick={() => onMove(-1)}

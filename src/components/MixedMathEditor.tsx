@@ -23,11 +23,17 @@ declare global {
       "math-field": React.DetailedHTMLProps<
         React.HTMLAttributes<HTMLElement> & {
           "virtual-keyboard-mode"?: string;
+          value?: string;
         },
         HTMLElement
       >;
     }
   }
+}
+
+interface MathFieldElement extends HTMLElement {
+  value: string;
+  focus(): void;
 }
 
 export function MixedMathEditor({
@@ -50,13 +56,15 @@ export function MixedMathEditor({
 
   useEffect(() => {
     if (!picker) return;
-    const el = mathRef.current as any;
+    const el = mathRef.current as MathFieldElement | null;
     if (!el) return;
     el.value = draft;
     const h = () => setDraft(el.value ?? "");
     el.addEventListener("input", h);
     setTimeout(() => el.focus?.(), 0);
     return () => el.removeEventListener("input", h);
+    // draft is synced via the input handler; only re-bind when the picker opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picker]);
 
   function insertAtCursor(text: string) {
@@ -104,9 +112,7 @@ export function MixedMathEditor({
       {/* Live preview of the final rendered content */}
       {(value ?? "").trim() && (
         <div className="border-t border-brand-400/30 px-3 py-2 text-white">
-          <div className="mb-1 text-[10px] uppercase tracking-wide text-brand-100">
-            Preview
-          </div>
+          <div className="mb-1 text-[10px] uppercase tracking-wide text-brand-100">Preview</div>
           <MathPreview value={value} />
         </div>
       )}
@@ -162,9 +168,9 @@ export function MixedMathEditor({
             </div>
             <div className="space-y-3 p-4">
               <div className="rounded-lg border-2 border-brand-300/60 bg-brand-800 px-3 py-3">
-                {/* @ts-expect-error custom element */}
+                {/* @ts-expect-error math-field is a MathLive custom element */}
                 <math-field
-                  ref={mathRef as any}
+                  ref={mathRef as React.Ref<MathFieldElement>}
                   virtual-keyboard-mode="manual"
                   style={{
                     display: "block",
@@ -186,18 +192,12 @@ export function MixedMathEditor({
                   Live preview
                 </div>
                 <MathPreview
-                  value={
-                    draft
-                      ? picker.display
-                        ? `$$${draft}$$`
-                        : `$${draft}$`
-                      : ""
-                  }
+                  value={draft ? (picker.display ? `$$${draft}$$` : `$${draft}$`) : ""}
                 />
               </div>
               <div className="text-[11px] text-brand-100">
-                Type math naturally — <code>x^2</code>, <code>sqrt(2)</code>,
-                <code> a/b</code> — it renders as you type.
+                Type math naturally — <code>x^2</code>, <code>sqrt(2)</code>,<code> a/b</code> — it
+                renders as you type.
               </div>
             </div>
             <div className="flex items-center justify-end gap-2 border-t border-brand-400/30 bg-brand-700 px-4 py-3">

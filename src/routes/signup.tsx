@@ -11,7 +11,10 @@ export const Route = createFileRoute("/signup")({
   head: () => ({
     meta: [
       { title: "Sign Up — BeyondSAT" },
-      { name: "description", content: "Create your free BeyondSAT account and start practicing for the Digital SAT." },
+      {
+        name: "description",
+        content: "Create your free BeyondSAT account and start practicing for the Digital SAT.",
+      },
     ],
   }),
 });
@@ -21,7 +24,9 @@ const schema = z.object({
   last_name: z.string().trim().min(1, "Last name is required").max(60),
   city: z.string().trim().min(1, "City is required").max(80),
   school: z.string().trim().min(1, "School is required").max(120),
-  grade: z.enum(["5", "6", "7", "8", "9", "10", "11", "12", "graduated"], { errorMap: () => ({ message: "Select your grade" }) }),
+  grade: z.enum(["5", "6", "7", "8", "9", "10", "11", "12", "graduated"], {
+    errorMap: () => ({ message: "Select your grade" }),
+  }),
   birth_date: z.string().min(1, "Date of birth is required"),
   email: z.string().trim().email("Enter a valid email").max(255),
   password: z.string().min(8, "Password must be at least 8 characters").max(72),
@@ -138,7 +143,9 @@ function SignUp() {
         <div className="rise-in w-full max-w-lg rounded-2xl border border-brand-400/40 bg-brand-600 p-8 shadow-panel md:p-10">
           {step === "form" ? (
             <>
-              <h1 className="text-center text-2xl font-black tracking-tight text-white md:text-3xl">Create your account</h1>
+              <h1 className="text-center text-2xl font-black tracking-tight text-white md:text-3xl">
+                Create your account
+              </h1>
               <p className="mt-2 text-center text-sm text-brand-100">
                 Start practicing for the Digital SAT in minutes.
               </p>
@@ -146,23 +153,46 @@ function SignUp() {
               <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="First name" error={errors.first_name}>
-                    <input className={inputCls} value={form.first_name} onChange={(e) => setField("first_name", e.target.value)} autoComplete="given-name" />
+                    <input
+                      className={inputCls}
+                      value={form.first_name}
+                      onChange={(e) => setField("first_name", e.target.value)}
+                      autoComplete="given-name"
+                    />
                   </Field>
                   <Field label="Last name" error={errors.last_name}>
-                    <input className={inputCls} value={form.last_name} onChange={(e) => setField("last_name", e.target.value)} autoComplete="family-name" />
+                    <input
+                      className={inputCls}
+                      value={form.last_name}
+                      onChange={(e) => setField("last_name", e.target.value)}
+                      autoComplete="family-name"
+                    />
                   </Field>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="City" error={errors.city}>
-                    <input className={inputCls} value={form.city} onChange={(e) => setField("city", e.target.value)} autoComplete="address-level2" />
+                    <input
+                      className={inputCls}
+                      value={form.city}
+                      onChange={(e) => setField("city", e.target.value)}
+                      autoComplete="address-level2"
+                    />
                   </Field>
                   <Field label="School" error={errors.school}>
-                    <input className={inputCls} value={form.school} onChange={(e) => setField("school", e.target.value)} />
+                    <input
+                      className={inputCls}
+                      value={form.school}
+                      onChange={(e) => setField("school", e.target.value)}
+                    />
                   </Field>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Grade" error={errors.grade}>
-                    <select className={inputCls} value={form.grade} onChange={(e) => setField("grade", e.target.value as FormValues["grade"])}>
+                    <select
+                      className={inputCls}
+                      value={form.grade}
+                      onChange={(e) => setField("grade", e.target.value as FormValues["grade"])}
+                    >
                       <option value="">Select…</option>
                       <option value="5">5th</option>
                       <option value="6">6th</option>
@@ -176,11 +206,22 @@ function SignUp() {
                     </select>
                   </Field>
                   <Field label="Date of birth" error={errors.birth_date}>
-                    <input type="date" className={inputCls} value={form.birth_date} onChange={(e) => setField("birth_date", e.target.value)} />
+                    <input
+                      type="date"
+                      className={inputCls}
+                      value={form.birth_date}
+                      onChange={(e) => setField("birth_date", e.target.value)}
+                    />
                   </Field>
                 </div>
                 <Field label="Email" error={errors.email}>
-                  <input type="email" className={inputCls} value={form.email} onChange={(e) => setField("email", e.target.value)} autoComplete="email" />
+                  <input
+                    type="email"
+                    className={inputCls}
+                    value={form.email}
+                    onChange={(e) => setField("email", e.target.value)}
+                    autoComplete="email"
+                  />
                 </Field>
                 <Field label="Password" error={errors.password}>
                   <div className="relative">
@@ -228,7 +269,9 @@ function SignUp() {
             </>
           ) : (
             <>
-              <h1 className="text-center text-2xl font-black tracking-tight text-white md:text-3xl">Verify your email</h1>
+              <h1 className="text-center text-2xl font-black tracking-tight text-white md:text-3xl">
+                Verify your email
+              </h1>
               {info && <p className="mt-2 text-center text-sm text-brand-100">{info}</p>}
               <form onSubmit={handleVerify} className="mt-8 space-y-4">
                 <Field label="6-digit code" error={otpError ?? undefined}>
@@ -253,7 +296,10 @@ function SignUp() {
                 <button onClick={handleResend} className="font-bold text-white hover:underline">
                   Resend code
                 </button>
-                <button onClick={() => setStep("form")} className="font-semibold text-brand-100 hover:text-white">
+                <button
+                  onClick={() => setStep("form")}
+                  className="font-semibold text-brand-100 hover:text-white"
+                >
                   ← Back
                 </button>
               </div>
@@ -269,7 +315,15 @@ function SignUp() {
 const inputCls =
   "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2.5 text-sm text-white outline-none transition [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200";
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function Field({
+  label,
+  error,
+  children,
+}: {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-semibold text-brand-100">{label}</span>

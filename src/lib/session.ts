@@ -57,7 +57,9 @@ async function questionsForTests(testIds: string[]): Promise<string[]> {
     .in("test_id", testIds)
     .order("position", { ascending: true });
   const orderMap = new Map(testIds.map((id, i) => [id, i]));
-  const rows = ((data ?? []) as { test_id: string; question_id: string; position: number }[]).slice();
+  const rows = (
+    (data ?? []) as { test_id: string; question_id: string; position: number }[]
+  ).slice();
   rows.sort((a, b) => {
     const ta = orderMap.get(a.test_id) ?? 0;
     const tb = orderMap.get(b.test_id) ?? 0;
@@ -150,11 +152,7 @@ export async function startTestSetSession(
      sets, see PRACTICE_SETS.sql §2 — so this is what stops a student starting a
      half-built set by pasting its id. The row simply isn't visible to them under
      the `tests read published` policy, so `null` means "not yours to start". */
-  const { data: test } = await supabase
-    .from("tests")
-    .select("id")
-    .eq("id", testId)
-    .maybeSingle();
+  const { data: test } = await supabase.from("tests").select("id").eq("id", testId).maybeSingle();
   if (!test) throw new Error("That practice set isn't available.");
 
   /* `metadata->>test_id` rather than a column: `test_sessions` has
@@ -190,7 +188,9 @@ export async function startTestSetSession(
   return { sessionId: sess.id as string, resumed: false };
 }
 
-export async function startMockSession(mockExamId: string): Promise<{ sessionId: string; resumed: boolean }> {
+export async function startMockSession(
+  mockExamId: string,
+): Promise<{ sessionId: string; resumed: boolean }> {
   const uid = await currentUserId();
   const { data: existing } = await supabase
     .from("test_sessions")
@@ -200,7 +200,8 @@ export async function startMockSession(mockExamId: string): Promise<{ sessionId:
     .is("completed_at", null)
     .order("started_at", { ascending: false })
     .limit(1);
-  if (existing && existing.length > 0) return { sessionId: existing[0].id as string, resumed: true };
+  if (existing && existing.length > 0)
+    return { sessionId: existing[0].id as string, resumed: true };
 
   // Prefer mock_exam_sections (tests picker); fallback to legacy per-question rows
   let ids: string[] = [];
@@ -250,7 +251,11 @@ export async function startMockSession(mockExamId: string): Promise<{ sessionId:
  * mock results consistent with the score calculator shown in Analysis — a
  * previous linear `200 + pct * 600` version disagreed with it.
  */
-export function scaledScore(correct: number, total: number, section: Section = "reading_writing"): number {
+export function scaledScore(
+  correct: number,
+  total: number,
+  section: Section = "reading_writing",
+): number {
   if (total <= 0) return 200;
   const official = questionCountFor(section);
   const projected = (Math.max(0, Math.min(total, correct)) / total) * official;

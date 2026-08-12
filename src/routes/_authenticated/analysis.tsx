@@ -1,7 +1,15 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+  type PieLabelRenderProps,
+} from "recharts";
 import {
   BarChart3,
   ChevronRight,
@@ -97,7 +105,9 @@ function AnalysisPage() {
       const [{ data: s }, { data: a }, { count }] = await Promise.all([
         supabase
           .from("test_sessions")
-          .select("id,type,started_at,completed_at,correct_count,total_questions,score,rw_score,math_score")
+          .select(
+            "id,type,started_at,completed_at,correct_count,total_questions,score,rw_score,math_score",
+          )
           .eq("user_id", uid)
           .not("completed_at", "is", null)
           .order("completed_at", { ascending: false }),
@@ -130,11 +140,19 @@ function AnalysisPage() {
    * With no mocks taken, every counter reads 0 rather than the 400 scale floor.
    */
   const scores = useMemo(() => {
-    const mocks = sessions.filter(
-      (s) => s.type === "mock" && s.score != null,
-    ) as (SessionRow & { score: number })[];
+    const mocks = sessions.filter((s) => s.type === "mock" && s.score != null) as (SessionRow & {
+      score: number;
+    })[];
     if (mocks.length === 0) {
-      return { latest: 0, average: 0, best: 0, count: 0, rw: 0, math: 0, delta: null as number | null };
+      return {
+        latest: 0,
+        average: 0,
+        best: 0,
+        count: 0,
+        rw: 0,
+        math: 0,
+        delta: null as number | null,
+      };
     }
     const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
     const rwVals = mocks.map((m) => m.rw_score).filter((v): v is number => v != null);
@@ -164,9 +182,15 @@ function AnalysisPage() {
   ];
 
   const completedCount = sessions.length;
-  const completionPct = totalAvailable > 0 ? Math.min(100, Math.round((completedCount / totalAvailable) * 100)) : 0;
+  const completionPct =
+    totalAvailable > 0 ? Math.min(100, Math.round((completedCount / totalAvailable) * 100)) : 0;
 
-  const skillOptions = fSection === "reading_writing" ? RW_SKILLS : fSection === "math" ? MATH_SKILLS : [...RW_SKILLS, ...MATH_SKILLS];
+  const skillOptions =
+    fSection === "reading_writing"
+      ? RW_SKILLS
+      : fSection === "math"
+        ? MATH_SKILLS
+        : [...RW_SKILLS, ...MATH_SKILLS];
 
   const filteredSessions = useMemo(() => {
     return sessions.filter((s) => {
@@ -237,7 +261,11 @@ function AnalysisPage() {
 
       {/* Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 stagger">
-        <StatCard label="Tests completed" value={completedCount} icon={<BarChart3 className="h-5 w-5" />} />
+        <StatCard
+          label="Tests completed"
+          value={completedCount}
+          icon={<BarChart3 className="h-5 w-5" />}
+        />
         <StatCard
           label="Completion progress"
           value={`${completionPct}%`}
@@ -272,7 +300,9 @@ function AnalysisPage() {
                   paddingAngle={2}
                   animationDuration={900}
                   labelLine={{ stroke: "#9f9fc2" }}
-                  label={(e: any) => `${e.name}: ${e.value} (${Math.round((e.value / totals.total) * 100)}%)`}
+                  label={(e: PieLabelRenderProps) =>
+                    `${e.name}: ${e.value} (${Math.round(((e.value as number) / totals.total) * 100)}%)`
+                  }
                 >
                   {pieData.map((d) => (
                     /* Stroke matches the card behind it, so the gap between
@@ -303,7 +333,7 @@ function AnalysisPage() {
           <select
             value={fSection}
             onChange={(e) => {
-              setFSection(e.target.value as any);
+              setFSection(e.target.value as Section | "all");
               setFSkill("");
             }}
             className={CONTROL_CLASS}
@@ -321,29 +351,43 @@ function AnalysisPage() {
           >
             <option value="">Any</option>
             {skillOptions.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
           </select>
         </FieldFilter>
         <FieldFilter label="Difficulty">
           <select
             value={fDifficulty}
-            onChange={(e) => setFDifficulty(e.target.value as any)}
+            onChange={(e) => setFDifficulty(e.target.value as Difficulty | "")}
             className={CONTROL_CLASS}
           >
             <option value="">Any</option>
             {LETTER_DIFFICULTIES.map((d) => (
-              <option key={d} value={d}>{d}</option>
+              <option key={d} value={d}>
+                {d}
+              </option>
             ))}
           </select>
         </FieldFilter>
         {/* The date pickers need color-scheme:dark on top of the shared control
             class so the native calendar icon shows up on the navy field. */}
         <FieldFilter label="From">
-          <input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} className={CONTROL_CLASS + " [color-scheme:dark]"} />
+          <input
+            type="date"
+            value={fFrom}
+            onChange={(e) => setFFrom(e.target.value)}
+            className={CONTROL_CLASS + " [color-scheme:dark]"}
+          />
         </FieldFilter>
         <FieldFilter label="To">
-          <input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} className={CONTROL_CLASS + " [color-scheme:dark]"} />
+          <input
+            type="date"
+            value={fTo}
+            onChange={(e) => setFTo(e.target.value)}
+            className={CONTROL_CLASS + " [color-scheme:dark]"}
+          />
         </FieldFilter>
       </Panel>
 
@@ -385,11 +429,23 @@ function AnalysisPage() {
   );
 }
 
-function StatCard({ label, value, hint, icon }: { label: string; value: React.ReactNode; hint?: string; icon?: React.ReactNode }) {
+function StatCard({
+  label,
+  value,
+  hint,
+  icon,
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+  icon?: React.ReactNode;
+}) {
   return (
     <div className="group rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel lift">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-brand-100">{label}</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-brand-100">
+          {label}
+        </span>
         {icon && (
           <span className="tile-invert grid h-8 w-8 place-items-center rounded-xl bg-brand-400 text-white">
             {icon}
@@ -457,8 +513,7 @@ function ScoreCounter({
         <div className="mt-2.5 flex items-end gap-1.5">
           <span
             className={
-              "pop-in font-black leading-none text-white " +
-              (emphasis ? "text-5xl" : "text-4xl")
+              "pop-in font-black leading-none text-white " + (emphasis ? "text-5xl" : "text-4xl")
             }
           >
             <AnimatedNumber value={value} />
@@ -673,24 +728,24 @@ function SessionItem({
         .from("questions")
         .select("id,section,skill,difficulty,kind,question_text,choices,created_at")
         .in("id", ids);
-      const { data: ans } = await supabase.rpc("get_answers_for_review" as any, {
+      const { data: ans } = await supabase.rpc("get_answers_for_review", {
         p_question_ids: ids,
       });
-      const ansById = new Map(
-        ((ans as any[]) ?? []).map((r) => [r.question_id, r]),
-      );
-      const merged = ((data ?? []) as any[]).map((q) => {
-        const a = ansById.get(q.id) ?? {};
+      const ansById = new Map((ans ?? []).map((r) => [r.question_id, r]));
+      const merged = (data ?? []).map((q) => {
+        const a = ansById.get(q.id);
         return {
           ...q,
-          correct_choice_id: a.correct_choice_id ?? null,
-          correct_grid_answers: a.correct_grid_answers ?? null,
+          correct_choice_id: a?.correct_choice_id ?? null,
+          correct_grid_answers: a?.correct_grid_answers ?? null,
         };
       });
-      setDetails(merged as unknown as QuestionLite[]);
+      setDetails(merged as QuestionLite[]);
 
       setLoading(false);
     })();
+    // attempts/details are captured when the modal opens; refetching on every change would loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const correct = attempts.filter((a) => a.is_correct === true).length;
@@ -761,9 +816,7 @@ function SessionItem({
           aria-expanded={isOpen}
         >
           <ChevronRight
-            className={
-              "h-4 w-4 transition-transform duration-300 " + (isOpen ? "rotate-90" : "")
-            }
+            className={"h-4 w-4 transition-transform duration-300 " + (isOpen ? "rotate-90" : "")}
           />
         </button>
       </div>
@@ -777,10 +830,14 @@ function SessionItem({
                 <Skeleton key={i} className="h-[86px] rounded-xl" />
               ))}
             </div>
-          ) : (details && details.length === 0) ? (
-            <div className="py-6 text-center text-sm text-brand-100">No question details available.</div>
+          ) : details && details.length === 0 ? (
+            <div className="py-6 text-center text-sm text-brand-100">
+              No question details available.
+            </div>
           ) : filteredAttempts.length === 0 ? (
-            <div className="py-6 text-center text-sm text-brand-100">No questions match the filters for this test.</div>
+            <div className="py-6 text-center text-sm text-brand-100">
+              No questions match the filters for this test.
+            </div>
           ) : (
             <ul className="space-y-2 stagger-fast">
               {filteredAttempts.map((a, i) => {
@@ -809,19 +866,28 @@ function SessionItem({
                           <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-brand-700 text-brand-100">
                             {q.skill}
                           </span>
-                          <span className={"text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded " + difficultyColor(q.difficulty)}>
+                          <span
+                            className={
+                              "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded " +
+                              difficultyColor(q.difficulty)
+                            }
+                          >
                             {difficultyLabel(q.difficulty)}
                           </span>
                         </div>
-                        <div className="mt-1.5 text-sm text-white line-clamp-2">{q.question_text}</div>
+                        <div className="mt-1.5 text-sm text-white line-clamp-2">
+                          {q.question_text}
+                        </div>
                         <div className="mt-1 text-xs text-brand-100">
                           {q.kind === "multiple_choice" ? (
                             <>
-                              Your answer: <b>{a.selected_choice_id ?? "—"}</b> · Correct: <b>{correctChoice?.id ?? "—"}</b>
+                              Your answer: <b>{a.selected_choice_id ?? "—"}</b> · Correct:{" "}
+                              <b>{correctChoice?.id ?? "—"}</b>
                             </>
                           ) : (
                             <>
-                              Your answer: <b>{a.grid_answer ?? "—"}</b> · Correct: <b>{(q.correct_grid_answers ?? []).join(", ") || "—"}</b>
+                              Your answer: <b>{a.grid_answer ?? "—"}</b> · Correct:{" "}
+                              <b>{(q.correct_grid_answers ?? []).join(", ") || "—"}</b>
                             </>
                           )}
                         </div>

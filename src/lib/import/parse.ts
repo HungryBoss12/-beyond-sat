@@ -66,7 +66,7 @@ const CHOICE_OPENER = /^\s*\(?([A-H])\s*[).]\s+/;
  */
 export function splitInlineChoices(line: string): { id: string; text: string }[] | null {
   const marks: { id: string; start: number; textAt: number }[] = [];
-  const re = /(^|[\s ])\(?([A-H])\s*[).]\s*/g;
+  const re = /(^|[\s\u00A0])\(?([A-H])\s*[).]\s*/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(line))) {
     if (m[2].charCodeAt(0) - 65 !== marks.length) continue;
@@ -138,7 +138,10 @@ const RW_SKILL_HINTS: [RegExp, string][] = [
   [/most logical transition/i, "Expression of Ideas"],
   [/uses relevant information from the notes|the student wants to/i, "Expression of Ideas"],
   [/most nearly mean|logical and precise word/i, "Craft and Structure"],
-  [/main purpose|overall structure|structure of the text|function of the underlined/i, "Craft and Structure"],
+  [
+    /main purpose|overall structure|structure of the text|function of the underlined/i,
+    "Craft and Structure",
+  ],
   [/would most likely (?:respond|say)|author of text \d|both texts/i, "Craft and Structure"],
   [
     /main idea|most strongly supports|best supports|would (?:most directly )?(?:weaken|undermine)|illustrat(?:e|es|ing) the claim|most logically completes|logically completes the text|best states the (?:claim|conclusion|hypothesis)|data (?:in|from) the (?:table|graph)/i,
@@ -146,7 +149,11 @@ const RW_SKILL_HINTS: [RegExp, string][] = [
   ],
 ];
 
-function inferSkill(stem: string, section: Section, fallback: string): { skill: string; guessed: boolean } {
+function inferSkill(
+  stem: string,
+  section: Section,
+  fallback: string,
+): { skill: string; guessed: boolean } {
   if (section === "reading_writing") {
     for (const [re, skill] of RW_SKILL_HINTS) {
       if (re.test(stem)) return { skill, guessed: true };
@@ -183,7 +190,9 @@ export function blocksToDrafts(blocks: string[], defaults: ParseDefaults): Docum
       if (opens) {
         if (current) groups.push(current);
         if (current && n > expected) {
-          notes.push(`Question numbering jumps from ${current.number} to ${n} — ${n - expected} question(s) may be missing.`);
+          notes.push(
+            `Question numbering jumps from ${current.number} to ${n} — ${n - expected} question(s) may be missing.`,
+          );
         }
         const rest = block.slice(m[0].length).trim();
         current = { number: n, blocks: rest ? [rest] : [] };
@@ -197,7 +206,7 @@ export function blocksToDrafts(blocks: string[], defaults: ParseDefaults): Docum
 
   if (groups.length === 0) {
     notes.push(
-      "No numbered questions were found. Each question must start a new paragraph with its number, like \"1. \" or \"1) \".",
+      'No numbered questions were found. Each question must start a new paragraph with its number, like "1. " or "1) ".',
     );
     return { drafts: [], preamble, notes };
   }
@@ -217,7 +226,9 @@ export function blocksToDrafts(blocks: string[], defaults: ParseDefaults): Docum
 
     if (!stem) warnings.push("No question text could be read for this question.");
     if (choices.length === 0) {
-      warnings.push("No A/B/C/D choices were found — treated as a grid-in. Fix the row if it should be multiple choice.");
+      warnings.push(
+        "No A/B/C/D choices were found — treated as a grid-in. Fix the row if it should be multiple choice.",
+      );
     }
     if (trailing.length) {
       warnings.push(
@@ -225,7 +236,9 @@ export function blocksToDrafts(blocks: string[], defaults: ParseDefaults): Docum
       );
     }
     if ((prompt + stem).includes(FIGURE_MARKER)) {
-      warnings.push("This question has an image in the document. Add an image URL, or the question will be unanswerable.");
+      warnings.push(
+        "This question has an image in the document. Add an image URL, or the question will be unanswerable.",
+      );
     }
 
     const { skill, guessed } = inferSkill(stem, defaults.section, defaults.skill);
@@ -255,7 +268,9 @@ export function blocksToDrafts(blocks: string[], defaults: ParseDefaults): Docum
     `Read ${drafts.length} question${drafts.length === 1 ? "" : "s"} — ${withChoices} multiple choice, ${drafts.length - withChoices} without choices.`,
   );
   if (preamble.length) {
-    notes.push(`${preamble.length} paragraph(s) before question 1 were ignored (cover page or instructions).`);
+    notes.push(
+      `${preamble.length} paragraph(s) before question 1 were ignored (cover page or instructions).`,
+    );
   }
 
   return { drafts, preamble, notes };

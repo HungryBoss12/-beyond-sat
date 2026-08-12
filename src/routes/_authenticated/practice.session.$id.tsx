@@ -54,7 +54,9 @@ function SessionRunner() {
       }
       const { data: qs, error: qErr } = await supabase
         .from("questions")
-        .select("id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,time_limit_seconds")
+        .select(
+          "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,time_limit_seconds",
+        )
         .in("id", ids);
       if (qErr) {
         setErr(qErr.message);
@@ -62,9 +64,7 @@ function SessionRunner() {
         return;
       }
       const byId = new Map((qs ?? []).map((q) => [q.id, q]));
-      const ordered = ids
-        .map((qid) => byId.get(qid))
-        .filter(Boolean) as QuestionRow[];
+      const ordered = ids.map((qid) => byId.get(qid)).filter(Boolean) as QuestionRow[];
       /* `ids` being non-empty doesn't guarantee any rows came back — questions
          can be deleted after a session is created, and the reorder above drops
          every id that no longer resolves. Handing TestPlayer an empty array left
@@ -77,12 +77,13 @@ function SessionRunner() {
       }
       setQuestions(ordered);
 
-
       // duration: mocks use module timings; practice/daily sum admin-set per-question limits
       if (sess.type === "mock" && sess.mock_exam_id) {
         const { data: mx } = await supabase
           .from("mock_exams")
-          .select("rw_module1_time_seconds,rw_module2_time_seconds,math_module1_time_seconds,math_module2_time_seconds")
+          .select(
+            "rw_module1_time_seconds,rw_module2_time_seconds,math_module1_time_seconds,math_module2_time_seconds",
+          )
           .eq("id", sess.mock_exam_id)
           .maybeSingle();
         if (mx) {
@@ -94,10 +95,13 @@ function SessionRunner() {
           );
         }
       } else {
-        const total = ordered.reduce(
-          (acc, q: any) => acc + (q.time_limit_seconds ?? 0),
-          0,
-        );
+        const total = ordered.reduce((acc, q) => {
+          const limit =
+            "time_limit_seconds" in q && typeof q.time_limit_seconds === "number"
+              ? q.time_limit_seconds
+              : 0;
+          return acc + limit;
+        }, 0);
         if (total > 0) setDuration(total);
       }
       setLoading(false);

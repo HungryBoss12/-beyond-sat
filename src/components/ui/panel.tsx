@@ -121,9 +121,7 @@ export function PageHead({
   return (
     <div className="flex flex-col gap-3 rise-in md:flex-row md:items-end md:justify-between">
       <div className="min-w-0">
-        <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
-          {title}
-        </h1>
+        <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
       </div>
       {action && <div className="shrink-0 self-start md:self-auto">{action}</div>}

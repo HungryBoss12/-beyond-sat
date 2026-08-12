@@ -33,7 +33,10 @@ function AdminDaily() {
   const [pool, setPool] = useState<Test[]>([]);
 
   async function load() {
-    const { data } = await supabase.from("daily_tests").select("*").order("date", { ascending: false });
+    const { data } = await supabase
+      .from("daily_tests")
+      .select("*")
+      .order("date", { ascending: false });
     setItems((data ?? []) as DailyTest[]);
   }
   useEffect(() => {
@@ -59,11 +62,7 @@ function AdminDaily() {
         .select("test_id, position")
         .eq("daily_test_id", target!.id)
         .order("position"),
-      supabase
-        .from("tests")
-        .select("*")
-        .order("module")
-        .order("created_at", { ascending: false }),
+      supabase.from("tests").select("*").order("module").order("created_at", { ascending: false }),
     ]);
     setPool((p ?? []) as Test[]);
     setEditing({
@@ -255,9 +254,7 @@ function AdminDaily() {
                           <Plus className="h-4 w-4" />
                         </button>
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold text-white">
-                            {t.title}
-                          </div>
+                          <div className="truncate text-sm font-semibold text-white">{t.title}</div>
                           <div className="mt-0.5 flex flex-wrap gap-1.5">
                             <span className="rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                               {SECTION_LABEL[t.section]} · M{t.module}

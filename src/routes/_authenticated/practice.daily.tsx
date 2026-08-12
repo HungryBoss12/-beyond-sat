@@ -58,7 +58,7 @@ function DailyGate() {
           title: dt.title,
           count: sess?.total_questions ?? 0,
         });
-      } catch (e: any) {
+      } catch {
         setState({ kind: "not-available" });
       }
     })();
@@ -76,10 +76,22 @@ function DailyGate() {
     );
   }
   if (state.kind === "done") {
-    return <CenterCard emoji="🔥" title="Streak locked in for today." body="Come back tomorrow for a fresh set." />;
+    return (
+      <CenterCard
+        emoji="🔥"
+        title="Streak locked in for today."
+        body="Come back tomorrow for a fresh set."
+      />
+    );
   }
   if (state.kind === "not-available") {
-    return <CenterCard emoji="📅" title="No daily test today." body="Check back once an admin posts today's set." />;
+    return (
+      <CenterCard
+        emoji="📅"
+        title="No daily test today."
+        body="Check back once an admin posts today's set."
+      />
+    );
   }
   return (
     <div className="mx-auto max-w-2xl">

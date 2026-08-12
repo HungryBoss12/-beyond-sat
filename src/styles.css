@@ -116,18 +116,18 @@
      surface needs. `slate-*` is untouched by that remap and is used directly
      where a token would add nothing.
      ------------------------------------------------------------------------- */
-  --color-test-canvas: #ffffff;      /* the exam workspace itself — full bleed */
-  --color-test-chrome: #f4f5f7;      /* header / footer bars */
-  --color-test-well: #f1f3f6;        /* nested wells: hover washes, jump grid */
-  --color-test-banner: #324dc7;      /* module banner strip under the header */
-  --color-test-dark: #1e1e5a;        /* question-number badge, footer pill */
-  --color-test-ink: #1b1b1b;         /* primary body text */
-  --color-test-muted: #55575d;       /* secondary / meta text */
-  --color-test-line: #d7d9dd;        /* neutral border, dividers */
-  --color-test-edge: #a3a6ad;        /* answer-option outline — grey, not blue */
-  --color-test-accent: #324dc7;      /* selected state, primary action */
+  --color-test-canvas: #ffffff; /* the exam workspace itself — full bleed */
+  --color-test-chrome: #f4f5f7; /* header / footer bars */
+  --color-test-well: #f1f3f6; /* nested wells: hover washes, jump grid */
+  --color-test-banner: #324dc7; /* module banner strip under the header */
+  --color-test-dark: #1e1e5a; /* question-number badge, footer pill */
+  --color-test-ink: #1b1b1b; /* primary body text */
+  --color-test-muted: #55575d; /* secondary / meta text */
+  --color-test-line: #d7d9dd; /* neutral border, dividers */
+  --color-test-edge: #a3a6ad; /* answer-option outline — grey, not blue */
+  --color-test-accent: #324dc7; /* selected state, primary action */
   --color-test-accent-deep: #253a9e; /* accent hover / pressed */
-  --color-test-tint: #eaeefb;        /* option hover wash */
+  --color-test-tint: #eaeefb; /* option hover wash */
 }
 
 :root {
@@ -138,34 +138,34 @@
      other surface (chrome, cards, widgets) is the brand blue or a darker /
      lighter variation of it. Text on those surfaces is white or #C6C5DA at
      full opacity — never a faded white. */
-  --background: #FFFFFF;      /* the only white surface */
-  --foreground: #0F172A;      /* text on the white page background */
+  --background: #ffffff; /* the only white surface */
+  --foreground: #0f172a; /* text on the white page background */
 
-  --card: #0b0761;            /* brand base — cards sit on the white page */
-  --card-foreground: #FFFFFF;
+  --card: #0b0761; /* brand base — cards sit on the white page */
+  --card-foreground: #ffffff;
 
-  --primary: #0b0761;         /* brand-600, base surface */
+  --primary: #0b0761; /* brand-600, base surface */
   --primary-foreground: #ffffff;
-  --primary-tint: #535291;    /* brand-400, buttons / active states */
+  --primary-tint: #535291; /* brand-400, buttons / active states */
 
-  --secondary: #eae9f1;       /* lightest tint, for light section bands */
+  --secondary: #eae9f1; /* lightest tint, for light section bands */
   --secondary-foreground: #090654;
 
-  --muted: #090654;           /* darker nested surface inside a brand card */
-  --muted-foreground: #C6C5DA; /* legible secondary text on brand surfaces */
+  --muted: #090654; /* darker nested surface inside a brand card */
+  --muted-foreground: #c6c5da; /* legible secondary text on brand surfaces */
 
-  --accent: #535291;          /* lighter shade for highlights */
-  --accent-foreground: #FFFFFF;
+  --accent: #535291; /* lighter shade for highlights */
+  --accent-foreground: #ffffff;
 
-  --popover: #040459;         /* floating menus sit a step above a brand card */
-  --popover-foreground: #FFFFFF;
+  --popover: #040459; /* floating menus sit a step above a brand card */
+  --popover-foreground: #ffffff;
 
   /* No red in the palette, so "destructive" is the deepest brand step; the
      danger read comes from the icon and wording, not the hue. */
   --destructive: #0d0d4c;
-  --destructive-foreground: #FFFFFF;
+  --destructive-foreground: #ffffff;
 
-  --border: #535291;          /* visible divider on a brand surface */
+  --border: #535291; /* visible divider on a brand surface */
   --input: #535291;
   --ring: #535291;
 
@@ -173,8 +173,8 @@
   --surface-base: #0b0761;
   --surface-deep: #090654;
   --surface-lift: #100e66;
-  --on-surface: #FFFFFF;
-  --on-surface-muted: #C6C5DA;
+  --on-surface: #ffffff;
+  --on-surface-muted: #c6c5da;
 
   /* Gradient primitives. Kept as tokens so panels, buttons and chart fills all
      pull from the same ramp — changing the brand here changes every gradient.
@@ -201,14 +201,20 @@
   html {
     scroll-behavior: smooth;
   }
-  html, body {
+  html,
+  body {
     background: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     color: var(--foreground);
     font-family: var(--font-sans);
     font-weight: 700;
@@ -299,67 +305,122 @@
    --------------------------------------------------------------------------- */
 
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes pop-in {
-  0%   { opacity: 0; transform: scale(0.94); }
-  60%  { opacity: 1; transform: scale(1.01); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes sweep-right {
-  from { transform: scaleX(0); }
-  to   { transform: scaleX(1); }
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 @keyframes pulse-ring {
-  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 40%, transparent); }
-  70%  { box-shadow: 0 0 0 10px color-mix(in srgb, var(--primary) 0%, transparent); }
-  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent); }
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 40%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--primary) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent);
+  }
 }
 
 /* Slide in from the left — used when a panel replaces another in place. */
 @keyframes slide-in {
-  from { opacity: 0; transform: translateX(-10px); }
-  to   { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* Flash a tinted background once, to draw the eye to a number that just
    changed without moving the layout. */
 @keyframes flash-tint {
-  0%   { background-color: color-mix(in srgb, var(--primary) 12%, transparent); }
-  100% { background-color: transparent; }
+  0% {
+    background-color: color-mix(in srgb, var(--primary) 12%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
 }
 
 /* A highlight sweeping across a surface. Drives the skeleton shimmer and the
    sheen that crosses a primary button on hover. */
 @keyframes sheen {
-  from { transform: translateX(-120%); }
-  to   { transform: translateX(120%); }
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(120%);
+  }
 }
 
 @keyframes shimmer {
-  from { background-position: -200% 0; }
-  to   { background-position: 200% 0; }
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
 }
 
 /* Slow drift for the ambient blurred blobs behind hero panels. Small offsets
    only — this runs forever, so anything larger becomes a distraction. */
 @keyframes drift {
-  0%   { transform: translate(0, 0) scale(1); }
-  50%  { transform: translate(14px, -18px) scale(1.06); }
-  100% { transform: translate(0, 0) scale(1); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(14px, -18px) scale(1.06);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
 }
 
 @keyframes spin-slow {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -371,25 +432,51 @@
    --------------------------------------------------------------------------- */
 
 @keyframes slide-from-left {
-  from { opacity: 0; transform: translate3d(-48px, 0, 0); }
-  to   { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translate3d(-48px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes slide-from-right {
-  from { opacity: 0; transform: translate3d(48px, 0, 0); }
-  to   { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translate3d(48px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes zoom-in-soft {
-  from { opacity: 0; transform: scale(0.94); }
-  to   { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* Comes into focus rather than into place — used where the point is "look at
    this thing" rather than "here is the next block". */
 @keyframes unblur-in {
-  from { opacity: 0; filter: blur(10px); transform: scale(1.02); }
-  to   { opacity: 1; filter: blur(0); transform: none; }
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: scale(1.02);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
 }
 
 /* Cards / sections easing up into place. */
@@ -422,15 +509,33 @@
   & > * {
     animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-  & > *:nth-child(1) { animation-delay: 0ms; }
-  & > *:nth-child(2) { animation-delay: 60ms; }
-  & > *:nth-child(3) { animation-delay: 120ms; }
-  & > *:nth-child(4) { animation-delay: 180ms; }
-  & > *:nth-child(5) { animation-delay: 240ms; }
-  & > *:nth-child(6) { animation-delay: 300ms; }
-  & > *:nth-child(7) { animation-delay: 360ms; }
-  & > *:nth-child(8) { animation-delay: 420ms; }
-  & > *:nth-child(n + 9) { animation-delay: 480ms; }
+  & > *:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  & > *:nth-child(2) {
+    animation-delay: 60ms;
+  }
+  & > *:nth-child(3) {
+    animation-delay: 120ms;
+  }
+  & > *:nth-child(4) {
+    animation-delay: 180ms;
+  }
+  & > *:nth-child(5) {
+    animation-delay: 240ms;
+  }
+  & > *:nth-child(6) {
+    animation-delay: 300ms;
+  }
+  & > *:nth-child(7) {
+    animation-delay: 360ms;
+  }
+  & > *:nth-child(8) {
+    animation-delay: 420ms;
+  }
+  & > *:nth-child(n + 9) {
+    animation-delay: 480ms;
+  }
 }
 
 /* Tighter cascade for long lists, where 60ms steps would make the last row
@@ -439,17 +544,39 @@
   & > * {
     animation: rise-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-  & > *:nth-child(1) { animation-delay: 0ms; }
-  & > *:nth-child(2) { animation-delay: 30ms; }
-  & > *:nth-child(3) { animation-delay: 60ms; }
-  & > *:nth-child(4) { animation-delay: 90ms; }
-  & > *:nth-child(5) { animation-delay: 120ms; }
-  & > *:nth-child(6) { animation-delay: 150ms; }
-  & > *:nth-child(7) { animation-delay: 180ms; }
-  & > *:nth-child(8) { animation-delay: 210ms; }
-  & > *:nth-child(9) { animation-delay: 240ms; }
-  & > *:nth-child(10) { animation-delay: 270ms; }
-  & > *:nth-child(n + 11) { animation-delay: 300ms; }
+  & > *:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  & > *:nth-child(2) {
+    animation-delay: 30ms;
+  }
+  & > *:nth-child(3) {
+    animation-delay: 60ms;
+  }
+  & > *:nth-child(4) {
+    animation-delay: 90ms;
+  }
+  & > *:nth-child(5) {
+    animation-delay: 120ms;
+  }
+  & > *:nth-child(6) {
+    animation-delay: 150ms;
+  }
+  & > *:nth-child(7) {
+    animation-delay: 180ms;
+  }
+  & > *:nth-child(8) {
+    animation-delay: 210ms;
+  }
+  & > *:nth-child(9) {
+    animation-delay: 240ms;
+  }
+  & > *:nth-child(10) {
+    animation-delay: 270ms;
+  }
+  & > *:nth-child(n + 11) {
+    animation-delay: 300ms;
+  }
 }
 
 /* Landing-page entrances, applied by `<Reveal from="…">` on arrival. 0.7s
@@ -595,7 +722,7 @@
     transform: translateY(-1px);
     border-color: color-mix(in srgb, var(--primary) 50%, transparent);
     background-color: rgba(255, 255, 255, 0.12);
-    color: #FFFFFF;
+    color: #ffffff;
     box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.4);
   }
   &:active {
@@ -657,12 +784,7 @@
    through the dark blue ramp, which reads as a solid navy block against the ice
    canvas. */
 @utility skeleton-light {
-  background-image: linear-gradient(
-    90deg,
-    #e3eaf3 25%,
-    #f4f8fc 37%,
-    #e3eaf3 63%
-  );
+  background-image: linear-gradient(90deg, #e3eaf3 25%, #f4f8fc 37%, #e3eaf3 63%);
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }

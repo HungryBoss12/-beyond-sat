@@ -1,4 +1,4 @@
-import { extractSatPageFromImage } from "@/lib/gemini/extract-page";
+import { extractSatPageFromImage, type VisionStage } from "@/lib/gemini/extract-page";
 import { GeminiError } from "@/lib/gemini/errors";
 import { readBearerToken, readEnv, readSupabaseConfig, verifySupabaseUser } from "@/lib/server-env";
 
@@ -11,13 +11,15 @@ function json(body: unknown, status: number): Response {
 
 type VisionRequest = {
   imageDataUrl?: unknown;
+  stage?: unknown;
+  priorExtraction?: unknown;
 };
 
 /**
- * POST /api/import/vision — Gemini-backed SAT page extraction for admin import.
+ * POST /api/import/vision — two-stage Gemini page extraction for admin import.
  *
- * Replaces the former OpenRouter vision path so test imports use Google AI Studio
- * directly via `GEMINI_API_KEY`.
+ * `stage: "extract"` (default) → Gemini 2.5 Pro
+ * `stage: "recheck"` → Gemini 2.5 Flash with priorExtraction JSON
  */
 export async function handleImportVision(request: Request, env: unknown): Promise<Response> {
   if (request.method !== "POST") {
@@ -61,9 +63,21 @@ export async function handleImportVision(request: Request, env: unknown): Promis
     return json({ error: "imageDataUrl is required" }, 400);
   }
 
+  const stage: VisionStage = payload.stage === "recheck" ? "recheck" : "extract";
+  const priorExtraction =
+    typeof payload.priorExtraction === "string" ? payload.priorExtraction : undefined;
+
+  if (stage === "recheck" && !priorExtraction?.trim()) {
+    return json({ error: "priorExtraction is required for recheck" }, 400);
+  }
+
   try {
-    const content = await extractSatPageFromImage(payload.imageDataUrl, { apiKey });
-    return json({ content }, 200);
+    const content = await extractSatPageFromImage(payload.imageDataUrl, {
+      apiKey,
+      stage,
+      priorExtraction,
+    });
+    return json({ content, stage }, 200);
   } catch (error) {
     if (error instanceof GeminiError) {
       return json({ error: error.message, code: error.code }, error.status);

@@ -72,69 +72,60 @@ export function buildSystemPrompt(task: string): string {
 }
 
 /**
- * Extraction instructions for the scanned-PDF import path.
+ * Extraction instructions for the scanned-PDF import path (stage 1).
  *
- * This is the machine-readable twin of EXTRACTION_PROMPT.md. That file exists so
- * an editor can paste a paper into an external chat and bring JSON back by hand;
- * this constant is the same job done in-app, one page at a time, against the
- * `vision` route in `/admin/import`. Keeping it here rather than in the component
- * means it goes through `buildSystemPrompt`, so the identity and provider-anonymity
- * guardrails apply — a model that answers "I am Gemini" mid-extraction is a leak
- * whether or not a student is reading the output.
- *
- * The instructions differ from the document in two ways, both forced by the
- * one-page-at-a-time loop:
- *
- *  - **Numbers must be the ones printed on the page**, not a 1..n count. Pages
- *    are extracted independently and merged afterwards, so a per-page counter
- *    would make every page start at 1 and the answer key would land on the wrong
- *    questions. That is the failure mode that silently produces a whole test of
- *    wrong answers, so it's stated twice.
- *  - **A question split across a page boundary is skipped, not guessed.** The
- *    importer's preview shows what came back; it cannot show what was invented.
- *
- * Answers are optional here, unlike in the document's "omit the question" rule.
- * A scanned paper usually has no key at all, and returning 27 answerless
- * questions the editor then fills from the paste box is far better than returning
- * nothing.
+ * Optimized to find questions even when numbering is missing, irregular, or
+ * cut off — the importer assigns sequential numbers when the page has none.
  */
-export const VISION_EXTRACTION_PROMPT = `You are extracting Digital SAT questions from a photograph or scan of one page of a real exam paper. This content is shown to students as-is, so transcribe — never paraphrase, never rewrite, never invent a question, a choice, or an answer.
+export const VISION_EXTRACTION_PROMPT = `You are extracting Digital SAT (or similar) practice questions from a photograph or scan of one exam page.
 
-Return ONLY a JSON array. The first character must be [ and the last must be ]. No markdown fences, no commentary, no preamble, no explanation of what you did. If the page holds no questions at all (a cover page, instructions, a blank page, an answer key), return exactly [].
+Transcribe what is on the page. Do not invent stems, choices, or answers. Prefer including a question over skipping it when the stem and choices are mostly readable.
 
-Each object:
+Return ONLY a JSON array. First character [, last character ]. No markdown fences, no commentary. If the page has no questions (cover, instructions, blank, answer-key-only), return [].
 
-  number         REQUIRED. Integer. The question number PRINTED ON THE PAGE.
-                 Do NOT renumber, and do NOT count from 1 for this page. If the
-                 page shows questions 14, 15 and 16, emit 14, 15 and 16.
-  section        REQUIRED. "math" or "reading_writing".
-  skill          REQUIRED. Exactly one of, matching the section:
-                   math: "Algebra", "Advanced Math",
-                         "Problem-Solving and Data Analysis",
-                         "Geometry and Trigonometry"
-                   reading_writing: "Craft and Structure", "Information and Ideas",
-                         "Standard English Conventions", "Expression of Ideas"
-  kind           REQUIRED. "multiple_choice" or "grid_in" (grid_in = the student
-                 types a numeric answer and there are no choices).
-  question_text  REQUIRED. The question stem only — not the number, not the
-                 passage, not the choices.
-  choices        REQUIRED for multiple_choice, omit for grid_in. An array of the
-                 choice texts in printed order, mapping to A, B, C, D by position.
-                 Text only: no "A)" prefixes. Never reorder or drop one.
-  prompt         OPTIONAL. The passage, stimulus, notes list or figure description.
-                 Use \\n\\n between paragraphs. If several questions on the page
-                 share one passage, repeat the whole passage in each of them.
-  correct        OPTIONAL. Only if the answer is printed on this page. A letter
-                 ("A") for multiple choice, or an array of accepted forms
-                 (["1/2","0.5"]) for grid-in. If the page does not state the
-                 answer, OMIT this field — do not guess it, and do not solve the
-                 question yourself.
+Find every distinct question on the page. A question is typically a stem plus A–D choices, or a grid-in stem with no choices. Do NOT require:
+- Printed question numbers (include the item anyway; set "number" only if a clear printed number is visible)
+- A specific skill taxonomy label
+- A section header on the page
+- Perfect OCR of every character (best-effort is fine)
+
+Each object may include:
+
+  number         OPTIONAL. Integer only if a clear printed question number is visible. Omit if none.
+  section        OPTIONAL. "math" or "reading_writing" if obvious; omit otherwise.
+  skill          OPTIONAL. Best-guess topic label if obvious; omit otherwise.
+  kind           OPTIONAL. "multiple_choice" or "grid_in". Infer from whether choices exist.
+  question_text  REQUIRED when a stem is present. Stem only — not the number, not choices.
+  choices        Array of choice texts in printed order (A,B,C,D by position), no "A)" prefixes.
+                 Empty array or omit for grid-in.
+  prompt         OPTIONAL. Shared passage, stimulus, notes, or figure transcription.
+                 Repeat the full shared passage on each question that uses it.
+  correct        OPTIONAL. Only if the answer is printed on this page. Never guess.
   explanation    OPTIONAL. Only if a worked solution is printed on the page.
 
-Mathematics: wrap every expression in single dollar signs, using LaTeX inside them — $3x+5=20$, $\\frac{1}{2}$, $\\sqrt{x}$, $x^{2}$, $\\pi$. This is JSON, so every backslash must be doubled: write "$\\\\frac{1}{2}$". Dollar signs must be balanced. Never use Unicode superscripts or ASCII fractions. Never write thousands separators — 1500, not 1,500, because a comma inside a grid-in answer reads as a separator between two answers.
+Mathematics: LaTeX inside $…$. In JSON, double backslashes: "$\\\\frac{1}{2}$". No Unicode superscripts.
 
-Figures: transcribe a table cell by cell, and a graph by its axis labels, plotted values, and any labelled lengths or angles, into \`prompt\`. Then add this on its own line at the end of \`prompt\`:
+Figures: describe tables/graphs in \`prompt\`, then add a line:
 [FIGURE NEEDED: one-line description]
-Never emit an image_url field.
 
-Skip a question entirely — leave it out of the array — if its stem or any choice is cut off at the edge of the page, illegible, or continues onto another page, or if it depends on a figure you cannot read well enough to transcribe. A missing question is obvious to the editor reviewing the import; a truncated or invented one is not.`;
+Include a question if the stem is mostly readable even without a number. Only skip when the stem is cut off mid-sentence with no usable meaning, or the page is not a question page.`;
+
+/**
+ * Stage 2 — independent recheck against the same page image.
+ * Receives the stage-1 JSON and must return a corrected JSON array.
+ */
+export const VISION_RECHECK_PROMPT = `You are verifying and correcting a first-pass extraction of SAT-style questions from the attached page image.
+
+You will receive a JSON array from another model. Compare it carefully to the image.
+
+Return ONLY a corrected JSON array (first char [, last char ]). Same object shape as the first pass:
+number (optional), section (optional), skill (optional), kind (optional), question_text, choices, prompt, correct (optional), explanation (optional).
+
+Rules:
+- Fix wrong or garbled transcriptions using the image.
+- Add questions the first pass missed (including unnumbered ones).
+- Remove invented questions that are not on the page.
+- Keep printed numbers when visible; omit number when none is printed.
+- Do not invent answers or explanations that are not printed.
+- Prefer completeness: include readable questions even without numbers or skill labels.
+- If the first pass is already accurate, return it unchanged (still as a JSON array).`;

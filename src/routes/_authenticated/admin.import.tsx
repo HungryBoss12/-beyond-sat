@@ -77,7 +77,16 @@ type VisionState = {
   from: number;
   to: number;
   running: boolean;
-  progress: { page: number; done: number; total: number; found: number } | null;
+  progress: {
+    page: number;
+    done: number;
+    total: number;
+    found: number;
+    stage: 1 | 2;
+    stageLabel: "Extract" | "Recheck";
+    stage1Done: number;
+    stage2Done: number;
+  } | null;
 };
 
 function AdminImport() {
@@ -308,6 +317,10 @@ function AdminImport() {
                     done: p.pagesDone,
                     total: p.pagesTotal,
                     found: p.questionsFound,
+                    stage: p.stage,
+                    stageLabel: p.stageLabel,
+                    stage1Done: p.stage1Done,
+                    stage2Done: p.stage2Done,
                   },
                 }
               : v,
@@ -961,15 +974,27 @@ function AdminImport() {
 /**
  * Merge a fresh batch of vision drafts into what's already on screen.
  *
- * Existing rows win on a number collision: the editor may already have fixed an
- * answer on one, and re-reading a page they'd previously imported should not
- * quietly discard that work.
+ * Prefer content match when numbers were auto-assigned; printed-number collisions
+ * still keep the existing row so editor edits are not discarded.
  */
 function mergeDrafts(existing: Draft[], incoming: Draft[]): Draft[] {
-  const have = new Set(existing.map((d) => d.number));
-  return [...existing, ...incoming.filter((d) => !have.has(d.number))].sort(
-    (a, b) => a.number - b.number,
+  const haveNumbers = new Set(existing.map((d) => d.number));
+  const haveText = new Set(
+    existing.map((d) =>
+      (d.rec.question_text || "").toLowerCase().replace(/\s+/g, " ").trim().slice(0, 200),
+    ),
   );
+  const added = incoming.filter((d) => {
+    const text = (d.rec.question_text || "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 200);
+    if (text && haveText.has(text)) return false;
+    if (haveNumbers.has(d.number)) return false;
+    return true;
+  });
+  return [...existing, ...added].sort((a, b) => a.number - b.number);
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -1012,10 +1037,9 @@ function TabButton({
 /**
  * The scanned-PDF panel.
  *
- * The page range is front and centre rather than hidden behind an "advanced"
- * toggle, because running all 108 pages of a scan through Gemini in one go
- * the editor can't see whether the extraction is any good until it's over. Ten
- * pages, check the preview, then continue.
+ * Two-stage progress: (1) Gemini Pro extracts questions, (2) Gemini Flash
+ * rechecks the same page. Page range stays front and centre so long scans are
+ * run in batches.
  */
 function VisionPanel({
   state,
@@ -1029,17 +1053,21 @@ function VisionPanel({
   onStop: () => void;
 }) {
   const p = state.progress;
-  const pct = p && p.total > 0 ? Math.round((p.done / p.total) * 100) : 0;
+  const rangePages = Math.max(1, state.to - state.from + 1);
+  const stage1Pct = p ? Math.min(100, Math.round((p.stage1Done / rangePages) * 100)) : 0;
+  const stage2Pct = p ? Math.min(100, Math.round((p.stage2Done / rangePages) * 100)) : 0;
+  const overallPct = p
+    ? Math.min(100, Math.round(((p.stage1Done + p.stage2Done) / (rangePages * 2)) * 100))
+    : 0;
 
   return (
     <div className="space-y-3 rounded-xl border border-brand-400/40 bg-brand-800 p-4">
       <div className="flex items-start gap-2.5">
         <ScanEye className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
         <div className="text-xs leading-relaxed text-brand-100">
-          <strong className="text-white">This is a scan.</strong> There's no text in the file, so
-          each page is sent to Gemini as an image and read back. That takes a few seconds a page
-          and can misread a figure — check every row in the preview before importing. Run a small
-          range first.
+          <strong className="text-white">This is a scan.</strong> Each page is read twice: Gemini
+          Pro extracts questions (numbers optional), then Gemini Flash rechecks the same page. Check
+          every row in the preview before importing. Run a small range first.
         </div>
       </div>
 
@@ -1089,21 +1117,92 @@ function VisionPanel({
       </div>
 
       {state.running && (
-        <div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-brand-900">
-            <div
-              className="h-full rounded-full bg-brand-200 transition-[width] duration-300"
-              style={{ width: `${pct}%` }}
+        <div className="space-y-3">
+          <div>
+            <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-brand-100">
+              <span>Overall</span>
+              <span>{overallPct}%</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-brand-900">
+              <div
+                className="h-full rounded-full bg-brand-200 transition-[width] duration-300"
+                style={{ width: `${overallPct}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <StageBar
+              label="1 · Extract"
+              detail="Gemini 2.5 Pro"
+              pct={stage1Pct}
+              active={p?.stage === 1}
+              done={p?.stage1Done ?? 0}
+              total={rangePages}
+            />
+            <StageBar
+              label="2 · Recheck"
+              detail="Gemini 2.5 Flash"
+              pct={stage2Pct}
+              active={p?.stage === 2}
+              done={p?.stage2Done ?? 0}
+              total={rangePages}
             />
           </div>
-          <div className="mt-1.5 flex items-center gap-2 text-[11px] font-semibold text-brand-100">
+
+          <div className="flex items-center gap-2 text-[11px] font-semibold text-brand-100">
             <Loader2 className="h-3 w-3 animate-spin" />
             {p
-              ? `Page ${p.page} · ${p.done} of ${p.total} read · ${p.found} question${p.found === 1 ? "" : "s"} so far`
+              ? `Page ${p.page} · Stage ${p.stage} (${p.stageLabel}) · ${p.found} question${p.found === 1 ? "" : "s"} so far`
               : "Rendering the first page…"}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function StageBar({
+  label,
+  detail,
+  pct,
+  active,
+  done,
+  total,
+}: {
+  label: string;
+  detail: string;
+  pct: number;
+  active: boolean;
+  done: number;
+  total: number;
+}) {
+  return (
+    <div
+      className={
+        "rounded-lg border px-3 py-2 " +
+        (active ? "border-brand-200/70 bg-brand-900/80" : "border-brand-400/30 bg-brand-900/40")
+      }
+    >
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold text-white">
+          {label}
+          {active ? " · running" : done >= total && total > 0 ? " · done" : ""}
+        </span>
+        <span className="text-[10px] font-semibold text-brand-200">
+          {done}/{total}
+        </span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-brand-800">
+        <div
+          className={
+            "h-full rounded-full transition-[width] duration-300 " +
+            (active ? "bg-brand-200" : "bg-brand-400")
+          }
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="mt-1 text-[10px] text-brand-200">{detail}</div>
     </div>
   );
 }

@@ -7,20 +7,28 @@ async function authHeader(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${token}` };
 }
 
+export type VisionClientStage = "extract" | "recheck";
+
 /**
- * Extracts SAT questions from one page image via Gemini (`/api/import/vision`).
- *
- * Drop-in replacement for the former OpenRouter `askWithImage` call in vision.ts.
+ * Calls `/api/import/vision` for stage-1 extract or stage-2 recheck.
  */
 export async function extractPageWithGemini(
   imageDataUrl: string,
-  opts: { signal?: AbortSignal } = {},
+  opts: {
+    signal?: AbortSignal;
+    stage?: VisionClientStage;
+    priorExtraction?: string;
+  } = {},
 ): Promise<string> {
   const response = await fetch("/api/import/vision", {
     method: "POST",
     headers: { "content-type": "application/json", ...(await authHeader()) },
     signal: opts.signal,
-    body: JSON.stringify({ imageDataUrl }),
+    body: JSON.stringify({
+      imageDataUrl,
+      stage: opts.stage ?? "extract",
+      priorExtraction: opts.priorExtraction,
+    }),
   });
 
   const data = (await response.json().catch(() => null)) as {

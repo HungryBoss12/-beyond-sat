@@ -4,43 +4,35 @@ import type { Draft, ParseDefaults } from "./parse";
 import { skillsFor, type Section } from "@/lib/sat";
 
 /**
- * The scanned-PDF import path: render a page, send it to Gemini, turn the JSON
- * back into drafts.
+ * Scanned-PDF import: render a page → Gemini extract → Gemini recheck → drafts.
  *
- * Only reached when `readPdfText` finds no text layer. A text PDF goes through
- * the deterministic reader — this costs a model call per page and can be wrong,
- * so it is the fallback, never the default.
- *
- * **One page at a time.** The 108-page sample fired concurrently at a `:free`
- * model rate-limits within seconds and burns the whole document with nothing to
- * show for it. Sequential, with a page range and a Stop button, is the only
- * version of this that finishes.
+ * Numbers, skills, and section labels are optional. Missing numbers are assigned
+ * sequentially after the run so the preview still has stable row IDs.
  */
+
+export type VisionStageId = 1 | 2;
 
 export type VisionProgress = {
   page: number;
   pagesDone: number;
   pagesTotal: number;
   questionsFound: number;
+  /** 1 = extract (Pro), 2 = recheck (Flash). */
+  stage: VisionStageId;
+  stageLabel: "Extract" | "Recheck";
+  /** Pages completed through stage 1. */
+  stage1Done: number;
+  /** Pages completed through stage 2. */
+  stage2Done: number;
 };
 
 export type VisionRun = {
   drafts: Draft[];
-  /** Per-page problems, shown above the preview rather than thrown. */
   notes: string[];
   stopped: boolean;
   pagesRead: number;
 };
 
-/**
- * Pull a JSON array out of a model response.
- *
- * The prompt asks for a bare array and most responses are one, but a free-tier
- * model will occasionally wrap it in a ```json fence or open with "Here is the
- * extracted data:". Slicing between the first `[` and the last `]` handles both
- * without a second round trip — and if there's no array at all, that's a page
- * note, not an exception, because one confused page must not abort a 40-page run.
- */
 function extractJsonArray(text: string): unknown[] | null {
   const start = text.indexOf("[");
   const end = text.lastIndexOf("]");
@@ -60,26 +52,30 @@ function asText(value: unknown): string {
   return String(value);
 }
 
-/**
- * One model object → one draft record.
- *
- * Section and skill are validated against the section the admin chose rather
- * than trusted: a vision model reliably reads the words on the page and much
- * less reliably picks a taxonomy label, and a Math skill on a Reading row is a
- * row the importer rejects with an error the editor then has to hand-fix.
- */
+/** Fingerprint for dedupe when printed numbers are missing or unreliable. */
+function contentKey(rec: Record<string, string>): string {
+  const text = (rec.question_text || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const choices = ["A", "B", "C", "D"]
+    .map((l) => (rec[`choice_${l}`] || "").toLowerCase().replace(/\s+/g, " ").trim())
+    .join("|");
+  return `${text}::${choices}`.slice(0, 400);
+}
+
 function itemToDraft(
   item: Record<string, unknown>,
   fallbackNumber: number,
   defaults: ParseDefaults,
-): Draft {
+): Draft | null {
   const warnings: string[] = [];
 
+  const questionText = asText(item.question_text ?? item.question ?? item.text).trim();
+  if (!questionText) return null;
+
   const rawNumber = Number(item.number ?? item.question_number ?? NaN);
-  const number =
-    Number.isFinite(rawNumber) && rawNumber > 0 ? Math.round(rawNumber) : fallbackNumber;
-  if (!Number.isFinite(rawNumber)) {
-    warnings.push("The model didn't give a question number — an answer key won't match this row.");
+  const hasPrintedNumber = Number.isFinite(rawNumber) && rawNumber > 0;
+  const number = hasPrintedNumber ? Math.round(rawNumber) : fallbackNumber;
+  if (!hasPrintedNumber) {
+    warnings.push("No printed number on the page — assigned a temporary number for this import.");
   }
 
   const section: Section =
@@ -91,20 +87,28 @@ function itemToDraft(
   const claimed = asText(item.skill).trim();
   let skill = defaults.skill;
   if (valid.includes(claimed)) skill = claimed;
-  else if (claimed)
-    warnings.push(`Skill "${claimed}" isn't valid for this section — using "${defaults.skill}".`);
+  else if (claimed) {
+    /* Soft: ignore invalid taxonomy instead of failing the row. */
+    warnings.push(`Skill "${claimed}" isn't in this section's list — using "${defaults.skill}".`);
+  }
 
   const choices = Array.isArray(item.choices)
     ? item.choices.map((c) => asText(c).trim()).filter(Boolean)
     : [];
 
+  const kindRaw = asText(item.kind).trim();
+  const kind =
+    kindRaw === "grid_in" || (kindRaw !== "multiple_choice" && choices.length === 0)
+      ? "grid_in"
+      : "multiple_choice";
+
   const rec: Record<string, string> = {
     section,
     skill,
     difficulty: defaults.difficulty,
-    kind: choices.length > 0 ? "multiple_choice" : "grid_in",
+    kind,
     prompt: asText(item.prompt),
-    question_text: asText(item.question_text ?? item.question ?? item.text).trim(),
+    question_text: questionText,
     correct: asText(item.correct ?? item.answer).trim(),
     explanation: asText(item.explanation),
     source_month: defaults.source_month,
@@ -114,7 +118,6 @@ function itemToDraft(
     rec[`choice_${String.fromCharCode(65 + i)}`] = text;
   });
 
-  if (!rec.question_text) warnings.push("The model returned no question text for this row.");
   if (rec.prompt.includes("[FIGURE NEEDED")) {
     warnings.push(
       "This question depends on a figure. Add an image URL, or the question will be unanswerable.",
@@ -129,13 +132,10 @@ export async function pageCount(file: Blob): Promise<number> {
 }
 
 /**
- * Run the vision extraction over a page range.
+ * Two-stage vision extraction over a page range.
  *
- * `shouldStop` is polled between pages and the same signal aborts the in-flight
- * request, so Stop takes effect on the current page rather than after it. Every
- * page that fails — a rate limit, a timeout, unparseable output — is recorded as
- * a note and the run continues: on a free tier, one 429 in the middle of a long
- * document is expected, and losing 40 successful pages to it is not acceptable.
+ * Stage 1 (Pro): find and transcribe questions.
+ * Stage 2 (Flash): recheck against the same image and correct misses.
  */
 export async function extractByVision(
   file: Blob,
@@ -151,10 +151,10 @@ export async function extractByVision(
   const drafts: Draft[] = [];
   const notes: string[] = [];
   let consecutiveFailures = 0;
-  /* Counted here rather than taken from the return value, because bailing out
-     early unwinds `renderPdfPages` and loses its own tally. */
   let pagesRead = 0;
   let lastPage = 0;
+  let stage1Done = 0;
+  let stage2Done = 0;
 
   const result = await renderPdfPages(file, {
     from: opts.from,
@@ -163,76 +163,124 @@ export async function extractByVision(
     onPage: async (image, index, total) => {
       pagesRead++;
       lastPage = image.page;
-      let content: string;
-      try {
-        content = await extractPageWithGemini(image.dataUrl, {
-          signal: opts.signal,
+
+      const report = (stage: VisionStageId, found: number) => {
+        opts.onProgress?.({
+          page: image.page,
+          pagesDone: index + 1,
+          pagesTotal: total,
+          questionsFound: found,
+          stage,
+          stageLabel: stage === 1 ? "Extract" : "Recheck",
+          stage1Done,
+          stage2Done,
         });
+      };
+
+      let extracted: string;
+      try {
+        report(1, drafts.length);
+        extracted = await extractPageWithGemini(image.dataUrl, {
+          signal: opts.signal,
+          stage: "extract",
+        });
+        stage1Done++;
+        report(1, drafts.length);
       } catch (err) {
         if ((err as Error)?.name === "AbortError") throw err;
         consecutiveFailures++;
-        notes.push(`Page ${image.page}: ${(err as Error)?.message ?? "the request failed"}.`);
-        /* Three in a row is a rate limit or a dead key, not a bad page. Carrying
-           on would send another hundred requests to something that is answering
-           none of them. */
+        notes.push(
+          `Page ${image.page} (extract): ${(err as Error)?.message ?? "the request failed"}.`,
+        );
         if (consecutiveFailures >= 3) {
           notes.push(
             `Stopped at page ${image.page} after three failed pages in a row — the model is rate-limiting or unavailable. Everything read so far is below; start the next run from page ${image.page - 2}.`,
           );
           throw new StopRun();
         }
-        opts.onProgress?.({
-          page: image.page,
-          pagesDone: index + 1,
-          pagesTotal: total,
-          questionsFound: drafts.length,
-        });
+        report(1, drafts.length);
         return;
       }
 
+      let content = extracted;
+      try {
+        report(2, drafts.length);
+        content = await extractPageWithGemini(image.dataUrl, {
+          signal: opts.signal,
+          stage: "recheck",
+          priorExtraction: extracted,
+        });
+        stage2Done++;
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") throw err;
+        notes.push(
+          `Page ${image.page} (recheck): ${(err as Error)?.message ?? "recheck failed"} — using extract result.`,
+        );
+        stage2Done++;
+      }
+
       consecutiveFailures = 0;
-      const items = extractJsonArray(content);
+      const items = extractJsonArray(content) ?? extractJsonArray(extracted);
       if (!items) {
         notes.push(`Page ${image.page}: the model didn't return usable JSON — skipped.`);
       } else {
         for (const raw of items) {
           if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
-          drafts.push(
-            itemToDraft(raw as Record<string, unknown>, drafts.length + 1, opts.defaults),
+          const draft = itemToDraft(
+            raw as Record<string, unknown>,
+            drafts.length + 1,
+            opts.defaults,
           );
+          if (draft) drafts.push(draft);
         }
       }
-      opts.onProgress?.({
-        page: image.page,
-        pagesDone: index + 1,
-        pagesTotal: total,
-        questionsFound: drafts.length,
-      });
+      report(2, drafts.length);
     },
   }).catch((err) => {
     if (err instanceof StopRun) return { rendered: pagesRead, total: pagesRead, stopped: true };
     throw err;
   });
 
-  /* Pages are extracted independently, so the same question can come back twice
-     when a passage spans a page break and the model repeats it. Keyed on the
-     printed number, first copy wins — the earlier page is the one that had the
-     question's own choices on it. */
-  const seen = new Set<number>();
-  const unique = drafts.filter((d) => {
-    if (seen.has(d.number)) return false;
-    seen.add(d.number);
-    return true;
-  });
+  /* Dedupe by printed number when both have one; otherwise by question text. */
+  const byNumber = new Map<number, Draft>();
+  const byContent = new Map<string, Draft>();
+  const unique: Draft[] = [];
+
+  for (const d of drafts) {
+    const key = contentKey(d.rec);
+    const warnNoNum = d.warnings.some((w) => w.includes("No printed number"));
+    if (!warnNoNum && byNumber.has(d.number)) continue;
+    if (byContent.has(key)) continue;
+    if (!warnNoNum) byNumber.set(d.number, d);
+    byContent.set(key, d);
+    unique.push(d);
+  }
+
   if (unique.length !== drafts.length) {
     notes.push(
-      `${drafts.length - unique.length} duplicate question number(s) across page boundaries were dropped.`,
+      `${drafts.length - unique.length} duplicate question(s) across page boundaries were dropped.`,
     );
+  }
+
+  /* Renumber gaps: keep printed numbers, fill missing with the next free ints. */
+  const used = new Set(
+    unique
+      .filter((d) => !d.warnings.some((w) => w.includes("No printed number")))
+      .map((d) => d.number),
+  );
+  let next = 1;
+  for (const d of unique) {
+    if (d.warnings.some((w) => w.includes("No printed number"))) {
+      while (used.has(next)) next++;
+      d.number = next;
+      used.add(next);
+      next++;
+    }
   }
 
   unique.sort((a, b) => a.number - b.number);
   notes.unshift(
-    `Read ${unique.length} question${unique.length === 1 ? "" : "s"} from ${pagesRead} page(s).`,
+    `Read ${unique.length} question${unique.length === 1 ? "" : "s"} from ${pagesRead} page(s) (extract + recheck).`,
   );
   if (result.stopped && lastPage) {
     notes.push(
@@ -243,7 +291,6 @@ export async function extractByVision(
   return { drafts: unique, notes, stopped: result.stopped, pagesRead };
 }
 
-/** Internal signal to unwind out of the page loop without looking like a crash. */
 class StopRun extends Error {
   constructor() {
     super("stopped");

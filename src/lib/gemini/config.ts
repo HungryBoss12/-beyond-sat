@@ -1,11 +1,16 @@
-/** Google AI Studio model for SAT page extraction (admin import). */
-export const GEMINI_IMPORT_MODEL = "gemini-2.5-pro";
+/** Stage 1 — careful extraction (stronger model). */
+export const GEMINI_IMPORT_EXTRACT_MODEL = "gemini-2.5-pro";
 
-/** Matches the vision task ceiling in src/lib/ai/router.ts. */
-export const GEMINI_IMPORT_MAX_OUTPUT_TOKENS = 1600;
+/** Stage 2 — independent recheck (second model). */
+export const GEMINI_IMPORT_RECHECK_MODEL = "gemini-2.5-flash";
 
-/** Matches the vision task temperature in src/lib/ai/router.ts. */
-export const GEMINI_IMPORT_TEMPERATURE = 0.3;
+/** Room for multi-question pages with long passages. */
+export const GEMINI_IMPORT_MAX_OUTPUT_TOKENS = 8192;
+
+export const GEMINI_IMPORT_TEMPERATURE = 0.2;
+
+/** @deprecated Prefer GEMINI_IMPORT_EXTRACT_MODEL */
+export const GEMINI_IMPORT_MODEL = GEMINI_IMPORT_EXTRACT_MODEL;
 
 const DATA_URL_RE = /^data:image\/(png|jpe?g|webp|gif);base64,/i;
 

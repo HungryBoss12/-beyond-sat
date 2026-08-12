@@ -4,6 +4,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
+import { appUrl } from "@/lib/app-url";
 
 export const Route = createFileRoute("/signin")({
   component: SignIn,
@@ -67,7 +68,7 @@ function SignIn() {
     }
     setResetting(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: appUrl("/reset-password"),
     });
     setResetting(false);
     if (error) setError(error.message);

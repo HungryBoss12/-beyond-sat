@@ -5,6 +5,7 @@ import { z } from "zod";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
+import { appUrl } from "@/lib/app-url";
 
 export const Route = createFileRoute("/signup")({
   component: SignUp,
@@ -87,7 +88,7 @@ function SignUp() {
       email: parsed.data.email,
       password: parsed.data.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: appUrl("/dashboard"),
         data: {
           first_name: parsed.data.first_name,
           last_name: parsed.data.last_name,

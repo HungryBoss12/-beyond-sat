@@ -44,6 +44,7 @@ import {
   FileText,
   ScanEye,
   Square,
+  Wrench,
   KeyRound,
 } from "lucide-react";
 
@@ -116,6 +117,18 @@ function AdminImport() {
   const [vision, setVision] = useState<VisionState | null>(null);
   const stopRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
+  const [fixing, setFixing] = useState(false);
+  const [fixProgress, setFixProgress] = useState<{
+    index: number;
+    total: number;
+    draftNumber: number;
+    stage: 1 | 2;
+    stageLabel: "Fix" | "Recheck";
+    stage1Done: number;
+    stage2Done: number;
+    fixed: number;
+    failed: number;
+  } | null>(null);
 
   // --- answer key ----------------------------------------------------------
   const [keyText, setKeyText] = useState("");
@@ -355,6 +368,57 @@ function AdminImport() {
         ? current.map((d, i) => (i === index ? { ...d, rec: { ...d.rec, correct: value } } : d))
         : current,
     );
+  }
+
+  async function runFixBroken() {
+    if (!drafts || fixing || vision?.running) return;
+    const targets = previewRows
+      .filter((p) => {
+        if (p.draftIndex == null) return false;
+        const r = p.row;
+        if (!r.question || r.errors.length > 0) return true;
+        const actionable = r.warnings.filter(
+          (w) =>
+            !w.includes("Duplicate") &&
+            !w.includes("already exists") &&
+            !w.includes("Repaired by Gemini"),
+        );
+        return actionable.length > 0;
+      })
+      .map((p) => ({
+        draftIndex: p.draftIndex!,
+        draft: drafts[p.draftIndex!],
+        errors: p.row.errors,
+        warnings: p.row.warnings,
+      }));
+
+    if (targets.length === 0) return;
+
+    stopRef.current = false;
+    abortRef.current = new AbortController();
+    setFixing(true);
+    setFixProgress(null);
+    setReadError(null);
+
+    try {
+      const { fixBrokenDrafts } = await import("@/lib/import/fix-broken");
+      const out = await fixBrokenDrafts(drafts, targets, {
+        signal: abortRef.current.signal,
+        shouldStop: () => stopRef.current,
+        onProgress: setFixProgress,
+      });
+      setDrafts(out.drafts);
+      setNotes((current) => [...current, ...out.notes]);
+      await fetchExisting();
+    } catch (err) {
+      if ((err as Error)?.name !== "AbortError") {
+        setReadError((err as Error)?.message ?? "Broken rows could not be fixed.");
+      }
+    } finally {
+      abortRef.current = null;
+      setFixing(false);
+      setFixProgress(null);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -714,7 +778,7 @@ function AdminImport() {
                 </div>
                 <button
                   onClick={() => docRef.current?.click()}
-                  disabled={reading != null || vision?.running}
+                  disabled={reading != null || vision?.running || fixing}
                   className="btn-brand mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
                 >
                   {reading ? (
@@ -929,6 +993,13 @@ function AdminImport() {
           onAnswerChange={drafts ? setDraftAnswer : undefined}
           drafts={drafts}
           setLabel={makeSet && title.trim() ? title.trim() : null}
+          fixing={fixing}
+          fixProgress={fixProgress}
+          onFixBroken={drafts ? runFixBroken : undefined}
+          onStopFix={() => {
+            stopRef.current = true;
+            abortRef.current?.abort();
+          }}
         />
       )}
 
@@ -1117,12 +1188,7 @@ function VisionPanel({
       </div>
 
       {state.running && (
-        <div
-          className="space-y-3"
-          role="status"
-          aria-live="polite"
-          aria-label="Import progress"
-        >
+        <div className="space-y-3" role="status" aria-live="polite" aria-label="Import progress">
           <div>
             <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-brand-100">
               <span>Overall</span>
@@ -1299,6 +1365,10 @@ function PreviewPanel({
   onAnswerChange,
   drafts,
   setLabel,
+  fixing,
+  fixProgress,
+  onFixBroken,
+  onStopFix,
 }: {
   rows: PreviewRow[];
   ignoredColumns: string[];
@@ -1318,11 +1388,50 @@ function PreviewPanel({
   onAnswerChange?: (index: number, value: string) => void;
   drafts: Draft[] | null;
   setLabel: string | null;
+  fixing?: boolean;
+  fixProgress?: {
+    index: number;
+    total: number;
+    draftNumber: number;
+    stage: 1 | 2;
+    stageLabel: "Fix" | "Recheck";
+    stage1Done: number;
+    stage2Done: number;
+    fixed: number;
+    failed: number;
+  } | null;
+  onFixBroken?: () => void;
+  onStopFix?: () => void;
 }) {
   const [showOnlyProblems, setShowOnlyProblems] = useState(false);
   const visible = showOnlyProblems
     ? rows.filter((p) => !p.row.question || p.row.warnings.length > 0)
     : rows;
+
+  const brokenCount = rows.filter((p) => {
+    if (p.draftIndex == null) return false;
+    if (!p.row.question || p.row.errors.length > 0) return true;
+    return p.row.warnings.some(
+      (w) =>
+        !w.includes("Duplicate") &&
+        !w.includes("already exists") &&
+        !w.includes("Repaired by Gemini"),
+    );
+  }).length;
+
+  const fixTotal = fixProgress?.total ?? Math.max(brokenCount, 1);
+  const stage1Pct = fixProgress
+    ? Math.min(100, Math.round((fixProgress.stage1Done / fixTotal) * 100))
+    : 0;
+  const stage2Pct = fixProgress
+    ? Math.min(100, Math.round((fixProgress.stage2Done / fixTotal) * 100))
+    : 0;
+  const overallFixPct = fixProgress
+    ? Math.min(
+        100,
+        Math.round(((fixProgress.stage1Done + fixProgress.stage2Done) / (fixTotal * 2)) * 100),
+      )
+    : 0;
 
   return (
     <div className="rise-in space-y-4 rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
@@ -1367,21 +1476,92 @@ function PreviewPanel({
             </label>
           )}
         </div>
-        <button
-          onClick={onImport}
-          disabled={importing || stats.importable === 0}
-          className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-        >
-          {importing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Upload className="h-4 w-4" />
-          )}
-          {importing
-            ? `Importing ${progress.done}/${progress.total}…`
-            : `Import ${stats.importable} question${stats.importable === 1 ? "" : "s"}`}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onFixBroken &&
+            brokenCount > 0 &&
+            (fixing ? (
+              <button
+                onClick={onStopFix}
+                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/60 bg-brand-900 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-700"
+              >
+                <Square className="h-3.5 w-3.5" /> Stop fix
+              </button>
+            ) : (
+              <button
+                onClick={onFixBroken}
+                disabled={importing}
+                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/50 bg-brand-800 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-400 disabled:opacity-40"
+              >
+                <Wrench className="h-4 w-4" />
+                Fix {brokenCount} broken with AI
+              </button>
+            ))}
+          <button
+            onClick={onImport}
+            disabled={importing || fixing || stats.importable === 0}
+            className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            {importing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            {importing
+              ? `Importing ${progress.done}/${progress.total}…`
+              : `Import ${stats.importable} question${stats.importable === 1 ? "" : "s"}`}
+          </button>
+        </div>
       </div>
+
+      {fixing && (
+        <div
+          className="space-y-3 rounded-xl border border-brand-400/40 bg-brand-800 p-4"
+          role="status"
+          aria-live="polite"
+          aria-label="Fix progress"
+        >
+          <div className="text-xs leading-relaxed text-brand-100">
+            <strong className="text-white">Two-factor repair.</strong> Gemini Pro fixes each broken
+            row, then Gemini Flash rechecks it. Review the preview after the pass.
+          </div>
+          <div>
+            <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-brand-100">
+              <span>Overall</span>
+              <span>{overallFixPct}%</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-brand-900">
+              <div
+                className="h-full rounded-full bg-brand-200 transition-[width] duration-300"
+                style={{ width: `${overallFixPct}%` }}
+              />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <StageBar
+              label="1 · Fix"
+              detail="Gemini 2.5 Pro"
+              pct={stage1Pct}
+              active={fixProgress?.stage === 1}
+              done={fixProgress?.stage1Done ?? 0}
+              total={fixTotal}
+            />
+            <StageBar
+              label="2 · Recheck"
+              detail="Gemini 2.5 Flash"
+              pct={stage2Pct}
+              active={fixProgress?.stage === 2}
+              done={fixProgress?.stage2Done ?? 0}
+              total={fixTotal}
+            />
+          </div>
+          <div className="flex items-center gap-2 text-[11px] font-semibold text-brand-100">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            {fixProgress
+              ? `Q${fixProgress.draftNumber} · ${fixProgress.index}/${fixProgress.total} · Stage ${fixProgress.stage} (${fixProgress.stageLabel}) · ${fixProgress.fixed} fixed`
+              : "Starting repair…"}
+          </div>
+        </div>
+      )}
 
       {setLabel && (
         <div className="rounded-lg bg-brand-800 px-3 py-2 text-xs text-brand-100">
@@ -1391,13 +1571,15 @@ function PreviewPanel({
         </div>
       )}
 
-      {stats.invalid > 0 && (
+      {stats.invalid > 0 && !fixing && (
         <div className="rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
           {stats.invalid} row{stats.invalid === 1 ? "" : "s"} {stats.invalid === 1 ? "has" : "have"}{" "}
           an error and won't be imported.
-          {onAnswerChange
-            ? " Most will be a missing answer — paste a key above, or set the answer on the row itself."
-            : " Fix them in your source and paste again — the rows that are ready can be imported now either way."}
+          {onFixBroken
+            ? " Use Fix broken with AI, paste an answer key, or set the answer on the row."
+            : onAnswerChange
+              ? " Most will be a missing answer — paste a key above, or set the answer on the row itself."
+              : " Fix them in your source and paste again — the rows that are ready can be imported now either way."}
         </div>
       )}
 

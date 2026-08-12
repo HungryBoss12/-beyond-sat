@@ -14,3 +14,4 @@ Overrides `MASTER.md` for `/admin/import`.
 - `role="status"` / `aria-live="polite"` on progress region
 - Focus-visible rings on Stop / Read actions
 - Prefer completeness notes over silent empty results
+- **Fix broken with AI** on the preview: two-factor repair (Pro fix → Flash recheck) for invalid/warning rows

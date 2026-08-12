@@ -129,3 +129,48 @@ Rules:
 - Do not invent answers or explanations that are not printed.
 - Prefer completeness: include readable questions even without numbers or skill labels.
 - If the first pass is already accurate, return it unchanged (still as a JSON array).`;
+
+/**
+ * Stage 1 — repair a single broken import draft (validation errors / incomplete fields).
+ */
+export const VISION_FIX_PROMPT = `You are repairing one Digital SAT question draft that failed import validation.
+
+You receive:
+- the current draft fields (flat key/value record)
+- validation errors and warnings
+
+Return ONLY a single JSON object (not an array). No markdown fences.
+
+Required object fields (use these exact keys):
+  section         "math" or "reading_writing"
+  skill           One valid skill for that section:
+                    math: "Algebra", "Advanced Math", "Problem-Solving and Data Analysis", "Geometry and Trigonometry"
+                    reading_writing: "Craft and Structure", "Information and Ideas", "Standard English Conventions", "Expression of Ideas"
+  difficulty      One of "E","M","H","A","B","C","S" (or easy/medium/hard mapped to E/M/H)
+  kind            "multiple_choice" or "grid_in"
+  question_text   Non-empty stem
+  choice_A … choice_D  For multiple_choice fill at least A and B (prefer A–D). Omit for grid_in.
+  correct         Letter A–D for multiple_choice, or the numeric/grid value for grid_in
+  prompt          Optional passage/context
+  explanation     Optional; only if you can write a short correct explanation from the stem
+
+Rules:
+- Fix every listed error when possible.
+- Do not invent a different question — repair the given one.
+- If choices are missing but the stem looks multiple-choice, reconstruct plausible A–D only when they are implied; otherwise keep grid_in.
+- Prefer keeping existing correct text when it is already valid.
+- Mathematics: LaTeX in $…$ with doubled backslashes in JSON.`;
+
+/**
+ * Stage 2 — independent recheck of a repaired draft.
+ */
+export const VISION_FIX_RECHECK_PROMPT = `You are verifying a repaired SAT question draft against the original broken draft and its validation errors.
+
+Return ONLY a single corrected JSON object with the same keys as the repair pass
+(section, skill, difficulty, kind, question_text, choice_A–D as needed, correct, prompt, explanation).
+
+Rules:
+- Ensure every original validation error is resolved.
+- Do not invent a new question; keep the same intent as the original draft.
+- If the first repair is already valid, return it unchanged.
+- Never leave question_text or correct empty for multiple_choice.`;

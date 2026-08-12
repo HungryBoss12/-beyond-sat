@@ -11,89 +11,57 @@ import {
   TSV_TEMPLATE,
   TSV_COLUMNS,
   type ParseResult,
-  type RowResult,
 } from "@/lib/question-import";
 import { readDocx } from "@/lib/import/docx";
 import { blocksToDrafts, type Draft, type ParseDefaults } from "@/lib/import/parse";
 import { parseAnswerKey, applyAnswerKey, describeKey } from "@/lib/import/answer-key";
 import {
-  SECTION_LABEL,
-  difficultyColor,
   skillsFor,
   RW_SKILLS,
-  MATH_SKILLS,
   MONTHS,
   LETTER_DIFFICULTIES,
   formatSourceDate,
   type Section,
   type LetterDifficulty,
 } from "@/lib/sat";
-import { MathText } from "@/components/MathText";
+import {
+  AnswerKeyBox,
+  CHUNK,
+  CONTROL_CLASS,
+  CopyBox,
+  Field,
+  mergeDrafts,
+  PreviewPanel,
+  VisionPanel,
+  WizardSteps,
+  type FixProgress,
+  type ImportWizardStep,
+  type Mode,
+  type VisionState,
+} from "@/components/admin-import";
 import {
   AlertTriangle,
   ArrowLeft,
+  ArrowRight,
+  Braces,
   Check,
   ClipboardPaste,
-  Copy,
+  FileText,
   FileUp,
   Loader2,
   Table2,
-  Braces,
-  Upload,
   X,
-  FileText,
-  ScanEye,
-  Square,
-  Wrench,
-  KeyRound,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/import")({
   component: AdminImport,
-  head: () => ({ meta: [{ title: "Import questions — BeyondSAT" }] }),
+  head: () => ({ meta: [{ title: "Add tests — BeyondSAT" }] }),
 });
 
-type Mode = "upload" | "sheet" | "json";
-
-const CONTROL_CLASS =
-  "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none";
-
-/** Rows per insert request. Keeps the payload well under any body limit. */
-const CHUNK = 100;
-
-/**
- * A row in the preview, plus the draft it came from.
- *
- * `draftIndex` is what makes the per-row answer selector possible: the paste
- * paths have no editable source (the textarea *is* the source), but a document
- * import's drafts live in state, so a row can write back into the exact draft it
- * was validated from.
- */
-type PreviewRow = { row: RowResult; draftIndex: number | null };
-
-/** What the vision run is doing, so the panel can show it without a second state. */
-type VisionState = {
-  file: File;
-  pages: number;
-  from: number;
-  to: number;
-  running: boolean;
-  progress: {
-    page: number;
-    done: number;
-    total: number;
-    found: number;
-    stage: 1 | 2;
-    stageLabel: "Extract" | "Recheck";
-    stage1Done: number;
-    stage2Done: number;
-  } | null;
-};
-
 function AdminImport() {
+  const [step, setStep] = useState<ImportWizardStep>("setup");
   const [mode, setMode] = useState<Mode>("upload");
 
-  // --- test-set header -----------------------------------------------------
   const [makeSet, setMakeSet] = useState(true);
   const [title, setTitle] = useState("");
   const [section, setSection] = useState<Section>("reading_writing");
@@ -103,12 +71,10 @@ function AdminImport() {
   const [month, setMonth] = useState<number | null>(null);
   const [year, setYear] = useState<number | null>(new Date().getFullYear());
 
-  // --- paste paths ---------------------------------------------------------
   const [text, setText] = useState("");
   const [checking, setChecking] = useState(false);
   const [parsed, setParsed] = useState<ParseResult | null>(null);
 
-  // --- document path -------------------------------------------------------
   const [drafts, setDrafts] = useState<Draft[] | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
   const [fileName, setFileName] = useState("");
@@ -118,23 +84,11 @@ function AdminImport() {
   const stopRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const [fixing, setFixing] = useState(false);
-  const [fixProgress, setFixProgress] = useState<{
-    index: number;
-    total: number;
-    draftNumber: number;
-    stage: 1 | 2;
-    stageLabel: "Fix" | "Recheck";
-    stage1Done: number;
-    stage2Done: number;
-    fixed: number;
-    failed: number;
-  } | null>(null);
+  const [fixProgress, setFixProgress] = useState<FixProgress | null>(null);
 
-  // --- answer key ----------------------------------------------------------
   const [keyText, setKeyText] = useState("");
   const [keySummary, setKeySummary] = useState<string | null>(null);
 
-  // --- shared --------------------------------------------------------------
   const [existingKeys, setExistingKeys] = useState<Set<string>>(new Set());
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -145,11 +99,10 @@ function AdminImport() {
     errors: string[];
     setTitle?: string;
   } | null>(null);
+
   const fileRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
 
-  /* An in-flight vision run outliving the screen would keep firing requests at
-     the model with nothing left to render them into. */
   useEffect(
     () => () => {
       stopRef.current = true;
@@ -158,8 +111,6 @@ function AdminImport() {
     [],
   );
 
-  /* Only the columns needed for the dedupe key. `select("*")` would 403 here:
-     the answer-key columns are revoked at column level. */
   async function fetchExisting(): Promise<Set<string>> {
     const keys = new Set<string>();
     const { data, error } = await supabase
@@ -175,7 +126,7 @@ function AdminImport() {
     return keys;
   }
 
-  function resetOutput() {
+  function clearExtracted() {
     setParsed(null);
     setDrafts(null);
     setNotes([]);
@@ -183,6 +134,7 @@ function AdminImport() {
     setResult(null);
     setKeySummary(null);
     setVision(null);
+    setFileName("");
   }
 
   function defaults(): ParseDefaults {
@@ -195,13 +147,17 @@ function AdminImport() {
     };
   }
 
-  // -------------------------------------------------------------------------
-  // Paste paths
-  // -------------------------------------------------------------------------
+  const hasRows = Boolean((drafts && drafts.length > 0) || (parsed && parsed.rows.length > 0));
 
-  /* Parsing is synchronous, but the existing-question fetch for duplicate
-     detection isn't — so "Check" is async and the button shows a spinner. */
-  async function check() {
+  const unlocked = useMemo(() => {
+    const s = new Set<ImportWizardStep>(["setup", "source"]);
+    s.add("extract");
+    if (hasRows || vision) s.add("answers");
+    if (hasRows) s.add("review");
+    return s;
+  }, [hasRows, vision]);
+
+  async function checkPaste() {
     setChecking(true);
     setResult(null);
     setDrafts(null);
@@ -214,47 +170,49 @@ function AdminImport() {
     const keys = await fetchExisting();
     setParsed({ ...base, rows: flagDuplicates(base.rows, keys) });
     setChecking(false);
+    setStep("review");
   }
 
-  function loadFile(f: File) {
+  function loadSheetFile(f: File) {
     const reader = new FileReader();
     reader.onload = () => {
       setText(String(reader.result ?? ""));
-      resetOutput();
-      /* Switch tab to match what was dropped, so a .json file doesn't get
-         handed to the spreadsheet parser. */
+      clearExtracted();
       if (/\.json$/i.test(f.name)) setMode("json");
-      else if (/\.(tsv|csv|txt)$/i.test(f.name)) setMode("sheet");
+      else setMode("sheet");
     };
     reader.readAsText(f);
   }
 
-  // -------------------------------------------------------------------------
-  // Document path
-  // -------------------------------------------------------------------------
+  async function finishDocument(blocks: string[], extraNotes: string[] = []) {
+    const out = blocksToDrafts(blocks, defaults());
+    setDrafts(out.drafts);
+    setNotes([...extraNotes, ...out.notes]);
+    if (out.drafts.length > 0) {
+      await fetchExisting();
+      setStep("answers");
+    }
+  }
 
   async function loadDocument(f: File) {
-    resetOutput();
+    clearExtracted();
     setFileName(f.name);
     setKeyText("");
+    setMode("upload");
 
     try {
       if (/\.docx$/i.test(f.name)) {
         setReading("Reading the document…");
         const blocks = await readDocx(f);
-        finishDocument(blocks);
+        await finishDocument(blocks);
         return;
       }
 
       if (/\.pdf$/i.test(f.name)) {
         setReading("Looking for a text layer…");
-        /* Loaded on demand rather than imported at the top: pdfjs-dist is ~1 MB
-           and only this branch needs it, so the admin screen doesn't carry it. */
         const { readPdfText } = await import("@/lib/import/pdf");
         const out = await readPdfText(f, (p, t) => setReading(`Reading page ${p} of ${t}…`));
         if (out.scanned) {
-          /* No usable text layer: this is a photocopy. Hand it to the vision
-             panel rather than producing 108 pages of empty blocks. */
           setReading(null);
           setNotes([
             `This PDF has no text layer — it's a scan of ${out.pages} page${out.pages === 1 ? "" : "s"}. Reading it uses Gemini, one page at a time.`,
@@ -269,16 +227,16 @@ function AdminImport() {
           });
           return;
         }
-        finishDocument(out.blocks, [`Read the text layer of ${out.pages} page(s) — no AI needed.`]);
+        await finishDocument(out.blocks, [
+          `Read the text layer of ${out.pages} page(s) — no AI needed.`,
+        ]);
         return;
       }
 
-      /* Plain text and markdown: blank lines are the paragraph boundaries, which
-         is the same shape `blocksToDrafts` gets from a .docx. */
       if (/\.(txt|md)$/i.test(f.name)) {
         setReading("Reading the document…");
         const raw = await f.text();
-        finishDocument(
+        await finishDocument(
           raw
             .replace(/\r\n?/g, "\n")
             .split(/\n\s*\n/)
@@ -289,20 +247,13 @@ function AdminImport() {
       }
 
       setReadError(
-        `"${f.name}" isn't a format this can read. Upload a .docx, a .pdf, or a .txt — or use the Spreadsheet or JSON tab.`,
+        `"${f.name}" isn't a format this can read. Upload a .docx, a .pdf, or a .txt — or use Spreadsheet / JSON.`,
       );
     } catch (err) {
       setReadError((err as Error)?.message ?? "That file couldn't be read.");
     } finally {
       setReading(null);
     }
-  }
-
-  async function finishDocument(blocks: string[], extraNotes: string[] = []) {
-    const out = blocksToDrafts(blocks, defaults());
-    setDrafts(out.drafts);
-    setNotes([...extraNotes, ...out.notes]);
-    if (out.drafts.length > 0) await fetchExisting();
   }
 
   async function runVision() {
@@ -339,11 +290,10 @@ function AdminImport() {
               : v,
           ),
       });
-      /* Appended, not replaced: a 108-page scan is read in batches, and the
-         second batch must not throw away the first. */
       setDrafts((current) => mergeDrafts(current ?? [], out.drafts));
       setNotes((current) => [...current, ...out.notes]);
       await fetchExisting();
+      if (out.drafts.length > 0) setStep("answers");
     } catch (err) {
       if ((err as Error)?.name !== "AbortError") {
         setReadError((err as Error)?.message ?? "The scan couldn't be read.");
@@ -370,6 +320,31 @@ function AdminImport() {
     );
   }
 
+  const previewRows = useMemo(() => {
+    if (drafts) {
+      const base = drafts.map((d) => {
+        const r = validateRecord(d.rec, d.number);
+        return { ...r, warnings: [...d.warnings, ...r.warnings] };
+      });
+      return flagDuplicates(base, existingKeys).map((row, i) => ({ row, draftIndex: i as number | null }));
+    }
+    return (parsed?.rows ?? []).map((row) => ({ row, draftIndex: null as number | null }));
+  }, [drafts, parsed, existingKeys]);
+
+  const stats = useMemo(() => {
+    const rows = previewRows.map((p) => p.row);
+    const valid = rows.filter((r) => r.question);
+    const dupes = valid.filter((r) => r.duplicate);
+    return {
+      total: rows.length,
+      valid: valid.length,
+      invalid: rows.length - valid.length,
+      warnings: valid.filter((r) => r.warnings.length > 0).length,
+      duplicates: dupes.length,
+      importable: skipDuplicates ? valid.length - dupes.length : valid.length,
+    };
+  }, [previewRows, skipDuplicates]);
+
   async function runFixBroken() {
     if (!drafts || fixing || vision?.running) return;
     const targets = previewRows
@@ -377,13 +352,12 @@ function AdminImport() {
         if (p.draftIndex == null) return false;
         const r = p.row;
         if (!r.question || r.errors.length > 0) return true;
-        const actionable = r.warnings.filter(
+        return r.warnings.some(
           (w) =>
             !w.includes("Duplicate") &&
             !w.includes("already exists") &&
             !w.includes("Repaired by Gemini"),
         );
-        return actionable.length > 0;
       })
       .map((p) => ({
         draftIndex: p.draftIndex!,
@@ -391,7 +365,6 @@ function AdminImport() {
         errors: p.row.errors,
         warnings: p.row.warnings,
       }));
-
     if (targets.length === 0) return;
 
     stopRef.current = false;
@@ -421,49 +394,10 @@ function AdminImport() {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Preview rows — one shape, whichever path produced them
-  // -------------------------------------------------------------------------
-
-  const previewRows = useMemo<PreviewRow[]>(() => {
-    if (drafts) {
-      /* Validated from scratch on every render, so a row can never hold a stale
-         error after the answer key or a per-row selector changes it. The
-         document's own question number is used as the row index — that is what
-         an answer key refers to and what the editor is looking at on paper. */
-      const base = drafts.map((d) => {
-        const r = validateRecord(d.rec, d.number);
-        return { ...r, warnings: [...d.warnings, ...r.warnings] };
-      });
-      return flagDuplicates(base, existingKeys).map((row, i) => ({ row, draftIndex: i }));
-    }
-    return (parsed?.rows ?? []).map((row) => ({ row, draftIndex: null }));
-  }, [drafts, parsed, existingKeys]);
-
-  const stats = useMemo(() => {
-    const rows = previewRows.map((p) => p.row);
-    const valid = rows.filter((r) => r.question);
-    const dupes = valid.filter((r) => r.duplicate);
-    return {
-      total: rows.length,
-      valid: valid.length,
-      invalid: rows.length - valid.length,
-      warnings: valid.filter((r) => r.warnings.length > 0).length,
-      duplicates: dupes.length,
-      importable: skipDuplicates ? valid.length - dupes.length : valid.length,
-    };
-  }, [previewRows, skipDuplicates]);
-
-  // -------------------------------------------------------------------------
-  // Import
-  // -------------------------------------------------------------------------
-
   async function runImport() {
     const rows = previewRows
       .map((p) => p.row)
-      .filter((r) => r.question && (!skipDuplicates || !r.duplicate)) as (RowResult & {
-      question: NonNullable<RowResult["question"]>;
-    })[];
+      .filter((r) => r.question && (!skipDuplicates || !r.duplicate));
     if (rows.length === 0) return;
 
     setImporting(true);
@@ -476,16 +410,12 @@ function AdminImport() {
     let inserted = 0;
     let failed = 0;
     const errors: string[] = [];
-    /* Collected in document order so `test_questions.position` reproduces the
-       paper. A row that failed simply isn't in the list, so the set has no gap. */
     const insertedIds: string[] = [];
 
     const payloadFor = (r: (typeof rows)[number]) => ({
-      ...r.question,
-      /* The header date is a fallback, not an override: a spreadsheet that
-         carries its own source date per row keeps it. */
-      source_month: r.question.source_month ?? month ?? null,
-      source_year: r.question.source_year ?? year ?? null,
+      ...r.question!,
+      source_month: r.question!.source_month ?? month ?? null,
+      source_year: r.question!.source_year ?? year ?? null,
       created_by: uid,
     });
 
@@ -496,8 +426,6 @@ function AdminImport() {
         .insert(slice.map(payloadFor))
         .select("id");
       if (error) {
-        /* One bad row rejects its whole chunk, so fall back to row-by-row for
-           this chunk to salvage the good ones and name the ones that failed. */
         for (const r of slice) {
           const { data: one, error: e2 } = await supabase
             .from("questions")
@@ -537,7 +465,7 @@ function AdminImport() {
         .single();
       if (te) {
         errors.push(
-          `The questions imported, but the test set couldn't be created: ${te.message}. Build it by hand in Tests.`,
+          `The questions imported, but the test set couldn't be created: ${te.message}. Open Tests to build it by hand.`,
         );
       } else {
         const { error: le } = await supabase.from("test_questions").insert(
@@ -560,1201 +488,574 @@ function AdminImport() {
     setImporting(false);
     setResult({ inserted, failed, errors, setTitle: createdSet });
     if (failed === 0 && errors.length === 0) {
-      /* A clean run has nothing left to act on — clear the input so the same
-         batch can't be imported twice by pressing the button again. */
       setText("");
       setKeyText("");
       setTitle("");
-      resetOutput();
+      clearExtracted();
       setFileName("");
+      setStep("setup");
     }
   }
 
   const skills = skillsFor(section);
   const sourceLabel = formatSourceDate(month, year);
 
+  function chooseSource(next: Mode) {
+    if (next === mode) return;
+    if (hasRows || vision) {
+      const ok = window.confirm(
+        "Switching source clears extracted questions on this page. Continue?",
+      );
+      if (!ok) return;
+    }
+    setMode(next);
+    clearExtracted();
+    setText("");
+    setStep("extract");
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          to="/admin/questions"
-          className="group inline-flex items-center gap-2 text-xs font-bold text-brand-600 hover:text-brand-800"
-        >
-          <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
-          Back to questions
-        </Link>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Link
+            to="/admin/questions"
+            className="group inline-flex items-center gap-2 text-xs font-bold text-brand-600 hover:text-brand-800"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
+            Back to questions
+          </Link>
+          <h1 className="mt-2 text-2xl font-black tracking-tight text-brand-900">Add a test</h1>
+          <p className="mt-1 max-w-2xl text-sm text-brand-600">
+            One path from paper or paste → extract → answers → review → bank
+            {makeSet ? " + test set" : ""}.
+          </p>
+        </div>
+        {result?.setTitle && (
+          <Link
+            to="/admin/tests"
+            className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
+          >
+            Open Tests <ArrowRight className="h-4 w-4" />
+          </Link>
+        )}
       </div>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* Test set header                                                   */}
-      {/* ---------------------------------------------------------------- */}
-      <div className="rise-in rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold text-white">Name and date this test</h2>
-            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-brand-100">
-              These settings label every question in the upload and, if you leave the box ticked,
-              group them into one test set. Students pick sets by date on the practice screen —{" "}
-              <strong className="text-white">{sourceLabel ?? "set a month and year"}</strong>.
-            </p>
-          </div>
-          <label className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-brand-100">
-            <input
-              type="checkbox"
-              checked={makeSet}
-              onChange={(e) => setMakeSet(e.target.checked)}
-              className="h-4 w-4 accent-brand-200 [color-scheme:dark]"
-            />
-            Create a test set
-          </label>
-        </div>
+      <WizardSteps step={step} unlocked={unlocked} onStepClick={setStep} />
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <Field label="Test name">
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="June 2025 · Reading & Writing"
-              disabled={!makeSet}
-              className={CONTROL_CLASS + " disabled:opacity-40"}
-            />
-          </Field>
-          <Field label="Source date">
-            <div className="flex gap-1">
+      {step === "setup" && (
+        <div className="rise-in rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-white">1 · Setup</h2>
+              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-brand-100">
+                Label the batch and optionally create a dated test set students can open in
+                Practice —{" "}
+                <strong className="text-white">{sourceLabel ?? "set a month and year"}</strong>.
+              </p>
+            </div>
+            <label className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-brand-100">
+              <input
+                type="checkbox"
+                checked={makeSet}
+                onChange={(e) => setMakeSet(e.target.checked)}
+                className="h-4 w-4 accent-brand-200 [color-scheme:dark]"
+              />
+              Create a test set
+            </label>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <Field label="Test name">
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="June 2025 · Reading & Writing"
+                disabled={!makeSet}
+                className={CONTROL_CLASS + " disabled:opacity-40"}
+              />
+            </Field>
+            <Field label="Source date">
+              <div className="flex gap-1">
+                <select
+                  value={month ?? ""}
+                  onChange={(e) => setMonth(e.target.value ? Number(e.target.value) : null)}
+                  className={CONTROL_CLASS + " flex-1 px-2"}
+                >
+                  <option value="">Month</option>
+                  {MONTHS.map((m, i) => (
+                    <option key={m} value={i + 1}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={2000}
+                  max={2099}
+                  value={year ?? ""}
+                  onChange={(e) => setYear(e.target.value ? Number(e.target.value) : null)}
+                  placeholder="Year"
+                  className={CONTROL_CLASS + " w-24 px-2"}
+                />
+              </div>
+            </Field>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Field label="Section">
               <select
-                value={month ?? ""}
-                onChange={(e) => setMonth(e.target.value ? Number(e.target.value) : null)}
-                className={CONTROL_CLASS + " flex-1 px-2"}
+                value={section}
+                onChange={(e) => {
+                  const s = e.target.value as Section;
+                  setSection(s);
+                  setSkill(skillsFor(s)[0]);
+                }}
+                className={CONTROL_CLASS}
               >
-                <option value="">Month</option>
-                {MONTHS.map((m, i) => (
-                  <option key={m} value={i + 1}>
-                    {m}
+                <option value="reading_writing">Reading &amp; Writing</option>
+                <option value="math">Math</option>
+              </select>
+            </Field>
+            <Field label="Module">
+              <select
+                value={module}
+                onChange={(e) => setModule(Number(e.target.value) as 1 | 2)}
+                disabled={!makeSet}
+                className={CONTROL_CLASS + " disabled:opacity-40"}
+              >
+                <option value={1}>Module 1</option>
+                <option value={2}>Module 2</option>
+              </select>
+            </Field>
+            <Field label="Difficulty">
+              <select
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value as LetterDifficulty)}
+                className={CONTROL_CLASS}
+              >
+                {LETTER_DIFFICULTIES.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
                   </option>
                 ))}
               </select>
-              <input
-                type="number"
-                min={2000}
-                max={2099}
-                value={year ?? ""}
-                onChange={(e) => setYear(e.target.value ? Number(e.target.value) : null)}
-                placeholder="Year"
-                className={CONTROL_CLASS + " w-24 px-2"}
+            </Field>
+            <Field label="Default skill">
+              <select
+                value={skill}
+                onChange={(e) => setSkill(e.target.value)}
+                className={CONTROL_CLASS}
+              >
+                {skills.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          <div className="mt-5 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setStep("source")}
+              className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Continue <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === "source" && (
+        <div className="rise-in space-y-4">
+          <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
+            <h2 className="text-sm font-bold text-white">2 · Choose a source</h2>
+            <p className="mt-1 text-xs text-brand-100">
+              Pick how questions enter the pipeline. You can change this later (it clears extract
+              results).
+            </p>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <SourceCard
+                active={mode === "upload"}
+                icon={<FileText className="h-5 w-5" />}
+                title="Exam paper"
+                body="DOCX, PDF, or text. Scans use Gemini extract + recheck."
+                onClick={() => chooseSource("upload")}
+              />
+              <SourceCard
+                active={mode === "sheet"}
+                icon={<Table2 className="h-5 w-5" />}
+                title="Spreadsheet"
+                body="Paste TSV/CSV with headers matching the bank columns."
+                onClick={() => chooseSource("sheet")}
+              />
+              <SourceCard
+                active={mode === "json"}
+                icon={<Braces className="h-5 w-5" />}
+                title="JSON"
+                body="Paste an array of question objects from an external model."
+                onClick={() => chooseSource("json")}
               />
             </div>
-          </Field>
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Field label="Section">
-            <select
-              value={section}
-              onChange={(e) => {
-                const s = e.target.value as Section;
-                setSection(s);
-                setSkill(skillsFor(s)[0]);
-              }}
-              className={CONTROL_CLASS}
-            >
-              <option value="reading_writing">Reading &amp; Writing</option>
-              <option value="math">Math</option>
-            </select>
-          </Field>
-          <Field label="Module">
-            <select
-              value={module}
-              onChange={(e) => setModule(Number(e.target.value) as 1 | 2)}
-              disabled={!makeSet}
-              className={CONTROL_CLASS + " disabled:opacity-40"}
-            >
-              <option value={1}>Module 1</option>
-              <option value={2}>Module 2</option>
-            </select>
-          </Field>
-          <Field label="Difficulty">
-            <select
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value as LetterDifficulty)}
-              className={CONTROL_CLASS}
-            >
-              {LETTER_DIFFICULTIES.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Default skill">
-            <select
-              value={skill}
-              onChange={(e) => setSkill(e.target.value)}
-              className={CONTROL_CLASS}
-            >
-              {skills.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-brand-200">
-          Reading &amp; Writing skills are read from each question's wording where the phrasing
-          makes it clear; the default is used for the rest, and for every Math question. Fix any row
-          afterwards in the question bank.
-        </p>
-      </div>
-
-      {/* ---------------------------------------------------------------- */}
-      {/* Source tabs                                                       */}
-      {/* ---------------------------------------------------------------- */}
-      <div className="rise-in overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
-        <div className="flex border-b border-brand-400/30">
-          <TabButton
-            active={mode === "upload"}
-            onClick={() => {
-              setMode("upload");
-              resetOutput();
-            }}
-            icon={<FileText className="h-4 w-4" />}
-            label="Upload a paper"
-          />
-          <TabButton
-            active={mode === "sheet"}
-            onClick={() => {
-              setMode("sheet");
-              resetOutput();
-            }}
-            icon={<Table2 className="h-4 w-4" />}
-            label="Spreadsheet"
-          />
-          <TabButton
-            active={mode === "json"}
-            onClick={() => {
-              setMode("json");
-              resetOutput();
-            }}
-            icon={<Braces className="h-4 w-4" />}
-            label="JSON"
-          />
-        </div>
-
-        <div className="space-y-4 p-5 md:p-6">
-          {mode === "upload" ? (
-            <>
-              <p className="text-sm text-brand-100">
-                Upload the exam paper itself — a <strong className="text-white">.docx</strong>, a{" "}
-                <strong className="text-white">.pdf</strong>, or plain text. Questions are read
-                straight out of the file: a numbered paragraph starts a question, the{" "}
-                <code className="text-white">A) B) C) D)</code> line becomes its choices, and
-                everything above the stem becomes the passage. A scanned PDF with no text in it is
-                read by Gemini instead, one page at a time.
-              </p>
-
-              <input
-                ref={docRef}
-                type="file"
-                accept=".docx,.pdf,.txt,.md"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) loadDocument(f);
-                  e.target.value = "";
-                }}
-              />
-              <div
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const f = e.dataTransfer.files?.[0];
-                  if (f) loadDocument(f);
-                }}
-                className="rounded-xl border border-dashed border-brand-400/60 bg-brand-800/50 px-4 py-8 text-center"
+            <div className="mt-5 flex flex-wrap justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setStep("setup")}
+                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-4 py-2 text-sm font-semibold text-white"
               >
-                <FileUp className="mx-auto h-7 w-7 text-brand-200" />
-                <div className="mt-2 text-sm font-semibold text-white">
-                  {fileName || "Drop a paper here"}
-                </div>
-                <button
-                  onClick={() => docRef.current?.click()}
-                  disabled={reading != null || vision?.running || fixing}
-                  className="btn-brand mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-                >
-                  {reading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileUp className="h-4 w-4" />
-                  )}
-                  {reading ?? "Choose a file"}
-                </button>
-                <p className="mt-2 text-[11px] text-brand-200">.docx · .pdf · .txt · .md</p>
-              </div>
+                <ArrowLeft className="h-4 w-4" /> Back
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep("extract")}
+                className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
+              >
+                Continue to extract <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-              {readError && (
-                <div className="rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
-                  {readError}
-                </div>
-              )}
+      {step === "extract" && (
+        <div className="rise-in space-y-4">
+          <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
+            <h2 className="text-sm font-bold text-white">3 · Extract</h2>
+            <p className="mt-1 text-xs text-brand-100">
+              {mode === "upload"
+                ? "Upload the paper. Text PDFs parse locally; scans open the Gemini reader."
+                : mode === "sheet"
+                  ? "Paste the sheet, then Check to validate rows."
+                  : "Paste JSON, then Check to validate rows."}
+            </p>
 
-              {vision && (
-                <VisionPanel
-                  state={vision}
-                  onChange={(patch) => setVision({ ...vision, ...patch })}
-                  onStart={runVision}
-                  onStop={() => {
-                    stopRef.current = true;
-                    abortRef.current?.abort();
+            {mode === "upload" && (
+              <div className="mt-4 space-y-3">
+                <p className="text-xs text-brand-100">
+                  Numbered paragraphs become questions;{" "}
+                  <code className="text-white">A) B) C) D)</code> become choices.
+                </p>
+                <input
+                  ref={docRef}
+                  type="file"
+                  accept=".docx,.pdf,.txt,.md"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void loadDocument(f);
+                    e.target.value = "";
                   }}
                 />
-              )}
+                <button
+                  type="button"
+                  onClick={() => docRef.current?.click()}
+                  disabled={reading != null || vision?.running || fixing}
+                  className="tap flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-brand-300/50 bg-brand-800 px-4 py-10 text-sm font-semibold text-brand-100 transition hover:border-brand-200 hover:text-white disabled:opacity-40"
+                >
+                  {reading ? (
+                    <>
+                      <Loader2 className="h-6 w-6 animate-spin text-brand-200" />
+                      {reading}
+                    </>
+                  ) : (
+                    <>
+                      <FileUp className="h-6 w-6 text-brand-200" />
+                      Drop or choose a .docx / .pdf / .txt
+                      {fileName ? (
+                        <span className="text-xs font-normal text-brand-200">Current: {fileName}</span>
+                      ) : null}
+                    </>
+                  )}
+                </button>
+                {vision && (
+                  <VisionPanel
+                    state={vision}
+                    onChange={(patch) => setVision({ ...vision, ...patch })}
+                    onStart={() => void runVision()}
+                    onStop={() => {
+                      stopRef.current = true;
+                      abortRef.current?.abort();
+                    }}
+                  />
+                )}
+              </div>
+            )}
 
-              {drafts && drafts.length > 0 && (
+            {mode !== "upload" && (
+              <div className="mt-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-brand-100">
+                    {mode === "sheet" ? "TSV / CSV paste" : "JSON array paste"}
+                  </span>
+                  <div className="flex gap-2">
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept={mode === "json" ? ".json,application/json" : ".tsv,.csv,.txt"}
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) loadSheetFile(f);
+                        e.target.value = "";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="tap inline-flex items-center gap-1 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white"
+                    >
+                      <FileUp className="h-3.5 w-3.5" /> File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setText(mode === "sheet" ? TSV_TEMPLATE : JSON_TEMPLATE)}
+                      className="tap inline-flex items-center gap-1 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white"
+                    >
+                      <ClipboardPaste className="h-3.5 w-3.5" /> Template
+                    </button>
+                  </div>
+                </div>
+                {mode === "sheet" && (
+                  <p className="text-[11px] text-brand-200">
+                    Columns: {TSV_COLUMNS.join(", ")}
+                  </p>
+                )}
+                <textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  rows={12}
+                  spellCheck={false}
+                  className={CONTROL_CLASS + " resize-y font-mono text-xs leading-relaxed"}
+                  placeholder={mode === "sheet" ? TSV_TEMPLATE : JSON_TEMPLATE}
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void checkPaste()}
+                    disabled={!text.trim() || checking}
+                    className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                  >
+                    {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    Check &amp; continue
+                  </button>
+                </div>
+                <CopyBox text={mode === "sheet" ? TSV_TEMPLATE : JSON_TEMPLATE} />
+              </div>
+            )}
+
+            {readError && (
+              <div className="mt-3 flex items-start gap-2 rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
+                {readError}
+              </div>
+            )}
+
+            {notes.length > 0 && (
+              <ul className="mt-3 space-y-1 rounded-xl border border-brand-400/40 bg-brand-800 p-3 text-xs text-brand-100">
+                {notes.map((n, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand-200" />
+                    {n}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="mt-5 flex flex-wrap justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setStep("source")}
+                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-4 py-2 text-sm font-semibold text-white"
+              >
+                <ArrowLeft className="h-4 w-4" /> Source
+              </button>
+              {hasRows && (
+                <button
+                  type="button"
+                  onClick={() => setStep(mode === "upload" ? "answers" : "review")}
+                  className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Continue <ArrowRight className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === "answers" && (
+        <div className="rise-in space-y-4">
+          <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
+            <h2 className="text-sm font-bold text-white">4 · Answers</h2>
+            <p className="mt-1 text-xs text-brand-100">
+              Papers rarely include keys. Paste one here, or skip and fix rows / use AI on Review.
+            </p>
+            {drafts ? (
+              <div className="mt-4">
                 <AnswerKeyBox
                   value={keyText}
                   onChange={setKeyText}
                   onApply={applyKey}
                   summary={keySummary}
                 />
-              )}
-            </>
-          ) : mode === "sheet" ? (
-            <p className="text-sm text-brand-100">
-              Select your rows in Google Sheets or Excel —{" "}
-              <strong className="text-white">including the header row</strong> — and paste them
-              below. Tabs separate columns, so commas inside a question are fine. Comma-separated
-              text works too.
-            </p>
-          ) : (
-            <p className="text-sm text-brand-100">
-              Paste a JSON array of question objects. Best for output from an AI model, since
-              passages, commas and LaTeX backslashes survive without escaping problems.
-            </p>
-          )}
-
-          {mode !== "upload" && (
-            <>
-              <details className="rounded-xl border border-brand-400/40 bg-brand-800/60 px-4 py-3">
-                <summary className="cursor-pointer text-xs font-bold uppercase tracking-wider text-brand-100">
-                  Format &amp; example
-                </summary>
-                <div className="mt-3 space-y-3">
-                  {mode === "sheet" && (
-                    <div className="text-xs text-brand-100">
-                      <div className="font-bold uppercase tracking-wider text-brand-200">
-                        Columns
-                      </div>
-                      <p className="mt-1 leading-relaxed">{TSV_COLUMNS.join(" · ")}</p>
-                      <p className="mt-2 leading-relaxed">
-                        Only <strong className="text-white">section</strong>,{" "}
-                        <strong className="text-white">skill</strong>,{" "}
-                        <strong className="text-white">question_text</strong> and{" "}
-                        <strong className="text-white">correct</strong> are required. Column order
-                        doesn't matter — the header row is read. Unknown columns are ignored, and{" "}
-                        <code className="text-white">kind</code> is inferred from whether you filled
-                        in choices.
-                      </p>
-                    </div>
-                  )}
-                  <CopyBox text={mode === "sheet" ? TSV_TEMPLATE : JSON_TEMPLATE} />
-                  <div className="text-xs text-brand-100">
-                    <div className="font-bold uppercase tracking-wider text-brand-200">
-                      Valid values
-                    </div>
-                    <ul className="mt-1 space-y-0.5 leading-relaxed">
-                      <li>
-                        <code className="text-white">section</code>: math · reading_writing
-                      </li>
-                      <li>
-                        <code className="text-white">difficulty</code>: C · B · D · A · S (S
-                        hardest), or easy/medium/hard
-                      </li>
-                      <li>
-                        <code className="text-white">kind</code>: multiple_choice · grid_in
-                      </li>
-                      <li>
-                        <code className="text-white">skill</code> (math): {MATH_SKILLS.join(" · ")}
-                      </li>
-                      <li>
-                        <code className="text-white">skill</code> (R&amp;W): {RW_SKILLS.join(" · ")}
-                      </li>
-                      <li>
-                        <code className="text-white">correct</code>: a letter (B), a number (2), or
-                        the exact choice text. For grid-ins, comma-separate every accepted form.
-                      </li>
-                    </ul>
-                    <p className="mt-2 leading-relaxed">
-                      Math goes in as LaTeX between dollar signs —{" "}
-                      <code className="text-white">$3x + 5 = 20$</code> inline,{" "}
-                      <code className="text-white">$$…$$</code> on its own line. Images can't be
-                      uploaded here; put an already-hosted URL in{" "}
-                      <code className="text-white">image_url</code>, or add the image afterwards by
-                      editing the question.
-                    </p>
-                  </div>
-                </div>
-              </details>
-
-              <textarea
-                value={text}
-                onChange={(e) => {
-                  setText(e.target.value);
-                  resetOutput();
-                }}
-                rows={12}
-                spellCheck={false}
-                placeholder={
-                  mode === "sheet"
-                    ? "section\tskill\tdifficulty\tquestion_text\tA\tB\tC\tD\tcorrect\nmath\tAlgebra\tB\tIf $3x + 5 = 20$…\t3\t5\t15\t25\tB"
-                    : '[\n  { "section": "math", "skill": "Algebra", "question_text": "…", "choices": ["3","5","15","25"], "correct": "B" }\n]'
-                }
-                className={
-                  CONTROL_CLASS + " min-h-[220px] resize-y font-mono text-xs leading-relaxed"
-                }
-              />
-
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={check}
-                  disabled={!text.trim() || checking}
-                  className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-                >
-                  {checking ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ClipboardPaste className="h-4 w-4" />
-                  )}
-                  {checking ? "Checking…" : "Check"}
-                </button>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".tsv,.csv,.txt,.json,text/plain,application/json"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) loadFile(f);
-                    e.target.value = "";
-                  }}
-                />
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-400"
-                >
-                  <FileUp className="h-4 w-4" /> Load a file
-                </button>
-                {text && (
-                  <button
-                    onClick={() => {
-                      setText("");
-                      resetOutput();
-                    }}
-                    className="tap rounded-lg px-3 py-2 text-sm font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
-                  >
-                    Clear
-                  </button>
-                )}
               </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {notes.length > 0 && (
-        <ul className="pop-in space-y-1 rounded-2xl border border-brand-400/40 bg-brand-800 p-4 text-xs text-brand-100">
-          {notes.map((n, i) => (
-            <li key={i} className="flex items-start gap-2">
-              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand-200" />
-              {n}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {parsed?.fatal && (
-        <div className="pop-in rounded-2xl border border-brand-300/60 bg-brand-900 p-5 text-sm font-semibold text-white">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
-            <span>{parsed.fatal}</span>
-          </div>
-        </div>
-      )}
-
-      {previewRows.length > 0 && (
-        <PreviewPanel
-          rows={previewRows}
-          ignoredColumns={parsed?.ignoredColumns ?? []}
-          stats={stats}
-          skipDuplicates={skipDuplicates}
-          setSkipDuplicates={setSkipDuplicates}
-          importing={importing}
-          progress={progress}
-          onImport={runImport}
-          onAnswerChange={drafts ? setDraftAnswer : undefined}
-          drafts={drafts}
-          setLabel={makeSet && title.trim() ? title.trim() : null}
-          fixing={fixing}
-          fixProgress={fixProgress}
-          onFixBroken={drafts ? runFixBroken : undefined}
-          onStopFix={() => {
-            stopRef.current = true;
-            abortRef.current?.abort();
-          }}
-        />
-      )}
-
-      {result && (
-        <div className="pop-in rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel">
-          <div className="flex items-center gap-2.5">
-            {result.failed === 0 && result.errors.length === 0 ? (
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-400">
-                <Check className="h-4 w-4 text-white" />
-              </span>
             ) : (
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-900">
-                <AlertTriangle className="h-4 w-4 text-brand-200" />
-              </span>
+              <p className="mt-4 rounded-lg bg-brand-800 px-3 py-2 text-xs text-brand-100">
+                Spreadsheet/JSON sources should already include a <code className="text-white">correct</code>{" "}
+                field. Continue to Review to validate.
+              </p>
             )}
-            <div>
-              <div className="text-sm font-bold text-white">
-                {result.inserted} question{result.inserted === 1 ? "" : "s"} imported
-                {result.failed > 0 ? `, ${result.failed} failed` : ""}
-                {result.setTitle ? ` into "${result.setTitle}"` : ""}
-              </div>
-              <Link
-                to="/admin/questions"
-                className="text-xs font-semibold text-brand-100 underline decoration-brand-300 underline-offset-2 hover:text-white"
+            <div className="mt-5 flex flex-wrap justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setStep("extract")}
+                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-4 py-2 text-sm font-semibold text-white"
               >
-                View them in the question bank
-              </Link>
+                <ArrowLeft className="h-4 w-4" /> Extract
+              </button>
+              <button
+                type="button"
+                disabled={!hasRows}
+                onClick={() => setStep("review")}
+                className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                Review <ArrowRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
-          {result.errors.length > 0 && (
-            <ul className="mt-3 space-y-1 border-t border-brand-400/30 pt-3 text-xs text-brand-100">
-              {result.errors.map((e, i) => (
-                <li key={i}>{e}</li>
-              ))}
-            </ul>
+        </div>
+      )}
+
+      {step === "review" && (
+        <div className="rise-in space-y-4">
+          {parsed?.fatal && (
+            <div className="rounded-2xl border border-brand-300/60 bg-brand-900 p-5 text-sm font-semibold text-white">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
+                <span>{parsed.fatal}</span>
+              </div>
+            </div>
           )}
+
+          {previewRows.length > 0 ? (
+            <PreviewPanel
+              rows={previewRows}
+              ignoredColumns={parsed?.ignoredColumns ?? []}
+              stats={stats}
+              skipDuplicates={skipDuplicates}
+              setSkipDuplicates={setSkipDuplicates}
+              importing={importing}
+              progress={progress}
+              onImport={() => void runImport()}
+              onAnswerChange={drafts ? setDraftAnswer : undefined}
+              drafts={drafts}
+              setLabel={makeSet && title.trim() ? title.trim() : null}
+              fixing={fixing}
+              fixProgress={fixProgress}
+              onFixBroken={drafts ? () => void runFixBroken() : undefined}
+              onStopFix={() => {
+                stopRef.current = true;
+                abortRef.current?.abort();
+              }}
+            />
+          ) : (
+            <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 text-sm text-brand-100">
+              No questions yet. Go back to Extract and upload or paste a source.
+            </div>
+          )}
+
+          {result && (
+            <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel">
+              <div className="flex items-center gap-2.5">
+                {result.failed === 0 && result.errors.length === 0 ? (
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-400">
+                    <Check className="h-4 w-4 text-white" />
+                  </span>
+                ) : (
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-900">
+                    <AlertTriangle className="h-4 w-4 text-brand-200" />
+                  </span>
+                )}
+                <div>
+                  <div className="text-sm font-bold text-white">
+                    {result.inserted} question{result.inserted === 1 ? "" : "s"} imported
+                    {result.setTitle ? ` · set “${result.setTitle}”` : ""}
+                  </div>
+                  {result.failed > 0 && (
+                    <div className="text-xs text-brand-100">{result.failed} failed</div>
+                  )}
+                </div>
+              </div>
+              {result.errors.length > 0 && (
+                <ul className="mt-3 space-y-1 text-xs text-brand-100">
+                  {result.errors.map((e, i) => (
+                    <li key={i}>{e}</li>
+                  ))}
+                </ul>
+              )}
+              {result.setTitle && (
+                <Link
+                  to="/admin/tests"
+                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-brand-200 hover:text-white"
+                >
+                  Manage the set in Tests <ArrowRight className="h-4 w-4" />
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setResult(null);
+                  setStep("setup");
+                }}
+                className="mt-4 flex items-center gap-1 text-xs font-semibold text-brand-100 hover:text-white"
+              >
+                <X className="h-3.5 w-3.5" /> Start another test
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setStep(drafts ? "answers" : "extract")}
+            className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/40 bg-white px-4 py-2 text-sm font-semibold text-brand-800"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
         </div>
       )}
     </div>
   );
 }
 
-/**
- * Merge a fresh batch of vision drafts into what's already on screen.
- *
- * Prefer content match when numbers were auto-assigned; printed-number collisions
- * still keep the existing row so editor edits are not discarded.
- */
-function mergeDrafts(existing: Draft[], incoming: Draft[]): Draft[] {
-  const haveNumbers = new Set(existing.map((d) => d.number));
-  const haveText = new Set(
-    existing.map((d) =>
-      (d.rec.question_text || "").toLowerCase().replace(/\s+/g, " ").trim().slice(0, 200),
-    ),
-  );
-  const added = incoming.filter((d) => {
-    const text = (d.rec.question_text || "")
-      .toLowerCase()
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 200);
-    if (text && haveText.has(text)) return false;
-    if (haveNumbers.has(d.number)) return false;
-    return true;
-  });
-  return [...existing, ...added].sort((a, b) => a.number - b.number);
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-brand-100">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-function TabButton({
+function SourceCard({
   active,
-  onClick,
   icon,
-  label,
+  title,
+  body,
+  onClick,
 }: {
   active: boolean;
-  onClick: () => void;
   icon: React.ReactNode;
-  label: string;
+  title: string;
+  body: string;
+  onClick: () => void;
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={
-        "relative inline-flex flex-1 items-center justify-center gap-2 px-4 py-3.5 text-sm font-bold transition-colors " +
-        (active ? "bg-brand-500 text-white" : "text-brand-100 hover:bg-brand-800 hover:text-white")
+        "tap flex flex-col gap-2 rounded-xl border p-4 text-left transition-colors " +
+        (active
+          ? "border-brand-200 bg-brand-500 text-white shadow-brand"
+          : "border-brand-400/40 bg-brand-800 text-brand-100 hover:border-brand-200 hover:text-white")
       }
     >
-      {icon}
-      {label}
-      {active && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-brand-200" />}
+      <span className={active ? "text-brand-200" : "text-brand-200"}>{icon}</span>
+      <span className="text-sm font-bold text-white">{title}</span>
+      <span className="text-[11px] leading-relaxed opacity-90">{body}</span>
     </button>
-  );
-}
-
-/**
- * The scanned-PDF panel.
- *
- * Two-stage progress: (1) Gemini Pro extracts questions, (2) Gemini Flash
- * rechecks the same page. Page range stays front and centre so long scans are
- * run in batches.
- */
-function VisionPanel({
-  state,
-  onChange,
-  onStart,
-  onStop,
-}: {
-  state: VisionState;
-  onChange: (patch: Partial<VisionState>) => void;
-  onStart: () => void;
-  onStop: () => void;
-}) {
-  const p = state.progress;
-  const rangePages = Math.max(1, state.to - state.from + 1);
-  const stage1Pct = p ? Math.min(100, Math.round((p.stage1Done / rangePages) * 100)) : 0;
-  const stage2Pct = p ? Math.min(100, Math.round((p.stage2Done / rangePages) * 100)) : 0;
-  const overallPct = p
-    ? Math.min(100, Math.round(((p.stage1Done + p.stage2Done) / (rangePages * 2)) * 100))
-    : 0;
-
-  return (
-    <div className="space-y-3 rounded-xl border border-brand-400/40 bg-brand-800 p-4">
-      <div className="flex items-start gap-2.5">
-        <ScanEye className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
-        <div className="text-xs leading-relaxed text-brand-100">
-          <strong className="text-white">This is a scan.</strong> Each page is read twice: Gemini
-          Pro extracts questions (numbers optional), then Gemini Flash rechecks the same page. Check
-          every row in the preview before importing. Run a small range first.
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3">
-        <Field label="From page">
-          <input
-            type="number"
-            min={1}
-            max={state.pages}
-            value={state.from}
-            disabled={state.running}
-            onChange={(e) => onChange({ from: Math.max(1, Number(e.target.value) || 1) })}
-            className={CONTROL_CLASS + " w-24 disabled:opacity-40"}
-          />
-        </Field>
-        <Field label="To page">
-          <input
-            type="number"
-            min={1}
-            max={state.pages}
-            value={state.to}
-            disabled={state.running}
-            onChange={(e) =>
-              onChange({ to: Math.min(state.pages, Math.max(1, Number(e.target.value) || 1)) })
-            }
-            className={CONTROL_CLASS + " w-24 disabled:opacity-40"}
-          />
-        </Field>
-        <span className="pb-2 text-xs text-brand-200">of {state.pages}</span>
-        <div className="pb-0.5">
-          {state.running ? (
-            <button
-              onClick={onStop}
-              className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/60 bg-brand-900 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
-            >
-              <Square className="h-3.5 w-3.5" /> Stop
-            </button>
-          ) : (
-            <button
-              onClick={onStart}
-              className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-800"
-            >
-              <ScanEye className="h-4 w-4" /> Read pages {state.from}–{state.to}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {state.running && (
-        <div className="space-y-3" role="status" aria-live="polite" aria-label="Import progress">
-          <div>
-            <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-brand-100">
-              <span>Overall</span>
-              <span>{overallPct}%</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-brand-900">
-              <div
-                className="h-full rounded-full bg-brand-200 transition-[width] duration-300"
-                style={{ width: `${overallPct}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <StageBar
-              label="1 · Extract"
-              detail="Gemini 2.5 Pro"
-              pct={stage1Pct}
-              active={p?.stage === 1}
-              done={p?.stage1Done ?? 0}
-              total={rangePages}
-            />
-            <StageBar
-              label="2 · Recheck"
-              detail="Gemini 2.5 Flash"
-              pct={stage2Pct}
-              active={p?.stage === 2}
-              done={p?.stage2Done ?? 0}
-              total={rangePages}
-            />
-          </div>
-
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-brand-100">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            {p
-              ? `Page ${p.page} · Stage ${p.stage} (${p.stageLabel}) · ${p.found} question${p.found === 1 ? "" : "s"} so far`
-              : "Rendering the first page…"}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StageBar({
-  label,
-  detail,
-  pct,
-  active,
-  done,
-  total,
-}: {
-  label: string;
-  detail: string;
-  pct: number;
-  active: boolean;
-  done: number;
-  total: number;
-}) {
-  return (
-    <div
-      className={
-        "rounded-lg border px-3 py-2 " +
-        (active ? "border-brand-200/70 bg-brand-900/80" : "border-brand-400/30 bg-brand-900/40")
-      }
-    >
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="text-[11px] font-bold text-white">
-          {label}
-          {active ? " · running" : done >= total && total > 0 ? " · done" : ""}
-        </span>
-        <span className="text-[10px] font-semibold text-brand-200">
-          {done}/{total}
-        </span>
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-brand-800">
-        <div
-          className={
-            "h-full rounded-full transition-[width] duration-300 " +
-            (active ? "bg-brand-200" : "bg-brand-400")
-          }
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <div className="mt-1 text-[10px] text-brand-200">{detail}</div>
-    </div>
-  );
-}
-
-/**
- * The answer-key paste box.
- *
- * Neither sample paper carried its answers, so without this every document
- * import lands as rows that fail validation for "No correct answer given". The
- * per-row selector in the preview covers what the key misses.
- */
-function AnswerKeyBox({
-  value,
-  onChange,
-  onApply,
-  summary,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onApply: () => void;
-  summary: string | null;
-}) {
-  return (
-    <div className="space-y-2 rounded-xl border border-brand-400/40 bg-brand-800 p-4">
-      <div className="flex items-start gap-2.5">
-        <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
-        <div className="text-xs leading-relaxed text-brand-100">
-          <strong className="text-white">Answer key.</strong> Paste it in any usual shape —{" "}
-          <code className="text-white">1. A</code>, <code className="text-white">1) A</code>,{" "}
-          <code className="text-white">1-A</code>, or a single run like{" "}
-          <code className="text-white">1 A 2 D 3 C</code>. Grid-in values (
-          <code className="text-white">16. 3/4</code>) work too. Answers are matched on the question
-          number printed in the paper, never guessed by position.
-        </div>
-      </div>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={4}
-        spellCheck={false}
-        placeholder={"1. A\n2. D\n3. C"}
-        className={CONTROL_CLASS + " resize-y font-mono text-xs leading-relaxed"}
-      />
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          onClick={onApply}
-          disabled={!value.trim()}
-          className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-400 disabled:opacity-40"
-        >
-          <KeyRound className="h-4 w-4" /> Apply key
-        </button>
-        {summary && <span className="text-xs text-brand-100">{summary}</span>}
-      </div>
-    </div>
-  );
-}
-
-function CopyBox({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <div className="relative">
-      <pre className="max-h-56 overflow-auto rounded-lg border border-brand-400/40 bg-brand-900 p-3 text-[11px] leading-relaxed text-brand-100">
-        {text}
-      </pre>
-      <button
-        onClick={() => {
-          navigator.clipboard?.writeText(text);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
-        }}
-        className="tap absolute right-2 top-2 inline-flex items-center gap-1 rounded-md border border-brand-400/50 bg-brand-800 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-brand-400"
-      >
-        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-        {copied ? "Copied" : "Copy"}
-      </button>
-    </div>
-  );
-}
-
-function PreviewPanel({
-  rows,
-  ignoredColumns,
-  stats,
-  skipDuplicates,
-  setSkipDuplicates,
-  importing,
-  progress,
-  onImport,
-  onAnswerChange,
-  drafts,
-  setLabel,
-  fixing,
-  fixProgress,
-  onFixBroken,
-  onStopFix,
-}: {
-  rows: PreviewRow[];
-  ignoredColumns: string[];
-  stats: {
-    total: number;
-    valid: number;
-    invalid: number;
-    warnings: number;
-    duplicates: number;
-    importable: number;
-  };
-  skipDuplicates: boolean;
-  setSkipDuplicates: (v: boolean) => void;
-  importing: boolean;
-  progress: { done: number; total: number };
-  onImport: () => void;
-  onAnswerChange?: (index: number, value: string) => void;
-  drafts: Draft[] | null;
-  setLabel: string | null;
-  fixing?: boolean;
-  fixProgress?: {
-    index: number;
-    total: number;
-    draftNumber: number;
-    stage: 1 | 2;
-    stageLabel: "Fix" | "Recheck";
-    stage1Done: number;
-    stage2Done: number;
-    fixed: number;
-    failed: number;
-  } | null;
-  onFixBroken?: () => void;
-  onStopFix?: () => void;
-}) {
-  const [showOnlyProblems, setShowOnlyProblems] = useState(false);
-  const visible = showOnlyProblems
-    ? rows.filter((p) => !p.row.question || p.row.warnings.length > 0)
-    : rows;
-
-  const brokenCount = rows.filter((p) => {
-    if (p.draftIndex == null) return false;
-    if (!p.row.question || p.row.errors.length > 0) return true;
-    return p.row.warnings.some(
-      (w) =>
-        !w.includes("Duplicate") &&
-        !w.includes("already exists") &&
-        !w.includes("Repaired by Gemini"),
-    );
-  }).length;
-
-  const fixTotal = fixProgress?.total ?? Math.max(brokenCount, 1);
-  const stage1Pct = fixProgress
-    ? Math.min(100, Math.round((fixProgress.stage1Done / fixTotal) * 100))
-    : 0;
-  const stage2Pct = fixProgress
-    ? Math.min(100, Math.round((fixProgress.stage2Done / fixTotal) * 100))
-    : 0;
-  const overallFixPct = fixProgress
-    ? Math.min(
-        100,
-        Math.round(((fixProgress.stage1Done + fixProgress.stage2Done) / (fixTotal * 2)) * 100),
-      )
-    : 0;
-
-  return (
-    <div className="rise-in space-y-4 rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <Stat label="Parsed" value={stats.total} />
-        <Stat label="Ready" value={stats.valid} tone="good" />
-        {stats.invalid > 0 && <Stat label="Errors" value={stats.invalid} tone="bad" />}
-        {stats.warnings > 0 && <Stat label="Warnings" value={stats.warnings} />}
-        {stats.duplicates > 0 && <Stat label="Duplicates" value={stats.duplicates} />}
-      </div>
-
-      {ignoredColumns.length > 0 && (
-        <div className="rounded-lg bg-brand-800 px-3 py-2 text-xs text-brand-100">
-          Ignored unrecognised {ignoredColumns.length === 1 ? "column" : "columns"}:{" "}
-          <span className="font-semibold text-white">{ignoredColumns.join(", ")}</span>. If one of
-          those was meant to be a real field, check its spelling against the format above.
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          {stats.duplicates > 0 && (
-            <label className="inline-flex items-center gap-2 text-xs font-semibold text-brand-100">
-              <input
-                type="checkbox"
-                checked={skipDuplicates}
-                onChange={(e) => setSkipDuplicates(e.target.checked)}
-                className="h-4 w-4 accent-brand-200 [color-scheme:dark]"
-              />
-              Skip the {stats.duplicates} duplicate{stats.duplicates === 1 ? "" : "s"}
-            </label>
-          )}
-          {(stats.invalid > 0 || stats.warnings > 0) && (
-            <label className="inline-flex items-center gap-2 text-xs font-semibold text-brand-100">
-              <input
-                type="checkbox"
-                checked={showOnlyProblems}
-                onChange={(e) => setShowOnlyProblems(e.target.checked)}
-                className="h-4 w-4 accent-brand-200 [color-scheme:dark]"
-              />
-              Show only rows needing attention
-            </label>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {onFixBroken &&
-            brokenCount > 0 &&
-            (fixing ? (
-              <button
-                onClick={onStopFix}
-                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/60 bg-brand-900 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-700"
-              >
-                <Square className="h-3.5 w-3.5" /> Stop fix
-              </button>
-            ) : (
-              <button
-                onClick={onFixBroken}
-                disabled={importing}
-                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/50 bg-brand-800 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-400 disabled:opacity-40"
-              >
-                <Wrench className="h-4 w-4" />
-                Fix {brokenCount} broken with AI
-              </button>
-            ))}
-          <button
-            onClick={onImport}
-            disabled={importing || fixing || stats.importable === 0}
-            className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-          >
-            {importing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Upload className="h-4 w-4" />
-            )}
-            {importing
-              ? `Importing ${progress.done}/${progress.total}…`
-              : `Import ${stats.importable} question${stats.importable === 1 ? "" : "s"}`}
-          </button>
-        </div>
-      </div>
-
-      {fixing && (
-        <div
-          className="space-y-3 rounded-xl border border-brand-400/40 bg-brand-800 p-4"
-          role="status"
-          aria-live="polite"
-          aria-label="Fix progress"
-        >
-          <div className="text-xs leading-relaxed text-brand-100">
-            <strong className="text-white">Two-factor repair.</strong> Gemini Pro fixes each broken
-            row, then Gemini Flash rechecks it. Review the preview after the pass.
-          </div>
-          <div>
-            <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-brand-100">
-              <span>Overall</span>
-              <span>{overallFixPct}%</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-brand-900">
-              <div
-                className="h-full rounded-full bg-brand-200 transition-[width] duration-300"
-                style={{ width: `${overallFixPct}%` }}
-              />
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <StageBar
-              label="1 · Fix"
-              detail="Gemini 2.5 Pro"
-              pct={stage1Pct}
-              active={fixProgress?.stage === 1}
-              done={fixProgress?.stage1Done ?? 0}
-              total={fixTotal}
-            />
-            <StageBar
-              label="2 · Recheck"
-              detail="Gemini 2.5 Flash"
-              pct={stage2Pct}
-              active={fixProgress?.stage === 2}
-              done={fixProgress?.stage2Done ?? 0}
-              total={fixTotal}
-            />
-          </div>
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-brand-100">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            {fixProgress
-              ? `Q${fixProgress.draftNumber} · ${fixProgress.index}/${fixProgress.total} · Stage ${fixProgress.stage} (${fixProgress.stageLabel}) · ${fixProgress.fixed} fixed`
-              : "Starting repair…"}
-          </div>
-        </div>
-      )}
-
-      {setLabel && (
-        <div className="rounded-lg bg-brand-800 px-3 py-2 text-xs text-brand-100">
-          These will also be grouped into the test set{" "}
-          <span className="font-semibold text-white">{setLabel}</span>, in the order shown, so
-          students see them as one dated paper.
-        </div>
-      )}
-
-      {stats.invalid > 0 && !fixing && (
-        <div className="rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
-          {stats.invalid} row{stats.invalid === 1 ? "" : "s"} {stats.invalid === 1 ? "has" : "have"}{" "}
-          an error and won't be imported.
-          {onFixBroken
-            ? " Use Fix broken with AI, paste an answer key, or set the answer on the row."
-            : onAnswerChange
-              ? " Most will be a missing answer — paste a key above, or set the answer on the row itself."
-              : " Fix them in your source and paste again — the rows that are ready can be imported now either way."}
-        </div>
-      )}
-
-      <ul className="divide-y divide-brand-400/30 overflow-hidden rounded-xl border border-brand-400/40">
-        {visible.map((p) => (
-          <RowPreview
-            key={p.row.index}
-            row={p.row}
-            draft={p.draftIndex != null ? (drafts?.[p.draftIndex] ?? null) : null}
-            onAnswerChange={
-              onAnswerChange && p.draftIndex != null
-                ? (v) => onAnswerChange(p.draftIndex as number, v)
-                : undefined
-            }
-          />
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function Stat({ label, value, tone }: { label: string; value: number; tone?: "good" | "bad" }) {
-  return (
-    <span
-      className={
-        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider " +
-        (tone === "good"
-          ? "bg-brand-400 text-white"
-          : tone === "bad"
-            ? "bg-brand-900 text-white ring-1 ring-brand-300/60"
-            : "bg-brand-800 text-brand-100")
-      }
-    >
-      {label}
-      <span className="tabular-nums text-white">{value}</span>
-    </span>
-  );
-}
-
-function RowPreview({
-  row,
-  draft,
-  onAnswerChange,
-}: {
-  row: RowResult;
-  draft: Draft | null;
-  onAnswerChange?: (value: string) => void;
-}) {
-  const q = row.question;
-  const ok = q != null;
-
-  /* Read off the draft rather than the validated question, because a row with an
-     error has no `question` at all — and a missing answer is exactly the error
-     this selector exists to fix. */
-  const choiceIds = draft
-    ? ["A", "B", "C", "D", "E", "F", "G", "H"].filter((id) =>
-        (draft.rec[`choice_${id}`] ?? "").trim(),
-      )
-    : [];
-  const answer = draft?.rec.correct ?? "";
-
-  return (
-    <li className={"px-4 py-3 " + (ok ? "bg-brand-600" : "bg-brand-900/40")}>
-      <div className="flex items-start gap-3">
-        <span
-          className={
-            "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full " +
-            (ok ? "bg-brand-400" : "bg-brand-900 ring-1 ring-brand-300/60")
-          }
-        >
-          {ok ? <Check className="h-3 w-3 text-white" /> : <X className="h-3 w-3 text-brand-200" />}
-        </span>
-        <span className="mt-0.5 w-8 shrink-0 text-xs font-bold tabular-nums text-brand-200">
-          {row.index}
-        </span>
-        <div className="min-w-0 flex-1">
-          {q ? (
-            <>
-              <MathText className="line-clamp-2 text-sm font-semibold text-white">
-                {q.question_text}
-              </MathText>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                <span className="rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                  {SECTION_LABEL[q.section]}
-                </span>
-                <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-                  {q.skill}
-                </span>
-                <span
-                  className={
-                    "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
-                    difficultyColor(q.difficulty)
-                  }
-                >
-                  {q.difficulty}
-                </span>
-                <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-                  {q.kind === "grid_in" ? "Grid-in" : "Multiple choice"}
-                </span>
-                {!onAnswerChange && (
-                  <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-                    Answer{" "}
-                    <span className="text-white">
-                      {q.kind === "grid_in"
-                        ? (q.correct_grid_answers ?? []).join(" / ")
-                        : q.correct_choice_id}
-                    </span>
-                  </span>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="text-sm font-semibold text-white">
-              {draft?.rec.question_text ? (
-                <MathText className="line-clamp-2">{draft.rec.question_text}</MathText>
-              ) : (
-                "Not imported"
-              )}
-            </div>
-          )}
-
-          {onAnswerChange && draft && (
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-brand-200">
-                Answer
-              </span>
-              {choiceIds.length > 0 ? (
-                choiceIds.map((id) => (
-                  <button
-                    key={id}
-                    onClick={() => onAnswerChange(answer.trim().toUpperCase() === id ? "" : id)}
-                    title={draft.rec[`choice_${id}`]}
-                    className={
-                      "tap h-6 w-6 rounded-md text-[11px] font-bold transition-colors " +
-                      (answer.trim().toUpperCase() === id
-                        ? "bg-brand-400 text-white"
-                        : "bg-brand-800 text-brand-100 ring-1 ring-brand-400/40 hover:bg-brand-500 hover:text-white")
-                    }
-                  >
-                    {id}
-                  </button>
-                ))
-              ) : (
-                <input
-                  value={answer}
-                  onChange={(e) => onAnswerChange(e.target.value)}
-                  placeholder="3/4, 0.75"
-                  className="w-40 rounded-md border border-brand-400/50 bg-brand-800 px-2 py-1 text-xs text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
-                />
-              )}
-            </div>
-          )}
-
-          {row.errors.length > 0 && (
-            <ul className="mt-2 space-y-1">
-              {row.errors.map((e, i) => (
-                <li key={i} className="flex items-start gap-1.5 text-xs font-semibold text-white">
-                  <X className="mt-0.5 h-3 w-3 shrink-0 text-brand-200" />
-                  {e}
-                </li>
-              ))}
-            </ul>
-          )}
-          {row.warnings.length > 0 && (
-            <ul className="mt-2 space-y-1">
-              {row.warnings.map((w, i) => (
-                <li key={i} className="flex items-start gap-1.5 text-xs text-brand-100">
-                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-brand-200" />
-                  {w}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-    </li>
   );
 }

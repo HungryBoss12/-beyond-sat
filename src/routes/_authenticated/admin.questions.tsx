@@ -238,7 +238,7 @@ function AdminQuestions() {
             to="/admin/import"
             className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-400"
           >
-            <Upload className="h-4 w-4" /> Bulk import
+            <Upload className="h-4 w-4" /> Add tests
           </Link>
           <button
             onClick={() => setEditing(empty())}

@@ -5,11 +5,14 @@ export type StaffRole = "admin" | "editor";
 
 /**
  * The only admin sections an editor may open. Everything else — Overview,
- * Homepage, Tests, Exam Dates, Users, Settings — is admin-only.
+ * Homepage, Exam Dates, Users, Settings — is admin-only.
+ *
+ * Tests is included so editors can manage sets they create via Add tests.
  */
 export const EDITOR_SECTIONS = [
   "/admin/questions",
   "/admin/import",
+  "/admin/tests",
   "/admin/daily",
   "/admin/mocks",
   "/admin/news",

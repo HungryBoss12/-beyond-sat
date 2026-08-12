@@ -1,17 +1,20 @@
-# Admin Import — page overrides
+# Admin Add tests — page overrides
 
-Overrides `MASTER.md` for `/admin/import`.
+Overrides `MASTER.md` for `/admin/import` (nav label: **Add tests**).
 
-## Goals
+## Flow
 
-- Clear multi-step feedback for scanned PDF AI import
-- Stage 1 Extract (Pro) and Stage 2 Recheck (Flash) always visible while running
-- Preserve brand navy surfaces; no second palette
+Wizard, not tabs:
+
+1. **Setup** — name, date, section, module, difficulty, default skill, create-set toggle  
+2. **Source** — paper | spreadsheet | JSON cards  
+3. **Extract** — upload / paste / Gemini vision (2-stage)  
+4. **Answers** — answer key for paper drafts  
+5. **Review** — validate, Fix broken with AI (2-stage), import  
 
 ## Patterns
 
-- Overall progress + two stage bars
-- `role="status"` / `aria-live="polite"` on progress region
-- Focus-visible rings on Stop / Read actions
-- Prefer completeness notes over silent empty results
-- **Fix broken with AI** on the preview: two-factor repair (Pro fix → Flash recheck) for invalid/warning rows
+- Shared `WizardSteps` chrome with unlock rules  
+- Extracted panels under `src/components/admin-import/`  
+- Editors can open **Tests** after creating a set  
+- Confirm before switching source when work would be lost  

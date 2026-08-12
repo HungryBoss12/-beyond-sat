@@ -67,8 +67,8 @@ const NAV = [
   },
   { to: "/admin/homepage", label: "Homepage", icon: Home, group: "General", adminOnly: true },
   { to: "/admin/questions", label: "Questions", icon: HelpCircle, group: "Content" },
-  { to: "/admin/import", label: "Import", icon: Upload, group: "Content" },
-  { to: "/admin/tests", label: "Tests", icon: FileStack, group: "Content", adminOnly: true },
+  { to: "/admin/import", label: "Add tests", icon: Upload, group: "Content" },
+  { to: "/admin/tests", label: "Tests", icon: FileStack, group: "Content" },
   { to: "/admin/daily", label: "Daily Tests", icon: CalendarDays, group: "Content" },
   { to: "/admin/mocks", label: "Mock Exams", icon: ClipboardList, group: "Content" },
   {

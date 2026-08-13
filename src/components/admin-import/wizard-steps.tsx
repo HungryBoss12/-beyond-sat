@@ -5,7 +5,7 @@ const STEPS = [
   { id: "source", label: "Source", blurb: "Paper, sheet, or JSON" },
   { id: "extract", label: "Extract", blurb: "Read questions" },
   { id: "answers", label: "Answers", blurb: "Key & AI fix" },
-  { id: "review", label: "Review", blurb: "Validate & import" },
+  { id: "review", label: "Review", blurb: "Check against page" },
 ] as const;
 
 export function WizardSteps({

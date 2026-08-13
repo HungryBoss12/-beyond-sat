@@ -130,7 +130,7 @@ function itemsToBlocks(items: TextItem[]): string[] {
 }
 
 export type PdfTextResult = {
-  blocks: string[];
+  blocks: { text: string; page: number }[];
   pages: number;
   /** True when the file has no extractable text — i.e. it's a scan. */
   scanned: boolean;
@@ -150,7 +150,7 @@ export async function readPdfText(
 ): Promise<PdfTextResult> {
   const { doc } = await openDocument(file);
   try {
-    const all: string[] = [];
+    const all: { text: string; page: number }[] = [];
     let characters = 0;
     for (let n = 1; n <= doc.numPages; n++) {
       const page = await doc.getPage(n);
@@ -160,7 +160,7 @@ export async function readPdfText(
         (sum, i) => sum + (typeof i.str === "string" ? i.str.length : 0),
         0,
       );
-      all.push(...itemsToBlocks(items));
+      for (const text of itemsToBlocks(items)) all.push({ text, page: n });
       page.cleanup();
       onProgress?.(n, doc.numPages);
     }
@@ -175,6 +175,55 @@ export async function readPdfText(
 // ---------------------------------------------------------------------------
 
 export type PageImage = { page: number; dataUrl: string };
+
+async function renderPageToDataUrl(
+  page: PdfPageProxy,
+  scale: number,
+  quality: number,
+): Promise<string> {
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.floor(viewport.width);
+  canvas.height = Math.floor(viewport.height);
+  const ctx = canvas.getContext("2d");
+  if (!ctx)
+    throw new Error("This browser wouldn't give a 2D canvas, so PDF pages can't be rendered.");
+
+  /* White first: a PDF page is transparent where nothing was drawn, and JPEG
+     has no alpha — without this every page arrives as black on black. */
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: ctx, viewport }).promise;
+
+  const dataUrl = canvas.toDataURL("image/jpeg", quality);
+  page.cleanup();
+  /* Release the backing store immediately. Holding full-page canvases across a
+     long document is hundreds of megabytes on a low-end laptop. */
+  canvas.width = 0;
+  canvas.height = 0;
+  return dataUrl;
+}
+
+/**
+ * Render one PDF page for human review next to an extracted draft.
+ *
+ * Scale/quality are a touch lower than the vision path: staff need to read the
+ * page, not send it to Gemini, and Review may open the same page many times.
+ */
+export async function renderPdfPage(
+  file: Blob,
+  pageNumber: number,
+  opts?: { scale?: number; quality?: number },
+): Promise<string> {
+  const { doc } = await openDocument(file);
+  try {
+    const n = Math.max(1, Math.min(doc.numPages, Math.round(pageNumber) || 1));
+    const page = await doc.getPage(n);
+    return await renderPageToDataUrl(page, opts?.scale ?? 1.35, opts?.quality ?? 0.68);
+  } finally {
+    await doc.destroy();
+  }
+}
 
 /**
  * Render pages to JPEG data URLs, one at a time.
@@ -210,26 +259,7 @@ export async function renderPdfPages(
       if (opts.shouldStop?.()) return { rendered, total, stopped: true };
 
       const page = await doc.getPage(n);
-      const viewport = page.getViewport({ scale: 1.6 });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.floor(viewport.width);
-      canvas.height = Math.floor(viewport.height);
-      const ctx = canvas.getContext("2d");
-      if (!ctx)
-        throw new Error("This browser wouldn't give a 2D canvas, so PDF pages can't be rendered.");
-
-      /* White first: a PDF page is transparent where nothing was drawn, and JPEG
-         has no alpha — without this every page arrives as black on black. */
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvasContext: ctx, viewport }).promise;
-
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
-      page.cleanup();
-      /* Release the backing store immediately. 108 full-page canvases held at
-         once is hundreds of megabytes and will kill the tab on a low-end laptop. */
-      canvas.width = 0;
-      canvas.height = 0;
+      const dataUrl = await renderPageToDataUrl(page, 1.6, 0.72);
 
       await opts.onPage({ page: n, dataUrl }, rendered, total);
       rendered++;

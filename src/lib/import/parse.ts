@@ -20,12 +20,22 @@ import type { Section } from "@/lib/sat";
  * inserted without passing through the preview table first.
  */
 
+export type SourceBlock = {
+  text: string;
+  /** 1-based PDF page, when the block came from a paged document. */
+  page?: number;
+};
+
 export type Draft = {
   /** The number printed in the document. This is what an answer key refers to. */
   number: number;
   rec: Record<string, string>;
   /** Parse-time notes, merged into the row's warnings by the caller. */
   warnings: string[];
+  /** 1-based PDF page this question was read from, when known. */
+  sourcePage?: number;
+  /** Staff confirmed the draft against the source page. */
+  reviewed?: boolean;
 };
 
 export type DocumentParse = {
@@ -175,14 +185,21 @@ function inferSkill(
  * tolerated and reported, because a genuinely missing question is more likely
  * than the numbering restarting.
  */
-export function blocksToDrafts(blocks: string[], defaults: ParseDefaults): DocumentParse {
-  const notes: string[] = [];
-  const groups: { number: number; blocks: string[] }[] = [];
-  const preamble: string[] = [];
-  let current: { number: number; blocks: string[] } | null = null;
+function asSourceBlocks(blocks: Array<string | SourceBlock>): SourceBlock[] {
+  return blocks.map((b) => (typeof b === "string" ? { text: b } : b));
+}
 
-  for (const block of blocks) {
-    const m = block.match(QUESTION_OPENER);
+export function blocksToDrafts(
+  blocks: Array<string | SourceBlock>,
+  defaults: ParseDefaults,
+): DocumentParse {
+  const notes: string[] = [];
+  const groups: { number: number; page?: number; blocks: string[] }[] = [];
+  const preamble: string[] = [];
+  let current: { number: number; page?: number; blocks: string[] } | null = null;
+
+  for (const block of asSourceBlocks(blocks)) {
+    const m = block.text.match(QUESTION_OPENER);
     if (m) {
       const n = Number(m[1]);
       const expected = current ? current.number + 1 : 1;
@@ -194,13 +211,13 @@ export function blocksToDrafts(blocks: string[], defaults: ParseDefaults): Docum
             `Question numbering jumps from ${current.number} to ${n} — ${n - expected} question(s) may be missing.`,
           );
         }
-        const rest = block.slice(m[0].length).trim();
-        current = { number: n, blocks: rest ? [rest] : [] };
+        const rest = block.text.slice(m[0].length).trim();
+        current = { number: n, page: block.page, blocks: rest ? [rest] : [] };
         continue;
       }
     }
-    if (current) current.blocks.push(block);
-    else preamble.push(block);
+    if (current) current.blocks.push(block.text);
+    else preamble.push(block.text);
   }
   if (current) groups.push(current);
 
@@ -211,7 +228,7 @@ export function blocksToDrafts(blocks: string[], defaults: ParseDefaults): Docum
     return { drafts: [], preamble, notes };
   }
 
-  const drafts = groups.map(({ number, blocks: body }) => {
+  const drafts = groups.map(({ number, page, blocks: body }) => {
     const warnings: string[] = [];
     const located = locateChoices(body);
     const choices = located?.choices ?? [];
@@ -260,7 +277,7 @@ export function blocksToDrafts(blocks: string[], defaults: ParseDefaults): Docum
     };
     for (const c of choices) rec[`choice_${c.id}`] = c.text;
 
-    return { number, rec, warnings };
+    return { number, rec, warnings, sourcePage: page };
   });
 
   const withChoices = drafts.filter((d) => d.rec.kind === "multiple_choice").length;

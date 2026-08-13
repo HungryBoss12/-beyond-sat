@@ -35,8 +35,9 @@ export function VisionPanel({
         <ScanEye className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
         <div className="text-xs leading-relaxed text-brand-100">
           <strong className="text-white">This is a scan.</strong> Each page is read twice: Gemini
-          Pro extracts questions (numbers optional), then Gemini Flash rechecks the same page. Check
-          every row in the preview before importing. Run a small range first.
+          Pro extracts questions (numbers optional), then Gemini Flash rechecks the same page. On
+          Review, compare each question to the page and fix typos before importing. Run a small
+          range first.
         </div>
       </div>
 

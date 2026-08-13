@@ -13,7 +13,12 @@ import {
   type ParseResult,
 } from "@/lib/question-import";
 import { readDocx } from "@/lib/import/docx";
-import { blocksToDrafts, type Draft, type ParseDefaults } from "@/lib/import/parse";
+import {
+  blocksToDrafts,
+  type Draft,
+  type ParseDefaults,
+  type SourceBlock,
+} from "@/lib/import/parse";
 import { parseAnswerKey, applyAnswerKey, describeKey } from "@/lib/import/answer-key";
 import {
   skillsFor,
@@ -88,6 +93,7 @@ function AdminImport() {
 
   const [keyText, setKeyText] = useState("");
   const [keySummary, setKeySummary] = useState<string | null>(null);
+  const [sourcePdf, setSourcePdf] = useState<File | null>(null);
 
   const [existingKeys, setExistingKeys] = useState<Set<string>>(new Set());
   const [skipDuplicates, setSkipDuplicates] = useState(true);
@@ -135,6 +141,7 @@ function AdminImport() {
     setKeySummary(null);
     setVision(null);
     setFileName("");
+    setSourcePdf(null);
   }
 
   function defaults(): ParseDefaults {
@@ -184,7 +191,7 @@ function AdminImport() {
     reader.readAsText(f);
   }
 
-  async function finishDocument(blocks: string[], extraNotes: string[] = []) {
+  async function finishDocument(blocks: Array<string | SourceBlock>, extraNotes: string[] = []) {
     const out = blocksToDrafts(blocks, defaults());
     setDrafts(out.drafts);
     setNotes([...extraNotes, ...out.notes]);
@@ -209,6 +216,7 @@ function AdminImport() {
       }
 
       if (/\.pdf$/i.test(f.name)) {
+        setSourcePdf(f);
         setReading("Looking for a text layer…");
         const { readPdfText } = await import("@/lib/import/pdf");
         const out = await readPdfText(f, (p, t) => setReading(`Reading page ${p} of ${t}…`));
@@ -317,6 +325,18 @@ function AdminImport() {
       current
         ? current.map((d, i) => (i === index ? { ...d, rec: { ...d.rec, correct: value } } : d))
         : current,
+    );
+  }
+
+  function updateDraftRec(index: number, rec: Record<string, string>) {
+    setDrafts((current) =>
+      current ? current.map((d, i) => (i === index ? { ...d, rec, reviewed: false } : d)) : current,
+    );
+  }
+
+  function setDraftReviewed(index: number, reviewed: boolean) {
+    setDrafts((current) =>
+      current ? current.map((d, i) => (i === index ? { ...d, reviewed } : d)) : current,
     );
   }
 
@@ -950,7 +970,10 @@ function AdminImport() {
               progress={progress}
               onImport={() => void runImport()}
               onAnswerChange={drafts ? setDraftAnswer : undefined}
+              onChangeDraft={drafts ? updateDraftRec : undefined}
+              onSetReviewed={drafts ? setDraftReviewed : undefined}
               drafts={drafts}
+              sourcePdf={sourcePdf ?? vision?.file ?? null}
               setLabel={makeSet && title.trim() ? title.trim() : null}
               fixing={fixing}
               fixProgress={fixProgress}

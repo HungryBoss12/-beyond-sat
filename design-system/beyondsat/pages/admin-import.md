@@ -10,11 +10,12 @@ Wizard, not tabs:
 2. **Source** — paper | spreadsheet | JSON cards  
 3. **Extract** — upload / paste / Gemini vision (2-stage)  
 4. **Answers** — answer key for paper drafts  
-5. **Review** — validate, Fix broken with AI (2-stage), import  
+5. **Review** — page + draft side by side, inline edit, mark Looks good, Fix broken with AI, import  
 
 ## Patterns
 
 - Shared `WizardSteps` chrome with unlock rules  
 - Extracted panels under `src/components/admin-import/`  
 - Editors can open **Tests** after creating a set  
-- Confirm before switching source when work would be lost  
+- Confirm before switching source when work would be lost
+- Review is a focused check: source PDF page (when known) next to an editable draft; staff fix typos before import  

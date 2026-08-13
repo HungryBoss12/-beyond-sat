@@ -65,6 +65,7 @@ function itemToDraft(
   item: Record<string, unknown>,
   fallbackNumber: number,
   defaults: ParseDefaults,
+  sourcePage?: number,
 ): Draft | null {
   const warnings: string[] = [];
 
@@ -124,7 +125,7 @@ function itemToDraft(
     );
   }
 
-  return { number, rec, warnings };
+  return { number, rec, warnings, sourcePage };
 }
 
 export async function pageCount(file: Blob): Promise<number> {
@@ -230,6 +231,7 @@ export async function extractByVision(
             raw as Record<string, unknown>,
             drafts.length + 1,
             opts.defaults,
+            image.page,
           );
           if (draft) drafts.push(draft);
         }

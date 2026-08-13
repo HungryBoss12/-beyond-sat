@@ -1,17 +1,10 @@
 import { useState } from "react";
-import {
-  AlertTriangle,
-  Check,
-  Loader2,
-  Square,
-  Upload,
-  Wrench,
-  X,
-} from "lucide-react";
+import { AlertTriangle, Check, Loader2, Square, Upload, Wrench, X } from "lucide-react";
 import { MathText } from "@/components/MathText";
 import type { Draft } from "@/lib/import/parse";
 import type { RowResult } from "@/lib/question-import";
 import { SECTION_LABEL, difficultyColor } from "@/lib/sat";
+import { DraftReviewer } from "./draft-reviewer";
 import { StageBar } from "./stage-bar";
 import type { FixProgress, PreviewRow } from "./types";
 
@@ -25,7 +18,10 @@ export function PreviewPanel({
   progress,
   onImport,
   onAnswerChange,
+  onChangeDraft,
+  onSetReviewed,
   drafts,
+  sourcePdf = null,
   setLabel,
   fixing,
   fixProgress,
@@ -48,7 +44,10 @@ export function PreviewPanel({
   progress: { done: number; total: number };
   onImport: () => void;
   onAnswerChange?: (index: number, value: string) => void;
+  onChangeDraft?: (index: number, rec: Record<string, string>) => void;
+  onSetReviewed?: (index: number, reviewed: boolean) => void;
   drafts: Draft[] | null;
+  sourcePdf?: File | null;
   setLabel: string | null;
   fixing?: boolean;
   fixProgress?: FixProgress | null;
@@ -116,7 +115,7 @@ export function PreviewPanel({
               Skip the {stats.duplicates} duplicate{stats.duplicates === 1 ? "" : "s"}
             </label>
           )}
-          {(stats.invalid > 0 || stats.warnings > 0) && (
+          {(stats.invalid > 0 || stats.warnings > 0) && !(drafts && onChangeDraft) && (
             <label className="inline-flex items-center gap-2 text-xs font-semibold text-brand-100">
               <input
                 type="checkbox"
@@ -227,33 +226,54 @@ export function PreviewPanel({
         <div className="rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
           {stats.invalid} row{stats.invalid === 1 ? "" : "s"} {stats.invalid === 1 ? "has" : "have"}{" "}
           an error and won't be imported.
-          {onFixBroken
-            ? " Use Fix broken with AI, paste an answer key, or set the answer on the row."
-            : onAnswerChange
-              ? " Most will be a missing answer — paste a key above, or set the answer on the row itself."
-              : " Fix them in your source and paste again — the rows that are ready can be imported now either way."}
+          {onChangeDraft
+            ? " Edit the question next to the page, use Fix broken with AI, or set the answer."
+            : onFixBroken
+              ? " Use Fix broken with AI, paste an answer key, or set the answer on the row."
+              : onAnswerChange
+                ? " Most will be a missing answer — paste a key above, or set the answer on the row itself."
+                : " Fix them in your source and paste again — the rows that are ready can be imported now either way."}
         </div>
       )}
 
-      <ul className="divide-y divide-brand-400/30 overflow-hidden rounded-xl border border-brand-400/40">
-        {visible.map((p) => (
-          <RowPreview
-            key={p.row.index}
-            row={p.row}
-            draft={p.draftIndex != null ? (drafts?.[p.draftIndex] ?? null) : null}
-            onAnswerChange={
-              onAnswerChange && p.draftIndex != null
-                ? (v) => onAnswerChange(p.draftIndex as number, v)
-                : undefined
-            }
-          />
-        ))}
-      </ul>
+      {drafts && onChangeDraft && onSetReviewed ? (
+        <DraftReviewer
+          rows={rows}
+          drafts={drafts}
+          sourcePdf={sourcePdf}
+          disabled={importing || fixing}
+          onChangeDraft={onChangeDraft}
+          onSetReviewed={onSetReviewed}
+        />
+      ) : (
+        <ul className="divide-y divide-brand-400/30 overflow-hidden rounded-xl border border-brand-400/40">
+          {visible.map((p) => (
+            <RowPreview
+              key={p.row.index}
+              row={p.row}
+              draft={p.draftIndex != null ? (drafts?.[p.draftIndex] ?? null) : null}
+              onAnswerChange={
+                onAnswerChange && p.draftIndex != null
+                  ? (v) => onAnswerChange(p.draftIndex as number, v)
+                  : undefined
+              }
+            />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
-export function Stat({ label, value, tone }: { label: string; value: number; tone?: "good" | "bad" }) {
+export function Stat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: "good" | "bad";
+}) {
   return (
     <span
       className={

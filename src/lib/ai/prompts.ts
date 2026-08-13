@@ -111,24 +111,21 @@ Figures: describe tables/graphs in \`prompt\`, then add a line:
 Include a question if the stem is mostly readable even without a number. Only skip when the stem is cut off mid-sentence with no usable meaning, or the page is not a question page.`;
 
 /**
- * Stage 2 — independent recheck against the same page image.
- * Receives the stage-1 JSON and must return a corrected JSON array.
+ * Stage 2 — text-only recheck (Nemotron). No page image: fix JSON, do not invent.
  */
-export const VISION_RECHECK_PROMPT = `You are verifying and correcting a first-pass extraction of SAT-style questions from the attached page image.
+export const VISION_RECHECK_PROMPT = `You are verifying a first-pass JSON extraction of SAT-style questions. You do not have the page image.
 
-You will receive a JSON array from another model. Compare it carefully to the image.
+You will receive a JSON array from another model.
 
-Return ONLY a corrected JSON array (first char [, last char ]). Same object shape as the first pass:
+Return ONLY a corrected JSON array (first char [, last char ]). Same object shape:
 number (optional), section (optional), skill (optional), kind (optional), question_text, choices, prompt, correct (optional), explanation (optional).
 
 Rules:
-- Fix wrong or garbled transcriptions using the image.
-- Add questions the first pass missed (including unnumbered ones).
-- Remove invented questions that are not on the page.
-- Keep printed numbers when visible; omit number when none is printed.
-- Do not invent answers or explanations that are not printed.
-- Prefer completeness: include readable questions even without numbers or skill labels.
-- If the first pass is already accurate, return it unchanged (still as a JSON array).`;
+- Fix broken JSON, duplicated questions, empty stems, and choice lists that are not A–D in order.
+- Repair garbled LaTeX (use $…$ with doubled backslashes in JSON).
+- Do not invent questions, answers, or explanations that are not already in the first pass.
+- Do not drop a question that already has a readable stem.
+- If the first pass is already coherent, return it unchanged (still as a JSON array).`;
 
 /**
  * Stage 1 — repair a single broken import draft (validation errors / incomplete fields).
@@ -205,17 +202,14 @@ Include a small margin so axis labels and table headers are inside the box.
 If this page has no figure, return {"figures":[]}.
 Do not invent figures that are not visible. Never return an image URL.`;
 
-export const FIGURE_LOCATE_RECHECK_PROMPT = `You are verifying figure bounding boxes on a scanned SAT-style exam page.
+export const FIGURE_LOCATE_RECHECK_PROMPT = `You are verifying figure bounding-box JSON. You do not have the page image.
 
-You receive a JSON object {"figures":[{x,y,w,h,caption}]} from another model, plus the page image.
+You receive a JSON object {"figures":[{x,y,w,h,caption}]} from another model.
 
 Return ONLY a corrected JSON object of the same shape (first char {, last char }).
 
 Rules:
-- Fix boxes that miss labels, cut off a graph, or include unrelated question text.
-- Add a box for any real figure the first pass missed.
-- Remove boxes that are not figures (headers, stems, choices).
-- Coordinates remain 0–1 fractions of the page, origin top-left.
-- If there are no figures, return {"figures":[]}.
-- If the first pass is already accurate, return it unchanged.
-- Never invent a figure or an image URL.`;
+- Clamp x,y,w,h to 0–1. Drop boxes that are empty, inverted, or mostly off-page.
+- Keep captions short. Do not invent new figures.
+- If the first pass is already valid, return it unchanged.
+- Never return an image URL. If there are no usable boxes, return {"figures":[]}.`;

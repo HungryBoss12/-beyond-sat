@@ -42,16 +42,6 @@ export async function handleImportFix(request: Request, env: unknown): Promise<R
     return json({ error: "Your session has expired. Sign in again." }, 401);
   }
 
-  const apiKey = readEnv(env, "GEMINI_API_KEY");
-  if (!apiKey) {
-    console.error(
-      import.meta.env.DEV
-        ? "[import/fix] GEMINI_API_KEY is not set — add it to .dev.vars or .env.local, then restart the dev server."
-        : "[import/fix] GEMINI_API_KEY is not set — run: npx wrangler secret put GEMINI_API_KEY",
-    );
-    return json({ error: "Question fix is not available right now." }, 503);
-  }
-
   let payload: FixRequest;
   try {
     payload = (await request.json()) as FixRequest;
@@ -75,6 +65,25 @@ export async function handleImportFix(request: Request, env: unknown): Promise<R
   const priorFix = typeof payload.priorFix === "string" ? payload.priorFix : undefined;
   if (stage === "recheck" && !priorFix?.trim()) {
     return json({ error: "priorFix is required for recheck" }, 400);
+  }
+
+  const apiKey =
+    stage === "recheck" ? readEnv(env, "OPENROUTER_API_KEY") : readEnv(env, "GEMINI_API_KEY");
+  if (!apiKey) {
+    console.error(
+      import.meta.env.DEV
+        ? `[import/fix] ${stage === "recheck" ? "OPENROUTER_API_KEY" : "GEMINI_API_KEY"} is not set — add it to .dev.vars or .env.local, then restart the dev server.`
+        : `[import/fix] ${stage === "recheck" ? "OPENROUTER_API_KEY" : "GEMINI_API_KEY"} is not set — run: npx wrangler secret put ${stage === "recheck" ? "OPENROUTER_API_KEY" : "GEMINI_API_KEY"}`,
+    );
+    return json(
+      {
+        error:
+          stage === "recheck"
+            ? "Question recheck is not available right now."
+            : "Question fix is not available right now.",
+      },
+      503,
+    );
   }
 
   const rec: Record<string, string> = {};

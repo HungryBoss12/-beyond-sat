@@ -1,10 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import { buildSystemPrompt, VISION_FIX_PROMPT, VISION_FIX_RECHECK_PROMPT } from "@/lib/ai/prompts";
+import { completeOpenRouterJson } from "@/lib/import/openrouter-recheck";
 import {
   GEMINI_IMPORT_EXTRACT_MODEL,
   GEMINI_IMPORT_MAX_OUTPUT_TOKENS,
-  GEMINI_IMPORT_RECHECK_MODEL,
   GEMINI_IMPORT_TEMPERATURE,
+  GEMINI_IMPORT_THINKING,
 } from "./config";
 import { GeminiError, mapGeminiSdkError } from "./errors";
 
@@ -25,24 +26,14 @@ export type FixBrokenQuestionOptions = {
 };
 
 /**
- * Two-stage text repair for a broken import draft (no page image required).
- * Stage extract → Gemini 2.5 Pro; stage recheck → Gemini 2.5 Flash.
+ * Two-stage text repair for a broken import draft.
+ * Stage extract → Gemini 3 Flash; stage recheck → Nemotron 3 Ultra.
  */
 export async function fixBrokenQuestionWithGemini(
   input: FixBrokenQuestionInput,
   options: FixBrokenQuestionOptions,
 ): Promise<string> {
-  const apiKey = options.apiKey?.trim();
-  if (!apiKey) {
-    throw new GeminiError(
-      "MISSING_API_KEY",
-      "GEMINI_API_KEY is not configured on the server.",
-      503,
-    );
-  }
-
   const stage: FixStage = options.stage === "recheck" ? "recheck" : "extract";
-  const model = stage === "recheck" ? GEMINI_IMPORT_RECHECK_MODEL : GEMINI_IMPORT_EXTRACT_MODEL;
 
   const payload = JSON.stringify(
     {
@@ -55,22 +46,36 @@ export async function fixBrokenQuestionWithGemini(
     2,
   );
 
-  const userText =
-    stage === "recheck"
-      ? `${VISION_FIX_RECHECK_PROMPT}\n\nOriginal broken draft + errors:\n${payload}\n\nFirst-pass repair JSON:\n${options.priorFix?.trim() || "{}"}`
-      : `${VISION_FIX_PROMPT}\n\nBroken draft + validation issues:\n${payload}`;
+  if (stage === "recheck") {
+    return completeOpenRouterJson({
+      apiKey: options.apiKey,
+      system: "Return only a JSON object. No markdown fences.",
+      user: `${VISION_FIX_RECHECK_PROMPT}\n\nOriginal broken draft + errors:\n${payload}\n\nFirst-pass repair JSON:\n${options.priorFix?.trim() || "{}"}`,
+    });
+  }
 
+  const apiKey = options.apiKey?.trim();
+  if (!apiKey) {
+    throw new GeminiError(
+      "MISSING_API_KEY",
+      "GEMINI_API_KEY is not configured on the server.",
+      503,
+    );
+  }
+
+  const userText = `${VISION_FIX_PROMPT}\n\nBroken draft + validation issues:\n${payload}`;
   const ai = new GoogleGenAI({ apiKey });
 
   let text: string | undefined;
   try {
     const response = await ai.models.generateContent({
-      model,
+      model: GEMINI_IMPORT_EXTRACT_MODEL,
       contents: [{ role: "user", parts: [{ text: userText }] }],
       config: {
         systemInstruction: buildSystemPrompt("vision"),
         temperature: GEMINI_IMPORT_TEMPERATURE,
         maxOutputTokens: GEMINI_IMPORT_MAX_OUTPUT_TOKENS,
+        thinkingConfig: GEMINI_IMPORT_THINKING,
         responseMimeType: "application/json",
       },
     });

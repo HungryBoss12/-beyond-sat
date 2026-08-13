@@ -240,7 +240,7 @@ export function PreviewPanel({
           <div className="grid gap-3 sm:grid-cols-2">
             <StageBar
               label="1 · Fix"
-              detail="Gemini 2.5 Pro"
+              detail="Gemini 3 Flash"
               pct={stage1Pct}
               active={fixProgress?.stage === 1}
               done={fixProgress?.stage1Done ?? 0}
@@ -248,7 +248,7 @@ export function PreviewPanel({
             />
             <StageBar
               label="2 · Recheck"
-              detail="Gemini 2.5 Flash"
+              detail="Nemotron 3 Ultra"
               pct={stage2Pct}
               active={fixProgress?.stage === 2}
               done={fixProgress?.stage2Done ?? 0}
@@ -273,7 +273,7 @@ export function PreviewPanel({
         >
           <div className="text-xs leading-relaxed text-brand-100">
             <strong className="text-white">Crop from the page.</strong> Gemini locates the figure,
-            then a second pass rechecks the box. The crop is uploaded — nothing is generated.
+            then Nemotron rechecks the box JSON. The crop is uploaded — nothing is generated.
           </div>
           <div>
             <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-brand-100">
@@ -290,7 +290,7 @@ export function PreviewPanel({
           <div className="grid gap-3 sm:grid-cols-2">
             <StageBar
               label="1 · Locate"
-              detail="Gemini 2.5 Pro"
+              detail="Gemini 3 Flash"
               pct={fig1Pct}
               active={figureProgress?.stage === 1}
               done={figureProgress?.stage1Done ?? 0}
@@ -298,7 +298,7 @@ export function PreviewPanel({
             />
             <StageBar
               label="2 · Recheck"
-              detail="Gemini 2.5 Flash"
+              detail="Nemotron 3 Ultra"
               pct={fig2Pct}
               active={figureProgress?.stage === 2}
               done={figureProgress?.stage2Done ?? 0}

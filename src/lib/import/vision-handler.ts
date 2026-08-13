@@ -15,11 +15,17 @@ type VisionRequest = {
   priorExtraction?: unknown;
 };
 
+function missingKeyMessage(name: "GEMINI_API_KEY" | "OPENROUTER_API_KEY", route: string): string {
+  return import.meta.env.DEV
+    ? `[${route}] ${name} is not set — add it to .dev.vars or .env.local, then restart the dev server.`
+    : `[${route}] ${name} is not set — run: npx wrangler secret put ${name}`;
+}
+
 /**
- * POST /api/import/vision — two-stage Gemini page extraction for admin import.
+ * POST /api/import/vision — two-stage page extraction for admin import.
  *
- * `stage: "extract"` (default) → Gemini 2.5 Pro
- * `stage: "recheck"` → Gemini 2.5 Flash with priorExtraction JSON
+ * `stage: "extract"` (default) → Gemini 3 Flash (page image)
+ * `stage: "recheck"` → Nemotron 3 Ultra (JSON only)
  */
 export async function handleImportVision(request: Request, env: unknown): Promise<Response> {
   if (request.method !== "POST") {
@@ -42,25 +48,11 @@ export async function handleImportVision(request: Request, env: unknown): Promis
     return json({ error: "Your session has expired. Sign in again." }, 401);
   }
 
-  const apiKey = readEnv(env, "GEMINI_API_KEY");
-  if (!apiKey) {
-    console.error(
-      import.meta.env.DEV
-        ? "[import/vision] GEMINI_API_KEY is not set — add it to .dev.vars or .env.local, then restart the dev server."
-        : "[import/vision] GEMINI_API_KEY is not set — run: npx wrangler secret put GEMINI_API_KEY",
-    );
-    return json({ error: "Question import vision is not available right now." }, 503);
-  }
-
   let payload: VisionRequest;
   try {
     payload = (await request.json()) as VisionRequest;
   } catch {
     return json({ error: "Request body must be JSON" }, 400);
-  }
-
-  if (typeof payload.imageDataUrl !== "string" || !payload.imageDataUrl.trim()) {
-    return json({ error: "imageDataUrl is required" }, 400);
   }
 
   const stage: VisionStage = payload.stage === "recheck" ? "recheck" : "extract";
@@ -71,12 +63,38 @@ export async function handleImportVision(request: Request, env: unknown): Promis
     return json({ error: "priorExtraction is required for recheck" }, 400);
   }
 
+  if (
+    stage === "extract" &&
+    (typeof payload.imageDataUrl !== "string" || !payload.imageDataUrl.trim())
+  ) {
+    return json({ error: "imageDataUrl is required" }, 400);
+  }
+
+  const apiKey =
+    stage === "recheck" ? readEnv(env, "OPENROUTER_API_KEY") : readEnv(env, "GEMINI_API_KEY");
+  if (!apiKey) {
+    console.error(
+      missingKeyMessage(
+        stage === "recheck" ? "OPENROUTER_API_KEY" : "GEMINI_API_KEY",
+        "import/vision",
+      ),
+    );
+    return json(
+      {
+        error:
+          stage === "recheck"
+            ? "Question recheck is not available right now."
+            : "Question import vision is not available right now.",
+      },
+      503,
+    );
+  }
+
   try {
-    const content = await extractSatPageFromImage(payload.imageDataUrl, {
-      apiKey,
-      stage,
-      priorExtraction,
-    });
+    const content = await extractSatPageFromImage(
+      typeof payload.imageDataUrl === "string" ? payload.imageDataUrl : "",
+      { apiKey, stage, priorExtraction },
+    );
     return json({ content, stage }, 200);
   } catch (error) {
     if (error instanceof GeminiError) {

@@ -4,10 +4,11 @@ import {
   FIGURE_LOCATE_PROMPT,
   FIGURE_LOCATE_RECHECK_PROMPT,
 } from "@/lib/ai/prompts";
+import { completeOpenRouterJson } from "@/lib/import/openrouter-recheck";
 import {
   GEMINI_IMPORT_EXTRACT_MODEL,
-  GEMINI_IMPORT_RECHECK_MODEL,
   GEMINI_IMPORT_TEMPERATURE,
+  GEMINI_IMPORT_THINKING,
   parseImageDataUrl,
 } from "./config";
 import { GeminiError, mapGeminiSdkError } from "./errors";
@@ -22,13 +23,27 @@ export type LocateFigureOptions = {
 };
 
 /**
- * Ask Gemini for figure bounding boxes on one rendered page image.
- * Stage extract → Pro; stage recheck → Flash.
+ * Stage extract → Gemini 3 Flash (needs the page).
+ * Stage recheck → Nemotron 3 Ultra (JSON sanity only; no image).
  */
 export async function locateFiguresOnPage(
   imageDataUrl: string,
   options: LocateFigureOptions,
 ): Promise<string> {
+  const stage: FigureStage = options.stage === "recheck" ? "recheck" : "extract";
+  const hint = options.hint?.trim()
+    ? `\n\nThis question's figure note: ${options.hint.trim()}`
+    : "";
+
+  if (stage === "recheck") {
+    return completeOpenRouterJson({
+      apiKey: options.apiKey,
+      system: "Return only a JSON object. No markdown fences.",
+      user: `${FIGURE_LOCATE_RECHECK_PROMPT}${hint}\n\nFirst-pass JSON to verify:\n${options.priorLocation?.trim() || '{"figures":[]}'}`,
+      maxTokens: 2048,
+    });
+  }
+
   const apiKey = options.apiKey?.trim();
   if (!apiKey) {
     throw new GeminiError(
@@ -53,19 +68,8 @@ export async function locateFiguresOnPage(
     throw new GeminiError("INVALID_IMAGE", "Image data URL is empty.");
   }
 
-  const stage: FigureStage = options.stage === "recheck" ? "recheck" : "extract";
-  const model = stage === "recheck" ? GEMINI_IMPORT_RECHECK_MODEL : GEMINI_IMPORT_EXTRACT_MODEL;
-  const hint = options.hint?.trim()
-    ? `\n\nThis question's figure note: ${options.hint.trim()}`
-    : "";
-
   const userParts: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [
-    {
-      text:
-        stage === "recheck"
-          ? `${FIGURE_LOCATE_RECHECK_PROMPT}${hint}\n\nFirst-pass JSON to verify:\n${options.priorLocation?.trim() || '{"figures":[]}'}`
-          : `${FIGURE_LOCATE_PROMPT}${hint}`,
-    },
+    { text: `${FIGURE_LOCATE_PROMPT}${hint}` },
     {
       inlineData: {
         mimeType,
@@ -79,12 +83,13 @@ export async function locateFiguresOnPage(
   let text: string | undefined;
   try {
     const response = await ai.models.generateContent({
-      model,
+      model: GEMINI_IMPORT_EXTRACT_MODEL,
       contents: [{ role: "user", parts: userParts }],
       config: {
         systemInstruction: buildSystemPrompt("vision"),
         temperature: GEMINI_IMPORT_TEMPERATURE,
         maxOutputTokens: 2048,
+        thinkingConfig: GEMINI_IMPORT_THINKING,
         responseMimeType: "application/json",
       },
     });

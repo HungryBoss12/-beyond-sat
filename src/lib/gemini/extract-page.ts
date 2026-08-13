@@ -4,11 +4,12 @@ import {
   VISION_EXTRACTION_PROMPT,
   VISION_RECHECK_PROMPT,
 } from "@/lib/ai/prompts";
+import { completeOpenRouterJson } from "@/lib/import/openrouter-recheck";
 import {
   GEMINI_IMPORT_EXTRACT_MODEL,
   GEMINI_IMPORT_MAX_OUTPUT_TOKENS,
-  GEMINI_IMPORT_RECHECK_MODEL,
   GEMINI_IMPORT_TEMPERATURE,
+  GEMINI_IMPORT_THINKING,
   parseImageDataUrl,
 } from "./config";
 import { GeminiError, mapGeminiSdkError } from "./errors";
@@ -23,15 +24,23 @@ export type ExtractSatPageOptions = {
 };
 
 /**
- * Sends one rendered PDF page image to Gemini and returns raw JSON-array text.
- *
- * Stage `extract` uses Gemini 2.5 Pro. Stage `recheck` uses Gemini 2.5 Flash
- * with the first-pass JSON so a second model can correct misses and OCR errors.
+ * Stage `extract` sends the page image to Gemini 3 Flash.
+ * Stage `recheck` sends the first-pass JSON to Nemotron 3 Ultra (text only).
  */
 export async function extractSatPageFromImage(
   imageDataUrl: string,
   options: ExtractSatPageOptions,
 ): Promise<string> {
+  const stage: VisionStage = options.stage === "recheck" ? "recheck" : "extract";
+
+  if (stage === "recheck") {
+    return completeOpenRouterJson({
+      apiKey: options.apiKey,
+      system: "Return only a JSON array. No markdown fences.",
+      user: `${VISION_RECHECK_PROMPT}\n\nFirst-pass JSON to verify:\n${options.priorExtraction?.trim() || "[]"}`,
+    });
+  }
+
   const apiKey = options.apiKey?.trim();
   if (!apiKey) {
     throw new GeminiError(
@@ -56,16 +65,8 @@ export async function extractSatPageFromImage(
     throw new GeminiError("INVALID_IMAGE", "Image data URL is empty.");
   }
 
-  const stage: VisionStage = options.stage === "recheck" ? "recheck" : "extract";
-  const model = stage === "recheck" ? GEMINI_IMPORT_RECHECK_MODEL : GEMINI_IMPORT_EXTRACT_MODEL;
-
   const userParts: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [
-    {
-      text:
-        stage === "recheck"
-          ? `${VISION_RECHECK_PROMPT}\n\nFirst-pass JSON to verify:\n${options.priorExtraction?.trim() || "[]"}`
-          : VISION_EXTRACTION_PROMPT,
-    },
+    { text: VISION_EXTRACTION_PROMPT },
     {
       inlineData: {
         mimeType,
@@ -79,12 +80,13 @@ export async function extractSatPageFromImage(
   let text: string | undefined;
   try {
     const response = await ai.models.generateContent({
-      model,
+      model: GEMINI_IMPORT_EXTRACT_MODEL,
       contents: [{ role: "user", parts: userParts }],
       config: {
         systemInstruction: buildSystemPrompt("vision"),
         temperature: GEMINI_IMPORT_TEMPERATURE,
         maxOutputTokens: GEMINI_IMPORT_MAX_OUTPUT_TOKENS,
+        thinkingConfig: GEMINI_IMPORT_THINKING,
         responseMimeType: "application/json",
       },
     });

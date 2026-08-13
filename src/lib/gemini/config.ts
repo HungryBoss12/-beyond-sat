@@ -1,8 +1,19 @@
-/** Stage 1 — careful extraction (stronger model). */
-export const GEMINI_IMPORT_EXTRACT_MODEL = "gemini-2.5-pro";
+import { ThinkingLevel } from "@google/genai";
 
-/** Stage 2 — independent recheck (second model). */
-export const GEMINI_IMPORT_RECHECK_MODEL = "gemini-2.5-flash";
+/**
+ * Gemini 2.5 Pro was withdrawn. Gemini 3 Flash (`gemini-3-flash-preview`) has a
+ * free Gemini API tier and reads page images — Nemotron 3 Ultra cannot.
+ */
+export const GEMINI_IMPORT_EXTRACT_MODEL = "gemini-3-flash-preview";
+
+/**
+ * Stage 2 — Nemotron 3 Ultra on OpenRouter (`:free`). Text-only, so it does
+ * not spend Gemini quota. Same ID Beyond AI already uses for reasoning.
+ */
+export const IMPORT_RECHECK_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
+
+/** Keep thinking short so JSON extraction is not eaten by reasoning tokens. */
+export const GEMINI_IMPORT_THINKING = { thinkingLevel: ThinkingLevel.LOW };
 
 /** Room for multi-question pages with long passages. */
 export const GEMINI_IMPORT_MAX_OUTPUT_TOKENS = 8192;

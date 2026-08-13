@@ -104,7 +104,7 @@ export function VisionPanel({
           <div className="grid gap-3 sm:grid-cols-2">
             <StageBar
               label="1 · Extract"
-              detail="Gemini 2.5 Pro"
+              detail="Gemini 3 Flash"
               pct={stage1Pct}
               active={p?.stage === 1}
               done={p?.stage1Done ?? 0}
@@ -112,7 +112,7 @@ export function VisionPanel({
             />
             <StageBar
               label="2 · Recheck"
-              detail="Gemini 2.5 Flash"
+              detail="Nemotron 3 Ultra"
               pct={stage2Pct}
               active={p?.stage === 2}
               done={p?.stage2Done ?? 0}

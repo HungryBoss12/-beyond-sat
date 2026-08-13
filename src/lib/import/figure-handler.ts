@@ -40,16 +40,6 @@ export async function handleImportFigure(request: Request, env: unknown): Promis
     return json({ error: "Your session has expired. Sign in again." }, 401);
   }
 
-  const apiKey = readEnv(env, "GEMINI_API_KEY");
-  if (!apiKey) {
-    console.error(
-      import.meta.env.DEV
-        ? "[import/figure] GEMINI_API_KEY is not set — add it to .dev.vars or .env.local, then restart the dev server."
-        : "[import/figure] GEMINI_API_KEY is not set — run: npx wrangler secret put GEMINI_API_KEY",
-    );
-    return json({ error: "Figure attach is not available right now." }, 503);
-  }
-
   let payload: FigureRequest;
   try {
     payload = (await request.json()) as FigureRequest;
@@ -70,13 +60,35 @@ export async function handleImportFigure(request: Request, env: unknown): Promis
     return json({ error: "priorLocation is required for recheck" }, 400);
   }
 
+  const apiKey =
+    stage === "recheck" ? readEnv(env, "OPENROUTER_API_KEY") : readEnv(env, "GEMINI_API_KEY");
+  if (!apiKey) {
+    console.error(
+      import.meta.env.DEV
+        ? `[import/figure] ${stage === "recheck" ? "OPENROUTER_API_KEY" : "GEMINI_API_KEY"} is not set — add it to .dev.vars or .env.local, then restart the dev server.`
+        : `[import/figure] ${stage === "recheck" ? "OPENROUTER_API_KEY" : "GEMINI_API_KEY"} is not set — run: npx wrangler secret put ${stage === "recheck" ? "OPENROUTER_API_KEY" : "GEMINI_API_KEY"}`,
+    );
+    return json(
+      {
+        error:
+          stage === "recheck"
+            ? "Figure recheck is not available right now."
+            : "Figure attach is not available right now.",
+      },
+      503,
+    );
+  }
+
   try {
-    const content = await locateFiguresOnPage(payload.imageDataUrl, {
-      apiKey,
-      stage,
-      priorLocation,
-      hint,
-    });
+    const content = await locateFiguresOnPage(
+      typeof payload.imageDataUrl === "string" ? payload.imageDataUrl : "",
+      {
+        apiKey,
+        stage,
+        priorLocation,
+        hint,
+      },
+    );
     return json({ content, stage }, 200);
   } catch (error) {
     if (error instanceof GeminiError) {

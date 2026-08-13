@@ -25,10 +25,12 @@ function patchRec(
 export function DraftEditor({
   draft,
   disabled,
+  showModule,
   onChange,
 }: {
   draft: Draft;
   disabled?: boolean;
+  showModule?: boolean;
   onChange: (rec: Record<string, string>) => void;
 }) {
   const rec = draft.rec;
@@ -58,6 +60,19 @@ export function DraftEditor({
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
+        {showModule && (
+          <Field label="Module">
+            <select
+              value={rec.module === "2" ? "2" : "1"}
+              disabled={disabled}
+              onChange={(e) => setField("module", e.target.value)}
+              className={CONTROL_CLASS + " disabled:opacity-40"}
+            >
+              <option value="1">Module 1</option>
+              <option value="2">Module 2</option>
+            </select>
+          </Field>
+        )}
         <Field label="Section">
           <select
             value={section}

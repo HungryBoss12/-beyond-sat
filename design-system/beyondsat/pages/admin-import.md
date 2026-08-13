@@ -6,7 +6,7 @@ Overrides `MASTER.md` for `/admin/import` (nav label: **Add tests**).
 
 Wizard, not tabs:
 
-1. **Setup** — name, date, section, module, difficulty, default skill, create-set toggle  
+1. **Setup** — name, date, section, module (1 / 2 / both in one file), difficulty, create-set toggle  
 2. **Source** — paper | spreadsheet | JSON cards  
 3. **Extract** — upload / paste / Gemini vision (2-stage)  
 4. **Editor** — answer key, page + draft side by side, add/delete, attach figures (AI crop or upload), Fix broken with AI, import  

@@ -93,6 +93,10 @@ export function applyFixToDraft(draft: Draft, fixed: Record<string, unknown>): D
       if (v) rec[key] = v;
     }
   }
+  if (!(rec.correct ?? "").trim()) {
+    const alias = asText(fixed.answer).trim();
+    if (alias) rec.correct = alias;
+  }
 
   // Nested choices array → choice_A…
   if (Array.isArray(fixed.choices)) {
@@ -140,9 +144,16 @@ export type FixBrokenTarget = {
   warnings: string[];
 };
 
+function isAbortError(err: unknown): boolean {
+  return (err as Error)?.name === "AbortError";
+}
+
 /**
  * Run two-stage Gemini repair over broken drafts. Mutates via returned array
  * (same length as `allDrafts`, with fixed indices replaced).
+ *
+ * Stop/abort returns whatever rows were already repaired instead of throwing,
+ * so the editor can keep that work.
  */
 export async function fixBrokenDrafts(
   allDrafts: Draft[],
@@ -159,10 +170,15 @@ export async function fixBrokenDrafts(
   let failed = 0;
   let stage1Done = 0;
   let stage2Done = 0;
+  let stopped = false;
+
+  const halted = () => Boolean(opts.shouldStop?.() || opts.signal?.aborted);
 
   for (let i = 0; i < targets.length; i++) {
-    if (opts.shouldStop?.()) break;
-    if (opts.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    if (halted()) {
+      stopped = true;
+      break;
+    }
 
     const t = targets[i];
     const report = (stage: 1 | 2) => {
@@ -193,6 +209,10 @@ export async function fixBrokenDrafts(
       stage1Done++;
       report(1);
     } catch (err) {
+      if (isAbortError(err) || halted()) {
+        stopped = true;
+        break;
+      }
       failed++;
       notes.push(`Q${t.draft.number} (fix): ${(err as Error)?.message ?? "fix failed"}.`);
       report(1);
@@ -209,10 +229,14 @@ export async function fixBrokenDrafts(
       });
       stage2Done++;
     } catch (err) {
-      notes.push(
-        `Q${t.draft.number} (recheck): ${(err as Error)?.message ?? "recheck failed"} — using fix result.`,
-      );
-      stage2Done++;
+      if (isAbortError(err) || halted()) {
+        notes.push(`Q${t.draft.number} (recheck): stopped — using fix result.`);
+        stopped = true;
+      } else {
+        notes.push(
+          `Q${t.draft.number} (recheck): ${(err as Error)?.message ?? "recheck failed"} — using fix result.`,
+        );
+      }
     }
 
     const obj = extractJsonObject(content) ?? extractJsonObject(first);
@@ -220,14 +244,19 @@ export async function fixBrokenDrafts(
       failed++;
       notes.push(`Q${t.draft.number}: Gemini did not return usable JSON.`);
       report(2);
+      if (stopped) break;
       continue;
     }
 
     next[t.draftIndex] = applyFixToDraft(next[t.draftIndex], obj);
     fixed++;
     report(2);
+    if (stopped) break;
   }
 
+  if (stopped) {
+    notes.unshift("Stopped — rows already repaired are kept.");
+  }
   notes.unshift(
     `Fix pass: repaired ${fixed} of ${targets.length} broken row${targets.length === 1 ? "" : "s"}${failed ? ` (${failed} failed)` : ""}.`,
   );

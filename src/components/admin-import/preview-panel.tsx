@@ -35,6 +35,8 @@ export function PreviewPanel({
   attachingFigures,
   figureCount = 0,
   figureProgress,
+  showModule,
+  visionRunning,
 }: {
   rows: PreviewRow[];
   ignoredColumns: string[];
@@ -69,22 +71,17 @@ export function PreviewPanel({
   attachingFigures?: boolean;
   figureCount?: number;
   figureProgress?: FigureProgress | null;
+  showModule?: boolean;
+  visionRunning?: boolean;
 }) {
   const [showOnlyProblems, setShowOnlyProblems] = useState(false);
   const visible = showOnlyProblems
     ? rows.filter((p) => !p.row.question || p.row.warnings.length > 0)
     : rows;
 
-  const brokenCount = rows.filter((p) => {
-    if (p.draftIndex == null) return false;
-    if (!p.row.question || p.row.errors.length > 0) return true;
-    return p.row.warnings.some(
-      (w) =>
-        !w.includes("Duplicate") &&
-        !w.includes("already exists") &&
-        !w.includes("Repaired by Gemini"),
-    );
-  }).length;
+  const brokenCount = rows.filter(
+    (p) => p.draftIndex != null && (!p.row.question || p.row.errors.length > 0),
+  ).length;
 
   const fixTotal = fixProgress?.total ?? Math.max(brokenCount, 1);
   const stage1Pct = fixProgress
@@ -193,7 +190,7 @@ export function PreviewPanel({
             ) : (
               <button
                 onClick={onFixBroken}
-                disabled={importing}
+                disabled={importing || attachingFigures || Boolean(visionRunning)}
                 className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/50 bg-brand-800 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-400 disabled:opacity-40"
               >
                 <Wrench className="h-4 w-4" />
@@ -346,6 +343,7 @@ export function PreviewPanel({
           sourcePdf={sourcePdf}
           disabled={importing || fixing}
           attachingFigure={attachingFigures}
+          showModule={showModule}
           onChangeDraft={onChangeDraft}
           onSetReviewed={onSetReviewed}
           onAddAfter={onAddAfter}

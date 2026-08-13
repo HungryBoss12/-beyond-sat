@@ -31,8 +31,8 @@ function PracticeLanding() {
            lands as null and the page renders "0 questions available". Fetching
            `select("id")` rows and counting on the client side doesn't have that
            problem — and for a question bank under a few thousand rows it adds no
-           meaningful latency. The `skill` query in `practice.$section.tsx` already
-           uses this pattern successfully. */
+           meaningful latency. The difficulty tally in `practice.$section.tsx`
+           already uses this pattern successfully. */
         const [
           { data: rwRows },
           { data: mRows },

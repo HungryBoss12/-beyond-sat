@@ -21,6 +21,7 @@ export function DraftReviewer({
   sourcePdf,
   disabled,
   attachingFigure,
+  showModule,
   onChangeDraft,
   onSetReviewed,
   onAddAfter,
@@ -32,6 +33,7 @@ export function DraftReviewer({
   sourcePdf: File | null;
   disabled?: boolean;
   attachingFigure?: boolean;
+  showModule?: boolean;
   onChangeDraft: (index: number, rec: Record<string, string>) => void;
   onSetReviewed: (index: number, reviewed: boolean) => void;
   onAddAfter?: (index: number) => void;
@@ -124,7 +126,11 @@ export function DraftReviewer({
                   type="button"
                   onClick={() => go(i)}
                   aria-current={i === index ? "true" : undefined}
-                  title={`Question ${p.row.index}`}
+                  title={
+                    showModule
+                      ? `Question ${p.row.index} · Module ${d?.rec.module === "2" ? "2" : "1"}`
+                      : `Question ${p.row.index}`
+                  }
                   className={
                     "tap h-8 min-w-8 rounded-md px-2 text-[11px] font-bold tabular-nums transition-colors " +
                     (i === index
@@ -136,7 +142,9 @@ export function DraftReviewer({
                           : "bg-brand-900 text-white ring-1 ring-brand-300/60 hover:bg-brand-700")
                   }
                 >
-                  {p.row.index}
+                  {showModule
+                    ? `${d?.rec.module === "2" ? "M2" : "M1"}·${p.row.index}`
+                    : p.row.index}
                 </button>
               </li>
             );
@@ -238,6 +246,7 @@ export function DraftReviewer({
           <DraftEditor
             draft={draft}
             disabled={busy}
+            showModule={showModule}
             onChange={(rec) => onChangeDraft(draftIndex, rec)}
           />
         </div>

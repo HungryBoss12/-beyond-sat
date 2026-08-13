@@ -16,6 +16,8 @@ import { readDocx } from "@/lib/import/docx";
 import {
   blankDraft,
   blocksToDrafts,
+  draftModule,
+  stampDraftModules,
   type Draft,
   type ParseDefaults,
   type SourceBlock,
@@ -24,7 +26,6 @@ import { needsFigure } from "@/lib/import/attach-figures";
 import { parseAnswerKey, applyAnswerKey, describeKey } from "@/lib/import/answer-key";
 import {
   skillsFor,
-  RW_SKILLS,
   MONTHS,
   LETTER_DIFFICULTIES,
   formatSourceDate,
@@ -67,6 +68,8 @@ export const Route = createFileRoute("/_authenticated/admin/import")({
   head: () => ({ meta: [{ title: "Add tests — BeyondSAT" }] }),
 });
 
+type ModuleChoice = 1 | 2 | "both";
+
 function AdminImport() {
   const [step, setStep] = useState<ImportWizardStep>("setup");
   const [mode, setMode] = useState<Mode>("upload");
@@ -74,9 +77,8 @@ function AdminImport() {
   const [makeSet, setMakeSet] = useState(true);
   const [title, setTitle] = useState("");
   const [section, setSection] = useState<Section>("reading_writing");
-  const [module, setModule] = useState<1 | 2>(1);
+  const [module, setModule] = useState<ModuleChoice>(1);
   const [difficulty, setDifficulty] = useState<LetterDifficulty>("C");
-  const [skill, setSkill] = useState<string>(RW_SKILLS[0]);
   const [month, setMonth] = useState<number | null>(null);
   const [year, setYear] = useState<number | null>(new Date().getFullYear());
 
@@ -153,11 +155,34 @@ function AdminImport() {
   function defaults(): ParseDefaults {
     return {
       section,
-      skill,
+      skill: skillsFor(section)[0],
       difficulty,
       source_month: month ? String(month) : "",
       source_year: year ? String(year) : "",
+      module: module === "both" ? undefined : module === 2 ? "2" : "1",
     };
+  }
+
+  function commitDrafts(list: Draft[]) {
+    setDrafts(stampDraftModules(list, module));
+  }
+
+  function splitNote(list: Draft[]): string | null {
+    if (module !== "both" || list.length === 0) return null;
+    const m1 = list.filter((d) => draftModule(d) === 1).length;
+    return `Split as ${m1} Module 1 and ${list.length - m1} Module 2 question(s). Change a question's module in the editor if a split is wrong.`;
+  }
+
+  function setModuleChoice(next: ModuleChoice) {
+    setModule(next);
+    setDrafts((current) =>
+      current
+        ? stampDraftModules(
+            current.map((d) => ({ ...d, rec: { ...d.rec, module: "" } })),
+            next,
+          )
+        : current,
+    );
   }
 
   const hasRows = Boolean((drafts && drafts.length > 0) || (parsed && parsed.rows.length > 0));
@@ -180,7 +205,7 @@ function AdminImport() {
       return;
     }
     await fetchExisting();
-    setDrafts(
+    const next = stampDraftModules(
       base.rows.map((r) => ({
         number: r.index,
         rec: r.rec ? { ...r.rec } : {},
@@ -188,7 +213,11 @@ function AdminImport() {
           (w) => !w.includes("Duplicate") && !w.includes("already exists"),
         ),
       })),
+      module,
     );
+    setDrafts(next);
+    const split = splitNote(next);
+    setNotes(split ? [split] : []);
     setParsed({ ...base, rows: [] });
     setChecking(false);
     setStep("editor");
@@ -207,9 +236,11 @@ function AdminImport() {
 
   async function finishDocument(blocks: Array<string | SourceBlock>, extraNotes: string[] = []) {
     const out = blocksToDrafts(blocks, defaults());
-    setDrafts(out.drafts);
-    setNotes([...extraNotes, ...out.notes]);
-    if (out.drafts.length > 0) {
+    const stamped = stampDraftModules(out.drafts, module);
+    setDrafts(stamped);
+    const split = splitNote(stamped);
+    setNotes([...extraNotes, ...out.notes, ...(split ? [split] : [])]);
+    if (stamped.length > 0) {
       await fetchExisting();
       setStep("editor");
     }
@@ -281,7 +312,8 @@ function AdminImport() {
   async function runVision() {
     if (!vision) return;
     stopRef.current = false;
-    abortRef.current = new AbortController();
+    const ac = new AbortController();
+    abortRef.current = ac;
     setVision({ ...vision, running: true, progress: null });
     setReadError(null);
 
@@ -291,7 +323,7 @@ function AdminImport() {
         defaults: defaults(),
         from: vision.from,
         to: vision.to,
-        signal: abortRef.current.signal,
+        signal: ac.signal,
         shouldStop: () => stopRef.current,
         onProgress: (p) =>
           setVision((v) =>
@@ -312,8 +344,13 @@ function AdminImport() {
               : v,
           ),
       });
-      setDrafts((current) => mergeDrafts(current ?? [], out.drafts));
-      setNotes((current) => [...current, ...out.notes]);
+      let merged: Draft[] = [];
+      setDrafts((current) => {
+        merged = stampDraftModules(mergeDrafts(current ?? [], out.drafts), module);
+        return merged;
+      });
+      const split = splitNote(merged);
+      setNotes((current) => [...current, ...out.notes, ...(split ? [split] : [])]);
       await fetchExisting();
       if (out.drafts.length > 0) setStep("editor");
     } catch (err) {
@@ -321,7 +358,8 @@ function AdminImport() {
         setReadError((err as Error)?.message ?? "The scan couldn't be read.");
       }
     } finally {
-      abortRef.current = null;
+      if (abortRef.current === ac) abortRef.current = null;
+      stopRef.current = false;
       setVision((v) => (v ? { ...v, running: false } : v));
     }
   }
@@ -331,7 +369,7 @@ function AdminImport() {
     const key = parseAnswerKey(keyText);
     const out = applyAnswerKey(drafts, key);
     setDrafts(out.drafts);
-    setKeySummary(describeKey(key, out.filled, drafts.length, out.unmatched));
+    setKeySummary(describeKey(key, out.filled, drafts, out.unmatched));
   }
 
   function setDraftAnswer(index: number, value: string) {
@@ -358,9 +396,21 @@ function AdminImport() {
     setDrafts((current) => {
       const list = current ?? [];
       const max = list.reduce((m, d) => Math.max(m, d.number), 0);
-      const page = list[index]?.sourcePage;
+      const neighbor = list[index];
+      const page = neighbor?.sourcePage;
       const next = [...list];
-      next.splice(index + 1, 0, blankDraft(defaults(), max + 1, page));
+      next.splice(
+        index + 1,
+        0,
+        blankDraft(
+          {
+            ...defaults(),
+            module: neighbor?.rec.module === "2" ? "2" : "1",
+          },
+          max + 1,
+          page,
+        ),
+      );
       return next;
     });
   }
@@ -383,7 +433,8 @@ function AdminImport() {
     if (targets.length === 0) return;
 
     stopRef.current = false;
-    abortRef.current = new AbortController();
+    const ac = new AbortController();
+    abortRef.current = ac;
     setAttachingFigures(true);
     setFigureProgress(null);
     setReadError(null);
@@ -391,7 +442,7 @@ function AdminImport() {
     try {
       const { attachFiguresToDrafts } = await import("@/lib/import/attach-figures");
       const out = await attachFiguresToDrafts(file, drafts, targets, {
-        signal: abortRef.current.signal,
+        signal: ac.signal,
         shouldStop: () => stopRef.current,
         onProgress: setFigureProgress,
       });
@@ -402,7 +453,8 @@ function AdminImport() {
         setReadError((err as Error)?.message ?? "Figures could not be attached.");
       }
     } finally {
-      abortRef.current = null;
+      if (abortRef.current === ac) abortRef.current = null;
+      stopRef.current = false;
       setAttachingFigures(false);
       setFigureProgress(null);
     }
@@ -442,29 +494,31 @@ function AdminImport() {
   );
 
   async function runFixBroken() {
-    if (!drafts || fixing || attachingFigures || vision?.running) return;
+    if (!drafts || fixing) return;
+    if (vision?.running) {
+      setReadError("Wait for the page scan to finish (or stop it) before fixing rows.");
+      return;
+    }
+    if (attachingFigures) {
+      setReadError("Wait for figure attach to finish (or stop it) before fixing rows.");
+      return;
+    }
     const targets = previewRows
-      .filter((p) => {
-        if (p.draftIndex == null) return false;
-        const r = p.row;
-        if (!r.question || r.errors.length > 0) return true;
-        return r.warnings.some(
-          (w) =>
-            !w.includes("Duplicate") &&
-            !w.includes("already exists") &&
-            !w.includes("Repaired by Gemini"),
-        );
-      })
+      .filter((p) => p.draftIndex != null && (!p.row.question || p.row.errors.length > 0))
       .map((p) => ({
         draftIndex: p.draftIndex!,
         draft: drafts[p.draftIndex!],
         errors: p.row.errors,
         warnings: p.row.warnings,
       }));
-    if (targets.length === 0) return;
+    if (targets.length === 0) {
+      setReadError("No broken rows to fix.");
+      return;
+    }
 
     stopRef.current = false;
-    abortRef.current = new AbortController();
+    const ac = new AbortController();
+    abortRef.current = ac;
     setFixing(true);
     setFixProgress(null);
     setReadError(null);
@@ -472,7 +526,7 @@ function AdminImport() {
     try {
       const { fixBrokenDrafts } = await import("@/lib/import/fix-broken");
       const out = await fixBrokenDrafts(drafts, targets, {
-        signal: abortRef.current.signal,
+        signal: ac.signal,
         shouldStop: () => stopRef.current,
         onProgress: setFixProgress,
       });
@@ -484,21 +538,30 @@ function AdminImport() {
         setReadError((err as Error)?.message ?? "Broken rows could not be fixed.");
       }
     } finally {
-      abortRef.current = null;
+      if (abortRef.current === ac) abortRef.current = null;
+      stopRef.current = false;
       setFixing(false);
       setFixProgress(null);
     }
   }
 
   async function runImport() {
-    const rows = previewRows
-      .map((p) => p.row)
-      .filter((r) => r.question && (!skipDuplicates || !r.duplicate));
-    if (rows.length === 0) return;
+    const tagged = previewRows
+      .filter((p) => p.row.question && (!skipDuplicates || !p.row.duplicate))
+      .map((p) => ({
+        row: p.row,
+        module:
+          p.draftIndex != null && drafts?.[p.draftIndex]
+            ? draftModule(drafts[p.draftIndex])
+            : module === 2
+              ? 2
+              : 1,
+      }));
+    if (tagged.length === 0) return;
 
     setImporting(true);
     setResult(null);
-    setProgress({ done: 0, total: rows.length });
+    setProgress({ done: 0, total: tagged.length });
 
     const { data: u } = await supabase.auth.getUser();
     const uid = u.user?.id ?? null;
@@ -506,66 +569,73 @@ function AdminImport() {
     let inserted = 0;
     let failed = 0;
     const errors: string[] = [];
-    const insertedIds: string[] = [];
+    const insertedItems: { id: string; module: 1 | 2 }[] = [];
 
-    const payloadFor = (r: (typeof rows)[number]) => ({
+    const payloadFor = (r: (typeof tagged)[number]["row"]) => ({
       ...r.question!,
       source_month: r.question!.source_month ?? month ?? null,
       source_year: r.question!.source_year ?? year ?? null,
       created_by: uid,
     });
 
-    for (let i = 0; i < rows.length; i += CHUNK) {
-      const slice = rows.slice(i, i + CHUNK);
+    for (let i = 0; i < tagged.length; i += CHUNK) {
+      const slice = tagged.slice(i, i + CHUNK);
       const { data, error } = await supabase
         .from("questions")
-        .insert(slice.map(payloadFor))
+        .insert(slice.map((t) => payloadFor(t.row)))
         .select("id");
       if (error) {
-        for (const r of slice) {
+        for (const t of slice) {
           const { data: one, error: e2 } = await supabase
             .from("questions")
-            .insert(payloadFor(r))
+            .insert(payloadFor(t.row))
             .select("id")
             .single();
           if (e2) {
             failed++;
-            if (errors.length < 10) errors.push(`Row ${r.index}: ${e2.message}`);
+            if (errors.length < 10) errors.push(`Row ${t.row.index}: ${e2.message}`);
           } else {
             inserted++;
-            if (one?.id) insertedIds.push(one.id as string);
+            if (one?.id) insertedItems.push({ id: one.id as string, module: t.module });
           }
           setProgress((p) => ({ ...p, done: p.done + 1 }));
         }
       } else {
         inserted += slice.length;
-        for (const row of (data ?? []) as { id: string }[]) insertedIds.push(row.id);
+        const ids = (data ?? []) as { id: string }[];
+        for (let j = 0; j < ids.length; j++) {
+          insertedItems.push({ id: ids[j].id, module: slice[j]?.module ?? 1 });
+        }
         setProgress((p) => ({ ...p, done: p.done + slice.length }));
       }
     }
 
     let createdSet: string | undefined;
-    if (makeSet && title.trim() && insertedIds.length > 0) {
-      const { data: t, error: te } = await supabase
-        .from("tests")
-        .insert({
-          title: title.trim(),
-          section,
-          module,
-          difficulty,
-          source_month: month,
-          source_year: year,
-          created_by: uid,
-        })
-        .select("id")
-        .single();
-      if (te) {
-        errors.push(
-          `The questions imported, but the test set couldn't be created: ${te.message}. Open Tests to build it by hand.`,
-        );
-      } else {
+    if (makeSet && title.trim() && insertedItems.length > 0) {
+      const base = title.trim();
+      const createSet = async (label: string, mod: 1 | 2, ids: string[]) => {
+        if (ids.length === 0) return null;
+        const { data: t, error: te } = await supabase
+          .from("tests")
+          .insert({
+            title: label,
+            section,
+            module: mod,
+            difficulty,
+            source_month: month,
+            source_year: year,
+            created_by: uid,
+          })
+          .select("id")
+          .single();
+        if (te) {
+          errors.push(
+            `The questions imported, but "${label}" couldn't be created: ${te.message}. Open Tests to build it by hand.`,
+          );
+          return null;
+        }
         const { error: le } = await supabase.from("test_questions").insert(
-          insertedIds.map((qid, i) => ({
+          ids.map((qid, i) => ({
             test_id: t.id as string,
             question_id: qid,
             position: i + 1,
@@ -573,11 +643,36 @@ function AdminImport() {
         );
         if (le) {
           errors.push(
-            `The test set was created but its questions couldn't be linked: ${le.message}.`,
+            `"${label}" was created but its questions couldn't be linked: ${le.message}.`,
           );
-        } else {
-          createdSet = title.trim();
+          return null;
         }
+        return label;
+      };
+
+      if (module === "both") {
+        const names = (
+          await Promise.all([
+            createSet(
+              `${base} · Module 1`,
+              1,
+              insertedItems.filter((x) => x.module === 1).map((x) => x.id),
+            ),
+            createSet(
+              `${base} · Module 2`,
+              2,
+              insertedItems.filter((x) => x.module === 2).map((x) => x.id),
+            ),
+          ])
+        ).filter((n): n is string => Boolean(n));
+        createdSet = names.length ? names.join(" + ") : undefined;
+      } else {
+        createdSet =
+          (await createSet(
+            base,
+            module,
+            insertedItems.map((x) => x.id),
+          )) ?? undefined;
       }
     }
 
@@ -593,7 +688,6 @@ function AdminImport() {
     }
   }
 
-  const skills = skillsFor(section);
   const sourceLabel = formatSourceDate(month, year);
 
   function chooseSource(next: Mode) {
@@ -647,6 +741,7 @@ function AdminImport() {
               <p className="mt-1 max-w-2xl text-xs leading-relaxed text-brand-100">
                 Label the batch and optionally create a dated test set students can open in Practice
                 — <strong className="text-white">{sourceLabel ?? "set a month and year"}</strong>.
+                One file can cover both modules; that creates two sets.
               </p>
             </div>
             <label className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-brand-100">
@@ -697,15 +792,11 @@ function AdminImport() {
             </Field>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
             <Field label="Section">
               <select
                 value={section}
-                onChange={(e) => {
-                  const s = e.target.value as Section;
-                  setSection(s);
-                  setSkill(skillsFor(s)[0]);
-                }}
+                onChange={(e) => setSection(e.target.value as Section)}
                 className={CONTROL_CLASS}
               >
                 <option value="reading_writing">Reading &amp; Writing</option>
@@ -714,13 +805,17 @@ function AdminImport() {
             </Field>
             <Field label="Module">
               <select
-                value={module}
-                onChange={(e) => setModule(Number(e.target.value) as 1 | 2)}
+                value={module === "both" ? "both" : String(module)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setModuleChoice(v === "both" ? "both" : (Number(v) as 1 | 2));
+                }}
                 disabled={!makeSet}
                 className={CONTROL_CLASS + " disabled:opacity-40"}
               >
-                <option value={1}>Module 1</option>
-                <option value={2}>Module 2</option>
+                <option value="1">Module 1</option>
+                <option value="2">Module 2</option>
+                <option value="both">Both modules (one file)</option>
               </select>
             </Field>
             <Field label="Difficulty">
@@ -736,20 +831,13 @@ function AdminImport() {
                 ))}
               </select>
             </Field>
-            <Field label="Default skill">
-              <select
-                value={skill}
-                onChange={(e) => setSkill(e.target.value)}
-                className={CONTROL_CLASS}
-              >
-                {skills.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </Field>
           </div>
+          {module === "both" && makeSet && (
+            <p className="mt-2 text-[11px] leading-relaxed text-brand-100">
+              Numbering that restarts (or a full 27+27 / 22+22 paper) is split into two practice
+              sets. You can fix a question&apos;s module in the editor.
+            </p>
+          )}
 
           <div className="mt-5 flex justify-end">
             <button
@@ -999,7 +1087,9 @@ function AdminImport() {
             <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
               <h2 className="text-sm font-bold text-white">4 · Editor</h2>
               <p className="mt-1 text-xs text-brand-100">
-                Paste an answer key if you have one, then check each question against the page.
+                Paste an answer key if you have one
+                {module === "both" ? " as Section 1 / Section 2" : ""}, then check each question
+                against the page.
               </p>
               <div className="mt-4">
                 <AnswerKeyBox
@@ -1007,8 +1097,25 @@ function AdminImport() {
                   onChange={setKeyText}
                   onApply={applyKey}
                   summary={keySummary}
+                  bothModules={module === "both"}
                 />
               </div>
+              {(readError || parsed?.fatal) && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
+                  {readError ?? parsed?.fatal}
+                </div>
+              )}
+              {notes.length > 0 && (
+                <ul className="mt-3 space-y-1 rounded-xl border border-brand-400/40 bg-brand-800 p-3 text-xs text-brand-100">
+                  {notes.map((n, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand-200" />
+                      {n}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
@@ -1027,7 +1134,14 @@ function AdminImport() {
               onSetReviewed={drafts ? setDraftReviewed : undefined}
               drafts={drafts}
               sourcePdf={sourcePdf ?? vision?.file ?? null}
-              setLabel={makeSet && title.trim() ? title.trim() : null}
+              setLabel={
+                makeSet && title.trim()
+                  ? module === "both"
+                    ? `${title.trim()} · Modules 1–2`
+                    : title.trim()
+                  : null
+              }
+              showModule={module === "both"}
               fixing={fixing}
               fixProgress={fixProgress}
               onFixBroken={drafts ? () => void runFixBroken() : undefined}
@@ -1050,6 +1164,7 @@ function AdminImport() {
               attachingFigures={attachingFigures}
               figureCount={figureCount}
               figureProgress={figureProgress}
+              visionRunning={Boolean(vision?.running)}
             />
           ) : (
             <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 text-sm text-brand-100">
@@ -1057,7 +1172,7 @@ function AdminImport() {
               <button
                 type="button"
                 onClick={() => {
-                  setDrafts([blankDraft(defaults(), 1)]);
+                  commitDrafts([blankDraft(defaults(), 1)]);
                 }}
                 className="btn-brand mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
               >

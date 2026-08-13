@@ -52,6 +52,7 @@ export type ParseDefaults = {
   difficulty: string;
   source_month: string;
   source_year: string;
+  module?: "1" | "2";
 };
 
 export function blankDraft(defaults: ParseDefaults, number: number, sourcePage?: number): Draft {
@@ -69,6 +70,7 @@ export function blankDraft(defaults: ParseDefaults, number: number, sourcePage?:
       explanation: "",
       source_month: defaults.source_month,
       source_year: defaults.source_year,
+      module: defaults.module ?? "1",
       choice_A: "",
       choice_B: "",
       choice_C: "",
@@ -76,6 +78,47 @@ export function blankDraft(defaults: ParseDefaults, number: number, sourcePage?:
     },
     warnings: [],
   };
+}
+
+export function draftModule(d: Draft): 1 | 2 {
+  return d.rec.module === "2" ? 2 : 1;
+}
+
+/**
+ * Stamp each draft with module 1 or 2.
+ *
+ * Digital SAT papers restart numbering at the second module, so a drop from a
+ * high number back to 1–5 is treated as the start of Module 2. Explicit
+ * `rec.module` values already set by staff are left alone.
+ */
+export function stampDraftModules(drafts: Draft[], mode: 1 | 2 | "both"): Draft[] {
+  if (mode !== "both") {
+    return drafts.map((d) => ({ ...d, rec: { ...d.rec, module: String(mode) } }));
+  }
+  let current: 1 | 2 = 1;
+  let prev = 0;
+  const stamped = drafts.map((d, i) => {
+    if (d.rec.module === "1" || d.rec.module === "2") {
+      current = d.rec.module === "2" ? 2 : 1;
+      prev = d.number;
+      return d;
+    }
+    const blob = `${d.rec.prompt ?? ""}\n${d.rec.question_text ?? ""}`;
+    if (/\bmodule\s*2\b/i.test(blob)) current = 2;
+    if (i > 0 && d.number > 0 && prev >= 8 && d.number < prev && d.number <= 5) current = 2;
+    prev = d.number;
+    return { ...d, rec: { ...d.rec, module: String(current) } };
+  });
+  /* Numbering that never restarts (1…49 in a spreadsheet) still splits at the
+     official SAT module size so one file can become two test sets. */
+  const expected = drafts[0]?.rec.section === "math" ? 22 : 27;
+  if (stamped.every((d) => draftModule(d) === 1) && stamped.length > expected) {
+    return stamped.map((d, i) => ({
+      ...d,
+      rec: { ...d.rec, module: i < expected ? "1" : "2" },
+    }));
+  }
+  return stamped;
 }
 
 /* `1.` / `1)` / `Question 1.` at the start of a block. The trailing `\s` is

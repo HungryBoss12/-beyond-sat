@@ -14,7 +14,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import {
   SECTION_LABEL,
-  skillsFor,
   formatSourceDate,
   difficultyLabel,
   type Section,
@@ -83,16 +82,12 @@ const DIFF_ORDER = ["easy", "medium", "hard", "C", "B", "D", "A", "S"];
 function SectionBrowse() {
   const { section } = Route.useParams() as { section: Section };
   const navigate = useNavigate();
-  const skills = skillsFor(section);
 
   const [sets, setSets] = useState<TestSet[]>([]);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState<string | null>(null);
 
-  // Mixed practice — the old filter behaviour, kept reachable.
-  const [skillFilter, setSkillFilter] = useState<string | "all">("all");
   const [diffFilter, setDiffFilter] = useState<Difficulty | "all">("all");
-  const [skillCounts, setSkillCounts] = useState<Record<string, number>>({});
   const [diffCounts, setDiffCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -112,11 +107,10 @@ function SectionBrowse() {
           .order("source_year", { ascending: false, nullsFirst: false })
           .order("source_month", { ascending: false, nullsFirst: false })
           .order("created_at", { ascending: false }),
-        /* Tallies for the mixed-practice panel. `skill` and `difficulty` only —
-           deliberately not `question_text`, which is the whole point of this
-           rewrite. Past 5,000 questions the counts become a floor rather than a
-           total; they label filter buttons, so that is acceptable. */
-        supabase.from("questions").select("skill,difficulty").eq("section", section).limit(5000),
+        /* Tallies for the mixed-practice panel. Difficulty only — deliberately
+           not `question_text`. Past 5,000 questions the counts become a floor
+           rather than a total; they label filter buttons, so that is acceptable. */
+        supabase.from("questions").select("difficulty").eq("section", section).limit(5000),
       ]);
 
       const rows = (testsResult.data ?? []) as Omit<
@@ -188,16 +182,13 @@ function SectionBrowse() {
         };
       });
 
-      const skillTally: Record<string, number> = {};
       const diffTally: Record<string, number> = {};
-      for (const row of (countsResult.data as { skill: string; difficulty: string }[]) ?? []) {
-        skillTally[row.skill] = (skillTally[row.skill] ?? 0) + 1;
+      for (const row of (countsResult.data as { difficulty: string }[]) ?? []) {
         diffTally[row.difficulty] = (diffTally[row.difficulty] ?? 0) + 1;
       }
 
       if (cancelled) return;
       setSets(built.filter((s) => s.count > 0));
-      setSkillCounts(skillTally);
       setDiffCounts(diffTally);
       setLoading(false);
     })();
@@ -256,7 +247,7 @@ function SectionBrowse() {
     try {
       const sessionId = await startPracticeSession({
         section,
-        skill: skillFilter === "all" ? null : skillFilter,
+        skill: null,
         difficulty: diffFilter === "all" ? null : (diffFilter as Difficulty),
         limit: 20,
       });
@@ -267,7 +258,7 @@ function SectionBrowse() {
     }
   }
 
-  const totalQuestions = Object.values(skillCounts).reduce((a, b) => a + b, 0);
+  const totalQuestions = Object.values(diffCounts).reduce((a, b) => a + b, 0);
 
   return (
     <div className="space-y-5">
@@ -291,7 +282,6 @@ function SectionBrowse() {
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[280px_1fr]">
-        {/* Mixed practice — the old skill/difficulty filters, still reachable. */}
         <Panel as="section" className="h-fit">
           <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-100">
             <Filter className="h-4 w-4" /> Mixed practice
@@ -301,27 +291,6 @@ function SectionBrowse() {
           </p>
 
           <div className="space-y-4">
-            <div>
-              <div className="mb-2 text-xs font-bold text-white">Skill</div>
-              <div className="space-y-1">
-                <FilterRow
-                  label="All skills"
-                  count={totalQuestions}
-                  active={skillFilter === "all"}
-                  onClick={() => setSkillFilter("all")}
-                />
-                {skills.map((s) => (
-                  <FilterRow
-                    key={s}
-                    label={s}
-                    count={skillCounts[s] ?? 0}
-                    active={skillFilter === s}
-                    onClick={() => setSkillFilter(s)}
-                  />
-                ))}
-              </div>
-            </div>
-
             <div>
               <div className="mb-2 text-xs font-bold text-white">Difficulty</div>
               <div className="grid grid-cols-3 gap-1.5">
@@ -489,32 +458,5 @@ function SetCard({
         </button>
       </div>
     </li>
-  );
-}
-
-function FilterRow({
-  label,
-  count,
-  active,
-  onClick,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={
-        "tap flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-semibold " +
-        (active
-          ? "bg-brand-400 text-white shadow-brand"
-          : "text-brand-100 hover:bg-brand-800 hover:text-white")
-      }
-    >
-      <span className="truncate">{label}</span>
-      <span className="tabular-nums text-brand-200">{count}</span>
-    </button>
   );
 }

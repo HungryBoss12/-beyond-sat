@@ -48,3 +48,15 @@ export type FixProgress = {
   fixed: number;
   failed: number;
 };
+
+export type FigureProgress = {
+  index: number;
+  total: number;
+  draftNumber: number;
+  stage: 1 | 2;
+  stageLabel: "Locate" | "Recheck";
+  stage1Done: number;
+  stage2Done: number;
+  attached: number;
+  failed: number;
+};

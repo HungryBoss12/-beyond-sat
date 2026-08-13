@@ -34,6 +34,8 @@ export type ParsedQuestion = {
 export type RowResult = {
   /** 1-based, counting data rows only — matches what the preview table shows. */
   index: number;
+  /** Original flat record — used to turn paste rows into editable drafts. */
+  rec?: Record<string, string>;
   question: ParsedQuestion | null;
   /** Blocking. A row with any error is not imported. */
   errors: string[];
@@ -637,10 +639,11 @@ export function validateRecord(rec: Record<string, string>, index: number): RowR
       warnings.push(`Odd number of $ in the ${label} — check the math delimiters.`);
   }
 
-  if (errors.length > 0) return { index, question: null, errors, warnings };
+  if (errors.length > 0) return { index, rec, question: null, errors, warnings };
 
   return {
     index,
+    rec,
     question: {
       section: section as Section,
       skill: skill as string,

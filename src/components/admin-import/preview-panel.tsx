@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { AlertTriangle, Check, Loader2, Square, Upload, Wrench, X } from "lucide-react";
+import { AlertTriangle, Check, ImageIcon, Loader2, Square, Upload, Wrench, X } from "lucide-react";
 import { MathText } from "@/components/MathText";
 import type { Draft } from "@/lib/import/parse";
 import type { RowResult } from "@/lib/question-import";
 import { SECTION_LABEL, difficultyColor } from "@/lib/sat";
 import { DraftReviewer } from "./draft-reviewer";
 import { StageBar } from "./stage-bar";
-import type { FixProgress, PreviewRow } from "./types";
+import type { FigureProgress, FixProgress, PreviewRow } from "./types";
 
 export function PreviewPanel({
   rows,
@@ -27,6 +27,14 @@ export function PreviewPanel({
   fixProgress,
   onFixBroken,
   onStopFix,
+  onAddAfter,
+  onDeleteDraft,
+  onAttachFigure,
+  onAttachFigures,
+  onStopFigures,
+  attachingFigures,
+  figureCount = 0,
+  figureProgress,
 }: {
   rows: PreviewRow[];
   ignoredColumns: string[];
@@ -53,6 +61,14 @@ export function PreviewPanel({
   fixProgress?: FixProgress | null;
   onFixBroken?: () => void;
   onStopFix?: () => void;
+  onAddAfter?: (index: number) => void;
+  onDeleteDraft?: (index: number) => void;
+  onAttachFigure?: (index: number) => void;
+  onAttachFigures?: () => void;
+  onStopFigures?: () => void;
+  attachingFigures?: boolean;
+  figureCount?: number;
+  figureProgress?: FigureProgress | null;
 }) {
   const [showOnlyProblems, setShowOnlyProblems] = useState(false);
   const visible = showOnlyProblems
@@ -81,6 +97,22 @@ export function PreviewPanel({
     ? Math.min(
         100,
         Math.round(((fixProgress.stage1Done + fixProgress.stage2Done) / (fixTotal * 2)) * 100),
+      )
+    : 0;
+
+  const figTotal = figureProgress?.total ?? Math.max(figureCount, 1);
+  const fig1Pct = figureProgress
+    ? Math.min(100, Math.round((figureProgress.stage1Done / figTotal) * 100))
+    : 0;
+  const fig2Pct = figureProgress
+    ? Math.min(100, Math.round((figureProgress.stage2Done / figTotal) * 100))
+    : 0;
+  const overallFigPct = figureProgress
+    ? Math.min(
+        100,
+        Math.round(
+          ((figureProgress.stage1Done + figureProgress.stage2Done) / (figTotal * 2)) * 100,
+        ),
       )
     : 0;
 
@@ -128,6 +160,27 @@ export function PreviewPanel({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {onAttachFigures &&
+            figureCount > 0 &&
+            (attachingFigures ? (
+              <button
+                type="button"
+                onClick={onStopFigures}
+                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/60 bg-brand-900 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-700"
+              >
+                <Square className="h-3.5 w-3.5" /> Stop figures
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onAttachFigures}
+                disabled={importing || fixing}
+                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/50 bg-brand-800 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-400 disabled:opacity-40"
+              >
+                <ImageIcon className="h-4 w-4" />
+                Attach {figureCount} figure{figureCount === 1 ? "" : "s"} with AI
+              </button>
+            ))}
           {onFixBroken &&
             brokenCount > 0 &&
             (fixing ? (
@@ -149,7 +202,7 @@ export function PreviewPanel({
             ))}
           <button
             onClick={onImport}
-            disabled={importing || fixing || stats.importable === 0}
+            disabled={importing || fixing || attachingFigures || stats.importable === 0}
             className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
           >
             {importing ? (
@@ -214,6 +267,56 @@ export function PreviewPanel({
         </div>
       )}
 
+      {attachingFigures && (
+        <div
+          className="space-y-3 rounded-xl border border-brand-400/40 bg-brand-800 p-4"
+          role="status"
+          aria-live="polite"
+          aria-label="Figure attach progress"
+        >
+          <div className="text-xs leading-relaxed text-brand-100">
+            <strong className="text-white">Crop from the page.</strong> Gemini locates the figure,
+            then a second pass rechecks the box. The crop is uploaded — nothing is generated.
+          </div>
+          <div>
+            <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-brand-100">
+              <span>Overall</span>
+              <span>{overallFigPct}%</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-brand-900">
+              <div
+                className="h-full rounded-full bg-brand-200 transition-[width] duration-300"
+                style={{ width: `${overallFigPct}%` }}
+              />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <StageBar
+              label="1 · Locate"
+              detail="Gemini 2.5 Pro"
+              pct={fig1Pct}
+              active={figureProgress?.stage === 1}
+              done={figureProgress?.stage1Done ?? 0}
+              total={figTotal}
+            />
+            <StageBar
+              label="2 · Recheck"
+              detail="Gemini 2.5 Flash"
+              pct={fig2Pct}
+              active={figureProgress?.stage === 2}
+              done={figureProgress?.stage2Done ?? 0}
+              total={figTotal}
+            />
+          </div>
+          <div className="flex items-center gap-2 text-[11px] font-semibold text-brand-100">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            {figureProgress
+              ? `Q${figureProgress.draftNumber} · ${figureProgress.index}/${figureProgress.total} · Stage ${figureProgress.stage} (${figureProgress.stageLabel}) · ${figureProgress.attached} attached`
+              : "Starting figure attach…"}
+          </div>
+        </div>
+      )}
+
       {setLabel && (
         <div className="rounded-lg bg-brand-800 px-3 py-2 text-xs text-brand-100">
           These will also be grouped into the test set{" "}
@@ -227,7 +330,7 @@ export function PreviewPanel({
           {stats.invalid} row{stats.invalid === 1 ? "" : "s"} {stats.invalid === 1 ? "has" : "have"}{" "}
           an error and won't be imported.
           {onChangeDraft
-            ? " Edit the question next to the page, use Fix broken with AI, or set the answer."
+            ? " Edit the question next to the page, attach figures, use Fix broken with AI, or set the answer."
             : onFixBroken
               ? " Use Fix broken with AI, paste an answer key, or set the answer on the row."
               : onAnswerChange
@@ -242,8 +345,12 @@ export function PreviewPanel({
           drafts={drafts}
           sourcePdf={sourcePdf}
           disabled={importing || fixing}
+          attachingFigure={attachingFigures}
           onChangeDraft={onChangeDraft}
           onSetReviewed={onSetReviewed}
+          onAddAfter={onAddAfter}
+          onDelete={onDeleteDraft}
+          onAttachFigure={onAttachFigure}
         />
       ) : (
         <ul className="divide-y divide-brand-400/30 overflow-hidden rounded-xl border border-brand-400/40">

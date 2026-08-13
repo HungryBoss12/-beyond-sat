@@ -82,7 +82,7 @@ export function QuestionCard({
   onCloseNotes?: () => void;
 }) {
   const choices = useMemo(() => (Array.isArray(q.choices) ? q.choices : []), [q.choices]);
-  const hasPassage = !!q.prompt;
+  const hasPassage = !!(q.prompt || q.image_url);
 
   /* Bluebook hides the cross-out controls until the student turns them on, and
      the setting then persists for the rest of the sitting. This component

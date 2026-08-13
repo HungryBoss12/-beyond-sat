@@ -5,6 +5,7 @@ import { renderErrorPage } from "./lib/error-page";
 import { handleAiChat } from "./lib/ai/handler";
 import { handleImportVision } from "./lib/import/vision-handler";
 import { handleImportFix } from "./lib/import/fix-handler";
+import { handleImportFigure } from "./lib/import/figure-handler";
 import { checkMaintenance } from "./lib/maintenance";
 import { maintenanceResponse } from "./lib/maintenance-page";
 
@@ -85,6 +86,10 @@ export default {
 
       if (url.pathname === "/api/import/fix") {
         return await handleImportFix(request, env);
+      }
+
+      if (url.pathname === "/api/import/figure") {
+        return await handleImportFigure(request, env);
       }
 
       const maintenance = await checkMaintenance(request, env, Date.now());

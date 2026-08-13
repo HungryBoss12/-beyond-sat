@@ -15,6 +15,7 @@ import {
 import { Plus, Trash2, Edit3, X, ImageIcon, Loader2, Upload, Copy } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { MixedMathEditor } from "@/components/MixedMathEditor";
+import { uploadQuestionImage } from "@/lib/import/upload-question-image";
 
 type Choice = { id: string; text: string };
 type Question = {
@@ -191,22 +192,13 @@ function AdminQuestions() {
   async function uploadImage(file: File) {
     if (!editing) return;
     setUploading(true);
-    const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-    const path = `${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from("question-images").upload(path, file, {
-      contentType: file.type,
-      upsert: false,
-    });
-    if (error) {
+    try {
+      const url = await uploadQuestionImage(file);
+      setEditing({ ...editing, image_url: url });
+    } catch (err) {
+      alert((err as Error)?.message ?? "That image could not be uploaded.");
+    } finally {
       setUploading(false);
-      return alert(error.message);
-    }
-    const { data: signed } = await supabase.storage
-      .from("question-images")
-      .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
-    setUploading(false);
-    if (signed?.signedUrl) {
-      setEditing({ ...editing, image_url: signed.signedUrl });
     }
   }
 

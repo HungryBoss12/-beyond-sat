@@ -1,3 +1,5 @@
+import { useRef, useState } from "react";
+import { ImageIcon, Loader2, Trash2, Upload } from "lucide-react";
 import { MathText } from "@/components/MathText";
 import {
   LETTER_DIFFICULTIES,
@@ -7,6 +9,7 @@ import {
   type Section,
 } from "@/lib/sat";
 import type { Draft } from "@/lib/import/parse";
+import { uploadQuestionImage } from "@/lib/import/upload-question-image";
 import { CONTROL_CLASS } from "./types";
 import { Field } from "./field";
 
@@ -33,6 +36,10 @@ export function DraftEditor({
   const skills = skillsFor(section);
   const kind = rec.kind === "grid_in" ? "grid_in" : "multiple_choice";
   const answer = (rec.correct ?? "").trim();
+  const imageUrl = (rec.image_url ?? "").trim();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   function setField(key: string, value: string) {
     onChange(patchRec(rec, { [key]: value }));
@@ -105,6 +112,65 @@ export function DraftEditor({
             ))}
           </select>
         </Field>
+      </div>
+
+      <div>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-brand-100">Figure</p>
+        {imageUrl ? (
+          <div className="mb-2 overflow-hidden rounded-lg border border-brand-400/40 bg-white">
+            <img src={imageUrl} alt="Question figure" className="max-h-48 w-full object-contain" />
+          </div>
+        ) : (
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-dashed border-brand-400/50 bg-brand-900/40 px-3 py-2 text-xs text-brand-100">
+            <ImageIcon className="h-4 w-4 shrink-0 text-brand-200" />
+            No figure yet — upload one or use Attach figure with AI.
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (!file) return;
+              setUploadError(null);
+              setUploading(true);
+              void uploadQuestionImage(file)
+                .then((url) => setField("image_url", url))
+                .catch((err) =>
+                  setUploadError((err as Error)?.message ?? "That image could not be uploaded."),
+                )
+                .finally(() => setUploading(false));
+            }}
+          />
+          <button
+            type="button"
+            disabled={disabled || uploading}
+            onClick={() => fileRef.current?.click()}
+            className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+          >
+            {uploading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="h-3.5 w-3.5" />
+            )}
+            {imageUrl ? "Replace image" : "Upload image"}
+          </button>
+          {imageUrl ? (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => setField("image_url", "")}
+              className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Remove
+            </button>
+          ) : null}
+        </div>
+        {uploadError && <p className="mt-1 text-xs font-semibold text-white">{uploadError}</p>}
       </div>
 
       <Field label="Passage / figure notes (optional)">

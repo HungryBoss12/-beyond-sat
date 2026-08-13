@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ImageIcon,
+  Loader2,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import type { Draft } from "@/lib/import/parse";
 import { DraftEditor } from "./draft-editor";
 import { PagePreview } from "./page-preview";
@@ -10,15 +20,23 @@ export function DraftReviewer({
   drafts,
   sourcePdf,
   disabled,
+  attachingFigure,
   onChangeDraft,
   onSetReviewed,
+  onAddAfter,
+  onDelete,
+  onAttachFigure,
 }: {
   rows: PreviewRow[];
   drafts: Draft[];
   sourcePdf: File | null;
   disabled?: boolean;
+  attachingFigure?: boolean;
   onChangeDraft: (index: number, rec: Record<string, string>) => void;
   onSetReviewed: (index: number, reviewed: boolean) => void;
+  onAddAfter?: (index: number) => void;
+  onDelete?: (index: number) => void;
+  onAttachFigure?: (index: number) => void;
 }) {
   const [selected, setSelected] = useState(0);
   const last = Math.max(0, rows.length - 1);
@@ -29,6 +47,7 @@ export function DraftReviewer({
   const row = preview?.row;
 
   const reviewedCount = drafts.filter((d) => d.reviewed).length;
+  const busy = disabled || attachingFigure;
 
   useEffect(() => {
     if (selected > last) setSelected(last);
@@ -39,7 +58,7 @@ export function DraftReviewer({
   }
 
   function looksGood() {
-    if (draftIndex == null || disabled) return;
+    if (draftIndex == null || busy) return;
     onSetReviewed(draftIndex, true);
     if (index < last) go(index + 1);
   }
@@ -49,13 +68,14 @@ export function DraftReviewer({
   }
 
   const ok = row.question != null;
+  const canCrop = Boolean(sourcePdf && draft.sourcePage);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs leading-relaxed text-brand-100">
-          <strong className="text-white">Check against the page.</strong> Fix typos on the right,
-          then mark Looks good. {reviewedCount}/{drafts.length} checked.
+          <strong className="text-white">Edit the set.</strong> Check the page, fix typos, add or
+          remove questions. {reviewedCount}/{drafts.length} checked.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -80,7 +100,7 @@ export function DraftReviewer({
           <button
             type="button"
             onClick={looksGood}
-            disabled={disabled || row.errors.length > 0}
+            disabled={busy || row.errors.length > 0}
             title={
               row.errors.length > 0
                 ? "Fix the errors on this question before marking it as checked."
@@ -93,34 +113,49 @@ export function DraftReviewer({
         </div>
       </div>
 
-      <ol className="flex flex-wrap gap-1.5" aria-label="Jump to question">
-        {rows.map((p, i) => {
-          const d = p.draftIndex != null ? drafts[p.draftIndex] : null;
-          const ready = p.row.question != null;
-          return (
-            <li key={p.row.index}>
-              <button
-                type="button"
-                onClick={() => go(i)}
-                aria-current={i === index ? "true" : undefined}
-                title={`Question ${p.row.index}`}
-                className={
-                  "tap h-8 min-w-8 rounded-md px-2 text-[11px] font-bold tabular-nums transition-colors " +
-                  (i === index
-                    ? "bg-brand-200 text-brand-900"
-                    : d?.reviewed
-                      ? "bg-brand-400 text-white"
-                      : ready
-                        ? "bg-brand-800 text-brand-100 ring-1 ring-brand-400/40 hover:bg-brand-500 hover:text-white"
-                        : "bg-brand-900 text-white ring-1 ring-brand-300/60 hover:bg-brand-700")
-                }
-              >
-                {p.row.index}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
+      <div className="flex flex-wrap items-center gap-2">
+        <ol className="flex flex-wrap gap-1.5" aria-label="Jump to question">
+          {rows.map((p, i) => {
+            const d = p.draftIndex != null ? drafts[p.draftIndex] : null;
+            const ready = p.row.question != null;
+            return (
+              <li key={`${p.row.index}-${i}`}>
+                <button
+                  type="button"
+                  onClick={() => go(i)}
+                  aria-current={i === index ? "true" : undefined}
+                  title={`Question ${p.row.index}`}
+                  className={
+                    "tap h-8 min-w-8 rounded-md px-2 text-[11px] font-bold tabular-nums transition-colors " +
+                    (i === index
+                      ? "bg-brand-200 text-brand-900"
+                      : d?.reviewed
+                        ? "bg-brand-400 text-white"
+                        : ready
+                          ? "bg-brand-800 text-brand-100 ring-1 ring-brand-400/40 hover:bg-brand-500 hover:text-white"
+                          : "bg-brand-900 text-white ring-1 ring-brand-300/60 hover:bg-brand-700")
+                  }
+                >
+                  {p.row.index}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+        {onAddAfter && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              onAddAfter(index);
+              go(index + 1);
+            }}
+            className="tap inline-flex items-center gap-1 rounded-lg border border-brand-300/50 bg-brand-800 px-2.5 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add question
+          </button>
+        )}
+      </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <div className="lg:sticky lg:top-3">
@@ -150,6 +185,33 @@ export function DraftReviewer({
                 <p className="text-[11px] font-semibold text-brand-200">Checked against the page</p>
               )}
             </div>
+            <div className="flex shrink-0 flex-wrap gap-1.5">
+              {onAttachFigure && canCrop && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onAttachFigure(draftIndex)}
+                  className="tap inline-flex items-center gap-1 rounded-md border border-brand-400/50 bg-brand-900 px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-40"
+                >
+                  {attachingFigure ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <ImageIcon className="h-3 w-3" />
+                  )}
+                  Attach figure
+                </button>
+              )}
+              {onDelete && drafts.length > 0 && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onDelete(draftIndex)}
+                  className="tap inline-flex items-center gap-1 rounded-md border border-brand-300/50 bg-brand-900 px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-40"
+                >
+                  <Trash2 className="h-3 w-3" /> Delete
+                </button>
+              )}
+            </div>
           </div>
 
           {row.errors.length > 0 && (
@@ -175,7 +237,7 @@ export function DraftReviewer({
 
           <DraftEditor
             draft={draft}
-            disabled={disabled}
+            disabled={busy}
             onChange={(rec) => onChangeDraft(draftIndex, rec)}
           />
         </div>

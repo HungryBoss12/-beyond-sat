@@ -14,11 +14,13 @@ import {
 } from "@/lib/question-import";
 import { readDocx } from "@/lib/import/docx";
 import {
+  blankDraft,
   blocksToDrafts,
   type Draft,
   type ParseDefaults,
   type SourceBlock,
 } from "@/lib/import/parse";
+import { needsFigure } from "@/lib/import/attach-figures";
 import { parseAnswerKey, applyAnswerKey, describeKey } from "@/lib/import/answer-key";
 import {
   skillsFor,
@@ -39,6 +41,7 @@ import {
   PreviewPanel,
   VisionPanel,
   WizardSteps,
+  type FigureProgress,
   type FixProgress,
   type ImportWizardStep,
   type Mode,
@@ -54,6 +57,7 @@ import {
   FileText,
   FileUp,
   Loader2,
+  Plus,
   Table2,
   X,
 } from "lucide-react";
@@ -90,6 +94,8 @@ function AdminImport() {
   const abortRef = useRef<AbortController | null>(null);
   const [fixing, setFixing] = useState(false);
   const [fixProgress, setFixProgress] = useState<FixProgress | null>(null);
+  const [attachingFigures, setAttachingFigures] = useState(false);
+  const [figureProgress, setFigureProgress] = useState<FigureProgress | null>(null);
 
   const [keyText, setKeyText] = useState("");
   const [keySummary, setKeySummary] = useState<string | null>(null);
@@ -159,10 +165,9 @@ function AdminImport() {
   const unlocked = useMemo(() => {
     const s = new Set<ImportWizardStep>(["setup", "source"]);
     s.add("extract");
-    if (hasRows || vision) s.add("answers");
-    if (hasRows) s.add("review");
+    if (hasRows) s.add("editor");
     return s;
-  }, [hasRows, vision]);
+  }, [hasRows]);
 
   async function checkPaste() {
     setChecking(true);
@@ -174,10 +179,19 @@ function AdminImport() {
       setChecking(false);
       return;
     }
-    const keys = await fetchExisting();
-    setParsed({ ...base, rows: flagDuplicates(base.rows, keys) });
+    await fetchExisting();
+    setDrafts(
+      base.rows.map((r) => ({
+        number: r.index,
+        rec: r.rec ? { ...r.rec } : {},
+        warnings: r.warnings.filter(
+          (w) => !w.includes("Duplicate") && !w.includes("already exists"),
+        ),
+      })),
+    );
+    setParsed({ ...base, rows: [] });
     setChecking(false);
-    setStep("review");
+    setStep("editor");
   }
 
   function loadSheetFile(f: File) {
@@ -197,7 +211,7 @@ function AdminImport() {
     setNotes([...extraNotes, ...out.notes]);
     if (out.drafts.length > 0) {
       await fetchExisting();
-      setStep("answers");
+      setStep("editor");
     }
   }
 
@@ -301,7 +315,7 @@ function AdminImport() {
       setDrafts((current) => mergeDrafts(current ?? [], out.drafts));
       setNotes((current) => [...current, ...out.notes]);
       await fetchExisting();
-      if (out.drafts.length > 0) setStep("answers");
+      if (out.drafts.length > 0) setStep("editor");
     } catch (err) {
       if ((err as Error)?.name !== "AbortError") {
         setReadError((err as Error)?.message ?? "The scan couldn't be read.");
@@ -340,13 +354,70 @@ function AdminImport() {
     );
   }
 
+  function addDraftAfter(index: number) {
+    setDrafts((current) => {
+      const list = current ?? [];
+      const max = list.reduce((m, d) => Math.max(m, d.number), 0);
+      const page = list[index]?.sourcePage;
+      const next = [...list];
+      next.splice(index + 1, 0, blankDraft(defaults(), max + 1, page));
+      return next;
+    });
+  }
+
+  function deleteDraft(index: number) {
+    setDrafts((current) => (current ? current.filter((_, i) => i !== index) : current));
+  }
+
+  async function runAttachFigures(onlyIndex?: number) {
+    const file = sourcePdf ?? vision?.file ?? null;
+    if (!file || !drafts || attachingFigures || fixing || vision?.running) return;
+    const targets =
+      onlyIndex != null
+        ? drafts[onlyIndex]
+          ? [{ draftIndex: onlyIndex, draft: drafts[onlyIndex] }]
+          : []
+        : drafts
+            .map((draft, draftIndex) => ({ draftIndex, draft }))
+            .filter((t) => needsFigure(t.draft) && t.draft.sourcePage);
+    if (targets.length === 0) return;
+
+    stopRef.current = false;
+    abortRef.current = new AbortController();
+    setAttachingFigures(true);
+    setFigureProgress(null);
+    setReadError(null);
+
+    try {
+      const { attachFiguresToDrafts } = await import("@/lib/import/attach-figures");
+      const out = await attachFiguresToDrafts(file, drafts, targets, {
+        signal: abortRef.current.signal,
+        shouldStop: () => stopRef.current,
+        onProgress: setFigureProgress,
+      });
+      setDrafts(out.drafts);
+      setNotes((current) => [...current, ...out.notes]);
+    } catch (err) {
+      if ((err as Error)?.name !== "AbortError") {
+        setReadError((err as Error)?.message ?? "Figures could not be attached.");
+      }
+    } finally {
+      abortRef.current = null;
+      setAttachingFigures(false);
+      setFigureProgress(null);
+    }
+  }
+
   const previewRows = useMemo(() => {
     if (drafts) {
       const base = drafts.map((d) => {
         const r = validateRecord(d.rec, d.number);
         return { ...r, warnings: [...d.warnings, ...r.warnings] };
       });
-      return flagDuplicates(base, existingKeys).map((row, i) => ({ row, draftIndex: i as number | null }));
+      return flagDuplicates(base, existingKeys).map((row, i) => ({
+        row,
+        draftIndex: i as number | null,
+      }));
     }
     return (parsed?.rows ?? []).map((row) => ({ row, draftIndex: null as number | null }));
   }, [drafts, parsed, existingKeys]);
@@ -365,8 +436,13 @@ function AdminImport() {
     };
   }, [previewRows, skipDuplicates]);
 
+  const figureCount = useMemo(
+    () => (drafts ?? []).filter((d) => needsFigure(d) && d.sourcePage).length,
+    [drafts],
+  );
+
   async function runFixBroken() {
-    if (!drafts || fixing || vision?.running) return;
+    if (!drafts || fixing || attachingFigures || vision?.running) return;
     const targets = previewRows
       .filter((p) => {
         if (p.draftIndex == null) return false;
@@ -547,7 +623,7 @@ function AdminImport() {
           </Link>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-brand-900">Add a test</h1>
           <p className="mt-1 max-w-2xl text-sm text-brand-600">
-            One path from paper or paste → extract → answers → review → bank
+            One path from paper or paste → extract → editor → bank
             {makeSet ? " + test set" : ""}.
           </p>
         </div>
@@ -569,9 +645,8 @@ function AdminImport() {
             <div>
               <h2 className="text-sm font-bold text-white">1 · Setup</h2>
               <p className="mt-1 max-w-2xl text-xs leading-relaxed text-brand-100">
-                Label the batch and optionally create a dated test set students can open in
-                Practice —{" "}
-                <strong className="text-white">{sourceLabel ?? "set a month and year"}</strong>.
+                Label the batch and optionally create a dated test set students can open in Practice
+                — <strong className="text-white">{sourceLabel ?? "set a month and year"}</strong>.
               </p>
             </div>
             <label className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-brand-100">
@@ -784,7 +859,9 @@ function AdminImport() {
                       <FileUp className="h-6 w-6 text-brand-200" />
                       Drop or choose a .docx / .pdf / .txt
                       {fileName ? (
-                        <span className="text-xs font-normal text-brand-200">Current: {fileName}</span>
+                        <span className="text-xs font-normal text-brand-200">
+                          Current: {fileName}
+                        </span>
                       ) : null}
                     </>
                   )}
@@ -838,9 +915,7 @@ function AdminImport() {
                   </div>
                 </div>
                 {mode === "sheet" && (
-                  <p className="text-[11px] text-brand-200">
-                    Columns: {TSV_COLUMNS.join(", ")}
-                  </p>
+                  <p className="text-[11px] text-brand-200">Columns: {TSV_COLUMNS.join(", ")}</p>
                 )}
                 <textarea
                   value={text}
@@ -857,7 +932,11 @@ function AdminImport() {
                     disabled={!text.trim() || checking}
                     className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
                   >
-                    {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    {checking ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
                     Check &amp; continue
                   </button>
                 </div>
@@ -865,10 +944,10 @@ function AdminImport() {
               </div>
             )}
 
-            {readError && (
+            {(readError || parsed?.fatal) && (
               <div className="mt-3 flex items-start gap-2 rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
-                {readError}
+                {readError ?? parsed?.fatal}
               </div>
             )}
 
@@ -894,10 +973,10 @@ function AdminImport() {
               {hasRows && (
                 <button
                   type="button"
-                  onClick={() => setStep(mode === "upload" ? "answers" : "review")}
+                  onClick={() => setStep("editor")}
                   className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
                 >
-                  Continue <ArrowRight className="h-4 w-4" />
+                  Editor <ArrowRight className="h-4 w-4" />
                 </button>
               )}
             </div>
@@ -905,14 +984,23 @@ function AdminImport() {
         </div>
       )}
 
-      {step === "answers" && (
+      {step === "editor" && (
         <div className="rise-in space-y-4">
-          <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
-            <h2 className="text-sm font-bold text-white">4 · Answers</h2>
-            <p className="mt-1 text-xs text-brand-100">
-              Papers rarely include keys. Paste one here, or skip and fix rows / use AI on Review.
-            </p>
-            {drafts ? (
+          {parsed?.fatal && (
+            <div className="rounded-2xl border border-brand-300/60 bg-brand-900 p-5 text-sm font-semibold text-white">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
+                <span>{parsed.fatal}</span>
+              </div>
+            </div>
+          )}
+
+          {drafts && (
+            <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
+              <h2 className="text-sm font-bold text-white">4 · Editor</h2>
+              <p className="mt-1 text-xs text-brand-100">
+                Paste an answer key if you have one, then check each question against the page.
+              </p>
               <div className="mt-4">
                 <AnswerKeyBox
                   value={keyText}
@@ -920,41 +1008,6 @@ function AdminImport() {
                   onApply={applyKey}
                   summary={keySummary}
                 />
-              </div>
-            ) : (
-              <p className="mt-4 rounded-lg bg-brand-800 px-3 py-2 text-xs text-brand-100">
-                Spreadsheet/JSON sources should already include a <code className="text-white">correct</code>{" "}
-                field. Continue to Review to validate.
-              </p>
-            )}
-            <div className="mt-5 flex flex-wrap justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => setStep("extract")}
-                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-4 py-2 text-sm font-semibold text-white"
-              >
-                <ArrowLeft className="h-4 w-4" /> Extract
-              </button>
-              <button
-                type="button"
-                disabled={!hasRows}
-                onClick={() => setStep("review")}
-                className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-              >
-                Review <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {step === "review" && (
-        <div className="rise-in space-y-4">
-          {parsed?.fatal && (
-            <div className="rounded-2xl border border-brand-300/60 bg-brand-900 p-5 text-sm font-semibold text-white">
-              <div className="flex items-start gap-2.5">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
-                <span>{parsed.fatal}</span>
               </div>
             </div>
           )}
@@ -982,10 +1035,34 @@ function AdminImport() {
                 stopRef.current = true;
                 abortRef.current?.abort();
               }}
+              onAddAfter={addDraftAfter}
+              onDeleteDraft={deleteDraft}
+              onAttachFigure={(i) => void runAttachFigures(i)}
+              onAttachFigures={
+                figureCount > 0 && (sourcePdf || vision?.file)
+                  ? () => void runAttachFigures()
+                  : undefined
+              }
+              onStopFigures={() => {
+                stopRef.current = true;
+                abortRef.current?.abort();
+              }}
+              attachingFigures={attachingFigures}
+              figureCount={figureCount}
+              figureProgress={figureProgress}
             />
           ) : (
             <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 text-sm text-brand-100">
-              No questions yet. Go back to Extract and upload or paste a source.
+              <p>No questions yet. Add one here, or go back to Extract.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setDrafts([blankDraft(defaults(), 1)]);
+                }}
+                className="btn-brand mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
+              >
+                <Plus className="h-4 w-4" /> Add question
+              </button>
             </div>
           )}
 
@@ -1041,7 +1118,7 @@ function AdminImport() {
 
           <button
             type="button"
-            onClick={() => setStep(drafts ? "answers" : "extract")}
+            onClick={() => setStep("extract")}
             className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/40 bg-white px-4 py-2 text-sm font-semibold text-brand-800"
           >
             <ArrowLeft className="h-4 w-4" /> Back

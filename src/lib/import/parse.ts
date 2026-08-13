@@ -54,6 +54,30 @@ export type ParseDefaults = {
   source_year: string;
 };
 
+export function blankDraft(defaults: ParseDefaults, number: number, sourcePage?: number): Draft {
+  return {
+    number,
+    sourcePage,
+    rec: {
+      section: defaults.section,
+      skill: defaults.skill,
+      difficulty: defaults.difficulty,
+      kind: "multiple_choice",
+      prompt: "",
+      question_text: "",
+      correct: "",
+      explanation: "",
+      source_month: defaults.source_month,
+      source_year: defaults.source_year,
+      choice_A: "",
+      choice_B: "",
+      choice_C: "",
+      choice_D: "",
+    },
+    warnings: [],
+  };
+}
+
 /* `1.` / `1)` / `Question 1.` at the start of a block. The trailing `\s` is
    load-bearing: without it, a note line like "1926: Congress gave…" and a year
    like "2017" both read as question openers. */

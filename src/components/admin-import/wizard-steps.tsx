@@ -1,11 +1,10 @@
-export type ImportWizardStep = "setup" | "source" | "extract" | "answers" | "review";
+export type ImportWizardStep = "setup" | "source" | "extract" | "editor";
 
 const STEPS = [
   { id: "setup", label: "Setup", blurb: "Name & defaults" },
   { id: "source", label: "Source", blurb: "Paper, sheet, or JSON" },
   { id: "extract", label: "Extract", blurb: "Read questions" },
-  { id: "answers", label: "Answers", blurb: "Key & AI fix" },
-  { id: "review", label: "Review", blurb: "Check against page" },
+  { id: "editor", label: "Editor", blurb: "Edit, figures & import" },
 ] as const;
 
 export function WizardSteps({

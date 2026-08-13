@@ -174,3 +174,48 @@ Rules:
 - Do not invent a new question; keep the same intent as the original draft.
 - If the first repair is already valid, return it unchanged.
 - Never leave question_text or correct empty for multiple_choice.`;
+
+/**
+ * Locate figures/tables/graphs on a scanned exam page so the importer can crop
+ * the real image. Never invent a figure or an image URL.
+ */
+export const FIGURE_LOCATE_PROMPT = `You are locating printed figures on one Digital SAT (or similar) exam page image.
+
+Find graphs, tables, charts, diagrams, number lines, and geometric figures that a student must see to answer the question. Ignore logos, page numbers, headers, and the answer-choice letters themselves.
+
+Return ONLY a JSON object. First character {, last character }. No markdown fences.
+
+Shape:
+{
+  "figures": [
+    {
+      "x": 0.0,
+      "y": 0.0,
+      "w": 0.0,
+      "h": 0.0,
+      "caption": "one-line description of what the crop contains"
+    }
+  ]
+}
+
+Coordinates are fractions of the full page, origin at the top-left:
+- x, y = top-left of the figure (0–1)
+- w, h = width and height (0–1)
+Include a small margin so axis labels and table headers are inside the box.
+If this page has no figure, return {"figures":[]}.
+Do not invent figures that are not visible. Never return an image URL.`;
+
+export const FIGURE_LOCATE_RECHECK_PROMPT = `You are verifying figure bounding boxes on a scanned SAT-style exam page.
+
+You receive a JSON object {"figures":[{x,y,w,h,caption}]} from another model, plus the page image.
+
+Return ONLY a corrected JSON object of the same shape (first char {, last char }).
+
+Rules:
+- Fix boxes that miss labels, cut off a graph, or include unrelated question text.
+- Add a box for any real figure the first pass missed.
+- Remove boxes that are not figures (headers, stems, choices).
+- Coordinates remain 0–1 fractions of the page, origin top-left.
+- If there are no figures, return {"figures":[]}.
+- If the first pass is already accurate, return it unchanged.
+- Never invent a figure or an image URL.`;

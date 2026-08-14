@@ -4,6 +4,8 @@ export type FigureBox = {
   w: number;
   h: number;
   caption?: string;
+  /** Printed/import question number this box belongs to. */
+  draft_number?: number;
 };
 
 export function clampBox(box: FigureBox): FigureBox {
@@ -12,7 +14,15 @@ export function clampBox(box: FigureBox): FigureBox {
   const w = Math.min(1 - x, Math.max(0.04, Number.isFinite(box.w) ? box.w : 0.04));
   const h = Math.min(1 - y, Math.max(0.04, Number.isFinite(box.h) ? box.h : 0.04));
   const caption = typeof box.caption === "string" ? box.caption.trim() : "";
-  return caption ? { x, y, w, h, caption } : { x, y, w, h };
+  const draft_number =
+    box.draft_number != null && Number.isFinite(box.draft_number)
+      ? Math.round(box.draft_number)
+      : undefined;
+  return caption
+    ? { x, y, w, h, caption, draft_number }
+    : draft_number != null
+      ? { x, y, w, h, draft_number }
+      : { x, y, w, h };
 }
 
 export function parseFigureBoxes(text: string): FigureBox[] {
@@ -33,6 +43,10 @@ export function parseFigureBoxes(text: string): FigureBox[] {
           w: Number(f.w),
           h: Number(f.h),
           caption: typeof f.caption === "string" ? f.caption : undefined,
+          draft_number:
+            f.draft_number != null && Number.isFinite(Number(f.draft_number))
+              ? Number(f.draft_number)
+              : undefined,
         }),
       );
   } catch {
@@ -40,7 +54,7 @@ export function parseFigureBoxes(text: string): FigureBox[] {
   }
 }
 
-/** One crop that covers every detected figure on the page. */
+/** One crop that covers every box in the list (same question only). */
 export function unionBoxes(boxes: FigureBox[]): FigureBox | null {
   if (boxes.length === 0) return null;
   if (boxes.length === 1) return clampBox(boxes[0]);
@@ -49,6 +63,7 @@ export function unionBoxes(boxes: FigureBox[]): FigureBox | null {
   let maxX = 0;
   let maxY = 0;
   let caption = "";
+  let draft_number: number | undefined;
   for (const raw of boxes) {
     const b = clampBox(raw);
     minX = Math.min(minX, b.x);
@@ -56,8 +71,25 @@ export function unionBoxes(boxes: FigureBox[]): FigureBox | null {
     maxX = Math.max(maxX, b.x + b.w);
     maxY = Math.max(maxY, b.y + b.h);
     if (!caption && b.caption) caption = b.caption;
+    if (draft_number == null && b.draft_number != null) draft_number = b.draft_number;
   }
-  return clampBox({ x: minX, y: minY, w: maxX - minX, h: maxY - minY, caption });
+  return clampBox({ x: minX, y: minY, w: maxX - minX, h: maxY - minY, caption, draft_number });
+}
+
+/**
+ * Boxes assigned to one draft. When multiple questions share a page, only boxes
+ * with a matching draft_number are used — never unrelated figures.
+ */
+export function boxesForDraft(boxes: FigureBox[], draftNumber: number): FigureBox[] {
+  const assigned = boxes.filter((b) => b.draft_number === draftNumber);
+  if (assigned.length > 0) return assigned;
+  const unassigned = boxes.filter((b) => b.draft_number == null);
+  if (unassigned.length > 0 && boxes.every((b) => b.draft_number == null)) return unassigned;
+  return [];
+}
+
+export function unionBoxesForDraft(boxes: FigureBox[], draftNumber: number): FigureBox | null {
+  return unionBoxes(boxesForDraft(boxes, draftNumber));
 }
 
 export async function cropPageToBlob(dataUrl: string, box: FigureBox, pad = 0.02): Promise<Blob> {
@@ -94,8 +126,7 @@ export async function cropPageToBlob(dataUrl: string, box: FigureBox, pad = 0.02
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (b) => (b ? resolve(b) : reject(new Error("Could not encode the cropped figure."))),
-      "image/jpeg",
-      0.85,
+      "image/png",
     );
   });
   canvas.width = 0;

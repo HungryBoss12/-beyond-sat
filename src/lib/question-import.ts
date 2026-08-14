@@ -457,9 +457,7 @@ export function parseJson(text: string): ParseResult {
   return { rows, fatal: null, ignoredColumns: [...unknownAll] };
 }
 
-// ---------------------------------------------------------------------------
-// Shared validation
-// ---------------------------------------------------------------------------
+import { figureDependencyError } from "@/lib/import/figure-dependency";
 
 /**
  * Exported for the document-import path (`src/lib/import/`), which builds the
@@ -467,7 +465,11 @@ export function parseJson(text: string): ParseResult {
  * spreadsheet gets. Two validators would drift, and the one that drifts is
  * always the one nobody re-reads.
  */
-export function validateRecord(rec: Record<string, string>, index: number): RowResult {
+export function validateRecord(
+  rec: Record<string, string>,
+  index: number,
+  opts: { fileImport?: boolean } = {},
+): RowResult {
   const errors: string[] = [];
   const warnings: string[] = [];
   const get = (k: string) => (rec[k] ?? "").trim();
@@ -651,6 +653,9 @@ export function validateRecord(rec: Record<string, string>, index: number): RowR
   if (image_url && !/^https?:\/\//i.test(image_url)) {
     warnings.push("Image URL doesn't start with http(s) — it may not load.");
   }
+
+  const figureErr = figureDependencyError(rec, opts);
+  if (figureErr) errors.push(figureErr);
 
   /* Unbalanced $ means a LaTeX span was left open, which renders as raw text. */
   for (const [label, value] of [

@@ -138,7 +138,7 @@ export function DraftEditor({
         ) : (
           <div className="mb-2 flex items-center gap-2 rounded-lg border border-dashed border-brand-400/50 bg-brand-900/40 px-3 py-2 text-xs text-brand-100">
             <ImageIcon className="h-4 w-4 shrink-0 text-brand-200" />
-            No figure yet — upload one or use Attach figure with AI.
+            No figure yet — upload one, crop manually, or use Attach figure with AI.
           </div>
         )}
         <div className="flex flex-wrap gap-2">

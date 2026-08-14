@@ -105,8 +105,12 @@ Each object may include:
 
 Mathematics: LaTeX inside $…$. In JSON, double backslashes: "$\\\\frac{1}{2}$". No Unicode superscripts.
 
-Figures: describe tables/graphs in \`prompt\`, then add a line:
-[FIGURE NEEDED: one-line description]
+Figures — CRITICAL:
+- NEVER recreate graphs, tables, geometry, number lines, or diagrams as prose, ASCII art, Unicode art, or LaTeX/tikz in \`prompt\` or \`question_text\`.
+- Put only genuinely printed text that sits OUTSIDE the figure into \`prompt\` / \`question_text\` (passage prose, notes, labels that are plain text on the page).
+- Whenever answering requires seeing a graph, table, chart, diagram, number line, coordinate plane, or geometric figure, add exactly one line in \`prompt\`:
+[FIGURE NEEDED: one-line description of what must be cropped]
+- Do not describe axis tick values, plotted points, table cells, or shape measurements that live inside the figure — those belong in the real image, not in text.
 
 Include a question if the stem is mostly readable even without a number. Only skip when the stem is cut off mid-sentence with no usable meaning, or the page is not a question page.`;
 
@@ -178,7 +182,9 @@ Rules:
  */
 export const FIGURE_LOCATE_PROMPT = `You are locating printed figures on one Digital SAT (or similar) exam page image.
 
-Find graphs, tables, charts, diagrams, number lines, and geometric figures that a student must see to answer the question. Ignore logos, page numbers, headers, and the answer-choice letters themselves.
+Find graphs, tables, charts, diagrams, number lines, and geometric figures that a student must see to answer a question on this page. Ignore logos, page numbers, headers, and the answer-choice letters themselves.
+
+You may receive a numbered list of question stems on this page. Assign EVERY figure box to exactly one \`draft_number\` from that list. Never merge figures from different questions into one box unless they truly belong to the same question.
 
 Return ONLY a JSON object. First character {, last character }. No markdown fences.
 
@@ -186,6 +192,7 @@ Shape:
 {
   "figures": [
     {
+      "draft_number": 1,
       "x": 0.0,
       "y": 0.0,
       "w": 0.0,
@@ -198,18 +205,8 @@ Shape:
 Coordinates are fractions of the full page, origin at the top-left:
 - x, y = top-left of the figure (0–1)
 - w, h = width and height (0–1)
+- draft_number = the printed/import question number this figure belongs to
 Include a small margin so axis labels and table headers are inside the box.
+If one question has multiple separate figures, return multiple boxes with the same draft_number.
 If this page has no figure, return {"figures":[]}.
 Do not invent figures that are not visible. Never return an image URL.`;
-
-export const FIGURE_LOCATE_RECHECK_PROMPT = `You are verifying figure bounding-box JSON. You do not have the page image.
-
-You receive a JSON object {"figures":[{x,y,w,h,caption}]} from another model.
-
-Return ONLY a corrected JSON object of the same shape (first char {, last char }).
-
-Rules:
-- Clamp x,y,w,h to 0–1. Drop boxes that are empty, inverted, or mostly off-page.
-- Keep captions short. Do not invent new figures.
-- If the first pass is already valid, return it unchanged.
-- Never return an image URL. If there are no usable boxes, return {"figures":[]}.`;

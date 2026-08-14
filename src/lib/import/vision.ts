@@ -1,4 +1,5 @@
 import { extractPageWithGemini } from "./gemini-client";
+import { figureDependencyReason } from "./figure-dependency";
 import { renderPdfPages, pdfPageCount } from "./pdf";
 import type { Draft, ParseDefaults } from "./parse";
 import { skillsFor, type Section } from "@/lib/sat";
@@ -119,9 +120,9 @@ function itemToDraft(
     rec[`choice_${String.fromCharCode(65 + i)}`] = text;
   });
 
-  if (rec.prompt.includes("[FIGURE NEEDED")) {
+  if (figureDependencyReason(rec)) {
     warnings.push(
-      "This question depends on a figure. Add an image URL, or the question will be unanswerable.",
+      "This question depends on a figure. Attach, crop manually, or upload an image before importing.",
     );
   }
 

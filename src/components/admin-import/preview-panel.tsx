@@ -30,6 +30,7 @@ export function PreviewPanel({
   onAddAfter,
   onDeleteDraft,
   onAttachFigure,
+  onManualCrop,
   onAttachFigures,
   onStopFigures,
   attachingFigures,
@@ -66,6 +67,7 @@ export function PreviewPanel({
   onAddAfter?: (index: number) => void;
   onDeleteDraft?: (index: number) => void;
   onAttachFigure?: (index: number) => void;
+  onManualCrop?: (index: number) => void;
   onAttachFigures?: () => void;
   onStopFigures?: () => void;
   attachingFigures?: boolean;
@@ -97,20 +99,9 @@ export function PreviewPanel({
       )
     : 0;
 
-  const figTotal = figureProgress?.total ?? Math.max(figureCount, 1);
-  const fig1Pct = figureProgress
-    ? Math.min(100, Math.round((figureProgress.stage1Done / figTotal) * 100))
-    : 0;
-  const fig2Pct = figureProgress
-    ? Math.min(100, Math.round((figureProgress.stage2Done / figTotal) * 100))
-    : 0;
-  const overallFigPct = figureProgress
-    ? Math.min(
-        100,
-        Math.round(
-          ((figureProgress.stage1Done + figureProgress.stage2Done) / (figTotal * 2)) * 100,
-        ),
-      )
+  const figTotal = figureProgress?.pagesTotal ?? Math.max(figureCount, 1);
+  const figPct = figureProgress
+    ? Math.min(100, Math.round((figureProgress.pagesDone / figTotal) * 100))
     : 0;
 
   return (
@@ -272,43 +263,25 @@ export function PreviewPanel({
           aria-label="Figure attach progress"
         >
           <div className="text-xs leading-relaxed text-brand-100">
-            <strong className="text-white">Crop from the page.</strong> Gemini locates the figure,
-            then Nemotron rechecks the box JSON. The crop is uploaded — nothing is generated.
+            <strong className="text-white">Crop from the page.</strong> Gemini locates each figure
+            once per page, then real PNG crops are uploaded — nothing is AI-generated.
           </div>
           <div>
             <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-brand-100">
-              <span>Overall</span>
-              <span>{overallFigPct}%</span>
+              <span>Pages</span>
+              <span>{figPct}%</span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-brand-900">
               <div
                 className="h-full rounded-full bg-brand-200 transition-[width] duration-300"
-                style={{ width: `${overallFigPct}%` }}
+                style={{ width: `${figPct}%` }}
               />
             </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <StageBar
-              label="1 · Locate"
-              detail="Gemini 3 Flash"
-              pct={fig1Pct}
-              active={figureProgress?.stage === 1}
-              done={figureProgress?.stage1Done ?? 0}
-              total={figTotal}
-            />
-            <StageBar
-              label="2 · Recheck"
-              detail="Nemotron 3 Ultra"
-              pct={fig2Pct}
-              active={figureProgress?.stage === 2}
-              done={figureProgress?.stage2Done ?? 0}
-              total={figTotal}
-            />
           </div>
           <div className="flex items-center gap-2 text-[11px] font-semibold text-brand-100">
             <Loader2 className="h-3 w-3 animate-spin" />
             {figureProgress
-              ? `Q${figureProgress.draftNumber} · ${figureProgress.index}/${figureProgress.total} · Stage ${figureProgress.stage} (${figureProgress.stageLabel}) · ${figureProgress.attached} attached`
+              ? `Page ${figureProgress.page} · ${figureProgress.pagesDone}/${figureProgress.pagesTotal} · Q${figureProgress.draftNumber} · ${figureProgress.attached} attached`
               : "Starting figure attach…"}
           </div>
         </div>
@@ -349,6 +322,7 @@ export function PreviewPanel({
           onAddAfter={onAddAfter}
           onDelete={onDeleteDraft}
           onAttachFigure={onAttachFigure}
+          onManualCrop={onManualCrop}
         />
       ) : (
         <ul className="divide-y divide-brand-400/30 overflow-hidden rounded-xl border border-brand-400/40">

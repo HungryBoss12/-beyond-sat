@@ -1,4 +1,4 @@
-import { locateFiguresOnPage, type FigureStage } from "@/lib/gemini/locate-figure";
+import { locateFiguresOnPage } from "@/lib/gemini/locate-figure";
 import { GeminiError } from "@/lib/gemini/errors";
 import { readBearerToken, readEnv, readSupabaseConfig, verifySupabaseUser } from "@/lib/server-env";
 
@@ -9,15 +9,35 @@ function json(body: unknown, status: number): Response {
   });
 }
 
-type FigureRequest = {
-  imageDataUrl?: unknown;
-  stage?: unknown;
-  priorLocation?: unknown;
-  hint?: unknown;
+type FigureQuestionHint = {
+  draft_number?: unknown;
+  stem?: unknown;
 };
 
+type FigureRequest = {
+  imageDataUrl?: unknown;
+  hint?: unknown;
+  questions?: unknown;
+};
+
+function parseQuestions(raw: unknown): { draft_number: number; stem: string }[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: { draft_number: number; stem: string }[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const rec = item as FigureQuestionHint;
+    const draft_number = Number(rec.draft_number);
+    if (!Number.isFinite(draft_number) || draft_number < 1) continue;
+    out.push({
+      draft_number: Math.round(draft_number),
+      stem: typeof rec.stem === "string" ? rec.stem.trim().slice(0, 200) : "",
+    });
+  }
+  return out.length ? out : undefined;
+}
+
 /**
- * POST /api/import/figure — two-stage Gemini figure location for admin import.
+ * POST /api/import/figure — Gemini figure location for admin import.
  */
 export async function handleImportFigure(request: Request, env: unknown): Promise<Response> {
   if (request.method !== "POST") {
@@ -51,32 +71,17 @@ export async function handleImportFigure(request: Request, env: unknown): Promis
     return json({ error: "imageDataUrl is required" }, 400);
   }
 
-  const stage: FigureStage = payload.stage === "recheck" ? "recheck" : "extract";
-  const priorLocation =
-    typeof payload.priorLocation === "string" ? payload.priorLocation : undefined;
   const hint = typeof payload.hint === "string" ? payload.hint : undefined;
+  const questions = parseQuestions(payload.questions);
 
-  if (stage === "recheck" && !priorLocation?.trim()) {
-    return json({ error: "priorLocation is required for recheck" }, 400);
-  }
-
-  const apiKey =
-    stage === "recheck" ? readEnv(env, "OPENROUTER_API_KEY") : readEnv(env, "GEMINI_API_KEY");
+  const apiKey = readEnv(env, "GEMINI_API_KEY");
   if (!apiKey) {
     console.error(
       import.meta.env.DEV
-        ? `[import/figure] ${stage === "recheck" ? "OPENROUTER_API_KEY" : "GEMINI_API_KEY"} is not set — add it to .dev.vars or .env.local, then restart the dev server.`
-        : `[import/figure] ${stage === "recheck" ? "OPENROUTER_API_KEY" : "GEMINI_API_KEY"} is not set — run: npx wrangler secret put ${stage === "recheck" ? "OPENROUTER_API_KEY" : "GEMINI_API_KEY"}`,
+        ? "[import/figure] GEMINI_API_KEY is not set — add it to .dev.vars or .env.local, then restart the dev server."
+        : "[import/figure] GEMINI_API_KEY is not set — run: npx wrangler secret put GEMINI_API_KEY",
     );
-    return json(
-      {
-        error:
-          stage === "recheck"
-            ? "Figure recheck is not available right now."
-            : "Figure attach is not available right now.",
-      },
-      503,
-    );
+    return json({ error: "Figure attach is not available right now." }, 503);
   }
 
   try {
@@ -84,12 +89,11 @@ export async function handleImportFigure(request: Request, env: unknown): Promis
       typeof payload.imageDataUrl === "string" ? payload.imageDataUrl : "",
       {
         apiKey,
-        stage,
-        priorLocation,
         hint,
+        questions,
       },
     );
-    return json({ content, stage }, 200);
+    return json({ content }, 200);
   } catch (error) {
     if (error instanceof GeminiError) {
       return json({ error: error.message, code: error.code }, error.status);

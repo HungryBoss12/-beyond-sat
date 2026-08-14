@@ -27,6 +27,7 @@ export function DraftReviewer({
   onAddAfter,
   onDelete,
   onAttachFigure,
+  onManualCrop,
 }: {
   rows: PreviewRow[];
   drafts: Draft[];
@@ -39,6 +40,7 @@ export function DraftReviewer({
   onAddAfter?: (index: number) => void;
   onDelete?: (index: number) => void;
   onAttachFigure?: (index: number) => void;
+  onManualCrop?: (index: number) => void;
 }) {
   const [selected, setSelected] = useState(0);
   const last = Math.max(0, rows.length - 1);
@@ -194,6 +196,16 @@ export function DraftReviewer({
               )}
             </div>
             <div className="flex shrink-0 flex-wrap gap-1.5">
+              {onManualCrop && canCrop && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onManualCrop(draftIndex)}
+                  className="tap inline-flex items-center gap-1 rounded-md border border-brand-400/50 bg-brand-900 px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-40"
+                >
+                  <ImageIcon className="h-3 w-3" /> Crop manually
+                </button>
+              )}
               {onAttachFigure && canCrop && (
                 <button
                   type="button"

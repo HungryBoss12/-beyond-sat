@@ -43,6 +43,7 @@ import {
   PreviewPanel,
   VisionPanel,
   WizardSteps,
+  FigureCropDialog,
   type FigureProgress,
   type FixProgress,
   type ImportWizardStep,
@@ -99,6 +100,8 @@ function AdminImport() {
   const [fixProgress, setFixProgress] = useState<FixProgress | null>(null);
   const [attachingFigures, setAttachingFigures] = useState(false);
   const [figureProgress, setFigureProgress] = useState<FigureProgress | null>(null);
+  const [cropDraftIndex, setCropDraftIndex] = useState<number | null>(null);
+  const [manualCropBusy, setManualCropBusy] = useState(false);
 
   const [keyText, setKeyText] = useState("");
   const [keySummary, setKeySummary] = useState<string | null>(null);
@@ -235,9 +238,56 @@ function AdminImport() {
     reader.readAsText(f);
   }
 
-  async function finishDocument(blocks: Array<string | SourceBlock>, extraNotes: string[] = []) {
+  async function autoAttachPdfFigures(file: File, list: Draft[]): Promise<Draft[]> {
+    const targets = list
+      .map((draft, draftIndex) => ({ draftIndex, draft }))
+      .filter((t) => needsFigure(t.draft) && t.draft.sourcePage);
+    if (targets.length === 0) return list;
+
+    setAttachingFigures(true);
+    setFigureProgress(null);
+    try {
+      const { attachFiguresToDrafts } = await import("@/lib/import/attach-figures");
+      const out = await attachFiguresToDrafts(file, list, targets, {
+        onProgress: setFigureProgress,
+      });
+      setNotes((current) => [...current, ...out.notes]);
+      return out.drafts;
+    } finally {
+      setAttachingFigures(false);
+      setFigureProgress(null);
+    }
+  }
+
+  async function finishDocument(
+    blocks: Array<string | SourceBlock>,
+    extraNotes: string[] = [],
+    opts: { fromDocx?: boolean; pdfFile?: File | null } = {},
+  ) {
     const out = blocksToDrafts(blocks, defaults());
-    const stamped = stampDraftModules(out.drafts, module);
+    let stamped = stampDraftModules(out.drafts, module);
+
+    if (opts.fromDocx && stamped.some((d) => d.sourceImages?.length)) {
+      setReading("Uploading embedded figures…");
+      try {
+        const { attachDocxImagesToDrafts } = await import("@/lib/import/attach-figures");
+        const attached = await attachDocxImagesToDrafts(stamped);
+        stamped = attached.drafts;
+        extraNotes = [...extraNotes, ...attached.notes];
+      } finally {
+        setReading(null);
+      }
+    }
+
+    if (opts.pdfFile && stamped.some((d) => needsFigure(d) && d.sourcePage)) {
+      setReading("Attaching figures from the PDF…");
+      try {
+        stamped = await autoAttachPdfFigures(opts.pdfFile, stamped);
+      } finally {
+        setReading(null);
+      }
+    }
+
     setDrafts(stamped);
     const split = splitNote(stamped);
     setNotes([...extraNotes, ...out.notes, ...(split ? [split] : [])]);
@@ -257,7 +307,7 @@ function AdminImport() {
       if (/\.docx$/i.test(f.name)) {
         setReading("Reading the document…");
         const blocks = await readDocx(f);
-        await finishDocument(blocks);
+        await finishDocument(blocks, [], { fromDocx: true });
         return;
       }
 
@@ -281,9 +331,9 @@ function AdminImport() {
           });
           return;
         }
-        await finishDocument(out.blocks, [
-          `Read the text layer of ${out.pages} page(s) — no AI needed.`,
-        ]);
+        await finishDocument(out.blocks, [`Read the text layer of ${out.pages} page(s) — no AI needed.`], {
+          pdfFile: f,
+        });
         return;
       }
 
@@ -350,6 +400,15 @@ function AdminImport() {
         merged = stampDraftModules(mergeDrafts(current ?? [], out.drafts), module);
         return merged;
       });
+      if (merged.some((d) => needsFigure(d) && d.sourcePage)) {
+        setReading("Attaching figures from the scan…");
+        try {
+          merged = await autoAttachPdfFigures(vision.file, merged);
+          setDrafts(merged);
+        } finally {
+          setReading(null);
+        }
+      }
       const split = splitNote(merged);
       setNotes((current) => [...current, ...out.notes, ...(split ? [split] : [])]);
       await fetchExisting();
@@ -420,6 +479,28 @@ function AdminImport() {
     setDrafts((current) => (current ? current.filter((_, i) => i !== index) : current));
   }
 
+  async function runManualCrop(
+    index: number,
+    box: { x: number; y: number; w: number; h: number },
+  ) {
+    const file = sourcePdf ?? vision?.file ?? null;
+    if (!file || !drafts?.[index]) return;
+    setManualCropBusy(true);
+    setReadError(null);
+    try {
+      const { attachManualCropToDraft } = await import("@/lib/import/attach-figures");
+      const updated = await attachManualCropToDraft(file, drafts[index], box);
+      setDrafts((current) =>
+        current ? current.map((d, i) => (i === index ? updated : d)) : current,
+      );
+      setCropDraftIndex(null);
+    } catch (err) {
+      setReadError((err as Error)?.message ?? "Manual crop could not be attached.");
+    } finally {
+      setManualCropBusy(false);
+    }
+  }
+
   async function runAttachFigures(onlyIndex?: number) {
     const file = sourcePdf ?? vision?.file ?? null;
     if (!file || !drafts || attachingFigures || fixing || vision?.running) return;
@@ -461,10 +542,14 @@ function AdminImport() {
     }
   }
 
+  const fileImport = Boolean(
+    drafts && (sourcePdf || vision?.file || /\.docx$/i.test(fileName)),
+  );
+
   const previewRows = useMemo(() => {
     if (drafts) {
       const base = drafts.map((d) => {
-        const r = validateRecord(d.rec, d.number);
+        const r = validateRecord(d.rec, d.number, { fileImport });
         return { ...r, warnings: [...d.warnings, ...r.warnings] };
       });
       return flagDuplicates(base, existingKeys).map((row, i) => ({
@@ -473,7 +558,7 @@ function AdminImport() {
       }));
     }
     return (parsed?.rows ?? []).map((row) => ({ row, draftIndex: null as number | null }));
-  }, [drafts, parsed, existingKeys]);
+  }, [drafts, parsed, existingKeys, fileImport]);
 
   const stats = useMemo(() => {
     const rows = previewRows.map((p) => p.row);
@@ -1153,6 +1238,7 @@ function AdminImport() {
               onAddAfter={addDraftAfter}
               onDeleteDraft={deleteDraft}
               onAttachFigure={(i) => void runAttachFigures(i)}
+              onManualCrop={(i) => setCropDraftIndex(i)}
               onAttachFigures={
                 figureCount > 0 && (sourcePdf || vision?.file)
                   ? () => void runAttachFigures()
@@ -1181,6 +1267,24 @@ function AdminImport() {
               </button>
             </div>
           )}
+
+          <FigureCropDialog
+            open={cropDraftIndex != null}
+            onOpenChange={(open) => {
+              if (!open) setCropDraftIndex(null);
+            }}
+            file={sourcePdf ?? vision?.file ?? null}
+            page={cropDraftIndex != null ? drafts?.[cropDraftIndex]?.sourcePage : null}
+            questionLabel={
+              cropDraftIndex != null && drafts?.[cropDraftIndex]
+                ? `Question ${drafts[cropDraftIndex].number}`
+                : "Question"
+            }
+            attaching={manualCropBusy}
+            onAttach={async (box) => {
+              if (cropDraftIndex != null) await runManualCrop(cropDraftIndex, box);
+            }}
+          />
 
           {result && (
             <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel">

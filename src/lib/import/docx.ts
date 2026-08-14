@@ -60,20 +60,17 @@ function readCentralDirectory(buf: ArrayBuffer): Map<string, ZipEntry> {
   return entries;
 }
 
-async function inflateEntry(buf: ArrayBuffer, entry: ZipEntry): Promise<string> {
+async function inflateEntryBytes(buf: ArrayBuffer, entry: ZipEntry): Promise<Uint8Array> {
   const view = new DataView(buf);
   if (view.getUint32(entry.localHeaderOffset, true) !== LFH_SIG) {
     throw new Error("That .docx is corrupt — a local file header is missing.");
   }
-  /* The local header repeats the name and extra fields with its *own* lengths,
-     which can differ from the central directory's. The data starts after those,
-     not after the central copy. */
   const nameLen = view.getUint16(entry.localHeaderOffset + 26, true);
   const extraLen = view.getUint16(entry.localHeaderOffset + 28, true);
   const start = entry.localHeaderOffset + 30 + nameLen + extraLen;
   const raw = new Uint8Array(buf, start, entry.compressedSize);
 
-  if (entry.method === 0) return new TextDecoder("utf-8").decode(raw);
+  if (entry.method === 0) return raw;
   if (entry.method !== 8) {
     throw new Error(`That .docx uses an unsupported compression method (${entry.method}).`);
   }
@@ -86,7 +83,12 @@ async function inflateEntry(buf: ArrayBuffer, entry: ZipEntry): Promise<string> 
   const stream = new Blob([raw as BlobPart])
     .stream()
     .pipeThrough(new DecompressionStream("deflate-raw"));
-  return new Response(stream).text();
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function inflateEntry(buf: ArrayBuffer, entry: ZipEntry): Promise<string> {
+  const bytes = await inflateEntryBytes(buf, entry);
+  return new TextDecoder("utf-8").decode(bytes);
 }
 
 // ---------------------------------------------------------------------------
@@ -145,17 +147,22 @@ function findClose(xml: string, open: number, tag: string): number {
  * sign that anything went missing. The symbols come through even though the
  * layout doesn't — a reviewer can see there's an equation to fix.
  */
-function paragraphText(xml: string): string {
+function paragraphContent(
+  xml: string,
+  ctx: DocxContext,
+): { text: string; images: Blob[] } {
   const token =
-    /<w:tab\s*\/>|<w:br\s*\/>|<w:noBreakHyphen\s*\/>|<(?:w|m):t(?:\s[^>]*)?>([\s\S]*?)<\/(?:w|m):t>|<w:drawing[\s>]|<w:pict[\s>]|<v:imagedata[\s>]/g;
+    /<w:tab\s*\/>|<w:br\s*\/>|<w:noBreakHyphen\s*\/>|<(?:w|m):t(?:\s[^>]*)?>([\s\S]*?)<\/(?:w|m):t>|<w:drawing[\s>]|<w:pict[\s>]|<v:imagedata[\s>]|r:embed="([^"]+)"/g;
   let out = "";
   let figure = false;
+  const embedIds: string[] = [];
   let m: RegExpExecArray | null;
   while ((m = token.exec(xml))) {
     const head = m[0];
     if (head.startsWith("<w:tab")) out += "\t";
     else if (head.startsWith("<w:br")) out += "\n";
     else if (head.startsWith("<w:noBreakHyphen")) out += "-";
+    else if (head.startsWith('r:embed="')) embedIds.push(m[1]);
     else if (
       head.startsWith("<w:drawing") ||
       head.startsWith("<w:pict") ||
@@ -164,22 +171,87 @@ function paragraphText(xml: string): string {
       figure = true;
     } else out += decodeEntities(m[1] ?? "");
   }
-  /* An image can't be carried through a text-only import, so it's marked rather
-     than dropped. A visible marker in the preview is a question an editor can
-     fix; a silently figure-less question is one that ships broken. */
-  if (figure) out += (out.trim() ? " " : "") + FIGURE_MARKER;
-  return out;
+
+  const images = resolveEmbeds(embedIds, ctx);
+  if (figure && images.length === 0) {
+    out += (out.trim() ? " " : "") + FIGURE_MARKER;
+  }
+  return { text: out, images };
+}
+
+function paragraphText(xml: string, ctx: DocxContext): string {
+  return paragraphContent(xml, ctx).text;
 }
 
 export const FIGURE_MARKER = "[FIGURE NEEDED — add an image URL for this question]";
 
-function cellText(xml: string): string {
+type DocxContext = {
+  rels: Map<string, string>;
+  media: Map<string, Uint8Array>;
+};
+
+function resolveMediaPath(target: string): string {
+  if (target.startsWith("/")) return target.slice(1);
+  if (target.startsWith("word/")) return target;
+  return `word/${target.replace(/^\.\.\//, "")}`;
+}
+
+function mimeFromPath(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase();
+  if (ext === "png") return "image/png";
+  if (ext === "gif") return "image/gif";
+  if (ext === "webp") return "image/webp";
+  if (ext === "emf" || ext === "wmf") return "image/emf";
+  return "image/jpeg";
+}
+
+function resolveEmbeds(ids: string[], ctx: DocxContext): Blob[] {
+  const out: Blob[] = [];
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const target = ctx.rels.get(id);
+    if (!target) continue;
+    const path = resolveMediaPath(target);
+    const bytes = ctx.media.get(path);
+    if (!bytes?.length) continue;
+    out.push(new Blob([bytes as BlobPart], { type: mimeFromPath(path) }));
+  }
+  return out;
+}
+
+async function readDocxContext(buf: ArrayBuffer, entries: Map<string, ZipEntry>): Promise<DocxContext> {
+  const rels = new Map<string, string>();
+  const relEntry = entries.get("word/_rels/document.xml.rels");
+  if (relEntry) {
+    const xml = await inflateEntry(buf, relEntry);
+    const re = /<Relationship\b([^/>]*)\/?>/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(xml))) {
+      const attrs = m[1];
+      const id = /Id="([^"]+)"/.exec(attrs)?.[1];
+      const target = /Target="([^"]+)"/.exec(attrs)?.[1];
+      if (id && target) rels.set(id, target);
+    }
+  }
+
+  const media = new Map<string, Uint8Array>();
+  for (const [name, entry] of entries) {
+    if (!name.startsWith("word/media/")) continue;
+    media.set(name, await inflateEntryBytes(buf, entry));
+  }
+
+  return { rels, media };
+}
+
+function cellText(xml: string, ctx: DocxContext): string {
   const parts: string[] = [];
   const re = /<w:p(?=[\s/>])/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(xml))) {
     const end = findClose(xml, m.index + m[0].length, "w:p");
-    const t = paragraphText(xml.slice(m.index, end)).trim();
+    const t = paragraphText(xml.slice(m.index, end), ctx).trim();
     if (t) parts.push(t);
     re.lastIndex = end;
   }
@@ -194,7 +266,7 @@ function cellText(xml: string): string {
  * use one-column tables purely as a layout box, and rendering that as a
  * one-column markdown table would be noise around the text it holds.
  */
-function tableBlocks(xml: string): string[] {
+function tableBlocks(xml: string, ctx: DocxContext): DocxSourceBlock[] {
   const rows: string[][] = [];
   const rowRe = /<w:tr(?=[\s/>])/g;
   let rm: RegExpExecArray | null;
@@ -206,7 +278,7 @@ function tableBlocks(xml: string): string[] {
     let cm: RegExpExecArray | null;
     while ((cm = cellRe.exec(rowXml))) {
       const cellEnd = findClose(rowXml, cm.index + cm[0].length, "w:tc");
-      cells.push(cellText(rowXml.slice(cm.index, cellEnd)).replace(/\|/g, "\\|"));
+      cells.push(cellText(rowXml.slice(cm.index, cellEnd), ctx).replace(/\|/g, "\\|"));
       cellRe.lastIndex = cellEnd;
     }
     if (cells.length) rows.push(cells);
@@ -214,36 +286,48 @@ function tableBlocks(xml: string): string[] {
   }
 
   if (rows.length === 0) return [];
-  if (rows.every((r) => r.length <= 1)) return rows.map((r) => r[0] ?? "").filter(Boolean);
+  if (rows.every((r) => r.length <= 1)) {
+    return rows
+      .map((r) => r[0] ?? "")
+      .filter(Boolean)
+      .map((text) => ({ text }));
+  }
 
   const width = Math.max(...rows.map((r) => r.length));
   const pad = (r: string[]) => Array.from({ length: width }, (_, i) => r[i] ?? "");
   const [head, ...body] = rows;
   return [
-    [
-      `| ${pad(head).join(" | ")} |`,
-      `| ${Array.from({ length: width }, () => "---").join(" | ")} |`,
-      ...body.map((r) => `| ${pad(r).join(" | ")} |`),
-    ].join("\n"),
+    {
+      text: [
+        `| ${pad(head).join(" | ")} |`,
+        `| ${Array.from({ length: width }, () => "---").join(" | ")} |`,
+        ...body.map((r) => `| ${pad(r).join(" | ")} |`),
+      ].join("\n"),
+    },
   ];
 }
+
+export type DocxSourceBlock = {
+  text: string;
+  images?: Blob[];
+};
 
 /**
  * Walk the body's direct children in document order. A single global regex for
  * `<w:p>` would also match the paragraphs *inside* every table cell, duplicating
  * the table's text as loose blocks — hence the scanner.
  */
-export function documentXmlToBlocks(xml: string): string[] {
+export function documentXmlToBlocks(xml: string, ctx: DocxContext): DocxSourceBlock[] {
   const bodyStart = xml.indexOf("<w:body");
   const scope = bodyStart === -1 ? xml : xml.slice(bodyStart);
-  const blocks: string[] = [];
+  const blocks: DocxSourceBlock[] = [];
   const next = /<w:p(?=[\s/>])|<w:tbl(?=[\s/>])/g;
   let m: RegExpExecArray | null;
 
   while ((m = next.exec(scope))) {
     if (m[0].startsWith("<w:tbl")) {
       const end = findClose(scope, m.index + m[0].length, "w:tbl");
-      blocks.push(...tableBlocks(scope.slice(m.index, end)));
+      blocks.push(...tableBlocks(scope.slice(m.index, end), ctx));
       next.lastIndex = end;
       continue;
     }
@@ -252,15 +336,21 @@ export function documentXmlToBlocks(xml: string): string[] {
     const end = selfClosing
       ? m.index + scope.slice(m.index).indexOf(">") + 1
       : findClose(scope, m.index + m[0].length, "w:p");
-    const text = paragraphText(scope.slice(m.index, end)).trim();
-    if (text) blocks.push(text);
+    const { text, images } = paragraphContent(scope.slice(m.index, end), ctx);
+    const trimmed = text.trim();
+    if (trimmed || images.length) {
+      blocks.push({
+        text: trimmed,
+        ...(images.length ? { images } : {}),
+      });
+    }
     next.lastIndex = end;
   }
   return blocks;
 }
 
-/** Read a `.docx` File/Blob into ordered text blocks. */
-export async function readDocx(file: Blob): Promise<string[]> {
+/** Read a `.docx` File/Blob into ordered text blocks with embedded images. */
+export async function readDocx(file: Blob): Promise<DocxSourceBlock[]> {
   const buf = await file.arrayBuffer();
   const entries = readCentralDirectory(buf);
   const entry = entries.get("word/document.xml");
@@ -269,5 +359,6 @@ export async function readDocx(file: Blob): Promise<string[]> {
       "That zip has no word/document.xml — it may be a .doc renamed to .docx, or a different Office format. Re-save it as .docx from Word.",
     );
   }
-  return documentXmlToBlocks(await inflateEntry(buf, entry));
+  const ctx = await readDocxContext(buf, entries);
+  return documentXmlToBlocks(await inflateEntry(buf, entry), ctx);
 }

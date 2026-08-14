@@ -24,6 +24,8 @@ export type SourceBlock = {
   text: string;
   /** 1-based PDF page, when the block came from a paged document. */
   page?: number;
+  /** Embedded images from DOCX — temporary until uploaded during import review. */
+  images?: Blob[];
 };
 
 export type Draft = {
@@ -34,6 +36,8 @@ export type Draft = {
   warnings: string[];
   /** 1-based PDF page this question was read from, when known. */
   sourcePage?: number;
+  /** Embedded DOCX images carried through review — never sent to the database. */
+  sourceImages?: Blob[];
   /** Staff confirmed the draft against the source page. */
   reviewed?: boolean;
 };
@@ -261,9 +265,9 @@ export function blocksToDrafts(
   defaults: ParseDefaults,
 ): DocumentParse {
   const notes: string[] = [];
-  const groups: { number: number; page?: number; blocks: string[] }[] = [];
+  const groups: { number: number; page?: number; blocks: string[]; images: Blob[] }[] = [];
   const preamble: string[] = [];
-  let current: { number: number; page?: number; blocks: string[] } | null = null;
+  let current: { number: number; page?: number; blocks: string[]; images: Blob[] } | null = null;
 
   for (const block of asSourceBlocks(blocks)) {
     const m = block.text.match(QUESTION_OPENER);
@@ -279,12 +283,19 @@ export function blocksToDrafts(
           );
         }
         const rest = block.text.slice(m[0].length).trim();
-        current = { number: n, page: block.page, blocks: rest ? [rest] : [] };
+        current = {
+          number: n,
+          page: block.page,
+          blocks: rest ? [rest] : [],
+          images: block.images ? [...block.images] : [],
+        };
         continue;
       }
     }
-    if (current) current.blocks.push(block.text);
-    else preamble.push(block.text);
+    if (current) {
+      current.blocks.push(block.text);
+      if (block.images?.length) current.images.push(...block.images);
+    } else preamble.push(block.text);
   }
   if (current) groups.push(current);
 
@@ -295,7 +306,7 @@ export function blocksToDrafts(
     return { drafts: [], preamble, notes };
   }
 
-  const drafts = groups.map(({ number, page, blocks: body }) => {
+  const drafts = groups.map(({ number, page, blocks: body, images }) => {
     const warnings: string[] = [];
     const located = locateChoices(body);
     const choices = located?.choices ?? [];
@@ -344,7 +355,7 @@ export function blocksToDrafts(
     };
     for (const c of choices) rec[`choice_${c.id}`] = c.text;
 
-    return { number, rec, warnings, sourcePage: page };
+    return { number, rec, warnings, sourcePage: page, sourceImages: images.length ? images : undefined };
   });
 
   const withChoices = drafts.filter((d) => d.rec.kind === "multiple_choice").length;

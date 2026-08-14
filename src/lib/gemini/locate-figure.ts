@@ -1,10 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import {
-  buildSystemPrompt,
-  FIGURE_LOCATE_PROMPT,
-  FIGURE_LOCATE_RECHECK_PROMPT,
-} from "@/lib/ai/prompts";
-import { completeOpenRouterJson } from "@/lib/import/openrouter-recheck";
+import { buildSystemPrompt, FIGURE_LOCATE_PROMPT } from "@/lib/ai/prompts";
 import {
   GEMINI_IMPORT_EXTRACT_MODEL,
   GEMINI_IMPORT_TEMPERATURE,
@@ -13,36 +8,34 @@ import {
 } from "./config";
 import { GeminiError, mapGeminiSdkError } from "./errors";
 
-export type FigureStage = "extract" | "recheck";
+export type FigureQuestionHint = {
+  draft_number: number;
+  stem: string;
+};
 
 export type LocateFigureOptions = {
   apiKey: string;
-  stage?: FigureStage;
-  priorLocation?: string;
   hint?: string;
+  questions?: FigureQuestionHint[];
 };
 
-/**
- * Stage extract → Gemini 3 Flash (needs the page).
- * Stage recheck → Nemotron 3 Ultra (JSON sanity only; no image).
- */
+function formatQuestionsList(questions: FigureQuestionHint[] | undefined): string {
+  if (!questions?.length) return "";
+  const lines = questions
+    .map((q) => `- draft_number ${q.draft_number}: ${q.stem || "(no stem)"}`)
+    .join("\n");
+  return `\n\nQuestions on this page (assign each figure box to one draft_number):\n${lines}`;
+}
+
+/** Locate figures on one page with Gemini vision (single pass). */
 export async function locateFiguresOnPage(
   imageDataUrl: string,
   options: LocateFigureOptions,
 ): Promise<string> {
-  const stage: FigureStage = options.stage === "recheck" ? "recheck" : "extract";
   const hint = options.hint?.trim()
-    ? `\n\nThis question's figure note: ${options.hint.trim()}`
+    ? `\n\nExtra figure note: ${options.hint.trim()}`
     : "";
-
-  if (stage === "recheck") {
-    return completeOpenRouterJson({
-      apiKey: options.apiKey,
-      system: "Return only a JSON object. No markdown fences.",
-      user: `${FIGURE_LOCATE_RECHECK_PROMPT}${hint}\n\nFirst-pass JSON to verify:\n${options.priorLocation?.trim() || '{"figures":[]}'}`,
-      maxTokens: 2048,
-    });
-  }
+  const questionsBlock = formatQuestionsList(options.questions);
 
   const apiKey = options.apiKey?.trim();
   if (!apiKey) {
@@ -69,7 +62,7 @@ export async function locateFiguresOnPage(
   }
 
   const userParts: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [
-    { text: `${FIGURE_LOCATE_PROMPT}${hint}` },
+    { text: `${FIGURE_LOCATE_PROMPT}${questionsBlock}${hint}` },
     {
       inlineData: {
         mimeType,

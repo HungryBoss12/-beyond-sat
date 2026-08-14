@@ -16,6 +16,32 @@ async function authHeader(): Promise<Record<string, string>> {
 
 export type FixClientStage = "extract" | "recheck" | "ask";
 
+export class FixClientError extends Error {
+  readonly code?: string;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = "FixClientError";
+    this.code = code;
+  }
+}
+
+export function isRateLimitFixError(err: unknown): boolean {
+  if (err instanceof FixClientError && err.code === "RATE_LIMIT") return true;
+  const msg = ((err as Error)?.message ?? "").toLowerCase();
+  return (
+    msg.includes("rate limit") ||
+    msg.includes("free limit") ||
+    msg.includes("busy") ||
+    msg.includes("too many requests")
+  );
+}
+
+export type FixDraftResult = {
+  content: string;
+  /** True when the server used OpenRouter because Gemini Flash was limited. */
+  fallback?: boolean;
+};
+
 export async function fixDraftWithGemini(
   input: {
     number: number;
@@ -29,7 +55,7 @@ export async function fixDraftWithGemini(
     stage?: FixClientStage;
     priorFix?: string;
   } = {},
-): Promise<string> {
+): Promise<FixDraftResult> {
   const response = await fetch("/api/import/fix", {
     method: "POST",
     headers: { "content-type": "application/json", ...(await authHeader()) },
@@ -48,13 +74,21 @@ export async function fixDraftWithGemini(
   const data = (await response.json().catch(() => null)) as {
     content?: string;
     error?: string;
+    code?: string;
+    fallback?: boolean;
   } | null;
 
   if (!response.ok) {
-    throw new Error(data?.error ?? "Question fix is unavailable.");
+    throw new FixClientError(
+      data?.error ?? "Question fix is unavailable.",
+      data?.code ?? (response.status === 429 ? "RATE_LIMIT" : undefined),
+    );
   }
 
-  return data?.content ?? "";
+  return {
+    content: data?.content ?? "",
+    fallback: data?.fallback === true,
+  };
 }
 
 function extractJsonObject(text: string): Record<string, unknown> | null {
@@ -145,6 +179,8 @@ export type FixBrokenProgress = {
   stage2Done: number;
   fixed: number;
   failed: number;
+  /** Shown while waiting / after Flash limit (e.g. backup model). */
+  statusNote?: string;
 };
 
 export type FixBrokenTarget = {
@@ -163,6 +199,9 @@ function summarizeFields(fields: { key: string }[]): string {
   const keys = fields.map((f) => f.key).slice(0, 6);
   return keys.join(", ") + (fields.length > 6 ? ` (+${fields.length - 6})` : "");
 }
+
+/** Stop the batch after this many consecutive Flash/backup rate limits. */
+const CONSECUTIVE_RATE_LIMIT_STOP = 2;
 
 /**
  * Run two-stage Gemini repair over broken drafts. Mutates via returned array
@@ -194,6 +233,9 @@ export async function fixBrokenDrafts(
   let stage1Done = 0;
   let stage2Done = 0;
   let stopped = false;
+  let stoppedForRateLimit = false;
+  let consecutiveRateLimits = 0;
+  let usedFallbackCount = 0;
 
   const halted = () => Boolean(opts.shouldStop?.() || opts.signal?.aborted);
 
@@ -204,7 +246,7 @@ export async function fixBrokenDrafts(
     }
 
     const t = targets[i];
-    const report = (stage: 1 | 2) => {
+    const report = (stage: 1 | 2, statusNote?: string) => {
       opts.onProgress?.({
         index: i + 1,
         total: targets.length,
@@ -215,6 +257,7 @@ export async function fixBrokenDrafts(
         stage2Done,
         fixed,
         failed,
+        statusNote,
       });
     };
 
@@ -227,12 +270,21 @@ export async function fixBrokenDrafts(
 
     const originalSnapshot = cloneDraft(next[t.draftIndex]);
 
-    let first: string;
+    let firstResult: FixDraftResult;
     try {
       report(1);
-      first = await fixDraftWithGemini(input, { signal: opts.signal, stage: "extract" });
+      firstResult = await fixDraftWithGemini(input, { signal: opts.signal, stage: "extract" });
+      consecutiveRateLimits = 0;
       stage1Done++;
-      report(1);
+      if (firstResult.fallback) {
+        usedFallbackCount++;
+        notes.push(
+          `Q${t.draft.number}: Gemini Flash was limited — fixed with the backup model (Nemotron).`,
+        );
+        report(1, "Flash limited — using backup model");
+      } else {
+        report(1);
+      }
     } catch (err) {
       if (isAbortError(err) || halted()) {
         stopped = true;
@@ -240,10 +292,25 @@ export async function fixBrokenDrafts(
       }
       failed++;
       notes.push(`Q${t.draft.number} (fix): ${(err as Error)?.message ?? "fix failed"}.`);
+      if (isRateLimitFixError(err)) {
+        consecutiveRateLimits++;
+        if (consecutiveRateLimits >= CONSECUTIVE_RATE_LIMIT_STOP) {
+          stopped = true;
+          stoppedForRateLimit = true;
+          notes.push(
+            `Stopped after Gemini Flash hit its free limit twice in a row. ${fixed} row${fixed === 1 ? "" : "s"} already repaired ${fixed === 1 ? "is" : "are"} kept — wait a minute, then run Fix again on the rest.`,
+          );
+          report(1, "Flash free limit — paused");
+          break;
+        }
+      } else {
+        consecutiveRateLimits = 0;
+      }
       report(1);
       continue;
     }
 
+    const first = firstResult.content;
     const firstObj = extractJsonObject(first);
     if (!firstObj) {
       failed++;
@@ -256,10 +323,12 @@ export async function fixBrokenDrafts(
     const geminiFields = diffRec(originalSnapshot.rec, afterGemini.rec);
     entries.push(
       makeActivityEntry({
-        actor: "gemini-fix",
+        actor: firstResult.fallback ? "nemotron-recheck" : "gemini-fix",
         draftIndex: t.draftIndex,
         draftNumber: t.draft.number,
-        summary: `Fixed Q${t.draft.number}: ${summarizeFields(geminiFields)}.`,
+        summary: firstResult.fallback
+          ? `Fixed Q${t.draft.number} via backup model (Flash limited): ${summarizeFields(geminiFields)}.`
+          : `Fixed Q${t.draft.number}: ${summarizeFields(geminiFields)}.`,
         fields: geminiFields,
         snapshot: originalSnapshot,
       }),
@@ -270,11 +339,12 @@ export async function fixBrokenDrafts(
     let usedRecheck = false;
     try {
       report(2);
-      content = await fixDraftWithGemini(input, {
+      const recheck = await fixDraftWithGemini(input, {
         signal: opts.signal,
         stage: "recheck",
         priorFix: first,
       });
+      content = recheck.content;
       stage2Done++;
       usedRecheck = true;
     } catch (err) {
@@ -316,8 +386,13 @@ export async function fixBrokenDrafts(
     if (stopped) break;
   }
 
-  if (stopped) {
+  if (stopped && !stoppedForRateLimit) {
     notes.unshift("Stopped — rows already repaired are kept.");
+  }
+  if (usedFallbackCount > 0) {
+    notes.unshift(
+      `Backup model used for ${usedFallbackCount} question${usedFallbackCount === 1 ? "" : "s"} because Gemini Flash hit its free limit.`,
+    );
   }
   notes.unshift(
     `Fix pass: repaired ${fixed} of ${targets.length} broken row${targets.length === 1 ? "" : "s"}${failed ? ` (${failed} failed)` : ""}.`,
@@ -348,7 +423,7 @@ export async function askDraftWithGemini(
     summary: `Asked on Q${draft.number}: ${trimmed.slice(0, 160)}${trimmed.length > 160 ? "…" : ""}`,
   });
 
-  const content = await fixDraftWithGemini(
+  const result = await fixDraftWithGemini(
     {
       number: draft.number,
       rec: draft.rec,
@@ -359,16 +434,18 @@ export async function askDraftWithGemini(
     { signal: opts.signal, stage: "ask" },
   );
 
-  const obj = extractJsonObject(content);
+  const obj = extractJsonObject(result.content);
   if (!obj) throw new Error("Gemini did not return usable JSON for that instruction.");
 
   next[draftIndex] = applyFixToDraft(next[draftIndex], obj);
   const fields = diffRec(snapshot.rec, next[draftIndex].rec);
   const resultEntry = makeActivityEntry({
-    actor: "gemini-fix",
+    actor: result.fallback ? "nemotron-recheck" : "gemini-fix",
     draftIndex,
     draftNumber: draft.number,
-    summary: `Applied instruction on Q${draft.number}: ${summarizeFields(fields)}.`,
+    summary: result.fallback
+      ? `Applied instruction on Q${draft.number} via backup model (Flash limited): ${summarizeFields(fields)}.`
+      : `Applied instruction on Q${draft.number}: ${summarizeFields(fields)}.`,
     fields,
     snapshot,
   });

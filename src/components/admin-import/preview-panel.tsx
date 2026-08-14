@@ -247,8 +247,9 @@ export function PreviewPanel({
           aria-label="Fix progress"
         >
           <div className="text-xs leading-relaxed text-brand-100">
-            <strong className="text-white">Two-factor repair.</strong> Gemini Pro fixes each broken
-            row, then Gemini Flash rechecks it. Review the preview after the pass.
+            <strong className="text-white">Two-stage repair.</strong> Gemini 3 Flash fixes each
+            broken row, then Nemotron rechecks it. If Flash hits its free limit, a backup model
+            takes over — already-fixed rows are kept if the run pauses.
           </div>
           <div>
             <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-brand-100">
@@ -280,11 +281,16 @@ export function PreviewPanel({
               total={fixTotal}
             />
           </div>
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-brand-100">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            {fixProgress
-              ? `Q${fixProgress.draftNumber} · ${fixProgress.index}/${fixProgress.total} · Stage ${fixProgress.stage} (${fixProgress.stageLabel}) · ${fixProgress.fixed} fixed`
-              : "Starting repair…"}
+          <div className="flex flex-col gap-1 text-[11px] font-semibold text-brand-100">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              {fixProgress
+                ? `Q${fixProgress.draftNumber} · ${fixProgress.index}/${fixProgress.total} · Stage ${fixProgress.stage} (${fixProgress.stageLabel}) · ${fixProgress.fixed} fixed`
+                : "Starting repair…"}
+            </div>
+            {fixProgress?.statusNote ? (
+              <p className="pl-5 text-amber-100/90">{fixProgress.statusNote}</p>
+            ) : null}
           </div>
         </div>
       )}

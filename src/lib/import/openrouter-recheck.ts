@@ -61,7 +61,7 @@ export async function completeOpenRouterJson(opts: {
     if (response.status === 429) {
       throw new GeminiError(
         "RATE_LIMIT",
-        "Recheck model is busy. Wait a moment and try again.",
+        "Backup / recheck model is busy. Wait a minute and try Fix again — rows already repaired are kept.",
         429,
       );
     }

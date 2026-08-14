@@ -47,6 +47,7 @@ export type FixProgress = {
   stage2Done: number;
   fixed: number;
   failed: number;
+  statusNote?: string;
 };
 
 export type FigureProgress = {

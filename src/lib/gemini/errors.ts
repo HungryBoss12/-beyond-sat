@@ -17,10 +17,16 @@ export function mapGeminiSdkError(error: unknown): GeminiError {
   const message = error instanceof Error ? error.message : String(error);
   const lower = message.toLowerCase();
 
-  if (lower.includes("429") || lower.includes("rate limit") || lower.includes("quota")) {
+  if (
+    lower.includes("429") ||
+    lower.includes("rate limit") ||
+    lower.includes("quota") ||
+    lower.includes("resource_exhausted") ||
+    lower.includes("too many requests")
+  ) {
     return new GeminiError(
       "RATE_LIMIT",
-      "Gemini rate limit reached. Wait a moment and try again.",
+      "Gemini 3 Flash free limit reached. Waiting briefly, then using a backup model if needed.",
       429,
     );
   }

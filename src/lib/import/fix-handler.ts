@@ -21,7 +21,8 @@ type FixRequest = {
 
 /**
  * POST /api/import/fix — two-stage Gemini repair for broken import drafts,
- * plus free-text "ask" instructions.
+ * plus free-text "ask" instructions. Extract/ask fall back to OpenRouter when
+ * Gemini 3 Flash hits its free-tier limit.
  */
 export async function handleImportFix(request: Request, env: unknown): Promise<Response> {
   if (request.method !== "POST") {
@@ -77,8 +78,10 @@ export async function handleImportFix(request: Request, env: unknown): Promise<R
     return json({ error: "instruction is required for ask" }, 400);
   }
 
-  const apiKey =
-    stage === "recheck" ? readEnv(env, "OPENROUTER_API_KEY") : readEnv(env, "GEMINI_API_KEY");
+  const geminiKey = readEnv(env, "GEMINI_API_KEY");
+  const openRouterKey = readEnv(env, "OPENROUTER_API_KEY");
+
+  const apiKey = stage === "recheck" ? openRouterKey : geminiKey;
   if (!apiKey) {
     console.error(
       import.meta.env.DEV
@@ -103,11 +106,23 @@ export async function handleImportFix(request: Request, env: unknown): Promise<R
   }
 
   try {
-    const content = await fixBrokenQuestionWithGemini(
+    const result = await fixBrokenQuestionWithGemini(
       { number, rec, errors, warnings, instruction },
-      { apiKey, stage, priorFix },
+      {
+        apiKey,
+        stage,
+        priorFix,
+        openRouterApiKey: stage === "recheck" ? undefined : openRouterKey,
+      },
     );
-    return json({ content, stage }, 200);
+    return json(
+      {
+        content: result.content,
+        stage,
+        ...(result.fallback ? { fallback: true } : {}),
+      },
+      200,
+    );
   } catch (error) {
     if (error instanceof GeminiError) {
       return json({ error: error.message, code: error.code }, error.status);

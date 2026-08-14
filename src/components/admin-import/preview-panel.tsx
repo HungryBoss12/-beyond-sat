@@ -36,6 +36,11 @@ export function PreviewPanel({
   attachingFigures,
   figureCount = 0,
   figureProgress,
+  sweepFigures = true,
+  setSweepFigures,
+  tableMarkdown = false,
+  setTableMarkdown,
+  focusDraftIndex = null,
   showModule,
   visionRunning,
 }: {
@@ -73,6 +78,11 @@ export function PreviewPanel({
   attachingFigures?: boolean;
   figureCount?: number;
   figureProgress?: FigureProgress | null;
+  sweepFigures?: boolean;
+  setSweepFigures?: (v: boolean) => void;
+  tableMarkdown?: boolean;
+  setTableMarkdown?: (v: boolean) => void;
+  focusDraftIndex?: number | null;
   showModule?: boolean;
   visionRunning?: boolean;
 }) {
@@ -169,6 +179,30 @@ export function PreviewPanel({
                 Attach {figureCount} figure{figureCount === 1 ? "" : "s"} with AI
               </button>
             ))}
+          {setSweepFigures && onAttachFigures && (
+            <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-brand-100">
+              <input
+                type="checkbox"
+                checked={sweepFigures}
+                onChange={(e) => setSweepFigures(e.target.checked)}
+                disabled={attachingFigures || importing}
+                className="h-3.5 w-3.5 accent-brand-200 [color-scheme:dark]"
+              />
+              Sweep every page
+            </label>
+          )}
+          {setTableMarkdown && onAttachFigures && (
+            <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-brand-100">
+              <input
+                type="checkbox"
+                checked={tableMarkdown}
+                onChange={(e) => setTableMarkdown(e.target.checked)}
+                disabled={attachingFigures || importing}
+                className="h-3.5 w-3.5 accent-brand-200 [color-scheme:dark]"
+              />
+              Also write tables as text
+            </label>
+          )}
           {onFixBroken &&
             brokenCount > 0 &&
             (fixing ? (
@@ -317,6 +351,7 @@ export function PreviewPanel({
           disabled={importing || fixing}
           attachingFigure={attachingFigures}
           showModule={showModule}
+          focusDraftIndex={focusDraftIndex}
           onChangeDraft={onChangeDraft}
           onSetReviewed={onSetReviewed}
           onAddAfter={onAddAfter}

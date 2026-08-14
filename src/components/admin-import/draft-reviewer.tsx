@@ -22,6 +22,7 @@ export function DraftReviewer({
   disabled,
   attachingFigure,
   showModule,
+  focusDraftIndex = null,
   onChangeDraft,
   onSetReviewed,
   onAddAfter,
@@ -35,6 +36,7 @@ export function DraftReviewer({
   disabled?: boolean;
   attachingFigure?: boolean;
   showModule?: boolean;
+  focusDraftIndex?: number | null;
   onChangeDraft: (index: number, rec: Record<string, string>) => void;
   onSetReviewed: (index: number, reviewed: boolean) => void;
   onAddAfter?: (index: number) => void;
@@ -56,6 +58,12 @@ export function DraftReviewer({
   useEffect(() => {
     if (selected > last) setSelected(last);
   }, [last, selected]);
+
+  useEffect(() => {
+    if (focusDraftIndex == null) return;
+    const rowIdx = rows.findIndex((r) => r.draftIndex === focusDraftIndex);
+    if (rowIdx >= 0) setSelected(rowIdx);
+  }, [focusDraftIndex, rows]);
 
   function go(next: number) {
     setSelected(Math.max(0, Math.min(last, next)));

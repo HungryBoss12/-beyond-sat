@@ -182,9 +182,9 @@ Rules:
  */
 export const FIGURE_LOCATE_PROMPT = `You are locating printed figures on one Digital SAT (or similar) exam page image.
 
-Find graphs, tables, charts, diagrams, number lines, and geometric figures that a student must see to answer a question on this page. Ignore logos, page numbers, headers, and the answer-choice letters themselves.
+Find EVERY graph, table, chart, diagram, number line, and geometric figure on this page that a student might need — even when no question stem mentions it. Ignore logos, page numbers, headers, and the answer-choice letters themselves.
 
-You may receive a numbered list of question stems on this page. Assign EVERY figure box to exactly one \`draft_number\` from that list. Never merge figures from different questions into one box unless they truly belong to the same question.
+You may receive a numbered list of question stems on this page. Assign EVERY figure box to exactly one \`draft_number\` from that list. If a figure sits next to or above a question, assign that question's draft_number. Never merge figures from different questions into one box unless they truly belong to the same question.
 
 Return ONLY a JSON object. First character {, last character }. No markdown fences.
 
@@ -193,20 +193,50 @@ Shape:
   "figures": [
     {
       "draft_number": 1,
+      "kind": "table",
+      "confidence": 0.9,
       "x": 0.0,
       "y": 0.0,
       "w": 0.0,
       "h": 0.0,
-      "caption": "one-line description of what the crop contains"
+      "caption": "one-line description of what the crop contains",
+      "markdown": ""
     }
   ]
 }
 
-Coordinates are fractions of the full page, origin at the top-left:
-- x, y = top-left of the figure (0–1)
+Fields:
+- kind: one of "table", "graph", "diagram", "number_line", "figure"
+- confidence: 0–1 how sure you are this is a real figure for that question
+- x, y = top-left of the figure as fractions of the full page (0–1), origin top-left
 - w, h = width and height (0–1)
 - draft_number = the printed/import question number this figure belongs to
-Include a small margin so axis labels and table headers are inside the box.
+- caption = one-line description
+- markdown = OPTIONAL. Only when asked for table transcription below; otherwise omit or "".
+
+For tables: the box MUST include the table title (if any), header/units row, and all ruled borders — do not clip edge columns.
+For graphs: include axis labels, tick labels, legends, and titles inside the box.
+Include a small margin so labels are not cut off.
 If one question has multiple separate figures, return multiple boxes with the same draft_number.
 If this page has no figure, return {"figures":[]}.
 Do not invent figures that are not visible. Never return an image URL.`;
+
+/**
+ * Free-text instruction against one import draft (admin ask).
+ */
+export const VISION_ASK_PROMPT = `You are editing one Digital SAT question draft based on an admin instruction.
+
+You receive:
+- the current draft fields (flat key/value record)
+- an instruction describing what to change
+
+Return ONLY a single JSON object (not an array). No markdown fences.
+
+Use these exact keys when relevant:
+  section, skill, difficulty, kind, question_text, choice_A … choice_D, correct, prompt, explanation
+
+Rules:
+- Obey the instruction. Change only what is needed.
+- Do not invent a different question — keep the same intent unless the instruction says otherwise.
+- Mathematics: LaTeX in $…$ with doubled backslashes in JSON.
+- Never recreate graphs, tables, or diagrams as ASCII/Unicode art; leave figure content in image_url / prompt markers alone unless the instruction asks to edit text around them.`;

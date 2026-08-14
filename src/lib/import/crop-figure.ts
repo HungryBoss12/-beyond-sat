@@ -1,3 +1,5 @@
+export type FigureKind = "table" | "graph" | "diagram" | "number_line" | "figure";
+
 export type FigureBox = {
   x: number;
   y: number;
@@ -6,7 +8,25 @@ export type FigureBox = {
   caption?: string;
   /** Printed/import question number this box belongs to. */
   draft_number?: number;
+  kind?: FigureKind;
+  confidence?: number;
+  /** Optional markdown transcription of a table (opt-in). */
+  markdown?: string;
 };
+
+const FIGURE_KINDS = new Set<FigureKind>([
+  "table",
+  "graph",
+  "diagram",
+  "number_line",
+  "figure",
+]);
+
+export function parseFigureKind(raw: unknown): FigureKind | undefined {
+  if (typeof raw !== "string") return undefined;
+  const k = raw.trim().toLowerCase().replace(/\s+/g, "_") as FigureKind;
+  return FIGURE_KINDS.has(k) ? k : undefined;
+}
 
 export function clampBox(box: FigureBox): FigureBox {
   const x = Math.min(0.95, Math.max(0, Number.isFinite(box.x) ? box.x : 0));
@@ -18,11 +38,19 @@ export function clampBox(box: FigureBox): FigureBox {
     box.draft_number != null && Number.isFinite(box.draft_number)
       ? Math.round(box.draft_number)
       : undefined;
-  return caption
-    ? { x, y, w, h, caption, draft_number }
-    : draft_number != null
-      ? { x, y, w, h, draft_number }
-      : { x, y, w, h };
+  const kind = box.kind;
+  const confidence =
+    box.confidence != null && Number.isFinite(box.confidence)
+      ? Math.min(1, Math.max(0, box.confidence))
+      : undefined;
+  const markdown = typeof box.markdown === "string" ? box.markdown.trim() : "";
+  const out: FigureBox = { x, y, w, h };
+  if (caption) out.caption = caption;
+  if (draft_number != null) out.draft_number = draft_number;
+  if (kind) out.kind = kind;
+  if (confidence != null) out.confidence = confidence;
+  if (markdown) out.markdown = markdown;
+  return out;
 }
 
 export function parseFigureBoxes(text: string): FigureBox[] {
@@ -47,11 +75,24 @@ export function parseFigureBoxes(text: string): FigureBox[] {
             f.draft_number != null && Number.isFinite(Number(f.draft_number))
               ? Number(f.draft_number)
               : undefined,
+          kind: parseFigureKind(f.kind),
+          confidence:
+            f.confidence != null && Number.isFinite(Number(f.confidence))
+              ? Number(f.confidence)
+              : undefined,
+          markdown: typeof f.markdown === "string" ? f.markdown : undefined,
         }),
       );
   } catch {
     return [];
   }
+}
+
+/** Drop boxes below this confidence when the model reports one. */
+export const FIGURE_CONFIDENCE_FLOOR = 0.35;
+
+export function filterConfidentBoxes(boxes: FigureBox[], floor = FIGURE_CONFIDENCE_FLOOR): FigureBox[] {
+  return boxes.filter((b) => b.confidence == null || b.confidence >= floor);
 }
 
 /** One crop that covers every box in the list (same question only). */
@@ -64,6 +105,9 @@ export function unionBoxes(boxes: FigureBox[]): FigureBox | null {
   let maxY = 0;
   let caption = "";
   let draft_number: number | undefined;
+  let kind: FigureKind | undefined;
+  let confidence: number | undefined;
+  let markdown = "";
   for (const raw of boxes) {
     const b = clampBox(raw);
     minX = Math.min(minX, b.x);
@@ -72,8 +116,23 @@ export function unionBoxes(boxes: FigureBox[]): FigureBox | null {
     maxY = Math.max(maxY, b.y + b.h);
     if (!caption && b.caption) caption = b.caption;
     if (draft_number == null && b.draft_number != null) draft_number = b.draft_number;
+    if (!kind && b.kind) kind = b.kind;
+    if (b.confidence != null) {
+      confidence = confidence == null ? b.confidence : Math.min(confidence, b.confidence);
+    }
+    if (!markdown && b.markdown) markdown = b.markdown;
   }
-  return clampBox({ x: minX, y: minY, w: maxX - minX, h: maxY - minY, caption, draft_number });
+  return clampBox({
+    x: minX,
+    y: minY,
+    w: maxX - minX,
+    h: maxY - minY,
+    caption,
+    draft_number,
+    kind,
+    confidence,
+    markdown,
+  });
 }
 
 /**
@@ -92,7 +151,25 @@ export function unionBoxesForDraft(boxes: FigureBox[], draftNumber: number): Fig
   return unionBoxes(boxesForDraft(boxes, draftNumber));
 }
 
-export async function cropPageToBlob(dataUrl: string, box: FigureBox, pad = 0.02): Promise<Blob> {
+/** Horizontal / vertical padding as fractions of the page, by figure kind. */
+export function padForKind(kind?: FigureKind): { x: number; y: number } {
+  switch (kind) {
+    case "table":
+      return { x: 0.035, y: 0.02 };
+    case "graph":
+      return { x: 0.025, y: 0.03 };
+    case "number_line":
+      return { x: 0.03, y: 0.025 };
+    default:
+      return { x: 0.02, y: 0.02 };
+  }
+}
+
+export async function cropPageToBlob(
+  dataUrl: string,
+  box: FigureBox,
+  pad?: number | { x: number; y: number },
+): Promise<Blob> {
   const img = new Image();
   const loaded = new Promise<void>((resolve, reject) => {
     img.onload = () => resolve();
@@ -101,12 +178,21 @@ export async function cropPageToBlob(dataUrl: string, box: FigureBox, pad = 0.02
   img.src = dataUrl;
   await loaded;
 
+  const pads =
+    typeof pad === "number"
+      ? { x: pad, y: pad }
+      : pad ?? padForKind(box.kind);
+
   const padded = clampBox({
-    x: box.x - pad,
-    y: box.y - pad,
-    w: box.w + pad * 2,
-    h: box.h + pad * 2,
+    x: box.x - pads.x,
+    y: box.y - pads.y,
+    w: box.w + pads.x * 2,
+    h: box.h + pads.y * 2,
     caption: box.caption,
+    kind: box.kind,
+    draft_number: box.draft_number,
+    confidence: box.confidence,
+    markdown: box.markdown,
   });
   const sx = Math.round(padded.x * img.naturalWidth);
   const sy = Math.round(padded.y * img.naturalHeight);

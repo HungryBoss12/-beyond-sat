@@ -12,6 +12,7 @@ export { VisionPanel } from "./vision-panel";
 export { AnswerKeyBox } from "./answer-key-box";
 export { CopyBox } from "./copy-box";
 export { FigureCropDialog } from "./figure-crop-dialog";
+export { ActivityLogPanel } from "./activity-log";
 export { PreviewPanel, RowPreview, Stat } from "./preview-panel";
 export { PagePreview } from "./page-preview";
 export { DraftEditor } from "./draft-editor";

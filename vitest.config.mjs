@@ -3,8 +3,11 @@ import { defineConfig } from "vitest/config";
 
 /**
  * Unit tests run against plain modules, so this config deliberately does not
- * reuse `vite.config.ts` — loading the app's TanStack Start / nitro plugin chain
+ * reuse vite.config.ts — loading the app's TanStack Start / nitro plugin chain
  * inside the test runner crashes the worker before any test executes.
+ *
+ * Plain .mjs so Vitest does not need esbuild to bundle the config (Windows
+ * antivirus often blocks spawn of esbuild.exe).
  */
 export default defineConfig({
   resolve: {

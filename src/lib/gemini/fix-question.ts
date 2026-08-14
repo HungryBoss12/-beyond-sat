@@ -1,5 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
-import { buildSystemPrompt, VISION_FIX_PROMPT, VISION_FIX_RECHECK_PROMPT } from "@/lib/ai/prompts";
+import {
+  buildSystemPrompt,
+  VISION_ASK_PROMPT,
+  VISION_FIX_PROMPT,
+  VISION_FIX_RECHECK_PROMPT,
+} from "@/lib/ai/prompts";
 import { completeOpenRouterJson } from "@/lib/import/openrouter-recheck";
 import {
   GEMINI_IMPORT_EXTRACT_MODEL,
@@ -9,13 +14,14 @@ import {
 } from "./config";
 import { GeminiError, mapGeminiSdkError } from "./errors";
 
-export type FixStage = "extract" | "recheck";
+export type FixStage = "extract" | "recheck" | "ask";
 
 export type FixBrokenQuestionInput = {
   number: number;
   rec: Record<string, string>;
   errors: string[];
   warnings: string[];
+  instruction?: string;
 };
 
 export type FixBrokenQuestionOptions = {
@@ -26,14 +32,15 @@ export type FixBrokenQuestionOptions = {
 };
 
 /**
- * Two-stage text repair for a broken import draft.
- * Stage extract → Gemini 3 Flash; stage recheck → Nemotron 3 Ultra.
+ * Two-stage text repair for a broken import draft, plus free-text "ask".
+ * Stage extract / ask → Gemini 3 Flash; stage recheck → Nemotron 3 Ultra.
  */
 export async function fixBrokenQuestionWithGemini(
   input: FixBrokenQuestionInput,
   options: FixBrokenQuestionOptions,
 ): Promise<string> {
-  const stage: FixStage = options.stage === "recheck" ? "recheck" : "extract";
+  const stage: FixStage =
+    options.stage === "recheck" ? "recheck" : options.stage === "ask" ? "ask" : "extract";
 
   const payload = JSON.stringify(
     {
@@ -41,6 +48,7 @@ export async function fixBrokenQuestionWithGemini(
       rec: input.rec,
       errors: input.errors,
       warnings: input.warnings,
+      instruction: input.instruction,
     },
     null,
     2,
@@ -63,7 +71,11 @@ export async function fixBrokenQuestionWithGemini(
     );
   }
 
-  const userText = `${VISION_FIX_PROMPT}\n\nBroken draft + validation issues:\n${payload}`;
+  const userText =
+    stage === "ask"
+      ? `${VISION_ASK_PROMPT}\n\nDraft + instruction:\n${payload}`
+      : `${VISION_FIX_PROMPT}\n\nBroken draft + validation issues:\n${payload}`;
+
   const ai = new GoogleGenAI({ apiKey });
 
   let text: string | undefined;

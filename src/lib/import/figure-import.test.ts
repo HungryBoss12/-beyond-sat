@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   boxesForDraft,
+  filterConfidentBoxes,
+  padForKind,
   parseFigureBoxes,
   unionBoxesForDraft,
 } from "./crop-figure";
+import { diffRec } from "./activity-log";
 import {
   figureDependencyError,
   figureDependencyReason,
@@ -82,5 +85,49 @@ describe("parseFigureBoxes draft_number", () => {
     expect(q2).not.toBeNull();
     expect(q1!.x).toBeLessThan(0.2);
     expect(q2!.x).toBeGreaterThan(0.5);
+  });
+});
+
+describe("figure kind, confidence, pad", () => {
+  it("parses kind, confidence, and markdown", () => {
+    const json = `{"figures":[{"draft_number":3,"kind":"table","confidence":0.88,"x":0.1,"y":0.2,"w":0.5,"h":0.3,"markdown":"| a | b |\\n|---|---|\\n| 1 | 2 |"}]}`;
+    const boxes = parseFigureBoxes(json);
+    expect(boxes).toHaveLength(1);
+    expect(boxes[0].kind).toBe("table");
+    expect(boxes[0].confidence).toBe(0.88);
+    expect(boxes[0].markdown).toContain("| a | b |");
+  });
+
+  it("filters low-confidence boxes", () => {
+    const json = `{"figures":[{"draft_number":1,"confidence":0.2,"x":0.1,"y":0.1,"w":0.2,"h":0.2},{"draft_number":2,"confidence":0.9,"x":0.4,"y":0.1,"w":0.2,"h":0.2},{"draft_number":3,"x":0.7,"y":0.1,"w":0.2,"h":0.2}]}`;
+    const boxes = filterConfidentBoxes(parseFigureBoxes(json));
+    expect(boxes.map((b) => b.draft_number)).toEqual([2, 3]);
+  });
+
+  it("uses wider horizontal pad for tables", () => {
+    expect(padForKind("table").x).toBeGreaterThan(padForKind("figure").x);
+    expect(padForKind("graph").y).toBeGreaterThan(padForKind("figure").y);
+  });
+
+  it("preserves kind when unioning", () => {
+    const json = `{"figures":[{"draft_number":1,"kind":"graph","confidence":0.7,"x":0.1,"y":0.1,"w":0.1,"h":0.1},{"draft_number":1,"kind":"graph","confidence":0.9,"x":0.2,"y":0.1,"w":0.1,"h":0.1}]}`;
+    const u = unionBoxesForDraft(parseFigureBoxes(json), 1);
+    expect(u?.kind).toBe("graph");
+    expect(u?.confidence).toBe(0.7);
+  });
+});
+
+describe("diffRec", () => {
+  it("reports changed keys only", () => {
+    const diffs = diffRec(
+      { question_text: "old", correct: "A", prompt: "" },
+      { question_text: "new", correct: "A", prompt: "hi" },
+    );
+    expect(diffs.map((d) => d.key).sort()).toEqual(["prompt", "question_text"]);
+    expect(diffs.find((d) => d.key === "question_text")).toEqual({
+      key: "question_text",
+      before: "old",
+      after: "new",
+    });
   });
 });

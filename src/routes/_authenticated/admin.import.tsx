@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   parseDelimited,
@@ -35,6 +35,7 @@ import {
 } from "@/lib/sat";
 import {
   AnswerKeyBox,
+  ActivityLogPanel,
   CHUNK,
   CONTROL_CLASS,
   CopyBox,
@@ -50,6 +51,8 @@ import {
   type Mode,
   type VisionState,
 } from "@/components/admin-import";
+import type { ActivityEntry } from "@/lib/import/activity-log";
+import { cloneDraft } from "@/lib/import/activity-log";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -102,6 +105,13 @@ function AdminImport() {
   const [figureProgress, setFigureProgress] = useState<FigureProgress | null>(null);
   const [cropDraftIndex, setCropDraftIndex] = useState<number | null>(null);
   const [manualCropBusy, setManualCropBusy] = useState(false);
+  const [sweepFigures, setSweepFigures] = useState(true);
+  const [tableMarkdown, setTableMarkdown] = useState(false);
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [asking, setAsking] = useState(false);
+  const [focusDraftIndex, setFocusDraftIndex] = useState<number | null>(null);
+  const [docDragOver, setDocDragOver] = useState(false);
+  const [sheetDragOver, setSheetDragOver] = useState(false);
 
   const [keyText, setKeyText] = useState("");
   const [keySummary, setKeySummary] = useState<string | null>(null);
@@ -129,6 +139,18 @@ function AdminImport() {
     [],
   );
 
+  useEffect(() => {
+    const block = (e: DragEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("dragover", block);
+    window.addEventListener("drop", block);
+    return () => {
+      window.removeEventListener("dragover", block);
+      window.removeEventListener("drop", block);
+    };
+  }, []);
+
   async function fetchExisting(): Promise<Set<string>> {
     const keys = new Set<string>();
     const { data, error } = await supabase
@@ -148,13 +170,49 @@ function AdminImport() {
     setParsed(null);
     setDrafts(null);
     setNotes([]);
+    setActivity([]);
     setReadError(null);
     setResult(null);
     setKeySummary(null);
     setVision(null);
     setFileName("");
     setSourcePdf(null);
+    setFocusDraftIndex(null);
   }
+
+  function appendActivity(entries: ActivityEntry[]) {
+    if (entries.length === 0) return;
+    setActivity((current) => [...current, ...entries]);
+  }
+
+  const buildFigureTargets = useCallback(
+    (list: Draft[], onlyIndex?: number) => {
+      if (onlyIndex != null) {
+        const draft = list[onlyIndex];
+        if (!draft) return [];
+        return [
+          {
+            draftIndex: onlyIndex,
+            draft,
+            reason: needsFigure(draft) ? ("required" as const) : ("sweep" as const),
+          },
+        ];
+      }
+      return list
+        .map((draft, draftIndex) => ({ draftIndex, draft }))
+        .filter((t) => {
+          if (!t.draft.sourcePage) return false;
+          if ((t.draft.rec.image_url ?? "").trim()) return false;
+          if (needsFigure(t.draft)) return true;
+          return sweepFigures;
+        })
+        .map((t) => ({
+          ...t,
+          reason: needsFigure(t.draft) ? ("required" as const) : ("sweep" as const),
+        }));
+    },
+    [sweepFigures],
+  );
 
   function defaults(): ParseDefaults {
     return {
@@ -239,9 +297,7 @@ function AdminImport() {
   }
 
   async function autoAttachPdfFigures(file: File, list: Draft[]): Promise<Draft[]> {
-    const targets = list
-      .map((draft, draftIndex) => ({ draftIndex, draft }))
-      .filter((t) => needsFigure(t.draft) && t.draft.sourcePage);
+    const targets = buildFigureTargets(list);
     if (targets.length === 0) return list;
 
     setAttachingFigures(true);
@@ -250,8 +306,10 @@ function AdminImport() {
       const { attachFiguresToDrafts } = await import("@/lib/import/attach-figures");
       const out = await attachFiguresToDrafts(file, list, targets, {
         onProgress: setFigureProgress,
+        tableMarkdown,
       });
       setNotes((current) => [...current, ...out.notes]);
+      appendActivity(out.entries);
       return out.drafts;
     } finally {
       setAttachingFigures(false);
@@ -274,12 +332,13 @@ function AdminImport() {
         const attached = await attachDocxImagesToDrafts(stamped);
         stamped = attached.drafts;
         extraNotes = [...extraNotes, ...attached.notes];
+        appendActivity(attached.entries);
       } finally {
         setReading(null);
       }
     }
 
-    if (opts.pdfFile && stamped.some((d) => needsFigure(d) && d.sourcePage)) {
+    if (opts.pdfFile && buildFigureTargets(stamped).length > 0) {
       setReading("Attaching figures from the PDF…");
       try {
         stamped = await autoAttachPdfFigures(opts.pdfFile, stamped);
@@ -489,10 +548,16 @@ function AdminImport() {
     setReadError(null);
     try {
       const { attachManualCropToDraft } = await import("@/lib/import/attach-figures");
-      const updated = await attachManualCropToDraft(file, drafts[index], box);
+      const { draft: updated, entry } = await attachManualCropToDraft(
+        file,
+        drafts[index],
+        box,
+        index,
+      );
       setDrafts((current) =>
         current ? current.map((d, i) => (i === index ? updated : d)) : current,
       );
+      appendActivity([entry]);
       setCropDraftIndex(null);
     } catch (err) {
       setReadError((err as Error)?.message ?? "Manual crop could not be attached.");
@@ -504,14 +569,7 @@ function AdminImport() {
   async function runAttachFigures(onlyIndex?: number) {
     const file = sourcePdf ?? vision?.file ?? null;
     if (!file || !drafts || attachingFigures || fixing || vision?.running) return;
-    const targets =
-      onlyIndex != null
-        ? drafts[onlyIndex]
-          ? [{ draftIndex: onlyIndex, draft: drafts[onlyIndex] }]
-          : []
-        : drafts
-            .map((draft, draftIndex) => ({ draftIndex, draft }))
-            .filter((t) => needsFigure(t.draft) && t.draft.sourcePage);
+    const targets = buildFigureTargets(drafts, onlyIndex);
     if (targets.length === 0) return;
 
     stopRef.current = false;
@@ -527,9 +585,11 @@ function AdminImport() {
         signal: ac.signal,
         shouldStop: () => stopRef.current,
         onProgress: setFigureProgress,
+        tableMarkdown,
       });
       setDrafts(out.drafts);
       setNotes((current) => [...current, ...out.notes]);
+      appendActivity(out.entries);
     } catch (err) {
       if ((err as Error)?.name !== "AbortError") {
         setReadError((err as Error)?.message ?? "Figures could not be attached.");
@@ -575,8 +635,8 @@ function AdminImport() {
   }, [previewRows, skipDuplicates]);
 
   const figureCount = useMemo(
-    () => (drafts ?? []).filter((d) => needsFigure(d) && d.sourcePage).length,
-    [drafts],
+    () => (drafts ? buildFigureTargets(drafts).length : 0),
+    [drafts, buildFigureTargets],
   );
 
   async function runFixBroken() {
@@ -618,6 +678,7 @@ function AdminImport() {
       });
       setDrafts(out.drafts);
       setNotes((current) => [...current, ...out.notes]);
+      appendActivity(out.entries);
       await fetchExisting();
     } catch (err) {
       if ((err as Error)?.name !== "AbortError") {
@@ -628,6 +689,35 @@ function AdminImport() {
       stopRef.current = false;
       setFixing(false);
       setFixProgress(null);
+    }
+  }
+
+  function undoActivity(entryId: string) {
+    const entry = activity.find((e) => e.id === entryId);
+    if (!entry?.snapshot || !drafts) return;
+    const snap = cloneDraft(entry.snapshot);
+    setDrafts((current) =>
+      current
+        ? current.map((d, i) => (i === entry.draftIndex ? snap : d))
+        : current,
+    );
+    setActivity((current) => current.filter((e) => e.id !== entryId));
+  }
+
+  async function runAsk(draftIndex: number, instruction: string) {
+    if (!drafts || asking || fixing || attachingFigures) return;
+    setAsking(true);
+    setReadError(null);
+    try {
+      const { askDraftWithGemini } = await import("@/lib/import/fix-broken");
+      const out = await askDraftWithGemini(drafts, draftIndex, instruction);
+      setDrafts(out.drafts);
+      appendActivity(out.entries);
+      setFocusDraftIndex(draftIndex);
+    } catch (err) {
+      setReadError((err as Error)?.message ?? "That instruction could not be applied.");
+    } finally {
+      setAsking(false);
     }
   }
 
@@ -1017,29 +1107,59 @@ function AdminImport() {
                     e.target.value = "";
                   }}
                 />
-                <button
-                  type="button"
-                  onClick={() => docRef.current?.click()}
-                  disabled={reading != null || vision?.running || fixing}
-                  className="tap flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-brand-300/50 bg-brand-800 px-4 py-10 text-sm font-semibold text-brand-100 transition hover:border-brand-200 hover:text-white disabled:opacity-40"
+                <div
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (reading != null || vision?.running || fixing) return;
+                    setDocDragOver(true);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                    setDocDragOver(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDocDragOver(false);
+                    if (reading != null || vision?.running || fixing) return;
+                    const f = e.dataTransfer.files?.[0];
+                    if (f) void loadDocument(f);
+                  }}
                 >
-                  {reading ? (
-                    <>
-                      <Loader2 className="h-6 w-6 animate-spin text-brand-200" />
-                      {reading}
-                    </>
-                  ) : (
-                    <>
-                      <FileUp className="h-6 w-6 text-brand-200" />
-                      Drop or choose a .docx / .pdf / .txt
-                      {fileName ? (
-                        <span className="text-xs font-normal text-brand-200">
-                          Current: {fileName}
-                        </span>
-                      ) : null}
-                    </>
-                  )}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => docRef.current?.click()}
+                    disabled={reading != null || vision?.running || fixing}
+                    className={`tap flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-brand-800 px-4 py-10 text-sm font-semibold text-brand-100 transition hover:border-brand-200 hover:text-white disabled:opacity-40 ${
+                      docDragOver
+                        ? "border-brand-200 bg-brand-700 text-white"
+                        : "border-brand-300/50"
+                    }`}
+                  >
+                    {reading ? (
+                      <>
+                        <Loader2 className="h-6 w-6 animate-spin text-brand-200" />
+                        {reading}
+                      </>
+                    ) : (
+                      <>
+                        <FileUp className="h-6 w-6 text-brand-200" />
+                        Drop or choose a .docx / .pdf / .txt
+                        {fileName ? (
+                          <span className="text-xs font-normal text-brand-200">
+                            Current: {fileName}
+                          </span>
+                        ) : null}
+                      </>
+                    )}
+                  </button>
+                </div>
                 {vision && (
                   <VisionPanel
                     state={vision}
@@ -1091,14 +1211,45 @@ function AdminImport() {
                 {mode === "sheet" && (
                   <p className="text-[11px] text-brand-200">Columns: {TSV_COLUMNS.join(", ")}</p>
                 )}
-                <textarea
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  rows={12}
-                  spellCheck={false}
-                  className={CONTROL_CLASS + " resize-y font-mono text-xs leading-relaxed"}
-                  placeholder={mode === "sheet" ? TSV_TEMPLATE : JSON_TEMPLATE}
-                />
+                <div
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSheetDragOver(true);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                    setSheetDragOver(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSheetDragOver(false);
+                    const f = e.dataTransfer.files?.[0];
+                    if (f) loadSheetFile(f);
+                  }}
+                  className={`rounded-xl transition ${
+                    sheetDragOver ? "ring-2 ring-brand-200 ring-offset-2 ring-offset-brand-600" : ""
+                  }`}
+                >
+                  <textarea
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    rows={12}
+                    spellCheck={false}
+                    className={CONTROL_CLASS + " resize-y font-mono text-xs leading-relaxed"}
+                    placeholder={
+                      mode === "sheet"
+                        ? `${TSV_TEMPLATE}\n\nOr drop a .tsv / .csv / .txt here`
+                        : `${JSON_TEMPLATE}\n\nOr drop a .json file here`
+                    }
+                  />
+                </div>
                 <div className="flex justify-end">
                   <button
                     type="button"
@@ -1251,6 +1402,11 @@ function AdminImport() {
               attachingFigures={attachingFigures}
               figureCount={figureCount}
               figureProgress={figureProgress}
+              sweepFigures={sweepFigures}
+              setSweepFigures={setSweepFigures}
+              tableMarkdown={tableMarkdown}
+              setTableMarkdown={setTableMarkdown}
+              focusDraftIndex={focusDraftIndex}
               visionRunning={Boolean(vision?.running)}
             />
           ) : (
@@ -1266,6 +1422,18 @@ function AdminImport() {
                 <Plus className="h-4 w-4" /> Add question
               </button>
             </div>
+          )}
+
+          {drafts && (
+            <ActivityLogPanel
+              entries={activity}
+              drafts={drafts}
+              asking={asking}
+              defaultDraftIndex={focusDraftIndex}
+              onJump={(i) => setFocusDraftIndex(i)}
+              onUndo={undoActivity}
+              onAsk={(i, text) => void runAsk(i, text)}
+            />
           )}
 
           <FigureCropDialog

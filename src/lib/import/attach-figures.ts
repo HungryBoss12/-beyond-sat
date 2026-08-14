@@ -1,6 +1,18 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Draft } from "./parse";
-import { cropPageToBlob, parseFigureBoxes, unionBoxesForDraft } from "./crop-figure";
+import {
+  cloneDraft,
+  diffRec,
+  makeActivityEntry,
+  type ActivityEntry,
+} from "./activity-log";
+import {
+  cropPageToBlob,
+  filterConfidentBoxes,
+  parseFigureBoxes,
+  unionBoxesForDraft,
+  type FigureBox,
+} from "./crop-figure";
 import { needsFigure } from "./figure-dependency";
 import { FIGURE_MARKER } from "./docx";
 import { uploadQuestionImage } from "./upload-question-image";
@@ -23,6 +35,7 @@ export async function locateFiguresWithGemini(
     signal?: AbortSignal;
     hint?: string;
     questions?: FigureQuestionHint[];
+    tableMarkdown?: boolean;
   } = {},
 ): Promise<string> {
   const response = await fetch("/api/import/figure", {
@@ -33,6 +46,7 @@ export async function locateFiguresWithGemini(
       imageDataUrl,
       hint: opts.hint,
       questions: opts.questions,
+      tableMarkdown: opts.tableMarkdown === true,
     }),
   });
 
@@ -58,32 +72,65 @@ export type AttachFigureProgress = {
   failed: number;
 };
 
+export type AttachFigureReason = "required" | "sweep";
+
 export type AttachFigureTarget = {
   draftIndex: number;
   draft: Draft;
+  /** required = missing figure is an error; sweep = opportunistic. */
+  reason: AttachFigureReason;
 };
 
 const CROP_RENDER_SCALE = 2;
 const CROP_RENDER_QUALITY = 0.92;
 
-function applyFigureToDraft(draft: Draft, url: string, caption?: string): Draft {
-  const rec: Record<string, string> = { ...draft.rec, image_url: url };
+function hasFigureImage(rec: Record<string, string>): boolean {
+  return (rec.image_url ?? "").trim().length > 0;
+}
+
+function applyFigureToDraft(
+  draft: Draft,
+  opts: { url?: string; caption?: string; markdown?: string },
+): Draft {
+  const rec: Record<string, string> = { ...draft.rec };
+  if (opts.url) rec.image_url = opts.url;
+
+  const caption = opts.caption?.trim() ?? "";
+  const markdown = opts.markdown?.trim() ?? "";
+
   if (!(rec.prompt ?? "").trim()) {
-    rec.prompt = caption ? `Figure: ${caption}` : "Figure";
+    const parts: string[] = [];
+    if (caption) parts.push(`Figure: ${caption}`);
+    else if (opts.url) parts.push("Figure");
+    if (markdown) parts.push(markdown);
+    if (parts.length) rec.prompt = parts.join("\n\n");
   } else {
-    rec.prompt = (rec.prompt ?? "")
+    let prompt = (rec.prompt ?? "")
       .replace(/\[FIGURE NEEDED:[^\]]*\]/gi, caption ? `[Figure: ${caption}]` : "[Figure attached]")
       .replace(/\[FIGURE NEEDED[^\]]*\]/gi, caption ? `[Figure: ${caption}]` : "[Figure attached]")
       .replaceAll(FIGURE_MARKER, caption ? `[Figure: ${caption}]` : "[Figure attached]");
+    if (markdown && !prompt.includes(markdown)) {
+      prompt = `${prompt.trim()}\n\n${markdown}`.trim();
+    }
+    rec.prompt = prompt;
   }
+
   const warnings = draft.warnings.filter(
     (w) =>
       !w.toLowerCase().includes("figure") &&
       !w.toLowerCase().includes("image url") &&
       !w.toLowerCase().includes("unanswerable"),
   );
-  warnings.push("Figure attached from the source.");
+  if (opts.url) {
+    warnings.push("Figure attached from the source.");
+  } else if (markdown) {
+    warnings.push("Table transcribed as text (no crop).");
+  }
   return { ...draft, rec, warnings, reviewed: false, sourceImages: undefined };
+}
+
+function kindLabel(box: FigureBox): string {
+  return box.kind ?? "figure";
 }
 
 /**
@@ -98,8 +145,15 @@ export async function attachFiguresToDrafts(
     signal?: AbortSignal;
     shouldStop?: () => boolean;
     onProgress?: (p: AttachFigureProgress) => void;
+    tableMarkdown?: boolean;
   } = {},
-): Promise<{ drafts: Draft[]; notes: string[]; attached: number; failed: number }> {
+): Promise<{
+  drafts: Draft[];
+  notes: string[];
+  entries: ActivityEntry[];
+  attached: number;
+  failed: number;
+}> {
   const next: Draft[] = allDrafts.map((d) => ({
     ...d,
     rec: { ...d.rec },
@@ -107,6 +161,7 @@ export async function attachFiguresToDrafts(
     sourceImages: d.sourceImages ? [...d.sourceImages] : undefined,
   }));
   const notes: string[] = [];
+  const entries: ActivityEntry[] = [];
   let attached = 0;
   let failed = 0;
 
@@ -115,10 +170,13 @@ export async function attachFiguresToDrafts(
 
   const byPage = new Map<number, AttachFigureTarget[]>();
   for (const t of targets) {
+    if (hasFigureImage(t.draft.rec) && t.reason === "sweep") continue;
     const page = t.draft.sourcePage;
     if (page == null || page < 1) {
-      failed++;
-      notes.push(`Q${t.draft.number}: no source page to crop from.`);
+      if (t.reason === "required") {
+        failed++;
+        notes.push(`Q${t.draft.number}: no source page to crop from.`);
+      }
       continue;
     }
     const list = byPage.get(page) ?? [];
@@ -144,10 +202,12 @@ export async function attachFiguresToDrafts(
         pageCache.set(page, pageUrl);
       } catch (err) {
         for (const t of pageTargets) {
-          failed++;
-          notes.push(
-            `Q${t.draft.number}: ${(err as Error)?.message ?? "the page could not be rendered"}.`,
-          );
+          if (t.reason === "required") {
+            failed++;
+            notes.push(
+              `Q${t.draft.number}: ${(err as Error)?.message ?? "the page could not be rendered"}.`,
+            );
+          }
         }
         pagesDone++;
         continue;
@@ -164,17 +224,20 @@ export async function attachFiguresToDrafts(
       locationJson = await locateFiguresWithGemini(pageUrl, {
         signal: opts.signal,
         questions,
+        tableMarkdown: opts.tableMarkdown,
       });
     } catch (err) {
       for (const t of pageTargets) {
-        failed++;
-        notes.push(`Q${t.draft.number} (locate): ${(err as Error)?.message ?? "locate failed"}.`);
+        if (t.reason === "required") {
+          failed++;
+          notes.push(`Q${t.draft.number} (locate): ${(err as Error)?.message ?? "locate failed"}.`);
+        }
       }
       pagesDone++;
       continue;
     }
 
-    const boxes = parseFigureBoxes(locationJson);
+    const boxes = filterConfidentBoxes(parseFigureBoxes(locationJson));
 
     for (const t of pageTargets) {
       if (opts.shouldStop?.()) break;
@@ -189,21 +252,75 @@ export async function attachFiguresToDrafts(
         failed,
       });
 
+      if (hasFigureImage(next[t.draftIndex].rec)) continue;
+
       const box = unionBoxesForDraft(boxes, t.draft.number);
       if (!box) {
-        failed++;
-        notes.push(`Q${t.draft.number}: no figure was found on page ${page}.`);
+        if (t.reason === "required") {
+          failed++;
+          notes.push(`Q${t.draft.number}: no figure was found on page ${page}.`);
+        }
         continue;
       }
+
+      const snapshot = cloneDraft(next[t.draftIndex]);
+      const markdown = opts.tableMarkdown && box.kind === "table" ? box.markdown : undefined;
 
       try {
         const blob = await cropPageToBlob(pageUrl, box);
         const url = await uploadQuestionImage(blob, `figure-q${t.draft.number}.png`);
-        next[t.draftIndex] = applyFigureToDraft(next[t.draftIndex], url, box.caption);
+        next[t.draftIndex] = applyFigureToDraft(next[t.draftIndex], {
+          url,
+          caption: box.caption,
+          markdown,
+        });
         attached++;
+        entries.push(
+          makeActivityEntry({
+            actor: "crop",
+            draftIndex: t.draftIndex,
+            draftNumber: t.draft.number,
+            summary: `Cropped the ${kindLabel(box)} on page ${page} into Q${t.draft.number}'s figure${
+              markdown ? " (+ table text)" : ""
+            }.`,
+            fields: diffRec(snapshot.rec, next[t.draftIndex].rec),
+            snapshot,
+          }),
+        );
+        entries.push(
+          makeActivityEntry({
+            actor: "gemini-locate",
+            draftIndex: t.draftIndex,
+            draftNumber: t.draft.number,
+            summary: `Located ${kindLabel(box)} for Q${t.draft.number} on page ${page}${
+              box.caption ? `: ${box.caption}` : ""
+            }.`,
+          }),
+        );
       } catch (err) {
-        failed++;
-        notes.push(`Q${t.draft.number}: ${(err as Error)?.message ?? "upload failed"}.`);
+        if (markdown) {
+          next[t.draftIndex] = applyFigureToDraft(next[t.draftIndex], {
+            caption: box.caption,
+            markdown,
+          });
+          attached++;
+          entries.push(
+            makeActivityEntry({
+              actor: "gemini-locate",
+              draftIndex: t.draftIndex,
+              draftNumber: t.draft.number,
+              summary: `Crop failed for Q${t.draft.number}; used table text instead.`,
+              fields: diffRec(snapshot.rec, next[t.draftIndex].rec),
+              snapshot,
+            }),
+          );
+          notes.push(
+            `Q${t.draft.number}: crop failed (${(err as Error)?.message ?? "error"}) — table text kept.`,
+          );
+        } else if (t.reason === "required") {
+          failed++;
+          notes.push(`Q${t.draft.number}: ${(err as Error)?.message ?? "upload failed"}.`);
+        }
       }
     }
 
@@ -214,7 +331,7 @@ export async function attachFiguresToDrafts(
     `Figures: attached ${attached} of ${targets.length}${failed ? ` (${failed} failed)` : ""}.`,
   );
 
-  return { drafts: next, notes, attached, failed };
+  return { drafts: next, notes, entries, attached, failed };
 }
 
 /**
@@ -222,7 +339,13 @@ export async function attachFiguresToDrafts(
  */
 export async function attachDocxImagesToDrafts(
   drafts: Draft[],
-): Promise<{ drafts: Draft[]; notes: string[]; attached: number; failed: number }> {
+): Promise<{
+  drafts: Draft[];
+  notes: string[];
+  entries: ActivityEntry[];
+  attached: number;
+  failed: number;
+}> {
   const { composeSourceImages } = await import("./compose-images");
   const next: Draft[] = drafts.map((d) => ({
     ...d,
@@ -231,17 +354,29 @@ export async function attachDocxImagesToDrafts(
     sourceImages: d.sourceImages ? [...d.sourceImages] : undefined,
   }));
   const notes: string[] = [];
+  const entries: ActivityEntry[] = [];
   let attached = 0;
   let failed = 0;
 
   for (let i = 0; i < next.length; i++) {
     const draft = next[i];
     if (!draft.sourceImages?.length || hasFigureImage(draft.rec)) continue;
+    const snapshot = cloneDraft(draft);
     try {
       const blob = await composeSourceImages(draft.sourceImages);
       const url = await uploadQuestionImage(blob, `docx-q${draft.number}.png`);
-      next[i] = applyFigureToDraft(draft, url);
+      next[i] = applyFigureToDraft(draft, { url });
       attached++;
+      entries.push(
+        makeActivityEntry({
+          actor: "crop",
+          draftIndex: i,
+          draftNumber: draft.number,
+          summary: `Attached embedded DOCX image to Q${draft.number}.`,
+          fields: diffRec(snapshot.rec, next[i].rec),
+          snapshot,
+        }),
+      );
     } catch (err) {
       failed++;
       notes.push(`Q${draft.number}: ${(err as Error)?.message ?? "embedded image upload failed"}.`);
@@ -252,11 +387,7 @@ export async function attachDocxImagesToDrafts(
     notes.unshift(`DOCX figures: attached ${attached}${failed ? ` (${failed} failed)` : ""}.`);
   }
 
-  return { drafts: next, notes, attached, failed };
-}
-
-function hasFigureImage(rec: Record<string, string>): boolean {
-  return (rec.image_url ?? "").trim().length > 0;
+  return { drafts: next, notes, entries, attached, failed };
 }
 
 /** Attach a manual crop from normalized page coordinates. */
@@ -264,11 +395,13 @@ export async function attachManualCropToDraft(
   file: File,
   draft: Draft,
   box: { x: number; y: number; w: number; h: number; caption?: string },
-): Promise<Draft> {
+  draftIndex = -1,
+): Promise<{ draft: Draft; entry: ActivityEntry }> {
   const page = draft.sourcePage;
   if (page == null || page < 1) {
     throw new Error("This question has no source page to crop from.");
   }
+  const snapshot = cloneDraft(draft);
   const { renderPdfPage } = await import("./pdf");
   const pageUrl = await renderPdfPage(file, page, {
     scale: CROP_RENDER_SCALE,
@@ -276,5 +409,14 @@ export async function attachManualCropToDraft(
   });
   const blob = await cropPageToBlob(pageUrl, box);
   const url = await uploadQuestionImage(blob, `manual-q${draft.number}.png`);
-  return applyFigureToDraft(draft, url, box.caption);
+  const updated = applyFigureToDraft(draft, { url, caption: box.caption });
+  const entry = makeActivityEntry({
+    actor: "admin",
+    draftIndex,
+    draftNumber: draft.number,
+    summary: `Manually cropped page ${page} into Q${draft.number}'s figure.`,
+    fields: diffRec(snapshot.rec, updated.rec),
+    snapshot,
+  });
+  return { draft: updated, entry };
 }

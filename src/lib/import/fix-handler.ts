@@ -16,10 +16,12 @@ type FixRequest = {
   warnings?: unknown;
   stage?: unknown;
   priorFix?: unknown;
+  instruction?: unknown;
 };
 
 /**
- * POST /api/import/fix — two-stage Gemini repair for broken import drafts.
+ * POST /api/import/fix — two-stage Gemini repair for broken import drafts,
+ * plus free-text "ask" instructions.
  */
 export async function handleImportFix(request: Request, env: unknown): Promise<Response> {
   if (request.method !== "POST") {
@@ -61,10 +63,18 @@ export async function handleImportFix(request: Request, env: unknown): Promise<R
     ? payload.warnings.filter((w): w is string => typeof w === "string")
     : [];
 
-  const stage: FixStage = payload.stage === "recheck" ? "recheck" : "extract";
+  const stageRaw = typeof payload.stage === "string" ? payload.stage : "extract";
+  const stage: FixStage =
+    stageRaw === "recheck" ? "recheck" : stageRaw === "ask" ? "ask" : "extract";
   const priorFix = typeof payload.priorFix === "string" ? payload.priorFix : undefined;
+  const instruction =
+    typeof payload.instruction === "string" ? payload.instruction.trim() : undefined;
+
   if (stage === "recheck" && !priorFix?.trim()) {
     return json({ error: "priorFix is required for recheck" }, 400);
+  }
+  if (stage === "ask" && !instruction) {
+    return json({ error: "instruction is required for ask" }, 400);
   }
 
   const apiKey =
@@ -94,7 +104,7 @@ export async function handleImportFix(request: Request, env: unknown): Promise<R
 
   try {
     const content = await fixBrokenQuestionWithGemini(
-      { number, rec, errors, warnings },
+      { number, rec, errors, warnings, instruction },
       { apiKey, stage, priorFix },
     );
     return json({ content, stage }, 200);

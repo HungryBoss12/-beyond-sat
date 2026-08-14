@@ -17,6 +17,8 @@ export type LocateFigureOptions = {
   apiKey: string;
   hint?: string;
   questions?: FigureQuestionHint[];
+  /** When true, ask Gemini to also return markdown for table boxes. */
+  tableMarkdown?: boolean;
 };
 
 function formatQuestionsList(questions: FigureQuestionHint[] | undefined): string {
@@ -27,6 +29,10 @@ function formatQuestionsList(questions: FigureQuestionHint[] | undefined): strin
   return `\n\nQuestions on this page (assign each figure box to one draft_number):\n${lines}`;
 }
 
+const TABLE_MARKDOWN_NOTE = `
+
+For every box with kind "table", also fill "markdown" with a faithful GitHub-flavored markdown table of the visible cells (headers + rows). Keep numbers exact. Do not invent missing cells — use empty cells if unreadable. For non-table kinds leave markdown empty.`;
+
 /** Locate figures on one page with Gemini vision (single pass). */
 export async function locateFiguresOnPage(
   imageDataUrl: string,
@@ -36,6 +42,7 @@ export async function locateFiguresOnPage(
     ? `\n\nExtra figure note: ${options.hint.trim()}`
     : "";
   const questionsBlock = formatQuestionsList(options.questions);
+  const markdownNote = options.tableMarkdown ? TABLE_MARKDOWN_NOTE : "";
 
   const apiKey = options.apiKey?.trim();
   if (!apiKey) {
@@ -62,7 +69,7 @@ export async function locateFiguresOnPage(
   }
 
   const userParts: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [
-    { text: `${FIGURE_LOCATE_PROMPT}${questionsBlock}${hint}` },
+    { text: `${FIGURE_LOCATE_PROMPT}${questionsBlock}${hint}${markdownNote}` },
     {
       inlineData: {
         mimeType,

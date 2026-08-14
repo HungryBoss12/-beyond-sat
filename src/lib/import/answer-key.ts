@@ -14,6 +14,11 @@ export type AnswerEntry = {
   number: number;
   value: string;
   module?: 1 | 2;
+  /**
+   * The paste carried no question numbers, so `number` is this answer's place in
+   * the run rather than a printed question number.
+   */
+  positional?: boolean;
 };
 
 export type AnswerKey = {
@@ -30,6 +35,45 @@ const ENTRY =
 
 const HEADER =
   /\b(?:(?:reading\s*(?:and|&)?\s*writing|math|rw)\s+)?(?:section|module|mod|part)\s*([12])\b\s*[:.\-)–—]?\s*/gi;
+
+/**
+ * Numbering written with punctuation — `1.`, `2)`, `(3)`, `4:`, `5 - `.
+ *
+ * A grid-in answer can't match: the dot only counts as numbering when a space or
+ * a choice letter follows it, so `0.75` and `3/4` are never read as "question 0"
+ * or "question 3".
+ */
+const NUMBER_MARK = /(?:^|[\s,;])\(?\d{1,3}(?:\)|\]|:|\s*[-–—]|\.(?=\s|[A-Ha-h](?![\w./])))/;
+
+/** A grid-in value: `12`, `-4`, `0.75`, `.5`, `3/4`. */
+const BARE_NUMBER = /^[-+]?(?:\d+(?:\.\d+)?|\.\d+)(?:\/\d+)?$/;
+
+/**
+ * Does this block carry question numbers, or is it a bare run of answers?
+ *
+ * Worth asking before parsing, because the two shapes collide: in a run that
+ * holds open answers (`B 15 A 3/4`) every digit also reads as a question number,
+ * and whichever parser runs first wins. Punctuation settles it outright;
+ * otherwise a block only counts as numbered when every other token is a number
+ * *and* those numbers count up by one, which a run of grid-ins won't do.
+ */
+function looksNumbered(body: string): boolean {
+  if (NUMBER_MARK.test(body)) return true;
+
+  const tokens = body.split(/[\s,;]+/).filter(Boolean);
+  if (tokens.length < 4 || tokens.length % 2 !== 0) return false;
+
+  const numbers: number[] = [];
+  for (let i = 0; i < tokens.length; i += 2) {
+    if (!/^\d{1,3}$/.test(tokens[i])) return false;
+    numbers.push(Number(tokens[i]));
+  }
+  return numbers.every((n, i) => i === 0 || n === numbers[i - 1] + 1);
+}
+
+function truncate(s: string): string {
+  return s.length > 60 ? s.slice(0, 60) + "…" : s;
+}
 
 export function parseAnswerKey(text: string): AnswerKey {
   const src = text.replace(/\r\n?/g, "\n").trim();
@@ -75,19 +119,22 @@ function splitSections(src: string): { module: 1 | 2; body: string }[] | null {
 }
 
 function parseChunk(body: string): { entries: AnswerEntry[]; unparsed: string[] } {
-  const numbered = parseNumbered(body);
-  if (numbered.entries.length > 0) return numbered;
-  const tokens = parseBareAnswers(body);
-  if (tokens.length > 0) {
+  if (looksNumbered(body)) {
+    const numbered = parseNumbered(body);
+    if (numbered.entries.length > 0) return numbered;
+  }
+
+  const bare = parseBareAnswers(body);
+  if (bare.values.length > 0) {
     return {
-      entries: tokens.map((value, i) => ({ number: i + 1, value })),
-      unparsed: [],
+      entries: bare.values.map((value, i) => ({ number: i + 1, value, positional: true })),
+      unparsed: bare.unparsed,
     };
   }
-  return {
-    entries: [],
-    unparsed: body ? [body.length > 60 ? body.slice(0, 60) + "…" : body] : [],
-  };
+
+  const numbered = parseNumbered(body);
+  if (numbered.entries.length > 0) return numbered;
+  return { entries: [], unparsed: body ? [truncate(body)] : [] };
 }
 
 function parseNumbered(text: string): { entries: AnswerEntry[]; unparsed: string[] } {
@@ -113,7 +160,7 @@ function parseNumbered(text: string): { entries: AnswerEntry[]; unparsed: string
       hit = true;
       entries.push({ number: n, value });
     }
-    if (!hit) unparsed.push(chunk.length > 60 ? chunk.slice(0, 60) + "…" : chunk);
+    if (!hit) unparsed.push(truncate(chunk));
   };
 
   if (perLine) lines.forEach(scan);
@@ -122,61 +169,114 @@ function parseNumbered(text: string): { entries: AnswerEntry[]; unparsed: string
   return { entries, unparsed };
 }
 
-/** `A D C B`, `A, D, C`, or a packed `ADCB` run — one answer per question in order. */
-function parseBareAnswers(body: string): string[] {
-  const cleaned = body.replace(/^(?:answers?|key)\s*[:.\-–—]?\s*/i, "").trim();
-  if (!cleaned) return [];
-  const parts = cleaned.split(/[\s,;]+/).filter(Boolean);
-  const out: string[] = [];
-  for (const raw of parts) {
-    const p = raw.replace(/^[[(]+/, "").replace(/[\]) .;]+$/, "");
+/**
+ * `A D C B`, `A, D, C`, a packed `ADCB` run, or a mixed run holding grid-ins
+ * (`B 15 A 3/4`) — one answer per question, in order.
+ *
+ * A token nobody can read is reported rather than dropped: skipping it silently
+ * would shift every later answer onto the wrong question.
+ */
+function parseBareAnswers(body: string): { values: string[]; unparsed: string[] } {
+  const cleaned = body
+    .replace(/^(?:answers?|key)\s*[:.\-–—]?\s*/i, "")
+    /* `3 / 4` is one grid-in answer, not two. */
+    .replace(/(\d)\s*\/\s*(\d)/g, "$1/$2")
+    .trim();
+  if (!cleaned) return { values: [], unparsed: [] };
+
+  const values: string[] = [];
+  const unparsed: string[] = [];
+  for (const raw of cleaned.split(/[\s,;]+/).filter(Boolean)) {
+    const p = raw.replace(/^[[($]+/, "").replace(/[\])$.;]+$/, "");
     if (!p) continue;
     if (/^[A-Ha-h]$/.test(p)) {
-      out.push(p.toUpperCase());
+      values.push(p.toUpperCase());
       continue;
     }
     if (/^[A-Ha-h]{2,40}$/.test(p)) {
-      out.push(...p.toUpperCase().split(""));
+      values.push(...p.toUpperCase().split(""));
       continue;
     }
-    if (/^-?\d+(?:\.\d+)?(?:\/\d+)?$/.test(p) || /^-?\d+\/\d+$/.test(p)) {
-      out.push(p);
+    if (BARE_NUMBER.test(p)) {
+      values.push(p);
+      continue;
     }
+    unparsed.push(truncate(p));
   }
-  return out;
+  return { values, unparsed };
 }
 
 /**
  * Write a key onto drafts.
  *
  * Sectioned keys match inside that module only, so both modules can restart at
- * question 1. A letter run is treated as Q1, Q2, Q3… of that section.
+ * question 1. A run with no numbers is applied by position instead: the nth
+ * answer fills that module's nth question, whatever number is printed on it, so
+ * a paper whose numbering starts at 12 still takes a pasted run.
  */
 export function applyAnswerKey(
   drafts: Draft[],
   key: AnswerKey,
-): { drafts: Draft[]; filled: number; unmatched: number[] } {
+): { drafts: Draft[]; filled: number; unmatched: number[]; extra: number } {
   const used = new Set<number>();
-  let filled = 0;
+  const values = new Map<number, string>();
 
-  const next = drafts.map((d) => {
-    const mod = draftModule(d);
-    const idx = key.entries.findIndex(
-      (e, i) => !used.has(i) && e.number === d.number && (e.module == null || e.module === mod),
+  key.entries.forEach((entry, i) => {
+    if (entry.positional) return;
+    const target = drafts.findIndex(
+      (d, idx) =>
+        !values.has(idx) &&
+        d.number === entry.number &&
+        (entry.module == null || entry.module === draftModule(d)),
     );
-    if (idx === -1) return d;
-    used.add(idx);
-    filled++;
-    return { ...d, rec: { ...d.rec, correct: key.entries[idx].value } };
+    if (target === -1) return;
+    used.add(i);
+    values.set(target, entry.value);
   });
 
-  const unmatched = key.entries
-    .filter((_, i) => !used.has(i))
+  const runs = new Map<string, number[]>();
+  key.entries.forEach((entry, i) => {
+    if (!entry.positional) return;
+    const bucket = entry.module == null ? "any" : String(entry.module);
+    const list = runs.get(bucket);
+    if (list) list.push(i);
+    else runs.set(bucket, [i]);
+  });
+
+  for (const [bucket, indexes] of runs) {
+    const targets = drafts
+      .map((d, idx) => ({ d, idx }))
+      .filter(
+        ({ d, idx }) =>
+          !values.has(idx) && (bucket === "any" || draftModule(d) === Number(bucket)),
+      )
+      .map(({ idx }) => idx);
+    indexes.forEach((entry, position) => {
+      const target = targets[position];
+      if (target == null) return;
+      used.add(entry);
+      values.set(target, key.entries[entry].value);
+    });
+  }
+
+  const next = drafts.map((d, i) => {
+    const value = values.get(i);
+    return value == null ? d : { ...d, rec: { ...d.rec, correct: value } };
+  });
+
+  const leftover = key.entries.filter((_, i) => !used.has(i));
+  const unmatched = leftover
+    .filter((e) => !e.positional)
     .map((e) => e.number)
     .filter((n, i, all) => all.indexOf(n) === i)
     .sort((a, b) => a - b);
 
-  return { drafts: next, filled, unmatched };
+  return {
+    drafts: next,
+    filled: values.size,
+    unmatched,
+    extra: leftover.filter((e) => e.positional).length,
+  };
 }
 
 /** Human summary of what a key did, for the line under the paste box. */
@@ -185,6 +285,7 @@ export function describeKey(
   filled: number,
   drafts: Draft[],
   unmatched: number[],
+  extra = 0,
 ): string {
   const total = drafts.length;
   if (key.sectioned) {
@@ -199,6 +300,7 @@ export function describeKey(
     return [
       head + (parts.length ? ` (${parts.join("; ")})` : "."),
       unmatchedLine(unmatched),
+      extraLine(extra),
       unparsedLine(key),
     ]
       .filter(Boolean)
@@ -206,11 +308,18 @@ export function describeKey(
   }
 
   const parts = [`Filled ${filled} of ${total} question${total === 1 ? "" : "s"}.`];
-  const extra = unmatchedLine(unmatched);
-  if (extra) parts.push(extra);
+  const missing = unmatchedLine(unmatched);
+  if (missing) parts.push(missing);
+  const over = extraLine(extra);
+  if (over) parts.push(over);
   const unread = unparsedLine(key);
   if (unread) parts.push(unread);
   return parts.join(" ");
+}
+
+function extraLine(extra: number): string | null {
+  if (extra <= 0) return null;
+  return `${extra} answer${extra === 1 ? "" : "s"} at the end had no question left to fill.`;
 }
 
 function unmatchedLine(unmatched: number[]): string | null {

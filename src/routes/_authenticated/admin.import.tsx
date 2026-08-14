@@ -429,7 +429,7 @@ function AdminImport() {
     const key = parseAnswerKey(keyText);
     const out = applyAnswerKey(drafts, key);
     setDrafts(out.drafts);
-    setKeySummary(describeKey(key, out.filled, drafts, out.unmatched));
+    setKeySummary(describeKey(key, out.filled, drafts, out.unmatched, out.extra));
   }
 
   function setDraftAnswer(index: number, value: string) {

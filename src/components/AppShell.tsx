@@ -16,6 +16,7 @@ import {
 import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
+import { RevealLink } from "@/components/ui/reveal-card";
 
 /**
  * Six is the practical maximum for the mobile tab bar: at `grid-cols-6` on a
@@ -111,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             const active = pathname === n.to || pathname.startsWith(n.to + "/");
             const Icon = n.icon;
             return (
-              <Link
+              <RevealLink
                 key={n.to}
                 to={n.to}
                 className={
@@ -131,13 +132,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   }
                 />
                 {n.label}
-              </Link>
+              </RevealLink>
             );
           })}
           {/* Editors get the same entry point, labelled for their role and
               pointed at the first section they're allowed to open. */}
           {staffRole && (
-            <Link
+            <RevealLink
               to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
               className={
                 "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600 " +
@@ -148,7 +149,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Shield className="h-[18px] w-[18px] shrink-0 transition-transform duration-300 group-hover:scale-110" />
               {staffRole === "admin" ? "Admin" : "Editor"}
-            </Link>
+            </RevealLink>
           )}
         </nav>
         {/* Streak card. The flame was orange; on a blue sidebar that was the only
@@ -273,9 +274,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 const active = pathname === n.to || pathname.startsWith(n.to + "/");
                 const Icon = n.icon;
                 return (
-                  <Link
+                  <RevealLink
                     key={n.to}
                     to={n.to}
+                    onClick={() => setDrawerOpen(false)}
                     className={
                       "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold " +
                       (active
@@ -285,12 +287,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   >
                     <Icon className="h-5 w-5 shrink-0" />
                     {n.label}
-                  </Link>
+                  </RevealLink>
                 );
               })}
               {staffRole && (
-                <Link
+                <RevealLink
                   to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
+                  onClick={() => setDrawerOpen(false)}
                   className={
                     "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold " +
                     (pathname.startsWith("/admin")
@@ -300,7 +303,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   <Shield className="h-5 w-5 shrink-0" />
                   {staffRole === "admin" ? "Admin" : "Editor"}
-                </Link>
+                </RevealLink>
               )}
             </nav>
           </aside>

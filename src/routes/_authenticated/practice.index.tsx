@@ -169,7 +169,7 @@ function PracticeLanding() {
             <div>
               <div className="text-lg font-black text-white">Full mock exams</div>
               <div className="text-xs text-brand-100">
-                {mockCount ?? 0} exam{mockCount === 1 ? "" : "s"} available · two-module adaptive
+                {mockCount ?? 0} full-length exam{mockCount === 1 ? "" : "s"} available
               </div>
             </div>
           </div>

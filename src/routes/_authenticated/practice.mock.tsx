@@ -99,7 +99,7 @@ function MockList() {
             Mock Exams
           </h1>
           <p className="text-sm text-slate-500">
-            Full-length practice tests. Timed, scored, adaptive-style.
+            Full-length practice tests. Timed and scored.
           </p>
         </div>
       </div>

@@ -277,7 +277,7 @@ function SectionBrowse() {
             {SECTION_LABEL[section]}
           </h1>
           <p className="text-sm text-slate-500">
-            Pick a paper by date, or build a mixed set from the whole bank.
+            Pick a module set by date, or build a mixed set from the whole bank.
           </p>
         </div>
       </div>

@@ -804,7 +804,7 @@ function buildRecs(
   } else {
     recs.push({
       title: "Full mock exam",
-      desc: "Benchmark where you are with a two-module mock.",
+      desc: "Benchmark where you are with a full-length mock exam.",
       to: "/practice",
     });
   }

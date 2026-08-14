@@ -5,7 +5,7 @@ import { CONTROL_CLASS } from "./types";
  * The answer-key paste box.
  *
  * A whole paper is two modules that both start at question 1, so the useful
- * paste is a section block, not a flat numbered list. Numbered lines still work
+ * paste is a module block, not a flat numbered list. Numbered lines still work
  * for a single module.
  */
 export function AnswerKeyBox({
@@ -29,19 +29,21 @@ export function AnswerKeyBox({
           <strong className="text-white">Answer key.</strong>{" "}
           {bothModules ? (
             <>
-              Paste each module under its heading — <code className="text-white">Section 1:</code>{" "}
-              then the answers, then <code className="text-white">Section 2:</code>. A run of
-              letters (<code className="text-white">A D C B</code> or{" "}
-              <code className="text-white">ADCB</code>) fills that module in order. Numbered lines (
-              <code className="text-white">1. A</code>) work too. Grid-ins like{" "}
-              <code className="text-white">3/4</code> are fine in the run.
+              Paste each module under its heading — <code className="text-white">Module 1:</code>{" "}
+              then the answers, then <code className="text-white">Module 2:</code>.{" "}
+              <code className="text-white">Section 1:</code> /{" "}
+              <code className="text-white">Section 2:</code> work too. A run of letters (
+              <code className="text-white">A D C B</code> or <code className="text-white">ADCB</code>
+              ) fills that module in order. Numbered lines (<code className="text-white">1. A</code>
+              ) work too. Grid-ins like <code className="text-white">3/4</code> are fine in the run.
             </>
           ) : (
             <>
               Paste numbered lines (<code className="text-white">1. A</code>,{" "}
               <code className="text-white">1) A</code>) or a letter run. For a whole paper use{" "}
-              <code className="text-white">Section 1:</code> /{" "}
-              <code className="text-white">Section 2:</code> blocks.
+              <code className="text-white">Module 1:</code> / <code className="text-white">Module 2:</code>{" "}
+              blocks (<code className="text-white">Section 1:</code> /{" "}
+              <code className="text-white">Section 2:</code> also accepted).
             </>
           )}
         </div>
@@ -53,7 +55,7 @@ export function AnswerKeyBox({
         spellCheck={false}
         placeholder={
           bothModules
-            ? "Section 1: A D C B A C D B …\nSection 2: B A D C A B …"
+            ? "Module 1: A D C B A C D B …\nModule 2: B A D C A B …"
             : "1. A\n2. D\n3. C"
         }
         className={CONTROL_CLASS + " resize-y font-mono text-xs leading-relaxed"}

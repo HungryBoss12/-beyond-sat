@@ -1089,7 +1089,7 @@ function AdminImport() {
               <h2 className="text-sm font-bold text-white">4 · Editor</h2>
               <p className="mt-1 text-xs text-brand-100">
                 Paste an answer key if you have one
-                {module === "both" ? " as Section 1 / Section 2" : ""}, then check each question
+                {module === "both" ? " as Module 1 / Module 2" : ""}, then check each question
                 against the page.
               </p>
               <div className="mt-4">

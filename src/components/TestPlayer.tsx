@@ -272,7 +272,7 @@ export function TestPlayer({
   const sectionLabel = q.section === "math" ? "Math" : "Reading and Writing";
   const moduleLabel =
     type === "mock"
-      ? `Section ${q.section === "math" ? 2 : 1}: ${sectionLabel}`
+      ? `Mock · ${sectionLabel}`
       : `${type === "daily" ? "Daily Test" : "Practice"}: ${sectionLabel}`;
 
   /* Sized with dvh rather than `fixed inset-0` so the runner can't be collapsed

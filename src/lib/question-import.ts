@@ -82,7 +82,7 @@ function canonicalField(header: string): string | null {
   const k = normKey(header);
   const direct: Record<string, string> = {
     section: "section",
-    module: "section",
+    module: "module",
     subject: "section",
     skill: "skill",
     domain: "skill",
@@ -161,6 +161,14 @@ function parseSection(raw: string): Section | null {
   ) {
     return "reading_writing";
   }
+  return null;
+}
+
+function parseModule(raw: string): "1" | "2" | null {
+  const v = normValue(raw);
+  if (!v) return null;
+  if (["1", "module1", "mod1", "m1"].includes(v)) return "1";
+  if (["2", "module2", "mod2", "m2"].includes(v)) return "2";
   return null;
 }
 
@@ -473,6 +481,22 @@ export function validateRecord(rec: Record<string, string>, index: number): RowR
         ? `Section "${sectionRaw}" isn't recognised — use "math" or "reading_writing".`
         : 'Section is missing — use "math" or "reading_writing".',
     );
+  }
+
+  const moduleRaw = get("module");
+  if (moduleRaw) {
+    const mod = parseModule(moduleRaw);
+    if (!mod) {
+      if (parseSection(moduleRaw)) {
+        errors.push(
+          `Column "module" has a section value ("${moduleRaw}") — put Reading & Writing or Math in the section column, and 1 or 2 in module.`,
+        );
+      } else {
+        errors.push(`Module "${moduleRaw}" isn't recognised — use 1 or 2.`);
+      }
+    } else {
+      rec.module = mod;
+    }
   }
 
   // --- question text (required) ---

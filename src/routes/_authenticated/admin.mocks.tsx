@@ -7,6 +7,8 @@ import {
   SECTION_LABEL,
   difficultyColor,
   formatSourceDate,
+  paperKey,
+  stripModuleSuffix,
   type Section,
   type LetterDifficulty,
 } from "@/lib/sat";
@@ -34,20 +36,13 @@ type Test = {
   source_year: number | null;
 };
 
-type SectionSlot = {
-  id?: string;
-  module: 1 | 2;
-  section_index: 1 | 2 | 3 | 4;
-  section_name: string;
-  test_id: string | null;
+type FullPaper = {
+  key: string;
+  title: string;
+  section: Section;
+  module1: Test;
+  module2: Test;
 };
-
-const DEFAULT_SECTION_NAMES = [
-  "Information and Ideas",
-  "Craft and Structure",
-  "Expression of Ideas",
-  "Standard English Conventions",
-];
 
 export const Route = createFileRoute("/_authenticated/admin/mocks")({
   component: AdminMocks,
@@ -71,26 +66,49 @@ const empty = (): Mock => ({
   published: false,
 });
 
-function emptySlots(): SectionSlot[] {
-  const arr: SectionSlot[] = [];
-  for (const mod of [1, 2] as const) {
-    for (let i = 0; i < 4; i++) {
-      arr.push({
-        module: mod,
-        section_index: (i + 1) as 1 | 2 | 3 | 4,
-        section_name: DEFAULT_SECTION_NAMES[i],
-        test_id: null,
-      });
+function buildFullPapers(tests: Test[]): FullPaper[] {
+  const groups = new Map<
+    string,
+    { title: string; section: Section; module1: Test[]; module2: Test[] }
+  >();
+
+  for (const test of tests) {
+    const key = paperKey(test.title, test.section);
+    const group = groups.get(key) ?? {
+      title: stripModuleSuffix(test.title),
+      section: test.section,
+      module1: [],
+      module2: [],
+    };
+    group[test.module === 1 ? "module1" : "module2"].push(test);
+    groups.set(key, group);
+  }
+
+  const papers: FullPaper[] = [];
+  for (const [groupKey, group] of groups) {
+    for (const module1 of group.module1) {
+      for (const module2 of group.module2) {
+        papers.push({
+          key: `${groupKey}:${module1.id}:${module2.id}`,
+          title: group.title,
+          section: group.section,
+          module1,
+          module2,
+        });
+      }
     }
   }
-  return arr;
+  return papers.sort((a, b) => a.title.localeCompare(b.title));
 }
 
 function AdminMocks() {
   const [items, setItems] = useState<Mock[] | null>(null);
   const [editing, setEditing] = useState<Mock | null>(null);
-  const [slots, setSlots] = useState<SectionSlot[]>(emptySlots());
-  const [testPool, setTestPool] = useState<Test[]>([]);
+  const [papers, setPapers] = useState<FullPaper[]>([]);
+  const [selectedPapers, setSelectedPapers] = useState<Record<Section, string | null>>({
+    reading_writing: null,
+    math: null,
+  });
 
   async function load() {
     const { data } = await supabase
@@ -106,30 +124,45 @@ function AdminMocks() {
   async function openEditor(m?: Mock) {
     const target = m ?? empty();
     setEditing(target);
-    const { data: tests } = await supabase.from("tests").select("*").order("module").order("title");
-    setTestPool((tests ?? []) as Test[]);
-    if (target.id) {
-      const { data: mes } = await supabase
-        .from("mock_exam_sections")
-        .select("*")
-        .eq("mock_exam_id", target.id)
-        .order("module")
-        .order("section_index");
-      const loaded = (mes ?? []) as SectionSlot[];
-      const filled = emptySlots().map((s) => {
-        const found = loaded.find(
-          (l) => l.module === s.module && l.section_index === s.section_index,
-        );
-        return found ? { ...s, ...found } : s;
-      });
-      setSlots(filled);
-    } else {
-      setSlots(emptySlots());
-    }
+    const [{ data: tests }, { data: linked }] = await Promise.all([
+      supabase.from("tests").select("*").order("title").order("module"),
+      target.id
+        ? supabase.from("mock_exam_sections").select("test_id").eq("mock_exam_id", target.id)
+        : Promise.resolve({ data: [] as { test_id: string | null }[] }),
+    ]);
+    const nextPapers = buildFullPapers((tests ?? []) as Test[]);
+    const linkedIds = new Set(
+      ((linked ?? []) as { test_id: string | null }[])
+        .map((row) => row.test_id)
+        .filter((id): id is string => Boolean(id)),
+    );
+    setPapers(nextPapers);
+    setSelectedPapers({
+      reading_writing:
+        nextPapers.find(
+          (paper) =>
+            paper.section === "reading_writing" &&
+            linkedIds.has(paper.module1.id) &&
+            linkedIds.has(paper.module2.id),
+        )?.key ?? null,
+      math:
+        nextPapers.find(
+          (paper) =>
+            paper.section === "math" &&
+            linkedIds.has(paper.module1.id) &&
+            linkedIds.has(paper.module2.id),
+        )?.key ?? null,
+    });
   }
 
   async function save() {
     if (!editing) return;
+    if (!editing.title.trim()) return alert("Please enter a mock exam title.");
+    const rwPaper = papers.find((paper) => paper.key === selectedPapers.reading_writing);
+    const mathPaper = papers.find((paper) => paper.key === selectedPapers.math);
+    if (!rwPaper || !mathPaper) {
+      return alert("Choose one complete Reading & Writing paper and one complete Math paper.");
+    }
     const { id, ...payload } = editing;
     let mockId = editing.id;
     if (mockId) {
@@ -146,19 +179,17 @@ function AdminMocks() {
       mockId = data.id as string;
     }
     await supabase.from("mock_exam_sections").delete().eq("mock_exam_id", mockId);
-    const rows = slots
-      .filter((s) => s.test_id || s.section_name)
-      .map((s) => ({
+    const rows = [rwPaper, mathPaper].flatMap((paper, sectionIndex) =>
+      ([1, 2] as const).map((module) => ({
         mock_exam_id: mockId,
-        module: s.module,
-        section_index: s.section_index,
-        section_name: s.section_name || `Section ${s.section_index}`,
-        test_id: s.test_id,
-      }));
-    if (rows.length > 0) {
-      const { error } = await supabase.from("mock_exam_sections").insert(rows);
-      if (error) return alert(error.message);
-    }
+        module,
+        section_index: sectionIndex + 1,
+        section_name: SECTION_LABEL[paper.section],
+        test_id: module === 1 ? paper.module1.id : paper.module2.id,
+      })),
+    );
+    const { error: sectionsError } = await supabase.from("mock_exam_sections").insert(rows);
+    if (sectionsError) return alert(sectionsError.message);
     setEditing(null);
     load();
   }
@@ -171,12 +202,6 @@ function AdminMocks() {
   async function togglePublish(m: Mock) {
     await supabase.from("mock_exams").update({ published: !m.published }).eq("id", m.id);
     load();
-  }
-
-  function updateSlot(module: 1 | 2, idx: 1 | 2 | 3 | 4, patch: Partial<SectionSlot>) {
-    setSlots(
-      slots.map((s) => (s.module === module && s.section_index === idx ? { ...s, ...patch } : s)),
-    );
   }
 
   return (
@@ -285,86 +310,33 @@ function AdminMocks() {
                 />
               </Row>
 
-              {[1, 2].map((mod) => (
-                <div key={mod} className="rounded-xl border border-brand-400/40 bg-brand-700 p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-brand-100" />
-                    <h4 className="text-sm font-bold text-white">Module {mod} — 4 sections</h4>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    {[1, 2, 3, 4].map((idx) => {
-                      const slot = slots.find((s) => s.module === mod && s.section_index === idx)!;
-                      const availableTests = testPool.filter((t) => t.module === mod);
-                      const currentTest = testPool.find((t) => t.id === slot.test_id);
-                      return (
-                        <div
-                          key={idx}
-                          className="space-y-2 rounded-lg border border-brand-400/40 bg-brand-600 p-3"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="shrink-0 rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                              {idx}
-                            </span>
-                            <input
-                              value={slot.section_name}
-                              onChange={(e) =>
-                                updateSlot(mod as 1 | 2, idx as 1 | 2 | 3 | 4, {
-                                  section_name: e.target.value,
-                                })
-                              }
-                              className="flex-1 rounded-md border border-brand-400/50 bg-brand-800 px-2 py-1 text-xs font-semibold text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
-                              placeholder={`Section ${idx} name`}
-                            />
-                          </div>
-                          <select
-                            value={slot.test_id ?? ""}
-                            onChange={(e) =>
-                              updateSlot(mod as 1 | 2, idx as 1 | 2 | 3 | 4, {
-                                test_id: e.target.value || null,
-                              })
-                            }
-                            className="w-full rounded-md border border-brand-400/50 bg-brand-800 px-2 py-1.5 text-xs text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
-                          >
-                            <option value="">— Choose a test —</option>
-                            {availableTests.map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.title} · {SECTION_LABEL[t.section]} · {t.difficulty}
-                              </option>
-                            ))}
-                          </select>
-                          {currentTest && (
-                            <div className="flex flex-wrap gap-1">
-                              <span
-                                className={
-                                  "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
-                                  difficultyColor(currentTest.difficulty)
-                                }
-                              >
-                                {currentTest.difficulty}
-                              </span>
-                              {formatSourceDate(
-                                currentTest.source_month,
-                                currentTest.source_year,
-                              ) && (
-                                <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-                                  {formatSourceDate(
-                                    currentTest.source_month,
-                                    currentTest.source_year,
-                                  )}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+              <div className="rounded-xl border border-brand-400/40 bg-brand-700 p-4">
+                <div className="mb-1 flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-brand-100" />
+                  <h4 className="text-sm font-bold text-white">Full mock papers</h4>
                 </div>
-              ))}
+                <p className="mb-4 text-xs leading-relaxed text-brand-100">
+                  Choose one complete paper for each SAT section. Both modules are included
+                  automatically.
+                </p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {(["reading_writing", "math"] as const).map((section) => (
+                    <PaperPicker
+                      key={section}
+                      section={section}
+                      papers={papers.filter((paper) => paper.section === section)}
+                      selectedKey={selectedPapers[section]}
+                      onChange={(key) =>
+                        setSelectedPapers((current) => ({ ...current, [section]: key }))
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
 
               <details className="rounded-xl border border-brand-400/40 p-4">
                 <summary className="cursor-pointer text-sm font-bold text-white">
-                  Advanced: timings &amp; thresholds
+                  Advanced: timings
                 </summary>
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <Row label="R&W module 1 time (s)">
@@ -389,18 +361,6 @@ function AdminMocks() {
                     <NumInput
                       v={editing.math_module2_time_seconds}
                       set={(v) => setEditing({ ...editing, math_module2_time_seconds: v })}
-                    />
-                  </Row>
-                  <Row label="R&W module-1 threshold">
-                    <NumInput
-                      v={editing.rw_module1_threshold}
-                      set={(v) => setEditing({ ...editing, rw_module1_threshold: v })}
-                    />
-                  </Row>
-                  <Row label="Math module-1 threshold">
-                    <NumInput
-                      v={editing.math_module1_threshold}
-                      set={(v) => setEditing({ ...editing, math_module1_threshold: v })}
                     />
                   </Row>
                 </div>
@@ -433,6 +393,76 @@ function AdminMocks() {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function PaperPicker({
+  section,
+  papers,
+  selectedKey,
+  onChange,
+}: {
+  section: Section;
+  papers: FullPaper[];
+  selectedKey: string | null;
+  onChange: (key: string | null) => void;
+}) {
+  const selected = papers.find((paper) => paper.key === selectedKey);
+
+  return (
+    <div className="rounded-xl border border-brand-400/40 bg-brand-600 p-4">
+      <label className="block">
+        <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-white">
+          {SECTION_LABEL[section]}
+        </span>
+        <select
+          value={selectedKey ?? ""}
+          onChange={(event) => onChange(event.target.value || null)}
+          className={CONTROL_CLASS}
+        >
+          <option value="">— Choose a full paper —</option>
+          {papers.map((paper) => (
+            <option key={paper.key} value={paper.key}>
+              {paper.title}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {papers.length === 0 ? (
+        <p className="mt-3 text-xs leading-relaxed text-brand-200">
+          No complete {SECTION_LABEL[section]} paper is available. Add and pair both modules on the
+          Tests page first.
+        </p>
+      ) : selected ? (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {([selected.module1, selected.module2] as const).map((test) => (
+            <div key={test.id} className="rounded-lg bg-brand-800 px-3 py-2">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-brand-200">
+                Module {test.module}
+              </div>
+              <div className="mt-1 flex flex-wrap gap-1">
+                <span
+                  className={
+                    "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
+                    difficultyColor(test.difficulty)
+                  }
+                >
+                  {test.difficulty}
+                </span>
+                {formatSourceDate(test.source_month, test.source_year) && (
+                  <span className="rounded bg-brand-700 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                    {formatSourceDate(test.source_month, test.source_year)}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-xs text-brand-200">Select a paper to include Modules 1 and 2.</p>
       )}
     </div>
   );

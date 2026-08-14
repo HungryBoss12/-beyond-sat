@@ -209,11 +209,28 @@ export async function startMockSession(
     .from("mock_exam_sections")
     .select("test_id, module, section_index")
     .eq("mock_exam_id", mockExamId)
-    .not("test_id", "is", null)
-    .order("module", { ascending: true })
-    .order("section_index", { ascending: true });
+    .not("test_id", "is", null);
   if (sections && sections.length > 0) {
-    ids = await questionsForTests(sections.map((s) => s.test_id as string));
+    const linkedIds = [...new Set(sections.map((s) => s.test_id as string))];
+    const { data: linkedTests } = await supabase
+      .from("tests")
+      .select("id,section,module")
+      .in("id", linkedIds);
+    const testById = new Map(
+      ((linkedTests ?? []) as { id: string; section: Section; module: number }[]).map((test) => [
+        test.id,
+        test,
+      ]),
+    );
+    linkedIds.sort((a, b) => {
+      const left = testById.get(a);
+      const right = testById.get(b);
+      const leftSection = left?.section === "reading_writing" ? 0 : 1;
+      const rightSection = right?.section === "reading_writing" ? 0 : 1;
+      if (leftSection !== rightSection) return leftSection - rightSection;
+      return (left?.module ?? 1) - (right?.module ?? 1);
+    });
+    ids = await questionsForTests(linkedIds);
   }
   if (ids.length === 0) {
     const { data: mq } = await supabase

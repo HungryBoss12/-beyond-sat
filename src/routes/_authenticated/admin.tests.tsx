@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Edit3, X, ChevronUp, ChevronDown, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Edit3, X, ChevronUp, ChevronDown, AlertCircle, Link2 } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import {
   SECTION_LABEL,
@@ -9,6 +9,9 @@ import {
   MONTHS,
   formatSourceDate,
   difficultyColor,
+  stripModuleSuffix,
+  paperKey,
+  moduleTitle,
   type Section,
   type LetterDifficulty,
 } from "@/lib/sat";
@@ -31,6 +34,16 @@ type QRow = {
   skill: string;
 };
 
+type PaperGroup = {
+  key: string;
+  base: string;
+  section: Section;
+  mod1: Test[];
+  mod2: Test[];
+  source_month: number | null;
+  source_year: number | null;
+};
+
 export const Route = createFileRoute("/_authenticated/admin/tests")({
   component: AdminTests,
 });
@@ -50,26 +63,90 @@ const empty = (): Test => ({
   source_year: new Date().getFullYear(),
 });
 
+function sortGroups(a: PaperGroup, b: PaperGroup): number {
+  const ay = a.source_year ?? 0;
+  const by = b.source_year ?? 0;
+  if (ay !== by) return by - ay;
+  const am = a.source_month ?? 0;
+  const bm = b.source_month ?? 0;
+  return bm - am;
+}
+
+function groupTests(items: Test[]): { papers: PaperGroup[]; singles: PaperGroup[] } {
+  const map = new Map<string, PaperGroup>();
+
+  for (const t of items) {
+    const key = paperKey(t.title, t.section);
+    let g = map.get(key);
+    if (!g) {
+      g = {
+        key,
+        base: stripModuleSuffix(t.title),
+        section: t.section,
+        mod1: [],
+        mod2: [],
+        source_month: t.source_month,
+        source_year: t.source_year,
+      };
+      map.set(key, g);
+    }
+    if (t.module === 1) g.mod1.push(t);
+    else g.mod2.push(t);
+  }
+
+  const papers: PaperGroup[] = [];
+  const singles: PaperGroup[] = [];
+
+  for (const g of map.values()) {
+    if (g.mod1.length > 0 && g.mod2.length > 0) papers.push(g);
+    else singles.push(g);
+  }
+
+  papers.sort(sortGroups);
+  singles.sort(sortGroups);
+  return { papers, singles };
+}
+
 function AdminTests() {
   const [items, setItems] = useState<Test[]>([]);
+  const [counts, setCounts] = useState<Map<string, number>>(new Map());
   const [editing, setEditing] = useState<Test | null>(null);
   const [editingQs, setEditingQs] = useState<string[] | null>(null);
   const [pool, setPool] = useState<QRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pairing, setPairing] = useState<Test | null>(null);
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
-      .from("tests")
-      .select("*")
-      .order("module")
-      .order("created_at", { ascending: false });
+    const [{ data }, { data: links }] = await Promise.all([
+      supabase
+        .from("tests")
+        .select("*")
+        .order("module")
+        .order("created_at", { ascending: false }),
+      supabase.from("test_questions").select("test_id"),
+    ]);
     setItems((data ?? []) as Test[]);
+    const tally = new Map<string, number>();
+    for (const l of (links ?? []) as { test_id: string }[]) {
+      tally.set(l.test_id, (tally.get(l.test_id) ?? 0) + 1);
+    }
+    setCounts(tally);
     setLoading(false);
   }
   useEffect(() => {
     load();
   }, []);
+
+  const { papers, singles } = useMemo(() => groupTests(items), [items]);
+
+  const pairCandidates = useMemo(() => {
+    if (!pairing) return [];
+    const want = pairing.module === 1 ? 2 : 1;
+    return singles
+      .flatMap((g) => (want === 1 ? g.mod1 : g.mod2))
+      .filter((t) => t.section === pairing.section && t.id !== pairing.id);
+  }, [pairing, singles]);
 
   async function openEditor(t?: Test) {
     const target = t ?? empty();
@@ -100,6 +177,36 @@ function AdminTests() {
       setPool((p ?? []) as QRow[]);
       setEditingQs([]);
     }
+  }
+
+  function openAddMissing(t: Test) {
+    const missing = t.module === 1 ? 2 : 1;
+    const base = stripModuleSuffix(t.title);
+    void openEditor({
+      ...empty(),
+      title: moduleTitle(base, missing),
+      section: t.section,
+      module: missing,
+      difficulty: t.difficulty,
+      source_month: t.source_month,
+      source_year: t.source_year,
+    });
+  }
+
+  async function pairTests(source: Test, partner: Test) {
+    const mod1 = source.module === 1 ? source : partner;
+    const mod2 = source.module === 2 ? source : partner;
+    const base = stripModuleSuffix(mod1.title);
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      supabase.from("tests").update({ title: moduleTitle(base, 1) }).eq("id", mod1.id),
+      supabase.from("tests").update({ title: moduleTitle(base, 2) }).eq("id", mod2.id),
+    ]);
+    if (e1 || e2) {
+      alert(e1?.message ?? e2?.message ?? "Could not pair tests.");
+      return;
+    }
+    setPairing(null);
+    load();
   }
 
   async function reloadPool(section: Section) {
@@ -180,19 +287,12 @@ function AdminTests() {
     setEditingQs(next);
   }
 
-  const grouped = {
-    1: items.filter((t) => t.module === 1),
-    2: items.filter((t) => t.module === 2),
-  };
-
   return (
     <div>
-      {/* Intro copy and the module headings sit on the white page, so they stay
-          dark; every card below is a brand surface and carries white copy. */}
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-slate-500">
-          Group questions into tests. Add as many questions as you need. Tests are used by daily
-          tests and mock exams.
+          Group questions into tests. Papers with both modules appear as one card. Tests are used by
+          daily tests and mock exams.
         </p>
         <button
           onClick={() => openEditor()}
@@ -206,67 +306,146 @@ function AdminTests() {
         <div className="mt-6">
           <ListSkeleton rows={6} />
         </div>
+      ) : items.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center text-sm text-brand-100 shadow-panel">
+          No tests yet. Import a paper or create one manually.
+        </div>
       ) : (
         <div className="mt-6 space-y-8">
-          {[1, 2].map((m) => (
-            <div key={m}>
+          {papers.length > 0 && (
+            <div>
               <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                Module {m}
+                Papers (both modules)
               </h2>
-              <div className="rise-in overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
-                {grouped[m as 1 | 2].length === 0 ? (
-                  <div className="p-6 text-center text-sm text-brand-100">
-                    No tests in module {m}.
-                  </div>
-                ) : (
-                  <ul className="divide-y divide-brand-400/30">
-                    {grouped[m as 1 | 2].map((t) => (
-                      <li
-                        key={t.id}
-                        className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-brand-500"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold text-white">{t.title}</div>
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            <span className="rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                              {SECTION_LABEL[t.section]}
-                            </span>
-                            <span
-                              className={
-                                "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
-                                difficultyColor(t.difficulty)
-                              }
-                            >
-                              {t.difficulty}
-                            </span>
-                            {formatSourceDate(t.source_month, t.source_year) && (
-                              <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-                                {formatSourceDate(t.source_month, t.source_year)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => openEditor(t)}
-                          className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
-                          aria-label="Edit test"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => remove(t.id)}
-                          className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-900 hover:text-white"
-                          aria-label="Delete test"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              <div className="space-y-4">
+                {papers.map((g) => (
+                  <PaperCard key={g.key} group={g} counts={counts} onEdit={openEditor} onRemove={remove} />
+                ))}
               </div>
             </div>
-          ))}
+          )}
+
+          {singles.length > 0 && (
+            <div>
+              <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                Single modules
+              </h2>
+              <div className="rise-in overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
+                <ul className="divide-y divide-brand-400/30">
+                  {singles.flatMap((g) => [...g.mod1, ...g.mod2]).map((t) => (
+                    <li
+                      key={t.id}
+                      className="flex flex-wrap items-center gap-3 px-4 py-3 transition-colors hover:bg-brand-500"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold text-white">{t.title}</div>
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                            Module {t.module}
+                          </span>
+                          <span className="rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                            {SECTION_LABEL[t.section]}
+                          </span>
+                          <span
+                            className={
+                              "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
+                              difficultyColor(t.difficulty)
+                            }
+                          >
+                            {t.difficulty}
+                          </span>
+                          <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                            {counts.get(t.id) ?? 0} q
+                          </span>
+                          {formatSourceDate(t.source_month, t.source_year) && (
+                            <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                              {formatSourceDate(t.source_month, t.source_year)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setPairing(t)}
+                        className="tap inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
+                      >
+                        <Link2 className="h-3.5 w-3.5" />
+                        Pair with Module {t.module === 1 ? 2 : 1}
+                      </button>
+                      <button
+                        onClick={() => openAddMissing(t)}
+                        className="tap inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add Module {t.module === 1 ? 2 : 1}
+                      </button>
+                      <button
+                        onClick={() => openEditor(t)}
+                        className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                        aria-label="Edit test"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => remove(t.id)}
+                        className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-900 hover:text-white"
+                        aria-label="Delete test"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {pairing && (
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-brand-900/60 p-4 backdrop-blur-sm">
+          <div className="pop-in my-8 w-full max-w-md rounded-2xl border border-brand-400/40 bg-brand-600 shadow-float">
+            <div className="flex items-center justify-between border-b border-brand-400/30 px-5 py-4">
+              <h3 className="text-base font-bold text-white">
+                Pair with Module {pairing.module === 1 ? 2 : 1}
+              </h3>
+              <button
+                onClick={() => setPairing(null)}
+                className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="mb-3 text-sm text-brand-100">
+                Choose a {SECTION_LABEL[pairing.section]} test to pair with{" "}
+                <strong className="text-white">{pairing.title}</strong>. Both will be renamed to
+                share the same paper title.
+              </p>
+              {pairCandidates.length === 0 ? (
+                <p className="text-sm text-brand-200">
+                  No unpaired Module {pairing.module === 1 ? 2 : 1} tests in this section. Use Add
+                  Module instead.
+                </p>
+              ) : (
+                <ul className="max-h-64 divide-y divide-brand-400/30 overflow-y-auto rounded-lg border border-brand-400/40">
+                  {pairCandidates.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        onClick={() => void pairTests(pairing, c)}
+                        className="tap flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm text-white hover:bg-brand-500"
+                      >
+                        <span className="truncate font-medium">{c.title}</span>
+                        <span className="shrink-0 text-xs text-brand-200">
+                          {counts.get(c.id) ?? 0} q
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -382,8 +561,6 @@ function AdminTests() {
                   <span className="text-xs font-semibold uppercase tracking-wider text-brand-100">
                     Questions in this test ({editingQs.length})
                   </span>
-                  {/* The warning used to be amber. It reads as a light ring on the
-                      deep step instead, since the copy already carries the meaning. */}
                   {editingQs.length < 1 && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-brand-900 px-2 py-0.5 text-[11px] font-semibold text-white ring-1 ring-brand-300/60">
                       <AlertCircle className="h-3.5 w-3.5" /> Add at least 1 question
@@ -483,6 +660,78 @@ function AdminTests() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PaperCard({
+  group,
+  counts,
+  onEdit,
+  onRemove,
+}: {
+  group: PaperGroup;
+  counts: Map<string, number>;
+  onEdit: (t: Test) => void;
+  onRemove: (id: string) => void;
+}) {
+  const date = formatSourceDate(group.source_month, group.source_year);
+
+  return (
+    <div className="rise-in overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
+      <div className="border-b border-brand-400/30 px-4 py-3">
+        <div className="truncate text-sm font-semibold text-white">{group.base}</div>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          <span className="rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+            {SECTION_LABEL[group.section]}
+          </span>
+          {date && (
+            <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+              {date}
+            </span>
+          )}
+        </div>
+      </div>
+      <ul className="divide-y divide-brand-400/30">
+        {([1, 2] as const).flatMap((mod) =>
+          (mod === 1 ? group.mod1 : group.mod2).map((t) => (
+            <li
+              key={t.id}
+              className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-brand-500"
+            >
+              <span className="w-20 shrink-0 text-xs font-bold uppercase tracking-wider text-brand-200">
+                Module {mod}
+              </span>
+              <span
+                className={
+                  "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
+                  difficultyColor(t.difficulty)
+                }
+              >
+                {t.difficulty}
+              </span>
+              <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                {counts.get(t.id) ?? 0} q
+              </span>
+              <div className="flex-1" />
+              <button
+                onClick={() => onEdit(t)}
+                className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                aria-label={`Edit Module ${mod}`}
+              >
+                <Edit3 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => onRemove(t.id)}
+                className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-900 hover:text-white"
+                aria-label={`Delete Module ${mod}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </li>
+          )),
+        )}
+      </ul>
     </div>
   );
 }

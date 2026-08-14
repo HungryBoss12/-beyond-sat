@@ -167,6 +167,26 @@ export function formatSourceDate(month?: number | null, year?: number | null): s
   return `${MONTHS[month - 1]} ${year}`;
 }
 
+/** Strip a trailing module marker from a test title (`· Module 2`, `- Mod 1`, etc.). */
+export function stripModuleSuffix(title: string): string {
+  return title
+    .replace(/\s*[·\-–—]\s*(?:mod(?:ule)?\.?\s*)?[12]\s*$/i, "")
+    .replace(/\s*\(\s*mod(?:ule)?\.?\s*[12]\s*\)\s*$/i, "")
+    .replace(/\s+m[12]\s*$/i, "")
+    .trim();
+}
+
+/** Stable grouping key for pairing Module 1 / Module 2 rows into one paper. */
+export function paperKey(title: string, section: Section): string {
+  const base = stripModuleSuffix(title).toLowerCase().replace(/\s+/g, " ").trim();
+  return `${section}:${base}`;
+}
+
+/** Canonical title for a module row within a paper. */
+export function moduleTitle(base: string, module: 1 | 2): string {
+  return `${base} · Module ${module}`;
+}
+
 export function difficultyLabel(d: Difficulty | string | null | undefined): string {
   if (!d) return "—";
   const map: Record<string, string> = {

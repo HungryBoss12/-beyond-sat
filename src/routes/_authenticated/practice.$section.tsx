@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   SECTION_LABEL,
   formatSourceDate,
+  stripModuleSuffix,
   difficultyLabel,
   type Section,
   type Difficulty,
@@ -405,7 +406,7 @@ function SetCard({
     <li className="flex flex-col justify-between gap-3 rounded-2xl border border-brand-400/40 bg-brand-600 p-4 shadow-panel transition hover:bg-brand-500">
       <div>
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-bold text-white">{set.title}</h3>
+          <h3 className="text-sm font-bold text-white">{stripModuleSuffix(set.title)}</h3>
           {set.status === "done" && (
             <CheckCircle2
               className="mt-0.5 h-4 w-4 shrink-0 text-brand-200"

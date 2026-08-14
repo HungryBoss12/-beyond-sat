@@ -29,6 +29,7 @@ import {
   MONTHS,
   LETTER_DIFFICULTIES,
   formatSourceDate,
+  moduleTitle,
   type Section,
   type LetterDifficulty,
 } from "@/lib/sat";
@@ -654,12 +655,12 @@ function AdminImport() {
         const names = (
           await Promise.all([
             createSet(
-              `${base} · Module 1`,
+              moduleTitle(base, 1),
               1,
               insertedItems.filter((x) => x.module === 1).map((x) => x.id),
             ),
             createSet(
-              `${base} · Module 2`,
+              moduleTitle(base, 2),
               2,
               insertedItems.filter((x) => x.module === 2).map((x) => x.id),
             ),

@@ -1,6 +1,12 @@
 import { locateFiguresOnPage, type FigureStage } from "@/lib/gemini/locate-figure";
 import { GeminiError } from "@/lib/gemini/errors";
-import { readBearerToken, readEnv, readSupabaseConfig, verifySupabaseUser } from "@/lib/server-env";
+import {
+  readBearerToken,
+  readEnv,
+  readSupabaseConfig,
+  verifyStaffUser,
+  verifySupabaseUser,
+} from "@/lib/server-env";
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -38,6 +44,9 @@ export async function handleImportFigure(request: Request, env: unknown): Promis
   const user = await verifySupabaseUser(config, token);
   if (!user) {
     return json({ error: "Your session has expired. Sign in again." }, 401);
+  }
+  if (!(await verifyStaffUser(config, token))) {
+    return json({ error: "Staff access required" }, 403);
   }
 
   let payload: FigureRequest;

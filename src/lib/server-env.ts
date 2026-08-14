@@ -48,6 +48,12 @@ export type VerifiedUser = { id: string; email: string | null };
  * and wouldn't notice a revoked session. This is one edge-to-Supabase round trip
  * on a request that's about to make a much slower call to OpenRouter anyway.
  */
+/** True when the caller holds an admin or editor role in `user_roles`. */
+export async function verifyStaffUser(config: SupabaseConfig, token: string): Promise<boolean> {
+  const result = await callRpc<boolean>(config, "bs_is_staff", token);
+  return result === true;
+}
+
 export async function verifySupabaseUser(
   config: SupabaseConfig,
   token: string,

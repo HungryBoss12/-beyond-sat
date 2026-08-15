@@ -1,11 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Draft } from "./parse";
-import {
-  cloneDraft,
-  diffRec,
-  makeActivityEntry,
-  type ActivityEntry,
-} from "./activity-log";
+import { cloneDraft, diffRec, makeActivityEntry, type ActivityEntry } from "./activity-log";
 import {
   cropPageToBlob,
   filterConfidentBoxes,
@@ -337,9 +332,7 @@ export async function attachFiguresToDrafts(
 /**
  * Upload embedded DOCX images preserved on drafts during parse.
  */
-export async function attachDocxImagesToDrafts(
-  drafts: Draft[],
-): Promise<{
+export async function attachDocxImagesToDrafts(drafts: Draft[]): Promise<{
   drafts: Draft[];
   notes: string[];
   entries: ActivityEntry[];

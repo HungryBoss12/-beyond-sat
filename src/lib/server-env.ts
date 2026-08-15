@@ -73,6 +73,24 @@ export async function verifySupabaseUser(
  * real user; without one the call runs as `anon`, which is what the public
  * maintenance check needs.
  */
+/**
+ * Confirms the bearer token belongs to an admin or editor via `bs_is_staff`.
+ *
+ * Import routes must not rely on UI-only guards: any signed-in student could
+ * otherwise burn Gemini/OpenRouter quota through `/api/import/*`.
+ */
+export async function verifyStaffUser(
+  config: SupabaseConfig,
+  token: string,
+): Promise<VerifiedUser | null> {
+  const user = await verifySupabaseUser(config, token);
+  if (!user) return null;
+
+  const isStaff = await callRpc<boolean>(config, "bs_is_staff", token);
+  if (!isStaff) return null;
+  return user;
+}
+
 export async function callRpc<T>(
   config: SupabaseConfig,
   fn: string,

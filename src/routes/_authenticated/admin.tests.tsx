@@ -1,8 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Edit3, X, ChevronUp, ChevronDown, AlertCircle, Link2 } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Edit3,
+  X,
+  ChevronUp,
+  ChevronDown,
+  AlertCircle,
+  Link2,
+} from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
+import {
+  QuestionEditModal,
+  loadQuestionWithAnswers,
+} from "@/components/admin/question-edit-modal";
+import type { AdminChoice, AdminQuestion } from "@/lib/admin/question";
 import {
   SECTION_LABEL,
   LETTER_DIFFICULTIES,
@@ -115,6 +129,8 @@ function AdminTests() {
   const [pool, setPool] = useState<QRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [pairing, setPairing] = useState<Test | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState<AdminQuestion | null>(null);
+  const [openingQuestion, setOpeningQuestion] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -217,6 +233,32 @@ function AdminTests() {
       .order("created_at", { ascending: false })
       .limit(400);
     setPool((p ?? []) as QRow[]);
+  }
+
+  async function openQuestionEditor(qid: string) {
+    if (openingQuestion) return;
+    setOpeningQuestion(true);
+    try {
+      const { data, error } = await supabase
+        .from("questions")
+        .select(
+          "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,source_month,source_year,time_limit_seconds",
+        )
+        .eq("id", qid)
+        .single();
+      if (error || !data) {
+        alert(error?.message ?? "Could not load that question.");
+        return;
+      }
+      const full = await loadQuestionWithAnswers({
+        ...data,
+        choices: (data.choices ?? []) as AdminChoice[],
+        time_limit_seconds: data.time_limit_seconds ?? null,
+      });
+      setEditingQuestion(full);
+    } finally {
+      setOpeningQuestion(false);
+    }
   }
 
   async function save() {
@@ -583,6 +625,16 @@ function AdminTests() {
                             {q?.question_text ?? "(question not in pool)"}
                           </span>
                           <button
+                            type="button"
+                            onClick={() => void openQuestionEditor(qid)}
+                            disabled={openingQuestion}
+                            className="grid h-6 w-6 place-items-center rounded text-brand-100 hover:bg-brand-700 hover:text-white disabled:opacity-40"
+                            aria-label="Edit question"
+                            title="Edit question text with AI"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
                             onClick={() => moveQ(qid, -1)}
                             className="grid h-6 w-6 place-items-center rounded text-brand-100 hover:bg-brand-700 hover:text-white"
                             aria-label="Move up"
@@ -629,6 +681,16 @@ function AdminTests() {
                               {q.skill} · {q.difficulty}
                             </div>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => void openQuestionEditor(q.id)}
+                            disabled={openingQuestion}
+                            className="tap mt-0.5 grid h-6 w-6 place-items-center rounded text-brand-100 hover:bg-brand-700 hover:text-white disabled:opacity-40"
+                            aria-label="Edit question"
+                            title="Edit question text with AI"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                          </button>
                         </li>
                       ))}
                     {pool.length === 0 && (
@@ -659,6 +721,30 @@ function AdminTests() {
             </div>
           </div>
         </div>
+      )}
+
+      {editingQuestion && (
+        <QuestionEditModal
+          initial={editingQuestion}
+          onClose={() => setEditingQuestion(null)}
+          onSaved={(saved) => {
+            setEditingQuestion(null);
+            setPool((current) =>
+              current.map((row) =>
+                row.id === saved.id
+                  ? {
+                      ...row,
+                      question_text: saved.question_text,
+                      section: saved.section,
+                      difficulty: saved.difficulty,
+                      skill: saved.skill,
+                    }
+                  : row,
+              ),
+            );
+            if (editing) void reloadPool(editing.section);
+          }}
+        />
       )}
     </div>
   );

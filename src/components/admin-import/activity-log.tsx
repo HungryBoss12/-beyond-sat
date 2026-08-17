@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, RotateCcw, Send, Target } from "lucide-react";
 import type { Draft } from "@/lib/import/parse";
-import {
-  ACTOR_LABEL,
-  type ActivityEntry,
-} from "@/lib/import/activity-log";
+import { ACTOR_LABEL, type ActivityEntry } from "@/lib/import/activity-log";
 import { CONTROL_CLASS } from "./types";
 
 function truncate(s: string, max = 80): string {
@@ -59,7 +56,9 @@ export function ActivityLogPanel({
   useEffect(() => {
     if (drafts?.length) {
       setSelectedIndex((cur) =>
-        cur >= 0 && cur < drafts.length ? cur : Math.min(Math.max(0, lastTouched), drafts.length - 1),
+        cur >= 0 && cur < drafts.length
+          ? cur
+          : Math.min(Math.max(0, lastTouched), drafts.length - 1),
       );
     }
   }, [drafts, lastTouched]);
@@ -80,7 +79,9 @@ export function ActivityLogPanel({
 
       <div className="mt-3 max-h-72 space-y-2 overflow-y-auto rounded-xl border border-brand-400/30 bg-brand-800 p-3">
         {entries.length === 0 ? (
-          <p className="text-xs text-brand-200">No AI actions yet. Fix rows or attach figures to see a log.</p>
+          <p className="text-xs text-brand-200">
+            No AI actions yet. Fix rows or attach figures to see a log.
+          </p>
         ) : (
           entries.map((e) => (
             <div
@@ -93,9 +94,7 @@ export function ActivityLogPanel({
                 >
                   {ACTOR_LABEL[e.actor]}
                 </span>
-                {e.model ? (
-                  <span className="text-[10px] text-brand-200">{e.model}</span>
-                ) : null}
+                {e.model ? <span className="text-[10px] text-brand-200">{e.model}</span> : null}
                 <span className="font-semibold text-white">Q{e.draftNumber}</span>
                 <span className="ml-auto flex gap-1">
                   {e.draftIndex >= 0 && (
@@ -129,9 +128,7 @@ export function ActivityLogPanel({
                       {truncate(f.after, 40)}
                     </li>
                   ))}
-                  {e.fields.length > 8 ? (
-                    <li>+{e.fields.length - 8} more fields</li>
-                  ) : null}
+                  {e.fields.length > 8 ? <li>+{e.fields.length - 8} more fields</li> : null}
                 </ul>
               )}
             </div>

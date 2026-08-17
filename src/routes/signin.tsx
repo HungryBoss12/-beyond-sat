@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
+import { AuthOrDivider, GoogleAuthButton } from "@/components/GoogleAuthButton";
 import { supabase } from "@/integrations/supabase/client";
 import { appUrl } from "@/lib/app-url";
 
@@ -85,7 +86,18 @@ function SignIn() {
           </h1>
           <p className="mt-2 text-center text-sm text-brand-100">Sign in to continue your prep.</p>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
+          <div className="mt-8 space-y-4">
+            <GoogleAuthButton
+              disabled={loading || resetting}
+              onError={(message) => {
+                setInfo(null);
+                setError(message);
+              }}
+            />
+            <AuthOrDivider />
+          </div>
+
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4" noValidate>
             <label className="block">
               <span className="mb-1 block text-xs font-semibold text-brand-100">Email</span>
               <input

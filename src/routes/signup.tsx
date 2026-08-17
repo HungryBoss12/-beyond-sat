@@ -4,6 +4,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
+import { AuthOrDivider, GoogleAuthButton } from "@/components/GoogleAuthButton";
 import { supabase } from "@/integrations/supabase/client";
 import { appUrl } from "@/lib/app-url";
 
@@ -165,7 +166,15 @@ function SignUp() {
                 Start practicing for the Digital SAT in minutes.
               </p>
 
-              <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
+              <div className="mt-8 space-y-4">
+                <GoogleAuthButton
+                  disabled={loading}
+                  onError={(message) => setFormError(message)}
+                />
+                <AuthOrDivider />
+              </div>
+
+              <form onSubmit={handleSubmit} className="mt-4 space-y-4" noValidate>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="First name" error={errors.first_name}>
                     <input

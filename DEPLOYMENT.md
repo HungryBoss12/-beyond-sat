@@ -81,6 +81,30 @@ npm run cf:preview               # vite build + wrangler dev
 
 ---
 
+## Google sign-in
+
+Sign-in and sign-up use Supabase OAuth (`Continue with Google`). The app
+cannot enable the provider for you — do this once in the dashboards:
+
+1. **Google Cloud Console** → APIs & Services → Credentials → OAuth 2.0 Client
+   (Web). Authorized redirect URI must be the Supabase callback:
+   `https://<project-ref>.supabase.co/auth/v1/callback`.
+2. **Supabase** → Authentication → Providers → **Google**: enable it and paste
+   the Google Client ID and Client Secret.
+3. **Supabase** → Authentication → URL Configuration → Redirect URLs: add
+   `https://<your-app-host>/auth/callback` (the live Workers URL and any custom
+   domain). For local `npm run dev`, also add `http://localhost:5173/auth/callback`
+   (or whichever origin Vite prints).
+
+After Google returns, the app lands on `/auth/callback`, then `/dashboard`. New
+users (`profiles.intro_completed` is false) are sent to `/onboarding`; returning
+users stay in the app.
+
+The migration `supabase/migrations/20260817000001_handle_new_user_google_names.sql`
+must be applied so Google's `given_name` / `full_name` fill `profiles`.
+
+---
+
 ## Optional: the service-role secret
 
 Only if/when you wire up the admin Supabase client:

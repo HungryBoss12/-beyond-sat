@@ -137,18 +137,50 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  meta jsonb := COALESCE(NEW.raw_user_meta_data, '{}'::jsonb);
+  first_name text;
+  last_name text;
+  display_name text;
+  parts text[];
 BEGIN
+  first_name := NULLIF(btrim(meta->>'first_name'), '');
+  last_name := NULLIF(btrim(meta->>'last_name'), '');
+
+  IF first_name IS NULL THEN
+    first_name := NULLIF(btrim(meta->>'given_name'), '');
+  END IF;
+  IF last_name IS NULL THEN
+    last_name := NULLIF(btrim(meta->>'family_name'), '');
+  END IF;
+
+  display_name := NULLIF(btrim(COALESCE(meta->>'full_name', meta->>'name')), '');
+
+  IF (first_name IS NULL OR last_name IS NULL) AND display_name IS NOT NULL THEN
+    parts := regexp_split_to_array(display_name, '\s+');
+    IF first_name IS NULL AND array_length(parts, 1) >= 1 THEN
+      first_name := parts[1];
+    END IF;
+    IF last_name IS NULL AND array_length(parts, 1) >= 2 THEN
+      last_name := array_to_string(parts[2:array_length(parts, 1)], ' ');
+    END IF;
+  END IF;
+
+  IF display_name IS NULL THEN
+    display_name := NULLIF(btrim(CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, ''))), '');
+  END IF;
+
   INSERT INTO public.profiles (id, email, first_name, last_name, city, school, grade, birth_date, full_name)
   VALUES (
     NEW.id,
     NEW.email,
-    NEW.raw_user_meta_data->>'first_name',
-    NEW.raw_user_meta_data->>'last_name',
-    NEW.raw_user_meta_data->>'city',
-    NEW.raw_user_meta_data->>'school',
-    NULLIF(NEW.raw_user_meta_data->>'grade','')::INT,
-    NULLIF(NEW.raw_user_meta_data->>'birth_date','')::DATE,
-    TRIM(CONCAT(NEW.raw_user_meta_data->>'first_name',' ',NEW.raw_user_meta_data->>'last_name'))
+    first_name,
+    last_name,
+    NULLIF(btrim(meta->>'city'), ''),
+    NULLIF(btrim(meta->>'school'), ''),
+    NULLIF(meta->>'grade', '')::INT,
+    NULLIF(meta->>'birth_date', '')::DATE,
+    display_name
   )
   ON CONFLICT (id) DO NOTHING;
 

@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as BannedRouteImport } from './routes/banned'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAnalysisRouteImport } from './routes/_authenticated/analysis'
 import { Route as AuthenticatedBeyondAiRouteImport } from './routes/_authenticated/beyond-ai'
@@ -63,6 +64,11 @@ const SigninRoute = SigninRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -212,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/banned': typeof BannedRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/analysis': typeof AuthenticatedAnalysisRouteWithChildren
   '/beyond-ai': typeof AuthenticatedBeyondAiRoute
@@ -244,6 +251,7 @@ export interface FileRoutesByTo {
   '/banned': typeof BannedRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/analysis': typeof AuthenticatedAnalysisRouteWithChildren
   '/beyond-ai': typeof AuthenticatedBeyondAiRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -276,6 +284,7 @@ export interface FileRoutesById {
   '/banned': typeof BannedRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/analysis': typeof AuthenticatedAnalysisRouteWithChildren
   '/_authenticated/beyond-ai': typeof AuthenticatedBeyondAiRoute
@@ -310,6 +319,7 @@ export interface FileRouteTypes {
     | '/banned'
     | '/signin'
     | '/signup'
+    | '/auth/callback'
     | '/admin'
     | '/analysis'
     | '/beyond-ai'
@@ -342,6 +352,7 @@ export interface FileRouteTypes {
     | '/banned'
     | '/signin'
     | '/signup'
+    | '/auth/callback'
     | '/analysis'
     | '/beyond-ai'
     | '/dashboard'
@@ -373,6 +384,7 @@ export interface FileRouteTypes {
     | '/banned'
     | '/signin'
     | '/signup'
+    | '/auth/callback'
     | '/_authenticated/admin'
     | '/_authenticated/analysis'
     | '/_authenticated/beyond-ai'
@@ -407,6 +419,7 @@ export interface RootRouteChildren {
   BannedRoute: typeof BannedRoute
   SigninRoute: typeof SigninRoute
   SignupRoute: typeof SignupRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -444,6 +457,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -738,6 +758,7 @@ const rootRouteChildren: RootRouteChildren = {
   BannedRoute: BannedRoute,
   SigninRoute: SigninRoute,
   SignupRoute: SignupRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

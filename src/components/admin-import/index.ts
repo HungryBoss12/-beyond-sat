@@ -1,10 +1,4 @@
-export type {
-  Mode,
-  PreviewRow,
-  VisionState,
-  FixProgress,
-  FigureProgress,
-} from "./types";
+export type { Mode, PreviewRow, VisionState, FixProgress, FigureProgress } from "./types";
 export { CONTROL_CLASS, CHUNK } from "./types";
 export { Field } from "./field";
 export { StageBar } from "./stage-bar";

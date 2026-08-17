@@ -14,13 +14,7 @@ export type FigureBox = {
   markdown?: string;
 };
 
-const FIGURE_KINDS = new Set<FigureKind>([
-  "table",
-  "graph",
-  "diagram",
-  "number_line",
-  "figure",
-]);
+const FIGURE_KINDS = new Set<FigureKind>(["table", "graph", "diagram", "number_line", "figure"]);
 
 export function parseFigureKind(raw: unknown): FigureKind | undefined {
   if (typeof raw !== "string") return undefined;
@@ -91,7 +85,10 @@ export function parseFigureBoxes(text: string): FigureBox[] {
 /** Drop boxes below this confidence when the model reports one. */
 export const FIGURE_CONFIDENCE_FLOOR = 0.35;
 
-export function filterConfidentBoxes(boxes: FigureBox[], floor = FIGURE_CONFIDENCE_FLOOR): FigureBox[] {
+export function filterConfidentBoxes(
+  boxes: FigureBox[],
+  floor = FIGURE_CONFIDENCE_FLOOR,
+): FigureBox[] {
   return boxes.filter((b) => b.confidence == null || b.confidence >= floor);
 }
 
@@ -178,10 +175,7 @@ export async function cropPageToBlob(
   img.src = dataUrl;
   await loaded;
 
-  const pads =
-    typeof pad === "number"
-      ? { x: pad, y: pad }
-      : pad ?? padForKind(box.kind);
+  const pads = typeof pad === "number" ? { x: pad, y: pad } : (pad ?? padForKind(box.kind));
 
   const padded = clampBox({
     x: box.x - pads.x,

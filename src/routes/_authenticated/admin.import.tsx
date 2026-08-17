@@ -390,9 +390,13 @@ function AdminImport() {
           });
           return;
         }
-        await finishDocument(out.blocks, [`Read the text layer of ${out.pages} page(s) — no AI needed.`], {
-          pdfFile: f,
-        });
+        await finishDocument(
+          out.blocks,
+          [`Read the text layer of ${out.pages} page(s) — no AI needed.`],
+          {
+            pdfFile: f,
+          },
+        );
         return;
       }
 
@@ -538,10 +542,7 @@ function AdminImport() {
     setDrafts((current) => (current ? current.filter((_, i) => i !== index) : current));
   }
 
-  async function runManualCrop(
-    index: number,
-    box: { x: number; y: number; w: number; h: number },
-  ) {
+  async function runManualCrop(index: number, box: { x: number; y: number; w: number; h: number }) {
     const file = sourcePdf ?? vision?.file ?? null;
     if (!file || !drafts?.[index]) return;
     setManualCropBusy(true);
@@ -602,9 +603,7 @@ function AdminImport() {
     }
   }
 
-  const fileImport = Boolean(
-    drafts && (sourcePdf || vision?.file || /\.docx$/i.test(fileName)),
-  );
+  const fileImport = Boolean(drafts && (sourcePdf || vision?.file || /\.docx$/i.test(fileName)));
 
   const previewRows = useMemo(() => {
     if (drafts) {
@@ -697,9 +696,7 @@ function AdminImport() {
     if (!entry?.snapshot || !drafts) return;
     const snap = cloneDraft(entry.snapshot);
     setDrafts((current) =>
-      current
-        ? current.map((d, i) => (i === entry.draftIndex ? snap : d))
-        : current,
+      current ? current.map((d, i) => (i === entry.draftIndex ? snap : d)) : current,
     );
     setActivity((current) => current.filter((e) => e.id !== entryId));
   }

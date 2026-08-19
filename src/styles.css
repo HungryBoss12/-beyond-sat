@@ -996,6 +996,322 @@
     font-weight: 800;
     color: #fff;
   }
+
+  & .katex,
+  & .katex-html,
+  & .katex .base {
+    color: #fff;
+  }
+}
+
+/* Sidebar glyphs. Custom SVGs for dashboard/analysis/AI so parts can move
+   independently. Hover, keyboard focus, :active (tap), and [data-nav-play]
+   (JS retrigger with fresh random bar heights) all fire the one-shot. */
+.nav-ico {
+  transform-origin: center;
+  display: block;
+  overflow: visible;
+}
+
+.nav-tile,
+.nav-bar,
+.nav-star-lg,
+.nav-star-sm,
+.nav-profile-head,
+.nav-profile-body,
+.nav-profile-ring {
+  transform-box: fill-box;
+}
+
+.nav-tile-tl,
+.nav-tile-tr {
+  transform-origin: top center;
+}
+.nav-tile-bl,
+.nav-tile-br {
+  transform-origin: bottom center;
+}
+.nav-bar {
+  transform-origin: center bottom;
+  --bar-a: 1.25;
+  --bar-b: 0.7;
+}
+.nav-star-lg,
+.nav-star-sm {
+  transform-origin: center;
+}
+.nav-profile-head {
+  transform-origin: center bottom;
+}
+.nav-profile-ring {
+  transform-origin: center;
+  opacity: 0;
+}
+
+.group:hover .nav-tile-tl,
+.group:focus-visible .nav-tile-tl,
+.group:active .nav-tile-tl,
+.group[data-nav-play] .nav-tile-tl {
+  animation: nav-tile-tl 0.7s ease-in-out;
+}
+.group:hover .nav-tile-bl,
+.group:focus-visible .nav-tile-bl,
+.group:active .nav-tile-bl,
+.group[data-nav-play] .nav-tile-bl {
+  animation: nav-tile-bl 0.7s ease-in-out;
+}
+.group:hover .nav-tile-tr,
+.group:focus-visible .nav-tile-tr,
+.group:active .nav-tile-tr,
+.group[data-nav-play] .nav-tile-tr {
+  animation: nav-tile-tr 0.7s ease-in-out;
+}
+.group:hover .nav-tile-br,
+.group:focus-visible .nav-tile-br,
+.group:active .nav-tile-br,
+.group[data-nav-play] .nav-tile-br {
+  animation: nav-tile-br 0.7s ease-in-out;
+}
+
+.group:hover .nav-ico-practice,
+.group:focus-visible .nav-ico-practice,
+.group:active .nav-ico-practice,
+.group[data-nav-play] .nav-ico-practice {
+  animation: nav-book 0.7s ease-in-out;
+}
+
+.group:hover .nav-bar,
+.group:focus-visible .nav-bar,
+.group:active .nav-bar,
+.group[data-nav-play] .nav-bar {
+  animation: nav-bar-rand 0.85s ease-in-out;
+}
+.group:hover .nav-bar:nth-child(3),
+.group:focus-visible .nav-bar:nth-child(3),
+.group:active .nav-bar:nth-child(3),
+.group[data-nav-play] .nav-bar:nth-child(3) {
+  animation-delay: 0.06s;
+}
+.group:hover .nav-bar:nth-child(4),
+.group:focus-visible .nav-bar:nth-child(4),
+.group:active .nav-bar:nth-child(4),
+.group[data-nav-play] .nav-bar:nth-child(4) {
+  animation-delay: 0.14s;
+}
+
+.group:hover .nav-star-lg,
+.group:focus-visible .nav-star-lg,
+.group:active .nav-star-lg,
+.group[data-nav-play] .nav-star-lg {
+  animation: nav-star-glow 0.7s ease-out;
+}
+.group:hover .nav-star-a,
+.group:focus-visible .nav-star-a,
+.group:active .nav-star-a,
+.group[data-nav-play] .nav-star-a {
+  animation: nav-star-drift-a 0.85s ease-in-out;
+}
+.group:hover .nav-star-b,
+.group:focus-visible .nav-star-b,
+.group:active .nav-star-b,
+.group[data-nav-play] .nav-star-b {
+  animation: nav-star-drift-b 0.85s ease-in-out;
+}
+
+.group:hover .nav-ico-news,
+.group:focus-visible .nav-ico-news,
+.group:active .nav-ico-news,
+.group[data-nav-play] .nav-ico-news {
+  animation: nav-paper 0.5s ease-in-out;
+}
+
+.group:hover .nav-profile-head,
+.group:focus-visible .nav-profile-head,
+.group:active .nav-profile-head,
+.group[data-nav-play] .nav-profile-head {
+  animation: nav-profile-bob 0.65s ease-out;
+}
+.group:hover .nav-profile-ring,
+.group:focus-visible .nav-profile-ring,
+.group:active .nav-profile-ring,
+.group[data-nav-play] .nav-profile-ring {
+  animation: nav-profile-ping 0.65s ease-out;
+}
+
+.group:hover .nav-ico-admin,
+.group:focus-visible .nav-ico-admin,
+.group:active .nav-ico-admin,
+.group[data-nav-play] .nav-ico-admin {
+  animation: nav-shield 0.45s ease-out;
+}
+
+/* Left column: top grows down, bottom shrinks from its top to make room, then
+   they swap volumes and return. Right column is the inverse start sizes. */
+@keyframes nav-tile-tl {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  45% {
+    transform: scaleY(1.42);
+  }
+  70% {
+    transform: scaleY(0.62);
+  }
+}
+@keyframes nav-tile-bl {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  45% {
+    transform: scaleY(0.38);
+  }
+  70% {
+    transform: scaleY(1.55);
+  }
+}
+@keyframes nav-tile-tr {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  45% {
+    transform: scaleY(1.7);
+  }
+  70% {
+    transform: scaleY(0.55);
+  }
+}
+@keyframes nav-tile-br {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  45% {
+    transform: scaleY(0.42);
+  }
+  70% {
+    transform: scaleY(1.28);
+  }
+}
+
+@keyframes nav-book {
+  0%,
+  100% {
+    transform: perspective(80px) rotateY(0deg);
+  }
+  30% {
+    transform: perspective(80px) rotateY(-26deg);
+  }
+  70% {
+    transform: perspective(80px) rotateY(26deg);
+  }
+}
+
+@keyframes nav-bar-rand {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  32% {
+    transform: scaleY(var(--bar-a));
+  }
+  48% {
+    transform: scaleY(var(--bar-a));
+  }
+  78% {
+    transform: scaleY(var(--bar-b));
+  }
+}
+
+@keyframes nav-star-glow {
+  0%,
+  100% {
+    filter: brightness(1) drop-shadow(0 0 0 transparent);
+    transform: scale(1);
+  }
+  45% {
+    filter: brightness(1.55) drop-shadow(0 0 4px #fff);
+    transform: scale(1.08);
+  }
+}
+
+@keyframes nav-star-drift-a {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: translate(-1px, 1.5px) scale(0.82);
+  }
+}
+
+@keyframes nav-star-drift-b {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: translate(1.5px, -1px) scale(1.18);
+  }
+}
+
+@keyframes nav-paper {
+  0%,
+  100% {
+    transform: rotate(0deg) translateX(0);
+  }
+  20% {
+    transform: rotate(-8deg) translateX(-1px);
+  }
+  45% {
+    transform: rotate(7deg) translateX(1px);
+  }
+  70% {
+    transform: rotate(-4deg);
+  }
+}
+
+@keyframes nav-profile-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-2.5px);
+  }
+}
+
+@keyframes nav-profile-ping {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  40% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes nav-shield {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  40% {
+    transform: scale(1.18) rotate(-8deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1013,7 +1329,20 @@
      cancel the hover/press transforms so nothing shifts under the pointer. */
   .drift,
   .spin-slow,
-  .pulse-ring {
+  .pulse-ring,
+  .nav-ico-dashboard,
+  .nav-ico-practice,
+  .nav-ico-analysis,
+  .nav-ico-ai,
+  .nav-ico-news,
+  .nav-ico-profile,
+  .nav-ico-admin,
+  .nav-tile,
+  .nav-bar,
+  .nav-star-lg,
+  .nav-star-sm,
+  .nav-profile-head,
+  .nav-profile-ring {
     animation: none !important;
   }
   .lift:hover,

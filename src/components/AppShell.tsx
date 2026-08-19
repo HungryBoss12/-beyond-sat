@@ -1,7 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  LayoutDashboard,
   BookOpen,
   Newspaper,
   User,
@@ -10,10 +9,11 @@ import {
   Menu,
   X,
   ChevronDown,
-  BarChart3,
-  Sparkles,
+  Shield,
+  PanelLeftClose,
+  PanelLeftOpen,
+  type LucideIcon,
 } from "lucide-react";
-import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 import { RevealLink } from "@/components/ui/reveal-card";
@@ -25,13 +25,148 @@ import { RevealLink } from "@/components/ui/reveal-card";
  * another column.
  */
 const NAV = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/practice", label: "Practice", icon: BookOpen },
-  { to: "/analysis", label: "Analysis", icon: BarChart3 },
-  { to: "/beyond-ai", label: "Beyond AI", icon: Sparkles },
-  { to: "/news", label: "News", icon: Newspaper },
-  { to: "/profile", label: "Profile", icon: User },
+  { to: "/dashboard", label: "Dashboard", kind: "dashboard" },
+  { to: "/practice", label: "Practice", kind: "practice", icon: BookOpen },
+  { to: "/analysis", label: "Analysis", kind: "analysis" },
+  { to: "/beyond-ai", label: "Beyond AI", kind: "ai" },
+  { to: "/news", label: "News", kind: "news", icon: Newspaper },
+  { to: "/profile", label: "Profile", kind: "profile" },
 ] as const;
+
+const NAV_OPEN_KEY = "beyond-sat-nav-open";
+const DRAWER_MS = 450;
+
+type NavKind = (typeof NAV)[number]["kind"] | "admin";
+
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Fresh random bar heights each hover/tap so Analysis never repeats a script. */
+function scrambleAnalysisBars(root: HTMLElement) {
+  root.querySelectorAll<HTMLElement>(".nav-bar").forEach((bar) => {
+    bar.style.setProperty("--bar-a", String(0.35 + Math.random() * 1.35));
+    bar.style.setProperty("--bar-b", String(0.3 + Math.random() * 1.25));
+  });
+}
+
+function playNavMotion(target: HTMLElement) {
+  if (prefersReducedMotion()) return;
+  scrambleAnalysisBars(target);
+  target.removeAttribute("data-nav-play");
+  void target.offsetWidth;
+  target.setAttribute("data-nav-play", "");
+  window.setTimeout(() => target.removeAttribute("data-nav-play"), 900);
+}
+
+function navPlayHandlers() {
+  return {
+    onPointerEnter: (e: React.PointerEvent<HTMLElement>) => playNavMotion(e.currentTarget),
+    onPointerDown: (e: React.PointerEvent<HTMLElement>) => playNavMotion(e.currentTarget),
+  };
+}
+
+function NavGlyph({
+  icon: Icon,
+  kind,
+  className,
+}: {
+  icon?: LucideIcon;
+  kind: NavKind;
+  className?: string;
+}) {
+  const cls = `nav-ico nav-ico-${kind} shrink-0 ${className ?? ""}`;
+
+  if (kind === "dashboard") {
+    return (
+      <svg viewBox="0 0 24 24" className={cls} aria-hidden="true" fill="currentColor">
+        <rect className="nav-tile nav-tile-tl" x="3" y="3" width="8" height="10" rx="1.5" />
+        <rect className="nav-tile nav-tile-bl" x="3" y="15" width="8" height="6" rx="1.5" />
+        <rect className="nav-tile nav-tile-tr" x="13" y="3" width="8" height="6" rx="1.5" />
+        <rect className="nav-tile nav-tile-br" x="13" y="11" width="8" height="10" rx="1.5" />
+      </svg>
+    );
+  }
+
+  if (kind === "analysis") {
+    return (
+      <svg viewBox="0 0 24 24" className={cls} aria-hidden="true">
+        <path
+          d="M4 5v14h16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <rect className="nav-bar" x="7" y="13" width="2.4" height="6" rx="0.5" fill="currentColor" />
+        <rect className="nav-bar" x="11.3" y="9" width="2.4" height="10" rx="0.5" fill="currentColor" />
+        <rect className="nav-bar" x="15.6" y="6.5" width="2.4" height="12.5" rx="0.5" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  if (kind === "ai") {
+    return (
+      <svg viewBox="0 0 24 24" className={cls} aria-hidden="true" fill="currentColor">
+        <path
+          className="nav-star-sm nav-star-a"
+          d="M6 4.2 6.7 6.2 8.7 7 6.7 7.8 6 9.8 5.3 7.8 3.3 7 5.3 6.2Z"
+        />
+        <path
+          className="nav-star-sm nav-star-b"
+          d="M18.6 13.2 19.5 15.6 22 16.5 19.5 17.4 18.6 19.8 17.7 17.4 15.2 16.5 17.7 15.6Z"
+        />
+        <path
+          className="nav-star-lg"
+          d="M12 3.2 13.85 8.15 19 10 13.85 11.85 12 16.8 10.15 11.85 5 10 10.15 8.15Z"
+        />
+      </svg>
+    );
+  }
+
+  if (kind === "profile") {
+    return (
+      <svg viewBox="0 0 24 24" className={cls} aria-hidden="true" fill="none">
+        <circle
+          className="nav-profile-ring"
+          cx="12"
+          cy="12"
+          r="9"
+          stroke="currentColor"
+          strokeWidth="1.4"
+        />
+        <circle
+          className="nav-profile-head"
+          cx="12"
+          cy="8"
+          r="3.15"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+        <path
+          className="nav-profile-body"
+          d="M6.4 19.2c.9-3.3 3.1-5.1 5.6-5.1s4.7 1.8 5.6 5.1"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  if (!Icon) return null;
+  return <Icon aria-hidden="true" className={cls} />;
+}
+
+function BrandMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className ?? "h-[17px] w-[17px]"} aria-hidden="true">
+      <path d="M12 3 21 7.5 12 12 3 7.5 12 3Z" fill="#fff" />
+      <path d="M3 12.5 12 17l9-4.5V16l-9 4.5L3 16v-3.5Z" fill="#fff" fillOpacity="0.55" />
+    </svg>
+  );
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -40,9 +175,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [email, setEmail] = useState<string>("");
   const [streak, setStreak] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [drawerMounted, setDrawerMounted] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(true);
   const [staffRole, setStaffRole] = useState<StaffRole | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const drawerTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(NAV_OPEN_KEY);
+      if (stored === "0") setNavOpen(false);
+    } catch {
+      /* private mode */
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -73,7 +220,47 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  useEffect(() => setDrawerOpen(false), [pathname]);
+  function persistNavOpen(next: boolean) {
+    setNavOpen(next);
+    try {
+      localStorage.setItem(NAV_OPEN_KEY, next ? "1" : "0");
+    } catch {
+      /* private mode */
+    }
+  }
+
+  function openDrawer() {
+    if (drawerTimer.current) window.clearTimeout(drawerTimer.current);
+    setDrawerMounted(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setDrawerOpen(true));
+    });
+  }
+
+  function closeDrawer() {
+    setDrawerOpen(false);
+    if (drawerTimer.current) window.clearTimeout(drawerTimer.current);
+    drawerTimer.current = window.setTimeout(() => {
+      setDrawerMounted(false);
+      drawerTimer.current = null;
+    }, DRAWER_MS);
+  }
+
+  const skipDrawerClose = useRef(true);
+  useEffect(() => {
+    if (skipDrawerClose.current) {
+      skipDrawerClose.current = false;
+      return;
+    }
+    closeDrawer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  useEffect(() => {
+    return () => {
+      if (drawerTimer.current) window.clearTimeout(drawerTimer.current);
+    };
+  }, []);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -88,79 +275,79 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .slice(0, 2)
       .toUpperCase() || "S";
 
-  // The shell's own surface is the one white page; the inherited text colour is
-  // a dark brand step so anything that doesn't set its own still reads.
+  const padClass = navOpen ? "lg:pl-64" : "lg:pl-0";
+  const shellShift =
+    "transition-[padding] duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " + padClass;
+
+  const navLinks = (opts: { onNavigate?: () => void; iconSize: string }) => (
+    <>
+      {NAV.map((n) => {
+        const active = pathname === n.to || pathname.startsWith(n.to + "/");
+        return (
+          <RevealLink
+            key={n.to}
+            to={n.to}
+            onClick={opts.onNavigate}
+            {...navPlayHandlers()}
+            className={
+              "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600 " +
+              (active
+                ? "bg-brand-400 text-white shadow-brand"
+                : "text-brand-100 nudge hover:bg-brand-800 hover:text-white")
+            }
+          >
+            {active && (
+              <span className="absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand-200" />
+            )}
+            <NavGlyph icon={"icon" in n ? n.icon : undefined} kind={n.kind} className={opts.iconSize} />
+            {n.label}
+          </RevealLink>
+        );
+      })}
+      {staffRole && (
+        <RevealLink
+          to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
+          onClick={opts.onNavigate}
+          {...navPlayHandlers()}
+          className={
+            "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600 " +
+            (pathname.startsWith("/admin")
+              ? "bg-brand-400 text-white shadow-brand"
+              : "text-brand-100 nudge hover:bg-brand-800 hover:text-white")
+          }
+        >
+          <NavGlyph icon={Shield} kind="admin" className={opts.iconSize} />
+          {staffRole === "admin" ? "Admin" : "Editor"}
+        </RevealLink>
+      )}
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-white text-brand-900">
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-brand-400/30 bg-brand-600 lg:flex">
+      <aside
+        className={
+          "fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-brand-400/30 bg-brand-600 lg:flex " +
+          "transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
+          (navOpen ? "translate-x-0" : "pointer-events-none -translate-x-full")
+        }
+      >
         <div className="flex h-16 items-center border-b border-brand-400/30 px-6">
-          <Link to="/dashboard" className="group flex items-center gap-2.5">
+          <Link to="/dashboard" className="group flex min-w-0 items-center gap-2.5">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-400 shadow-brand transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
-              <svg viewBox="0 0 24 24" className="h-[17px] w-[17px]" aria-hidden="true">
-                <path d="M12 3 21 7.5 12 12 3 7.5 12 3Z" fill="#fff" />
-                <path d="M3 12.5 12 17l9-4.5V16l-9 4.5L3 16v-3.5Z" fill="#fff" fillOpacity="0.55" />
-              </svg>
+              <BrandMark />
             </span>
-            <span className="text-lg font-black tracking-tight text-white">
+            <span className="truncate text-lg font-black tracking-tight text-white">
               Beyond<span className="text-brand-200">SAT</span>
             </span>
           </Link>
         </div>
-        <nav className="flex-1 space-y-1 p-4">
-          {NAV.map((n) => {
-            const active = pathname === n.to || pathname.startsWith(n.to + "/");
-            const Icon = n.icon;
-            return (
-              <RevealLink
-                key={n.to}
-                to={n.to}
-                className={
-                  "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600 " +
-                  (active
-                    ? "bg-brand-400 text-white shadow-brand"
-                    : "text-brand-100 nudge hover:bg-brand-800 hover:text-white")
-                }
-              >
-                {active && (
-                  <span className="absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand-200" />
-                )}
-                <Icon
-                  className={
-                    "h-[18px] w-[18px] shrink-0 transition-transform duration-300 " +
-                    (active ? "" : "group-hover:scale-110")
-                  }
-                />
-                {n.label}
-              </RevealLink>
-            );
-          })}
-          {/* Editors get the same entry point, labelled for their role and
-              pointed at the first section they're allowed to open. */}
-          {staffRole && (
-            <RevealLink
-              to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
-              className={
-                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600 " +
-                (pathname.startsWith("/admin")
-                  ? "bg-brand-400 text-white shadow-brand"
-                  : "text-brand-100 nudge hover:bg-brand-800 hover:text-white")
-              }
-            >
-              <Shield className="h-[18px] w-[18px] shrink-0 transition-transform duration-300 group-hover:scale-110" />
-              {staffRole === "admin" ? "Admin" : "Editor"}
-            </RevealLink>
-          )}
-        </nav>
-        {/* Streak card. The flame was orange; on a blue sidebar that was the only
-            off-palette colour, so it's now a light-blue fill on the deep shade. */}
+        <nav className="flex-1 space-y-1 p-4">{navLinks({ iconSize: "h-[18px] w-[18px]" })}</nav>
         <div className="border-t border-brand-400/30 p-4">
           <div className="flex items-center gap-2.5 rounded-xl bg-brand-800 px-3 py-2.5 ring-1 ring-brand-400/40">
             <Flame className="h-5 w-5 fill-brand-200 text-brand-200" />
             <div>
-              <div className="text-lg font-black leading-none text-white tabular-nums">
-                {streak}
-              </div>
+              <div className="text-lg font-black leading-none text-white tabular-nums">{streak}</div>
               <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-100">
                 day streak
               </div>
@@ -169,17 +356,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Top bar. A #0B0761 surface like the sidebar, with the lighter shade for
-          the controls sitting on it so they stay distinguishable. */}
-      <header className="sticky top-0 z-20 border-b border-brand-400/30 bg-brand-600/95 backdrop-blur-md lg:pl-64">
+      <header
+        className={
+          "sticky top-0 z-20 border-b border-brand-400/30 bg-brand-600/95 backdrop-blur-md " + shellShift
+        }
+      >
         <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setDrawerOpen(true)}
+              type="button"
+              onClick={openDrawer}
               className="tap grid h-9 w-9 place-items-center rounded-lg border border-brand-400/50 text-white transition-colors duration-200 hover:bg-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 lg:hidden"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => persistNavOpen(!navOpen)}
+              className="tap hidden h-9 w-9 place-items-center rounded-lg border border-brand-400/50 text-white transition-colors duration-200 hover:bg-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 lg:grid"
+              aria-label={navOpen ? "Close menu" : "Open menu"}
+              aria-expanded={navOpen}
+            >
+              {navOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
             </button>
             <span className="text-lg font-black tracking-tight text-white lg:hidden">
               Beyond<span className="text-brand-200">SAT</span>
@@ -237,32 +436,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Mobile drawer */}
-      {drawerOpen && (
+      {drawerMounted && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
-            className="fade-in absolute inset-0 bg-brand-900/60 backdrop-blur-sm"
-            onClick={() => setDrawerOpen(false)}
+            className={
+              "absolute inset-0 bg-brand-900/60 backdrop-blur-sm transition-opacity duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
+              (drawerOpen ? "opacity-100" : "opacity-0")
+            }
+            onClick={closeDrawer}
           />
-          <aside className="slide-in absolute inset-y-0 left-0 flex w-72 flex-col bg-brand-600 shadow-float">
+          <aside
+            className={
+              "absolute inset-y-0 left-0 flex w-72 flex-col bg-brand-600 shadow-float transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
+              (drawerOpen ? "translate-x-0" : "-translate-x-full")
+            }
+          >
             <div className="flex h-16 items-center justify-between border-b border-brand-400/30 px-4">
               <span className="flex items-center gap-2.5">
                 <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand-400 shadow-brand">
-                  <svg viewBox="0 0 24 24" className="h-[17px] w-[17px]" aria-hidden="true">
-                    <path d="M12 3 21 7.5 12 12 3 7.5 12 3Z" fill="#fff" />
-                    <path
-                      d="M3 12.5 12 17l9-4.5V16l-9 4.5L3 16v-3.5Z"
-                      fill="#fff"
-                      fillOpacity="0.55"
-                    />
-                  </svg>
+                  <BrandMark />
                 </span>
                 <span className="text-lg font-black tracking-tight text-white">
                   Beyond<span className="text-brand-200">SAT</span>
                 </span>
               </span>
               <button
-                onClick={() => setDrawerOpen(false)}
+                type="button"
+                onClick={closeDrawer}
                 className="tap grid h-9 w-9 place-items-center rounded-lg text-brand-100 hover:bg-brand-800"
                 aria-label="Close menu"
               >
@@ -270,83 +470,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <nav className="flex-1 space-y-1 p-3">
-              {NAV.map((n) => {
-                const active = pathname === n.to || pathname.startsWith(n.to + "/");
-                const Icon = n.icon;
-                return (
-                  <RevealLink
-                    key={n.to}
-                    to={n.to}
-                    onClick={() => setDrawerOpen(false)}
-                    className={
-                      "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold " +
-                      (active
-                        ? "bg-brand-400 text-white shadow-brand"
-                        : "text-brand-100 nudge hover:bg-brand-800 hover:text-white")
-                    }
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    {n.label}
-                  </RevealLink>
-                );
-              })}
-              {staffRole && (
-                <RevealLink
-                  to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
-                  onClick={() => setDrawerOpen(false)}
-                  className={
-                    "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold " +
-                    (pathname.startsWith("/admin")
-                      ? "bg-brand-400 text-white shadow-brand"
-                      : "text-brand-100 nudge hover:bg-brand-800 hover:text-white")
-                  }
-                >
-                  <Shield className="h-5 w-5 shrink-0" />
-                  {staffRole === "admin" ? "Admin" : "Editor"}
-                </RevealLink>
-              )}
+              {navLinks({ onNavigate: closeDrawer, iconSize: "h-5 w-5" })}
             </nav>
           </aside>
         </div>
       )}
 
-      {/* Main. Keyed on pathname so each navigation replays the entrance
-          animation, which gives switching sections a sense of direction. */}
-      <main className="pb-20 lg:pb-0 lg:pl-64">
+      <main className={"pb-20 lg:pb-0 " + shellShift}>
         <div key={pathname} className="route-enter mx-auto max-w-7xl px-4 py-6 sm:px-6 md:py-10">
           {children}
         </div>
       </main>
 
-      {/* Mobile bottom tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-400/30 bg-brand-600/95 backdrop-blur-md lg:hidden">
         <div className="grid grid-cols-6">
           {NAV.map((n) => {
             const active = pathname === n.to || pathname.startsWith(n.to + "/");
-            const Icon = n.icon;
             return (
               <Link
                 key={n.to}
                 to={n.to}
+                {...navPlayHandlers()}
                 className={
-                  "relative flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 text-[10px] font-semibold transition-colors duration-200 " +
+                  "group relative flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 text-[10px] font-semibold transition-colors duration-200 " +
                   (active ? "text-white" : "text-brand-100 hover:text-white")
                 }
               >
-                {/* Active pill sits behind the icon to mark the active tab while
-                    keeping the bar's brand surface solid. Capped at the cell
-                    width so it can't overlap its neighbours at six columns. */}
                 {active && (
                   <span className="pop-in absolute top-1.5 h-7 w-12 max-w-full rounded-full bg-brand-400" />
                 )}
-                <Icon
-                  className={
-                    "relative mb-0.5 h-5 w-5 transition-transform duration-300 " +
-                    (active ? "scale-110" : "")
-                  }
+                <NavGlyph
+                  icon={"icon" in n ? n.icon : undefined}
+                  kind={n.kind}
+                  className={"relative mb-0.5 h-5 w-5 " + (active ? "scale-110" : "")}
                 />
-                {/* Six labels at 360px leaves ~58px a cell; truncating is better
-                    than a second line pushing the bar taller. */}
                 <span className="w-full truncate text-center leading-tight">{n.label}</span>
               </Link>
             );

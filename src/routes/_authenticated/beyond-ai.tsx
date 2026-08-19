@@ -120,7 +120,9 @@ function BeyondAiPage() {
   useEffect(() => {
     void (async () => {
       try {
-        setConversations(await listConversations());
+        const rows = await listConversations();
+        setConversations(rows);
+        if (rows.length > 0) markWelcomeTipSeen();
       } catch {
         setSaveError("Saved chats couldn't be loaded. You can still start a new one.");
       }
@@ -224,6 +226,7 @@ function BeyondAiPage() {
         id = conversation.id;
         setActiveId(id);
         activeRef.current = id;
+        markWelcomeTipSeen();
         setConversations((current) => [conversation, ...current]);
       } catch {
         setSaveError("This chat won't be saved, but you can still use it.");
@@ -367,10 +370,10 @@ function BeyondAiPage() {
               <PanelLeftOpen className="h-5 w-5" />
             </button>
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-bold sm:text-base">
+              <h1 className="truncate text-sm font-bold text-white sm:text-base">
                 {active?.title ?? "New chat"}
               </h1>
-              <p className="hidden text-[11px] text-brand-100 sm:block">
+              <p className="hidden text-[11px] text-white/80 sm:block">
                 Your personal Digital SAT coach
               </p>
             </div>
@@ -386,7 +389,11 @@ function BeyondAiPage() {
         >
           <div className="mx-auto max-w-3xl space-y-4">
             {empty ? (
-              <Welcome onPick={(prompt) => void submit(prompt)} disabled={streaming} />
+              <Welcome
+                onPick={(prompt) => void submit(prompt)}
+                disabled={streaming}
+                showTip={conversations.length === 0 && !hasSeenWelcomeTip()}
+              />
             ) : (
               messages.map((m, i) => <ChatTurn key={i} role={m.role} content={m.content} />)
             )}
@@ -506,7 +513,7 @@ function BeyondAiPage() {
                 </button>
               )}
             </form>
-            <p className="mt-2 text-center text-[11px] text-brand-200">
+            <p className="mt-2 text-center text-[11px] text-white/80">
               Beyond AI can make mistakes — check anything that decides an answer.
             </p>
           </div>
@@ -516,20 +523,48 @@ function BeyondAiPage() {
   );
 }
 
-function Welcome({ onPick, disabled }: { onPick: (prompt: string) => void; disabled: boolean }) {
+const WELCOME_TIP_KEY = "beyond-sat-ai-welcome-tip";
+
+function hasSeenWelcomeTip() {
+  try {
+    return localStorage.getItem(WELCOME_TIP_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markWelcomeTipSeen() {
+  try {
+    localStorage.setItem(WELCOME_TIP_KEY, "1");
+  } catch {
+    /* private mode */
+  }
+}
+
+function Welcome({
+  onPick,
+  disabled,
+  showTip,
+}: {
+  onPick: (prompt: string) => void;
+  disabled: boolean;
+  showTip: boolean;
+}) {
   return (
     <div className="rise-in py-8 text-center">
       <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand-400 shadow-brand">
-        <Sparkles className="h-7 w-7" />
+        <Sparkles className="h-7 w-7 text-white" />
       </span>
-      <h2 className="mt-4 text-xl font-black tracking-tight sm:text-2xl">
+      <h2 className="mt-4 text-xl font-black tracking-tight text-white sm:text-2xl">
         What are we working on?
       </h2>
-      <p className="mx-auto mt-2 max-w-md text-sm text-brand-100">
-        Ask about a question you missed, a concept that isn't sticking, or what to study next.
-        Attach a photo of a question and it'll read it. Answers come back with full working, and
-        maths is properly typeset.
-      </p>
+      {showTip && (
+        <p className="mx-auto mt-2 max-w-md text-sm text-white/80">
+          Ask about a question you missed, a concept that isn't sticking, or what to study next.
+          Attach a photo of a question and it'll read it. Answers come back with full working, and
+          maths is properly typeset.
+        </p>
+      )}
       <div className="mt-6 flex flex-wrap justify-center gap-2">
         {QUICK_PROMPTS.map((prompt) => (
           <button

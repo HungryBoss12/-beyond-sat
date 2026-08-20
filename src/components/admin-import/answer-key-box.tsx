@@ -33,16 +33,18 @@ export function AnswerKeyBox({
               then the answers, then <code className="text-white">Module 2:</code>.{" "}
               <code className="text-white">Section 1:</code> /{" "}
               <code className="text-white">Section 2:</code> work too. A run of letters (
-              <code className="text-white">A D C B</code> or <code className="text-white">ADCB</code>
-              ) fills that module in order. Numbered lines (<code className="text-white">1. A</code>
-              ) work too. Grid-ins like <code className="text-white">3/4</code> are fine in the run.
+              <code className="text-white">A D C B</code> or{" "}
+              <code className="text-white">ADCB</code>) fills that module in order. Numbered lines (
+              <code className="text-white">1. A</code>) work too. Grid-ins like{" "}
+              <code className="text-white">3/4</code> are fine in the run.
             </>
           ) : (
             <>
               Paste numbered lines (<code className="text-white">1. A</code>,{" "}
               <code className="text-white">1) A</code>) or a letter run. For a whole paper use{" "}
-              <code className="text-white">Module 1:</code> / <code className="text-white">Module 2:</code>{" "}
-              blocks (<code className="text-white">Section 1:</code> /{" "}
+              <code className="text-white">Module 1:</code> /{" "}
+              <code className="text-white">Module 2:</code> blocks (
+              <code className="text-white">Section 1:</code> /{" "}
               <code className="text-white">Section 2:</code> also accepted).
             </>
           )}
@@ -54,9 +56,7 @@ export function AnswerKeyBox({
         rows={bothModules ? 7 : 4}
         spellCheck={false}
         placeholder={
-          bothModules
-            ? "Module 1: A D C B A C D B …\nModule 2: B A D C A B …"
-            : "1. A\n2. D\n3. C"
+          bothModules ? "Module 1: A D C B A C D B …\nModule 2: B A D C A B …" : "1. A\n2. D\n3. C"
         }
         className={CONTROL_CLASS + " resize-y font-mono text-xs leading-relaxed"}
       />

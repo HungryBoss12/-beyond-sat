@@ -147,10 +147,7 @@ function findClose(xml: string, open: number, tag: string): number {
  * sign that anything went missing. The symbols come through even though the
  * layout doesn't — a reviewer can see there's an equation to fix.
  */
-function paragraphContent(
-  xml: string,
-  ctx: DocxContext,
-): { text: string; images: Blob[] } {
+function paragraphContent(xml: string, ctx: DocxContext): { text: string; images: Blob[] } {
   const token =
     /<w:tab\s*\/>|<w:br\s*\/>|<w:noBreakHyphen\s*\/>|<(?:w|m):t(?:\s[^>]*)?>([\s\S]*?)<\/(?:w|m):t>|<w:drawing[\s>]|<w:pict[\s>]|<v:imagedata[\s>]|r:embed="([^"]+)"/g;
   let out = "";
@@ -221,7 +218,10 @@ function resolveEmbeds(ids: string[], ctx: DocxContext): Blob[] {
   return out;
 }
 
-async function readDocxContext(buf: ArrayBuffer, entries: Map<string, ZipEntry>): Promise<DocxContext> {
+async function readDocxContext(
+  buf: ArrayBuffer,
+  entries: Map<string, ZipEntry>,
+): Promise<DocxContext> {
   const rels = new Map<string, string>();
   const relEntry = entries.get("word/_rels/document.xml.rels");
   if (relEntry) {

@@ -1,6 +1,6 @@
 import type { RowResult } from "@/lib/question-import";
 
-export type Mode = "upload" | "sheet" | "json";
+export type Mode = "upload" | "sheet" | "json" | "fixExisting";
 
 export const CONTROL_CLASS =
   "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none";

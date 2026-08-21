@@ -43,6 +43,9 @@ export function PreviewPanel({
   focusDraftIndex = null,
   showModule,
   visionRunning,
+  primaryActionLabel,
+  hideSkipDuplicates = false,
+  fixableCount,
 }: {
   rows: PreviewRow[];
   ignoredColumns: string[];
@@ -88,15 +91,22 @@ export function PreviewPanel({
   focusDraftIndex?: number | null;
   showModule?: boolean;
   visionRunning?: boolean;
+  /** Override the Import button label (e.g. Save for fix-existing). */
+  primaryActionLabel?: string;
+  hideSkipDuplicates?: boolean;
+  /** Override how many rows the Fix with AI button targets. */
+  fixableCount?: number;
 }) {
   const [showOnlyProblems, setShowOnlyProblems] = useState(false);
   const visible = showOnlyProblems
     ? rows.filter((p) => !p.row.question || p.row.warnings.length > 0)
     : rows;
 
-  const brokenCount = rows.filter(
-    (p) => p.draftIndex != null && (!p.row.question || p.row.errors.length > 0),
-  ).length;
+  const brokenCount =
+    fixableCount ??
+    rows.filter(
+      (p) => p.draftIndex != null && (!p.row.question || p.row.errors.length > 0),
+    ).length;
 
   const fixTotal = fixProgress?.total ?? Math.max(brokenCount, 1);
   const stage1Pct = fixProgress
@@ -137,7 +147,7 @@ export function PreviewPanel({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          {stats.duplicates > 0 && (
+          {!hideSkipDuplicates && stats.duplicates > 0 && (
             <label className="inline-flex items-center gap-2 text-xs font-semibold text-brand-100">
               <input
                 type="checkbox"
@@ -222,7 +232,7 @@ export function PreviewPanel({
                 className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/50 bg-brand-800 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-400 disabled:opacity-40"
               >
                 <Wrench className="h-4 w-4" />
-                Fix {brokenCount} broken with AI
+                Fix {brokenCount} with AI
               </button>
             ))}
           <button
@@ -236,8 +246,9 @@ export function PreviewPanel({
               <Upload className="h-4 w-4" />
             )}
             {importing
-              ? `Importing ${progress.done}/${progress.total}…`
-              : `Import ${stats.importable} question${stats.importable === 1 ? "" : "s"}`}
+              ? `${primaryActionLabel ? "Saving" : "Importing"} ${progress.done}/${progress.total}…`
+              : (primaryActionLabel ??
+                `Import ${stats.importable} question${stats.importable === 1 ? "" : "s"}`)}
           </button>
         </div>
       </div>

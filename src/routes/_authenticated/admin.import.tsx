@@ -65,8 +65,21 @@ import {
   Loader2,
   Plus,
   Table2,
+  Wrench,
   X,
 } from "lucide-react";
+import {
+  diagnoseMathPractice,
+  existingIdFromDraft,
+  listExistingTests,
+  listOrphanMathGroups,
+  loadOrphanQuestionsAsDrafts,
+  loadTestAsDrafts,
+  softFixHintsForDraft,
+  type ExistingTestSummary,
+  type MathPracticeDiag,
+  type OrphanMathGroup,
+} from "@/lib/import/load-existing";
 
 export const Route = createFileRoute("/_authenticated/admin/import")({
   component: AdminImport,
@@ -126,7 +139,15 @@ function AdminImport() {
     failed: number;
     errors: string[];
     setTitle?: string;
+    kind?: "import" | "update";
   } | null>(null);
+
+  const [existingTestId, setExistingTestId] = useState<string | null>(null);
+  const [existingPickerLoading, setExistingPickerLoading] = useState(false);
+  const [existingTests, setExistingTests] = useState<ExistingTestSummary[]>([]);
+  const [orphanGroups, setOrphanGroups] = useState<OrphanMathGroup[]>([]);
+  const [mathDiag, setMathDiag] = useState<MathPracticeDiag | null>(null);
+  const [listAllSections, setListAllSections] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
@@ -178,6 +199,104 @@ function AdminImport() {
     setFileName("");
     setSourcePdf(null);
     setFocusDraftIndex(null);
+    setExistingTestId(null);
+  }
+
+  async function refreshExistingPicker(allSections = listAllSections) {
+    setExistingPickerLoading(true);
+    setReadError(null);
+    try {
+      const [tests, orphans, diag] = await Promise.all([
+        listExistingTests(allSections ? undefined : "math"),
+        listOrphanMathGroups(),
+        diagnoseMathPractice(),
+      ]);
+      setExistingTests(tests);
+      setOrphanGroups(orphans);
+      setMathDiag(diag);
+    } catch (err) {
+      setReadError((err as Error)?.message ?? "Could not load existing tests.");
+    } finally {
+      setExistingPickerLoading(false);
+    }
+  }
+
+  async function beginFixExisting() {
+    setMode("fixExisting");
+    clearExtracted();
+    setText("");
+    setSkipDuplicates(false);
+    setMakeSet(true);
+    setSection("math");
+    setStep("extract");
+    await refreshExistingPicker(false);
+  }
+
+  async function loadPickedTest(testId: string) {
+    setExistingPickerLoading(true);
+    setReadError(null);
+    try {
+      const { drafts: loaded, test } = await loadTestAsDrafts(testId);
+      if (loaded.length === 0) {
+        setReadError(
+          `"${test.title}" has no linked questions. Pick orphan math questions to build a set, or link questions in Tests.`,
+        );
+        return;
+      }
+      setExistingTestId(test.id);
+      setTitle(test.title);
+      setSection(test.section);
+      setModule(test.module);
+      setMonth(test.source_month);
+      setYear(test.source_year);
+      setMakeSet(true);
+      setDrafts(loaded);
+      setNotes([
+        `Loaded ${loaded.length} question${loaded.length === 1 ? "" : "s"} from “${test.title}” for AI recheck.`,
+        test.questionCount === 0
+          ? "This set had zero links — after Save, test_questions will be rewritten from this draft order."
+          : "Save updates each question and rewrites the practice set links.",
+      ]);
+      setParsed({ rows: [], fatal: null, ignoredColumns: [] });
+      setStep("editor");
+    } catch (err) {
+      setReadError((err as Error)?.message ?? "Could not load that test.");
+    } finally {
+      setExistingPickerLoading(false);
+    }
+  }
+
+  async function loadPickedOrphans(group: OrphanMathGroup) {
+    setExistingPickerLoading(true);
+    setReadError(null);
+    try {
+      const mod = module === 2 ? 2 : 1;
+      const loaded = await loadOrphanQuestionsAsDrafts(group.questionIds, mod);
+      if (loaded.length === 0) {
+        setReadError("No orphan questions found in that group.");
+        return;
+      }
+      setExistingTestId(null);
+      setTitle(
+        title.trim() ||
+          `Math · ${group.label}${mod === 2 ? " · Module 2" : " · Module 1"}`,
+      );
+      setSection("math");
+      setMonth(group.source_month ?? month);
+      setYear(group.source_year ?? year);
+      setMakeSet(true);
+      setDrafts(stampDraftModules(loaded, mod));
+      setNotes([
+        `Loaded ${loaded.length} orphan math question${loaded.length === 1 ? "" : "s"} (${group.label}).`,
+        "Save will update each question and create a Practice Math set from this order.",
+      ]);
+      setParsed({ rows: [], fatal: null, ignoredColumns: [] });
+      setStep("editor");
+    } catch (err) {
+      setReadError((err as Error)?.message ?? "Could not load orphan questions.");
+    } finally {
+      setExistingPickerLoading(false);
+    }
   }
 
   function appendActivity(entries: ActivityEntry[]) {
@@ -638,16 +757,25 @@ function AdminImport() {
   const previewRows = useMemo(() => {
     if (drafts) {
       const base = drafts.map((d) => {
-        const r = validateRecord(d.rec, d.number, { fileImport });
+        const r = validateRecord(d.rec, d.number, {
+          fileImport: mode === "fixExisting" ? false : fileImport,
+        });
         return { ...r, warnings: [...d.warnings, ...r.warnings] };
       });
+      // Already in the bank — don't treat as insert duplicates.
+      if (mode === "fixExisting") {
+        return base.map((row, i) => ({
+          row: { ...row, duplicate: false },
+          draftIndex: i as number | null,
+        }));
+      }
       return flagDuplicates(base, existingKeys).map((row, i) => ({
         row,
         draftIndex: i as number | null,
       }));
     }
     return (parsed?.rows ?? []).map((row) => ({ row, draftIndex: null as number | null }));
-  }, [drafts, parsed, existingKeys, fileImport]);
+  }, [drafts, parsed, existingKeys, mode, fileImport]);
 
   const stats = useMemo(() => {
     const rows = previewRows.map((p) => p.row);
@@ -659,9 +787,28 @@ function AdminImport() {
       invalid: rows.length - valid.length,
       warnings: valid.filter((r) => r.warnings.length > 0).length,
       duplicates: dupes.length,
-      importable: skipDuplicates ? valid.length - dupes.length : valid.length,
+      importable:
+        mode === "fixExisting"
+          ? valid.length
+          : skipDuplicates
+            ? valid.length - dupes.length
+            : valid.length,
     };
-  }, [previewRows, skipDuplicates]);
+  }, [previewRows, skipDuplicates, mode]);
+
+  const fixableCount = useMemo(() => {
+    if (!drafts) return 0;
+    if (mode !== "fixExisting") {
+      return previewRows.filter(
+        (p) => p.draftIndex != null && (!p.row.question || p.row.errors.length > 0),
+      ).length;
+    }
+    return previewRows.filter((p) => {
+      if (p.draftIndex == null) return false;
+      if (!p.row.question || p.row.errors.length > 0) return true;
+      return softFixHintsForDraft(drafts[p.draftIndex]).length > 0;
+    }).length;
+  }, [drafts, previewRows, mode]);
 
   const figureCount = useMemo(
     () => (drafts ? buildFigureTargets(drafts).length : 0),
@@ -679,15 +826,36 @@ function AdminImport() {
       return;
     }
     const targets = previewRows
-      .filter((p) => p.draftIndex != null && (!p.row.question || p.row.errors.length > 0))
-      .map((p) => ({
-        draftIndex: p.draftIndex!,
-        draft: drafts[p.draftIndex!],
-        errors: p.row.errors,
-        warnings: p.row.warnings,
-      }));
+      .filter((p) => {
+        if (p.draftIndex == null) return false;
+        if (!p.row.question || p.row.errors.length > 0) return true;
+        if (mode === "fixExisting") {
+          return softFixHintsForDraft(drafts[p.draftIndex]).length > 0;
+        }
+        return false;
+      })
+      .map((p) => {
+        const draft = drafts[p.draftIndex!];
+        const soft =
+          mode === "fixExisting" ? softFixHintsForDraft(draft) : [];
+        return {
+          draftIndex: p.draftIndex!,
+          draft,
+          errors:
+            p.row.errors.length > 0
+              ? p.row.errors
+              : soft.length > 0
+                ? soft
+                : ["Staff requested a cleanup pass on an existing bank question."],
+          warnings: p.row.warnings,
+        };
+      });
     if (targets.length === 0) {
-      setReadError("No broken rows to fix.");
+      setReadError(
+        mode === "fixExisting"
+          ? "No rows need AI fix — stems and answers look complete. You can still Save to refresh the practice set."
+          : "No broken rows to fix.",
+      );
       return;
     }
 
@@ -750,7 +918,199 @@ function AdminImport() {
     }
   }
 
+  async function runSaveExisting() {
+    if (!drafts) return;
+    const tagged = previewRows
+      .filter((p) => p.row.question && p.draftIndex != null)
+      .map((p) => ({
+        row: p.row,
+        draftIndex: p.draftIndex!,
+        draft: drafts[p.draftIndex!],
+        existingId: existingIdFromDraft(drafts[p.draftIndex!]),
+        module:
+          p.draftIndex != null && drafts[p.draftIndex]
+            ? draftModule(drafts[p.draftIndex])
+            : module === 2
+              ? 2
+              : 1,
+      }));
+    if (tagged.length === 0) return;
+
+    setImporting(true);
+    setResult(null);
+    setProgress({ done: 0, total: tagged.length });
+
+    const { data: u } = await supabase.auth.getUser();
+    const uid = u.user?.id ?? null;
+
+    let updated = 0;
+    let failed = 0;
+    const errors: string[] = [];
+    const savedItems: { id: string; module: 1 | 2 }[] = [];
+
+    for (const t of tagged) {
+      const q = t.row.question!;
+      const payload = {
+        section: q.section,
+        skill: q.skill,
+        difficulty: q.difficulty,
+        kind: q.kind,
+        prompt: q.prompt,
+        question_text: q.question_text,
+        choices: q.kind === "multiple_choice" ? q.choices : [],
+        correct_choice_id: q.kind === "multiple_choice" ? q.correct_choice_id : null,
+        correct_grid_answers: q.kind === "grid_in" ? q.correct_grid_answers : null,
+        explanation: q.explanation,
+        image_url: q.image_url,
+        source_month: q.source_month ?? month ?? null,
+        source_year: q.source_year ?? year ?? null,
+      };
+
+      if (!t.existingId) {
+        failed++;
+        if (errors.length < 10) {
+          errors.push(`Row ${t.row.index}: missing bank id — cannot update.`);
+        }
+        setProgress((p) => ({ ...p, done: p.done + 1 }));
+        continue;
+      }
+
+      const { error } = await supabase.from("questions").update(payload).eq("id", t.existingId);
+      if (error) {
+        failed++;
+        if (errors.length < 10) errors.push(`Row ${t.row.index}: ${error.message}`);
+      } else {
+        updated++;
+        savedItems.push({ id: t.existingId, module: t.module });
+      }
+      setProgress((p) => ({ ...p, done: p.done + 1 }));
+    }
+
+    let createdSet: string | undefined;
+    const ensureSet = async (label: string, mod: 1 | 2, ids: string[], testId: string | null) => {
+      if (ids.length === 0) return null;
+
+      let tid = testId;
+      if (!tid) {
+        const { data: t, error: te } = await supabase
+          .from("tests")
+          .insert({
+            title: label,
+            section,
+            module: mod,
+            difficulty,
+            source_month: month,
+            source_year: year,
+            created_by: uid,
+          })
+          .select("id")
+          .single();
+        if (te) {
+          errors.push(`Questions updated, but "${label}" couldn't be created: ${te.message}.`);
+          return null;
+        }
+        tid = t.id as string;
+      } else {
+        const { error: ue } = await supabase
+          .from("tests")
+          .update({
+            title: label,
+            section,
+            module: mod,
+            difficulty,
+            source_month: month,
+            source_year: year,
+          })
+          .eq("id", tid);
+        if (ue) {
+          errors.push(`Could not update set metadata: ${ue.message}`);
+        }
+        await supabase.from("test_questions").delete().eq("test_id", tid);
+      }
+
+      const links = ids.map((question_id, i) => ({
+        test_id: tid!,
+        question_id,
+        position: i + 1,
+      }));
+      const { error: le } = await supabase.from("test_questions").insert(links);
+      if (le) {
+        errors.push(`"${label}" links failed: ${le.message}.`);
+        return null;
+      }
+      return label;
+    };
+
+    if (makeSet && title.trim() && savedItems.length > 0) {
+      const base = title.trim();
+      if (existingTestId && module !== "both") {
+        createdSet =
+          (await ensureSet(
+            base,
+            module,
+            savedItems.map((x) => x.id),
+            existingTestId,
+          )) ?? undefined;
+      } else if (module === "both") {
+        const names = (
+          await Promise.all([
+            ensureSet(
+              moduleTitle(base, 1),
+              1,
+              savedItems.filter((x) => x.module === 1).map((x) => x.id),
+              null,
+            ),
+            ensureSet(
+              moduleTitle(base, 2),
+              2,
+              savedItems.filter((x) => x.module === 2).map((x) => x.id),
+              null,
+            ),
+          ])
+        ).filter((n): n is string => Boolean(n));
+        createdSet = names.length ? names.join(" + ") : undefined;
+      } else {
+        createdSet =
+          (await ensureSet(
+            base,
+            module,
+            savedItems.map((x) => x.id),
+            existingTestId,
+          )) ?? undefined;
+      }
+    } else if (existingTestId && savedItems.length > 0) {
+      // Always rewrite links when fixing an existing set, even if makeSet checkbox off.
+      createdSet =
+        (await ensureSet(
+          title.trim() || "Practice set",
+          module === 2 ? 2 : 1,
+          savedItems.map((x) => x.id),
+          existingTestId,
+        )) ?? undefined;
+    }
+
+    setImporting(false);
+    setResult({
+      inserted: updated,
+      failed,
+      errors,
+      setTitle: createdSet,
+      kind: "update",
+    });
+    if (failed === 0 && errors.length === 0) {
+      setKeyText("");
+      clearExtracted();
+      setStep("setup");
+      setMode("upload");
+      setSkipDuplicates(true);
+    }
+  }
+
   async function runImport() {
+    if (mode === "fixExisting") {
+      await runSaveExisting();
+      return;
+    }
     const tagged = previewRows
       .filter((p) => p.row.question && (!skipDuplicates || !p.row.duplicate))
       .map((p) => ({
@@ -896,6 +1256,10 @@ function AdminImport() {
   const sourceLabel = formatSourceDate(month, year);
 
   function chooseSource(next: Mode) {
+    if (next === "fixExisting") {
+      void beginFixExisting();
+      return;
+    }
     if (next === mode) return;
     if (hasRows || vision) {
       const ok = window.confirm(
@@ -904,6 +1268,7 @@ function AdminImport() {
       if (!ok) return;
     }
     setMode(next);
+    setSkipDuplicates(true);
     clearExtracted();
     setText("");
     setStep("extract");
@@ -1064,7 +1429,7 @@ function AdminImport() {
               Pick how questions enter the pipeline. You can change this later (it clears extract
               results).
             </p>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <SourceCard
                 active={mode === "upload"}
                 icon={<FileText className="h-5 w-5" />}
@@ -1086,6 +1451,13 @@ function AdminImport() {
                 body="Paste an array of question objects from an external model."
                 onClick={() => chooseSource("json")}
               />
+              <SourceCard
+                active={mode === "fixExisting"}
+                icon={<Wrench className="h-5 w-5" />}
+                title="Fix existing test"
+                body="Load a bank set or orphan math questions, recheck with AI, save for Practice."
+                onClick={() => void beginFixExisting()}
+              />
             </div>
             <div className="mt-5 flex flex-wrap justify-between gap-2">
               <button
@@ -1097,10 +1469,14 @@ function AdminImport() {
               </button>
               <button
                 type="button"
-                onClick={() => setStep("extract")}
+                onClick={() => {
+                  if (mode === "fixExisting") void beginFixExisting();
+                  else setStep("extract");
+                }}
                 className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
               >
-                Continue to extract <ArrowRight className="h-4 w-4" />
+                Continue to {mode === "fixExisting" ? "picker" : "extract"}{" "}
+                <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -1110,14 +1486,143 @@ function AdminImport() {
       {step === "extract" && (
         <div className="rise-in space-y-4">
           <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
-            <h2 className="text-sm font-bold text-white">3 · Extract</h2>
+            <h2 className="text-sm font-bold text-white">
+              3 · {mode === "fixExisting" ? "Pick a set" : "Extract"}
+            </h2>
             <p className="mt-1 text-xs text-brand-100">
-              {mode === "upload"
-                ? "Upload the paper. Text PDFs parse locally; scans open the Gemini reader."
-                : mode === "sheet"
-                  ? "Paste the sheet, then Check to validate rows."
-                  : "Paste JSON, then Check to validate rows."}
+              {mode === "fixExisting"
+                ? "Choose a saved test or orphan math questions. They open in the Editor for Fix with AI, then Save updates the bank and Practice links."
+                : mode === "upload"
+                  ? "Upload the paper. Text PDFs parse locally; scans open the Gemini reader."
+                  : mode === "sheet"
+                    ? "Paste the sheet, then Check to validate rows."
+                    : "Paste JSON, then Check to validate rows."}
             </p>
+
+            {mode === "fixExisting" && (
+              <div className="mt-4 space-y-4">
+                {mathDiag && (
+                  <div className="rounded-xl border border-brand-400/40 bg-brand-800 px-3 py-2 text-xs text-brand-100">
+                    Math bank:{" "}
+                    <strong className="text-white">{mathDiag.mathQuestionCount}</strong> questions ·{" "}
+                    <strong className="text-white">{mathDiag.mathSetsWithQuestions}</strong>/
+                    {mathDiag.mathSetsTotal} sets with links ·{" "}
+                    <strong className="text-white">{mathDiag.orphanCount}</strong> orphans
+                    {mathDiag.mathQuestionCount > 0 && mathDiag.mathSetsWithQuestions === 0 ? (
+                      <span className="mt-1 block text-brand-200">
+                        Practice → Math is empty because no math set has questions linked. Use
+                        orphan groups below (Create set from orphans).
+                      </span>
+                    ) : null}
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="inline-flex items-center gap-2 text-xs font-semibold text-brand-100">
+                    <input
+                      type="checkbox"
+                      checked={listAllSections}
+                      onChange={(e) => {
+                        const v = e.target.checked;
+                        setListAllSections(v);
+                        void refreshExistingPicker(v);
+                      }}
+                      className="h-3.5 w-3.5 accent-brand-200 [color-scheme:dark]"
+                    />
+                    Include Reading & Writing sets
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void refreshExistingPicker()}
+                    disabled={existingPickerLoading}
+                    className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                  >
+                    {existingPickerLoading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : null}
+                    Refresh
+                  </button>
+                </div>
+                {readError && (
+                  <div className="flex items-start gap-2 rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
+                    {readError}
+                  </div>
+                )}
+                {existingPickerLoading && existingTests.length === 0 && orphanGroups.length === 0 ? (
+                  <div className="flex items-center gap-2 text-sm text-brand-100">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading bank…
+                  </div>
+                ) : (
+                  <>
+                    {orphanGroups.length > 0 && (
+                      <div>
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-brand-200">
+                          Orphan math questions
+                        </h3>
+                        <p className="mt-1 text-[11px] text-brand-100">
+                          In the bank but not linked to any test — default path when Practice Math
+                          is empty.
+                        </p>
+                        <ul className="mt-2 space-y-2">
+                          {orphanGroups.map((g) => (
+                            <li key={g.key}>
+                              <button
+                                type="button"
+                                disabled={existingPickerLoading}
+                                onClick={() => void loadPickedOrphans(g)}
+                                className="tap flex w-full items-center justify-between gap-3 rounded-xl border border-brand-300/50 bg-brand-800 px-3 py-2.5 text-left text-sm text-white hover:border-brand-200 disabled:opacity-40"
+                              >
+                                <span>
+                                  <span className="font-semibold">{g.label}</span>
+                                  <span className="mt-0.5 block text-[11px] text-brand-100">
+                                    {g.questionIds.length} question
+                                    {g.questionIds.length === 1 ? "" : "s"} · create Practice set
+                                  </span>
+                                </span>
+                                <ArrowRight className="h-4 w-4 shrink-0 text-brand-200" />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wide text-brand-200">
+                        Existing tests
+                      </h3>
+                      {existingTests.length === 0 ? (
+                        <p className="mt-2 text-xs text-brand-100">
+                          No tests found{listAllSections ? "" : " in Math"}.
+                        </p>
+                      ) : (
+                        <ul className="mt-2 max-h-80 space-y-2 overflow-y-auto pr-1">
+                          {existingTests.map((t) => (
+                            <li key={t.id}>
+                              <button
+                                type="button"
+                                disabled={existingPickerLoading}
+                                onClick={() => void loadPickedTest(t.id)}
+                                className="tap flex w-full items-center justify-between gap-3 rounded-xl border border-brand-400/40 bg-brand-800 px-3 py-2.5 text-left text-sm text-white hover:border-brand-200 disabled:opacity-40"
+                              >
+                                <span>
+                                  <span className="font-semibold">{t.title}</span>
+                                  <span className="mt-0.5 block text-[11px] text-brand-100">
+                                    {t.section === "math" ? "Math" : "R&W"} · Module {t.module} ·{" "}
+                                    {t.questionCount} linked
+                                    {t.questionCount === 0 ? " (empty)" : ""}
+                                  </span>
+                                </span>
+                                <ArrowRight className="h-4 w-4 shrink-0 text-brand-200" />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {mode === "upload" && (
               <div className="mt-4 space-y-3">
@@ -1203,7 +1708,7 @@ function AdminImport() {
               </div>
             )}
 
-            {mode !== "upload" && (
+            {(mode === "sheet" || mode === "json") && (
               <div className="mt-4 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-brand-100">
@@ -1353,10 +1858,13 @@ function AdminImport() {
             <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
               <h2 className="text-sm font-bold text-white">4 · Editor</h2>
               <p className="mt-1 text-xs text-brand-100">
-                Paste an answer key if you have one
-                {module === "both" ? " as Module 1 / Module 2" : ""}, then check each question
-                against the page.
+                {mode === "fixExisting"
+                  ? "Run Fix with AI (Flash + Ultra recheck), then Save to update questions and refresh Practice set links."
+                  : `Paste an answer key if you have one${
+                      module === "both" ? " as Module 1 / Module 2" : ""
+                    }, then check each question against the page.`}
               </p>
+              {mode !== "fixExisting" && (
               <div className="mt-4">
                 <AnswerKeyBox
                   value={keyText}
@@ -1366,6 +1874,8 @@ function AdminImport() {
                   bothModules={module === "both"}
                 />
               </div>
+              )}
+              {mode === "fixExisting" && <div className="mt-2" />}
               {(readError || parsed?.fatal) && (
                 <div className="mt-3 flex items-start gap-2 rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
@@ -1395,6 +1905,13 @@ function AdminImport() {
               importing={importing}
               progress={progress}
               onImport={() => void runImport()}
+              primaryActionLabel={
+                mode === "fixExisting"
+                  ? `Save ${stats.importable} question${stats.importable === 1 ? "" : "s"}`
+                  : undefined
+              }
+              hideSkipDuplicates={mode === "fixExisting"}
+              fixableCount={mode === "fixExisting" ? fixableCount : undefined}
               onAnswerChange={drafts ? setDraftAnswer : undefined}
               onChangeDraft={drafts ? updateDraft : undefined}
               onSetReviewed={drafts ? setDraftReviewed : undefined}
@@ -1497,8 +2014,18 @@ function AdminImport() {
                 )}
                 <div>
                   <div className="text-sm font-bold text-white">
-                    {result.inserted} question{result.inserted === 1 ? "" : "s"} imported
-                    {result.setTitle ? ` · set “${result.setTitle}”` : ""}
+                    {result.kind === "update"
+                      ? `Updated ${result.inserted} question${result.inserted === 1 ? "" : "s"}${
+                          result.setTitle ? " · Practice set ready" : ""
+                        }`
+                      : `${result.inserted} question${result.inserted === 1 ? "" : "s"} imported${
+                          result.setTitle ? ` · set “${result.setTitle}”` : ""
+                        }`}
+                    {result.kind === "update" && result.setTitle ? (
+                      <span className="mt-0.5 block text-xs font-normal text-brand-100">
+                        “{result.setTitle}”
+                      </span>
+                    ) : null}
                   </div>
                   {result.failed > 0 && (
                     <div className="text-xs text-brand-100">{result.failed} failed</div>
@@ -1513,12 +2040,23 @@ function AdminImport() {
                 </ul>
               )}
               {result.setTitle && (
-                <Link
-                  to="/admin/tests"
-                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-brand-200 hover:text-white"
-                >
-                  Manage the set in Tests <ArrowRight className="h-4 w-4" />
-                </Link>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Link
+                    to="/admin/tests"
+                    className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-200 hover:text-white"
+                  >
+                    Manage the set in Tests <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  {result.kind === "update" && (
+                    <Link
+                      to="/practice/$section"
+                      params={{ section: "math" }}
+                      className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-200 hover:text-white"
+                    >
+                      Open Practice · Math <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  )}
+                </div>
               )}
               <button
                 type="button"

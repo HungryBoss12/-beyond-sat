@@ -1,23 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  SECTION_LABEL,
-  formatSourceDate,
-  difficultyColor,
-  type Section,
-} from "@/lib/sat";
+import { SECTION_LABEL, formatSourceDate, difficultyColor, type Section } from "@/lib/sat";
 import { Plus, Trash2, Edit3, ImageIcon, Upload, Copy } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
-import {
-  QuestionEditModal,
-  loadQuestionWithAnswers,
-} from "@/components/admin/question-edit-modal";
-import {
-  emptyAdminQuestion,
-  type AdminChoice,
-  type AdminQuestion,
-} from "@/lib/admin/question";
+import { QuestionEditModal, loadQuestionWithAnswers } from "@/components/admin/question-edit-modal";
+import { emptyAdminQuestion, type AdminChoice, type AdminQuestion } from "@/lib/admin/question";
 
 export const Route = createFileRoute("/_authenticated/admin/questions")({
   component: AdminQuestions,

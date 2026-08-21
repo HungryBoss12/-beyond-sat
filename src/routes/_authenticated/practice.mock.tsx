@@ -98,9 +98,7 @@ function MockList() {
           <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
             Mock Exams
           </h1>
-          <p className="text-sm text-slate-500">
-            Full-length practice tests. Timed and scored.
-          </p>
+          <p className="text-sm text-slate-500">Full-length practice tests. Timed and scored.</p>
         </div>
       </div>
 

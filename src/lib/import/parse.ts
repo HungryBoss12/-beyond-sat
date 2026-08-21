@@ -355,7 +355,13 @@ export function blocksToDrafts(
     };
     for (const c of choices) rec[`choice_${c.id}`] = c.text;
 
-    return { number, rec, warnings, sourcePage: page, sourceImages: images.length ? images : undefined };
+    return {
+      number,
+      rec,
+      warnings,
+      sourcePage: page,
+      sourceImages: images.length ? images : undefined,
+    };
   });
 
   const withChoices = drafts.filter((d) => d.rec.kind === "multiple_choice").length;

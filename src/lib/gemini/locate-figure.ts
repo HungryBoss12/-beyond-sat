@@ -38,9 +38,7 @@ export async function locateFiguresOnPage(
   imageDataUrl: string,
   options: LocateFigureOptions,
 ): Promise<string> {
-  const hint = options.hint?.trim()
-    ? `\n\nExtra figure note: ${options.hint.trim()}`
-    : "";
+  const hint = options.hint?.trim() ? `\n\nExtra figure note: ${options.hint.trim()}` : "";
   const questionsBlock = formatQuestionsList(options.questions);
   const markdownNote = options.tableMarkdown ? TABLE_MARKDOWN_NOTE : "";
 

@@ -99,9 +99,33 @@ function NavGlyph({
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <rect className="nav-bar" x="7" y="13" width="2.4" height="6" rx="0.5" fill="currentColor" />
-        <rect className="nav-bar" x="11.3" y="9" width="2.4" height="10" rx="0.5" fill="currentColor" />
-        <rect className="nav-bar" x="15.6" y="6.5" width="2.4" height="12.5" rx="0.5" fill="currentColor" />
+        <rect
+          className="nav-bar"
+          x="7"
+          y="13"
+          width="2.4"
+          height="6"
+          rx="0.5"
+          fill="currentColor"
+        />
+        <rect
+          className="nav-bar"
+          x="11.3"
+          y="9"
+          width="2.4"
+          height="10"
+          rx="0.5"
+          fill="currentColor"
+        />
+        <rect
+          className="nav-bar"
+          x="15.6"
+          y="6.5"
+          width="2.4"
+          height="12.5"
+          rx="0.5"
+          fill="currentColor"
+        />
       </svg>
     );
   }
@@ -253,7 +277,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
     closeDrawer();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   useEffect(() => {
@@ -299,7 +322,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {active && (
               <span className="absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand-200" />
             )}
-            <NavGlyph icon={"icon" in n ? n.icon : undefined} kind={n.kind} className={opts.iconSize} />
+            <NavGlyph
+              icon={"icon" in n ? n.icon : undefined}
+              kind={n.kind}
+              className={opts.iconSize}
+            />
             {n.label}
           </RevealLink>
         );
@@ -347,7 +374,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2.5 rounded-xl bg-brand-800 px-3 py-2.5 ring-1 ring-brand-400/40">
             <Flame className="h-5 w-5 fill-brand-200 text-brand-200" />
             <div>
-              <div className="text-lg font-black leading-none text-white tabular-nums">{streak}</div>
+              <div className="text-lg font-black leading-none text-white tabular-nums">
+                {streak}
+              </div>
               <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-100">
                 day streak
               </div>
@@ -358,7 +387,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <header
         className={
-          "sticky top-0 z-20 border-b border-brand-400/30 bg-brand-600/95 backdrop-blur-md " + shellShift
+          "sticky top-0 z-20 border-b border-brand-400/30 bg-brand-600/95 backdrop-blur-md " +
+          shellShift
         }
       >
         <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
@@ -378,7 +408,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-label={navOpen ? "Close menu" : "Open menu"}
               aria-expanded={navOpen}
             >
-              {navOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
+              {navOpen ? (
+                <PanelLeftClose className="h-5 w-5" />
+              ) : (
+                <PanelLeftOpen className="h-5 w-5" />
+              )}
             </button>
             <span className="text-lg font-black tracking-tight text-white lg:hidden">
               Beyond<span className="text-brand-200">SAT</span>

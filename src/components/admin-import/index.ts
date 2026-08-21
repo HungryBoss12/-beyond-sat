@@ -15,7 +15,7 @@ export { FigureCropDialog } from "./figure-crop-dialog";
 export { ActivityLogPanel } from "./activity-log";
 export { PreviewPanel, RowPreview, Stat } from "./preview-panel";
 export { PagePreview } from "./page-preview";
-export { DraftEditor } from "./draft-editor";
+export { DraftEditor, type DraftEditorPatch } from "./draft-editor";
 export { DraftReviewer } from "./draft-reviewer";
 export { mergeDrafts } from "./merge-drafts";
 export { WizardSteps, type ImportWizardStep } from "./wizard-steps";

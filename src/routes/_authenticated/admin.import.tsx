@@ -499,10 +499,39 @@ function AdminImport() {
     );
   }
 
-  function updateDraftRec(index: number, rec: Record<string, string>) {
-    setDrafts((current) =>
-      current ? current.map((d, i) => (i === index ? { ...d, rec, reviewed: false } : d)) : current,
-    );
+  function updateDraft(
+    index: number,
+    patch: { number?: number; rec?: Record<string, string> },
+  ) {
+    setDrafts((current) => {
+      if (!current) return current;
+      const prev = current[index];
+      if (!prev) return current;
+      const updated = {
+        ...prev,
+        number: patch.number != null && patch.number >= 1 ? patch.number : prev.number,
+        rec: patch.rec ? patch.rec : prev.rec,
+        reviewed: false,
+      };
+      const next = current.map((d, i) => (i === index ? updated : d));
+      const moduleChanged =
+        (prev.rec.module === "2" ? 2 : 1) !== (updated.rec.module === "2" ? 2 : 1);
+      const numberChanged = updated.number !== prev.number;
+      if (!moduleChanged && !numberChanged) return next;
+
+      // Keep chips and import order aligned with printed numbers within each module.
+      const sorted = [...next].sort((a, b) => {
+        const ma = a.rec.module === "2" ? 2 : 1;
+        const mb = b.rec.module === "2" ? 2 : 1;
+        if (ma !== mb) return ma - mb;
+        return a.number - b.number;
+      });
+      const newIndex = sorted.indexOf(updated);
+      if (newIndex >= 0 && newIndex !== index) {
+        queueMicrotask(() => setFocusDraftIndex(newIndex));
+      }
+      return sorted;
+    });
   }
 
   function setDraftReviewed(index: number, reviewed: boolean) {
@@ -1367,7 +1396,7 @@ function AdminImport() {
               progress={progress}
               onImport={() => void runImport()}
               onAnswerChange={drafts ? setDraftAnswer : undefined}
-              onChangeDraft={drafts ? updateDraftRec : undefined}
+              onChangeDraft={drafts ? updateDraft : undefined}
               onSetReviewed={drafts ? setDraftReviewed : undefined}
               drafts={drafts}
               sourcePdf={sourcePdf ?? vision?.file ?? null}

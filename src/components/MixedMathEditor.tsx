@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import "mathlive";
 import "mathlive/static.css";
-import { Sigma, X, Check } from "lucide-react";
+import { Sigma, Underline, X, Check } from "lucide-react";
 import { MathPreview } from "./MathText";
 
 /**
@@ -12,6 +12,8 @@ import { MathPreview } from "./MathText";
  * - Clicking "Insert math" opens a small MathLive popup where the admin types
  *   naturally (x^2 renders as x² live). "Insert" writes the LaTeX at the
  *   cursor position wrapped in $...$.
+ * - "Underline" wraps the current selection in <u>…</u> for source underlines
+ *   (College Board vocab-in-context). MathText allowlists those tags.
  * - A live rendered preview (KaTeX) sits under the field so what the admin
  *   sees matches what the student will see.
  */
@@ -85,6 +87,38 @@ export function MixedMathEditor({
     });
   }
 
+  function wrapSelectionInUnderline() {
+    const ta = taRef.current;
+    const current = value ?? "";
+    if (!ta) {
+      onChange(`<u>${current}</u>`);
+      return;
+    }
+    const start = ta.selectionStart ?? 0;
+    const end = ta.selectionEnd ?? 0;
+    if (start === end) {
+      // No selection — insert empty tags and put the caret between them.
+      const next = current.slice(0, start) + "<u></u>" + current.slice(end);
+      onChange(next);
+      requestAnimationFrame(() => {
+        ta.focus();
+        const pos = start + 3;
+        ta.setSelectionRange(pos, pos);
+      });
+      return;
+    }
+    const selected = current.slice(start, end);
+    // Already wrapped — unwrap instead of nesting.
+    const wrapped = /^<u>([\s\S]*)<\/u>$/i.exec(selected);
+    const replacement = wrapped ? wrapped[1] : `<u>${selected}</u>`;
+    const next = current.slice(0, start) + replacement + current.slice(end);
+    onChange(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(start, start + replacement.length);
+    });
+  }
+
   function confirmMath() {
     const tex = (draft ?? "").trim();
     if (tex) {
@@ -141,9 +175,17 @@ export function MixedMathEditor({
           >
             <Sigma className="h-3.5 w-3.5 text-brand-100" /> Block math
           </button>
+          <button
+            type="button"
+            onClick={wrapSelectionInUnderline}
+            className="tap inline-flex items-center gap-1.5 rounded-md border border-brand-400/50 bg-brand-700 px-2 py-1 text-[11px] font-bold text-white hover:bg-brand-400"
+            title="Underline selection (source emphasis)"
+          >
+            <Underline className="h-3.5 w-3.5 text-brand-100" /> Underline
+          </button>
         </div>
         <span className="text-[10px] text-brand-100">
-          Type text normally. Use Insert math for equations (x^2 → x²).
+          Type text normally. Use Insert math for equations; Underline for source emphasis.
         </span>
       </div>
 

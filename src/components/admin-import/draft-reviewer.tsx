@@ -37,7 +37,10 @@ export function DraftReviewer({
   attachingFigure?: boolean;
   showModule?: boolean;
   focusDraftIndex?: number | null;
-  onChangeDraft: (index: number, rec: Record<string, string>) => void;
+  onChangeDraft: (
+    index: number,
+    patch: import("./draft-editor").DraftEditorPatch,
+  ) => void;
   onSetReviewed: (index: number, reviewed: boolean) => void;
   onAddAfter?: (index: number) => void;
   onDelete?: (index: number) => void;
@@ -267,7 +270,16 @@ export function DraftReviewer({
             draft={draft}
             disabled={busy}
             showModule={showModule}
-            onChange={(rec) => onChangeDraft(draftIndex, rec)}
+            numberCollision={
+              !!drafts &&
+              drafts.some(
+                (d, i) =>
+                  i !== draftIndex &&
+                  d.number === draft.number &&
+                  (d.rec.module === "2" ? 2 : 1) === (draft.rec.module === "2" ? 2 : 1),
+              )
+            }
+            onChange={(patch) => onChangeDraft(draftIndex, patch)}
           />
         </div>
       </div>

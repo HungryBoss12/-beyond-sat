@@ -15,6 +15,11 @@ import { Field } from "./field";
 
 const CHOICE_IDS = ["A", "B", "C", "D"] as const;
 
+export type DraftEditorPatch = {
+  number?: number;
+  rec?: Record<string, string>;
+};
+
 function patchRec(
   rec: Record<string, string>,
   patch: Record<string, string>,
@@ -22,16 +27,23 @@ function patchRec(
   return { ...rec, ...patch };
 }
 
+function draftModuleOf(rec: Record<string, string>): 1 | 2 {
+  return rec.module === "2" ? 2 : 1;
+}
+
 export function DraftEditor({
   draft,
   disabled,
   showModule,
+  numberCollision,
   onChange,
 }: {
   draft: Draft;
   disabled?: boolean;
   showModule?: boolean;
-  onChange: (rec: Record<string, string>) => void;
+  /** Another draft already uses this module + number. */
+  numberCollision?: boolean;
+  onChange: (patch: DraftEditorPatch) => void;
 }) {
   const rec = draft.rec;
   const section: Section = rec.section === "math" ? "math" : "reading_writing";
@@ -44,22 +56,44 @@ export function DraftEditor({
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   function setField(key: string, value: string) {
-    onChange(patchRec(rec, { [key]: value }));
+    onChange({ rec: patchRec(rec, { [key]: value }) });
   }
 
   function setSection(next: Section) {
     const nextSkills = skillsFor(next);
     const skill = nextSkills.includes(rec.skill) ? rec.skill : nextSkills[0];
-    onChange(patchRec(rec, { section: next, skill }));
+    onChange({ rec: patchRec(rec, { section: next, skill }) });
   }
 
   function setKind(next: "multiple_choice" | "grid_in") {
-    onChange(patchRec(rec, { kind: next }));
+    onChange({ rec: patchRec(rec, { kind: next }) });
+  }
+
+  function setNumber(raw: string) {
+    const n = Number.parseInt(raw, 10);
+    if (!Number.isFinite(n) || n < 1) return;
+    onChange({ number: n });
   }
 
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Question number">
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={draft.number > 0 ? draft.number : ""}
+            disabled={disabled}
+            onChange={(e) => setNumber(e.target.value)}
+            className={CONTROL_CLASS + " disabled:opacity-40"}
+          />
+          {numberCollision && (
+            <p className="mt-1 text-xs font-semibold text-brand-200">
+              Another question already uses Module {draftModuleOf(rec)} · {draft.number}.
+            </p>
+          )}
+        </Field>
         {showModule && (
           <Field label="Module">
             <select
@@ -195,8 +229,17 @@ export function DraftEditor({
           onChange={(e) => setField("prompt", e.target.value)}
           rows={3}
           className={CONTROL_CLASS + " min-h-[4.5rem] resize-y disabled:opacity-40"}
+          placeholder="Wrap underlined words as <u>surveyed</u>"
         />
       </Field>
+      {(rec.prompt ?? "").trim() && (
+        <div className="rounded-lg bg-brand-900/50 px-3 py-2 text-sm text-white">
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-brand-200">
+            Passage preview
+          </p>
+          <MathText>{rec.prompt}</MathText>
+        </div>
+      )}
 
       <Field label="Question">
         <textarea

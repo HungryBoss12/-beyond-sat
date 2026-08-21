@@ -105,6 +105,11 @@ Each object may include:
 
 Mathematics: LaTeX inside $…$. In JSON, double backslashes: "$\\\\frac{1}{2}$". No Unicode superscripts.
 
+Underlines — CRITICAL for Reading & Writing vocab-in-context items:
+- When a word or short phrase is underlined on the page (e.g. the tested word in "as used in the text"), wrap it in HTML underline tags inside \`prompt\` and/or \`question_text\`: <u>surveyed</u>
+- Preserve every printed underline this way. Do not drop underlines or replace them with ALL CAPS, *asterisks*, or _underscores_.
+- Only wrap the underlined span itself — leave surrounding prose as plain text.
+
 Figures — CRITICAL:
 - NEVER recreate graphs, tables, geometry, number lines, or diagrams as prose, ASCII art, Unicode art, or LaTeX/tikz in \`prompt\` or \`question_text\`.
 - Put only genuinely printed text that sits OUTSIDE the figure into \`prompt\` / \`question_text\` (passage prose, notes, labels that are plain text on the page).
@@ -127,6 +132,7 @@ number (optional), section (optional), skill (optional), kind (optional), questi
 Rules:
 - Fix broken JSON, duplicated questions, empty stems, and choice lists that are not A–D in order.
 - Repair garbled LaTeX (use $…$ with doubled backslashes in JSON).
+- Preserve any <u>…</u> underline wrappers from the first pass; do not strip them.
 - Do not invent questions, answers, or explanations that are not already in the first pass.
 - Do not drop a question that already has a readable stem.
 - If the first pass is already coherent, return it unchanged (still as a JSON array).`;

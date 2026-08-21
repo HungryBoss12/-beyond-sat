@@ -60,7 +60,10 @@ export function PreviewPanel({
   progress: { done: number; total: number };
   onImport: () => void;
   onAnswerChange?: (index: number, value: string) => void;
-  onChangeDraft?: (index: number, rec: Record<string, string>) => void;
+  onChangeDraft?: (
+    index: number,
+    patch: import("./draft-editor").DraftEditorPatch,
+  ) => void;
   onSetReviewed?: (index: number, reviewed: boolean) => void;
   drafts: Draft[] | null;
   sourcePdf?: File | null;

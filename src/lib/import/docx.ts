@@ -146,30 +146,43 @@ function findClose(xml: string, open: number, tag: string): number {
  * namespace, and dropping them turns "solve x² + 3x" into "solve  + 3x" with no
  * sign that anything went missing. The symbols come through even though the
  * layout doesn't — a reviewer can see there's an equation to fix.
+ *
+ * Underlined Word runs (`<w:u>` with a non-`none` val) are wrapped in `<u>…</u>`
+ * so College Board–style vocab emphasis survives into the player via MathText.
  */
 function paragraphContent(
   xml: string,
   ctx: DocxContext,
 ): { text: string; images: Blob[] } {
-  const token =
-    /<w:tab\s*\/>|<w:br\s*\/>|<w:noBreakHyphen\s*\/>|<(?:w|m):t(?:\s[^>]*)?>([\s\S]*?)<\/(?:w|m):t>|<w:drawing[\s>]|<w:pict[\s>]|<v:imagedata[\s>]|r:embed="([^"]+)"/g;
   let out = "";
   let figure = false;
   const embedIds: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = token.exec(xml))) {
-    const head = m[0];
-    if (head.startsWith("<w:tab")) out += "\t";
-    else if (head.startsWith("<w:br")) out += "\n";
-    else if (head.startsWith("<w:noBreakHyphen")) out += "-";
-    else if (head.startsWith('r:embed="')) embedIds.push(m[1]);
-    else if (
-      head.startsWith("<w:drawing") ||
-      head.startsWith("<w:pict") ||
-      head.startsWith("<v:imagedata")
-    ) {
+
+  // Prefer run-level walks so underline on w:rPr can wrap the run's text.
+  const runRe = /<w:r\b[^>]*>([\s\S]*?)<\/w:r>/g;
+  let runMatch: RegExpExecArray | null;
+  let cursor = 0;
+  let sawRun = false;
+  while ((runMatch = runRe.exec(xml))) {
+    sawRun = true;
+    const between = xml.slice(cursor, runMatch.index);
+    collectEmbedsAndFigures(between, embedIds, () => {
       figure = true;
-    } else out += decodeEntities(m[1] ?? "");
+    });
+    out += flattenRun(runMatch[1] ?? "");
+    collectEmbedsAndFigures(runMatch[1] ?? "", embedIds, () => {
+      figure = true;
+    });
+    cursor = runMatch.index + runMatch[0].length;
+  }
+  const tail = xml.slice(cursor);
+  collectEmbedsAndFigures(tail, embedIds, () => {
+    figure = true;
+  });
+
+  // Tables / odd shapes without w:r — fall back to flat text extraction.
+  if (!sawRun) {
+    out += flattenLooseText(xml);
   }
 
   const images = resolveEmbeds(embedIds, ctx);
@@ -177,6 +190,63 @@ function paragraphContent(
     out += (out.trim() ? " " : "") + FIGURE_MARKER;
   }
   return { text: out, images };
+}
+
+function collectEmbedsAndFigures(
+  xml: string,
+  embedIds: string[],
+  markFigure: () => void,
+) {
+  const token =
+    /<w:drawing[\s>]|<w:pict[\s>]|<v:imagedata[\s>]|r:embed="([^"]+)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = token.exec(xml))) {
+    const head = m[0];
+    if (head.startsWith('r:embed="')) embedIds.push(m[1]);
+    else markFigure();
+  }
+}
+
+/** True when the run properties ask for a visible underline (not w:val="none"). */
+function runIsUnderlined(runInner: string): boolean {
+  const u = /<w:u\b([^>/]*)\/?>/i.exec(runInner);
+  if (!u) return false;
+  const attrs = u[1] ?? "";
+  const val = /\bw:val="([^"]*)"/i.exec(attrs)?.[1]?.toLowerCase();
+  return val !== "none";
+}
+
+function flattenRun(runInner: string): string {
+  const underlined = runIsUnderlined(runInner);
+  let text = "";
+  const token =
+    /<w:tab\s*\/>|<w:br\s*\/>|<w:noBreakHyphen\s*\/>|<(?:w|m):t(?:\s[^>]*)?>([\s\S]*?)<\/(?:w|m):t>/g;
+  let m: RegExpExecArray | null;
+  while ((m = token.exec(runInner))) {
+    const head = m[0];
+    if (head.startsWith("<w:tab")) text += "\t";
+    else if (head.startsWith("<w:br")) text += "\n";
+    else if (head.startsWith("<w:noBreakHyphen")) text += "-";
+    else text += decodeEntities(m[1] ?? "");
+  }
+  if (!text) return "";
+  if (underlined) return `<u>${text}</u>`;
+  return text;
+}
+
+function flattenLooseText(xml: string): string {
+  let out = "";
+  const token =
+    /<w:tab\s*\/>|<w:br\s*\/>|<w:noBreakHyphen\s*\/>|<(?:w|m):t(?:\s[^>]*)?>([\s\S]*?)<\/(?:w|m):t>/g;
+  let m: RegExpExecArray | null;
+  while ((m = token.exec(xml))) {
+    const head = m[0];
+    if (head.startsWith("<w:tab")) out += "\t";
+    else if (head.startsWith("<w:br")) out += "\n";
+    else if (head.startsWith("<w:noBreakHyphen")) out += "-";
+    else out += decodeEntities(m[1] ?? "");
+  }
+  return out;
 }
 
 function paragraphText(xml: string, ctx: DocxContext): string {

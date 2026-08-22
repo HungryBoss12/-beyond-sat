@@ -33,7 +33,6 @@ import { loadAiContext } from "@/lib/ai/context";
 import {
   CHAT_MODEL_CHOICES,
   DEFAULT_CHAT_MODEL,
-  VISION_CHAT_MODEL,
   type ChatModelChoice,
 } from "@/lib/ai/router";
 
@@ -202,10 +201,6 @@ function BeyondAiPage() {
     try {
       const dataUrl = await prepareAttachment(file);
       setAttachment(dataUrl);
-      // A text-only model would guess at a figure rather than read it, and the
-      // student has no way to know that's what happened — so the picker moves,
-      // visibly, instead of failing quietly.
-      if (model !== VISION_CHAT_MODEL) chooseModel(VISION_CHAT_MODEL);
     } catch (err) {
       setAttachError((err as Error)?.message ?? "That image couldn't be attached.");
     } finally {
@@ -561,8 +556,8 @@ function Welcome({
       {showTip && (
         <p className="mx-auto mt-2 max-w-md text-sm text-white/80">
           Ask about a question you missed, a concept that isn't sticking, or what to study next.
-          Attach a photo of a question and it'll read it. Answers come back with full working, and
-          maths is properly typeset.
+          Attach a photo of a question — any model you pick will read it and answer. Answers come back
+          with full working, and maths is properly typeset.
         </p>
       )}
       <div className="mt-6 flex flex-wrap justify-center gap-2">

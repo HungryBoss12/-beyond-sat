@@ -47,7 +47,7 @@ const MODEL_DEFAULTS = {
   openrouter_model_chat: "nvidia/nemotron-3-super-120b-a12b:free",
   openrouter_model_quick: "nvidia/nemotron-3-nano-30b-a3b:free",
   openrouter_model_reasoning: "nvidia/nemotron-3-ultra-550b-a55b:free",
-  openrouter_model_vision: "google/gemini-2.0-flash-exp:free",
+  openrouter_model_vision: "gemini-3-flash-preview",
 } as const;
 
 function AdminSettings() {
@@ -151,8 +151,7 @@ function AdminSettings() {
         title="Beyond AI models"
         description={
           <>
-            Each task routes to its own OpenRouter model. Leave a field empty to use the built-in
-            default. Browse IDs at{" "}
+            Each task routes to its own model. Chat, quick, and reasoning use OpenRouter; vision uses the Gemini API directly. Leave a field empty to use the built-in default. Browse OpenRouter IDs at{" "}
             <a
               href="https://openrouter.ai/models"
               target="_blank"
@@ -212,7 +211,10 @@ function AdminSettings() {
               />
             )}
           </Field>
-          <Field label="Vision & geometry" hint="Diagrams, graphs, and photographed questions.">
+          <Field
+            label="Image recognition (internal)"
+            hint="Gemini model that reads chat attachments before your chosen model answers. Not shown in the student picker."
+          >
             {loading ? (
               <InputSkeleton />
             ) : (
@@ -241,6 +243,9 @@ function AdminSettings() {
                 doesn't exist and fails with "Cannot find module". */}
             <code className="mt-2 block overflow-x-auto rounded-lg bg-brand-900/60 px-3 py-2 font-mono text-[11px] text-white">
               npx wrangler secret put OPENROUTER_API_KEY
+            </code>
+            <code className="mt-2 block overflow-x-auto rounded-lg bg-brand-900/60 px-3 py-2 font-mono text-[11px] text-white">
+              npx wrangler secret put GEMINI_API_KEY
             </code>
           </div>
         </div>

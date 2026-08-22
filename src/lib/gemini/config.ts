@@ -6,6 +6,9 @@ import { ThinkingLevel } from "@google/genai";
  */
 export const GEMINI_IMPORT_EXTRACT_MODEL = "gemini-3-flash-preview";
 
+/** Beyonder Vision chat — same model and key as import extraction. */
+export const GEMINI_CHAT_VISION_MODEL = GEMINI_IMPORT_EXTRACT_MODEL;
+
 /**
  * Stage 2 — Nemotron 3 Ultra on OpenRouter (`:free`). Text-only, so it does
  * not spend Gemini quota. Same ID Beyond AI already uses for reasoning.

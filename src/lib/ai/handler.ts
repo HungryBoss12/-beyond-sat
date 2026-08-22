@@ -1,13 +1,18 @@
 import {
   buildRequestBody,
+  latestUserMessageHasImages,
   normalizeMessages,
+  prepareMessagesForTask,
   resolveChatModelChoice,
+  resolveGeminiVisionModel,
   resolveModel,
   resolveSurface,
   resolveTask,
   CHAT_MODELS,
   type AiChatRequest,
 } from "./router";
+import { geminiVisionChatResponse, replaceImagesWithDescriptions } from "@/lib/gemini/chat-vision";
+import { GeminiError } from "@/lib/gemini/errors";
 import {
   callRpc,
   readBearerToken,
@@ -23,6 +28,10 @@ import {
  * secret store, so the browser never holds it and the request cannot be replayed
  * against OpenRouter directly. Every request is authenticated first — an
  * unauthenticated caller must never cause a billable upstream call.
+ *
+ * Beyonder Vision is internal: Gemini reads attachments, then the student's
+ * chosen model answers via OpenRouter. Explicit `task: "vision"` still routes
+ * entirely through Gemini for programmatic callers.
  */
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -36,6 +45,18 @@ const OPENROUTER_KEY_URL = "https://openrouter.ai/api/v1/auth/key";
  */
 function describeKey(key: string): string {
   return `length ${key.length}, prefix ${JSON.stringify(key.slice(0, 8))}`;
+}
+
+function missingGeminiKeyMessage(): string {
+  return import.meta.env.DEV
+    ? "[ai] GEMINI_API_KEY is not set — add it to .dev.vars or .env.local, then restart the dev server. (`wrangler secret put` only affects the deployed Worker.)"
+    : "[ai] GEMINI_API_KEY is not set — run: npx wrangler secret put GEMINI_API_KEY";
+}
+
+function missingOpenRouterKeyMessage(): string {
+  return import.meta.env.DEV
+    ? "[ai] OPENROUTER_API_KEY is not set — add it to .dev.vars or .env.local, then restart the dev server. (`wrangler secret put` only affects the deployed Worker.)"
+    : "[ai] OPENROUTER_API_KEY is not set — run: npx wrangler secret put OPENROUTER_API_KEY";
 }
 
 /**
@@ -79,6 +100,17 @@ function json(body: unknown, status: number): Response {
     status,
     headers: { "content-type": "application/json; charset=utf-8" },
   });
+}
+
+function geminiClientError(error: GeminiError): Response {
+  console.error(`[ai] gemini vision ${error.code}: ${error.message}`);
+  if (error.status === 429) {
+    return json({ error: "Beyond AI is busy right now. Try again in a moment." }, 429);
+  }
+  if (error.code === "MISSING_API_KEY") {
+    return json({ error: "Beyond AI isn't available right now." }, 503);
+  }
+  return json({ error: "Beyond AI couldn't answer that. Try again." }, error.status);
 }
 
 /**
@@ -128,28 +160,6 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
     return json({ error: "Your session has expired. Sign in again." }, 401);
   }
 
-  const apiKey = readEnv(env, "OPENROUTER_API_KEY");
-  if (!apiKey) {
-    /* Deliberately explicit in the log and vague to the client: an admin needs
-       to know the secret is missing, a student doesn't need the internals.
-
-       The remedy differs by runtime, so the message has to as well. `wrangler
-       secret put` writes to the deployed Worker and is invisible to a local dev
-       server — pointing at it from `vite dev` sends you to verify a secret that
-       is genuinely set and genuinely not the one being read.
-
-       `npx`, not a bare `wrangler`: this project has wrangler as a
-       devDependency, not a global install, so a bare invocation resolves to a
-       global path that was never populated and fails with
-       "Cannot find module ...\\npm\\node_modules\\wrangler\\bin\\wrangler.js". */
-    console.error(
-      import.meta.env.DEV
-        ? "[ai] OPENROUTER_API_KEY is not set — add it to .dev.vars or .env.local, then restart the dev server. (`wrangler secret put` only affects the deployed Worker.)"
-        : "[ai] OPENROUTER_API_KEY is not set — run: npx wrangler secret put OPENROUTER_API_KEY",
-    );
-    return json({ error: "Beyond AI isn't available right now." }, 503);
-  }
-
   let payload: AiChatRequest;
   try {
     payload = (await request.json()) as AiChatRequest;
@@ -162,9 +172,8 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
     return json({ error: normalized.error }, 400);
   }
 
-  // A `model` slug from the picker wins over `task` — the chat page always sends
-  // one, and it must never be accepted verbatim (see CHAT_MODELS). Unknown slugs
-  // fall back to the default rather than erroring.
+  // A `model` slug from the picker wins over `task` when present. Programmatic
+  // callers can pass `task: "vision"` without a slug for full Gemini routing.
   const task =
     payload.model !== undefined
       ? CHAT_MODELS[resolveChatModelChoice(payload.model)].task
@@ -172,8 +181,57 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
   const stream = payload.stream !== false;
   const surface = resolveSurface(payload.surface);
   const overrides = await loadModelOverrides(config, token);
+  const geminiVisionModel = resolveGeminiVisionModel(overrides);
   const model = resolveModel(task, overrides);
-  const body = buildRequestBody(task, normalized.messages, model, stream, surface);
+
+  if (task === "vision") {
+    const geminiKey = readEnv(env, "GEMINI_API_KEY");
+    if (!geminiKey) {
+      console.error(missingGeminiKeyMessage());
+      return json({ error: "Beyond AI isn't available right now." }, 503);
+    }
+
+    const safe = prepareMessagesForTask(normalized.messages, task);
+    try {
+      return await geminiVisionChatResponse({
+        apiKey: geminiKey,
+        model: geminiVisionModel,
+        messages: safe,
+        stream,
+        surface,
+      });
+    } catch (error) {
+      if (error instanceof GeminiError) return geminiClientError(error);
+      console.error("[ai] gemini vision unexpected failure", error);
+      return json({ error: "Beyond AI couldn't answer that. Try again." }, 502);
+    }
+  }
+
+  let messages = normalized.messages;
+  if (latestUserMessageHasImages(messages)) {
+    const geminiKey = readEnv(env, "GEMINI_API_KEY");
+    if (!geminiKey) {
+      console.error(missingGeminiKeyMessage());
+      return json({ error: "Beyond AI isn't available right now." }, 503);
+    }
+    try {
+      messages = await replaceImagesWithDescriptions(messages, geminiKey, geminiVisionModel);
+    } catch (error) {
+      if (error instanceof GeminiError) return geminiClientError(error);
+      console.error("[ai] image recognition unexpected failure", error);
+      return json({ error: "Beyond AI couldn't read that image. Try again." }, 502);
+    }
+  }
+
+  const safe = prepareMessagesForTask(messages, task);
+
+  const apiKey = readEnv(env, "OPENROUTER_API_KEY");
+  if (!apiKey) {
+    console.error(missingOpenRouterKeyMessage());
+    return json({ error: "Beyond AI isn't available right now." }, 503);
+  }
+
+  const body = buildRequestBody(task, safe, model, stream, surface);
 
   let upstream: Response;
   try {

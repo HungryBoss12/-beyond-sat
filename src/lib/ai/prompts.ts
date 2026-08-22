@@ -60,6 +60,9 @@ const TASK_RULES: Record<string, string> = {
   vision: `The student has attached an image of a graph, diagram, or question. Describe what the figure shows before solving, so the student can check you read it correctly.`,
 };
 
+/** Stage-1 prompt: read a chat attachment for the student's chosen model — do not answer. */
+export const IMAGE_RECOGNITION_PROMPT = `You are reading an image for an SAT tutor. Describe everything visible: question text, answer choices, graph axes and curves, diagram labels, tables, and handwritten notes. Be precise with numbers and wording. Do not solve the problem or give advice — only describe what you see so another tutor can help the student.`;
+
 /**
  * Assembles the full system prompt. Universal rules always come first and in a
  * fixed order; the task rule is appended last so it can refine the general

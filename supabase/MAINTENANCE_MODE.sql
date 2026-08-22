@@ -38,7 +38,7 @@ INSERT INTO public.app_settings (key, value) VALUES
   ('openrouter_model_chat',       'meta-llama/llama-3.3-70b-instruct:free'),
   ('openrouter_model_quick',      'meta-llama/llama-3.2-3b-instruct:free'),
   ('openrouter_model_reasoning',  'deepseek/deepseek-chat-v3.1:free'),
-  ('openrouter_model_vision',     'google/gemini-2.0-flash-exp:free')
+  ('openrouter_model_vision',     'gemini-3-flash-preview')
 ON CONFLICT (key) DO NOTHING;
 
 
@@ -57,8 +57,11 @@ WHERE key = 'openrouter_model_chat' AND value = 'nvidia/nemotron-3-super-120b-a1
 UPDATE public.app_settings SET value = 'deepseek/deepseek-chat-v3.1:free'
 WHERE key = 'openrouter_model_reasoning' AND value = 'deepseek/deepseek-r1:free';
 
-UPDATE public.app_settings SET value = 'google/gemini-2.0-flash-exp:free'
-WHERE key = 'openrouter_model_vision' AND value = 'google/gemini-2.0-flash-001';
+UPDATE public.app_settings SET value = 'gemini-3-flash-preview'
+WHERE key = 'openrouter_model_vision' AND value IN (
+  'google/gemini-2.0-flash-001',
+  'google/gemini-2.0-flash-exp:free'
+);
 
 
 -- --------------------------------------------------------------------------

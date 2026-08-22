@@ -72,14 +72,16 @@ check("each task maps to its documented default model", () => {
   assert.equal(router.resolveModel("chat", {}), "nvidia/nemotron-3-super-120b-a12b:free");
   assert.equal(router.resolveModel("quick", {}), "nvidia/nemotron-3-nano-30b-a3b:free");
   assert.equal(router.resolveModel("reasoning", {}), "nvidia/nemotron-3-ultra-550b-a55b:free");
-  assert.equal(router.resolveModel("vision", {}), "google/gemini-2.0-flash-exp:free");
+  assert.equal(router.resolveModel("vision", {}), "gemini-3-flash-preview");
 });
 
-check("every default model is on the free tier", () => {
-  // The platform is free to students, so a paid model ID reaching production is
-  // a billing surprise, not a feature. Overrides can still name paid models.
-  for (const [task, model] of Object.entries(router.DEFAULT_MODELS)) {
-    assert.ok(model.endsWith(":free"), `${task} default "${model}" is not a :free model`);
+check("OpenRouter task defaults are on the free tier", () => {
+  // Vision routes through the Gemini API directly — not an OpenRouter :free slug.
+  for (const task of ["chat", "quick", "reasoning"]) {
+    assert.ok(
+      router.DEFAULT_MODELS[task].endsWith(":free"),
+      `${task} default "${router.DEFAULT_MODELS[task]}" is not a :free model`,
+    );
   }
 });
 
@@ -194,6 +196,43 @@ check("content part types are restricted to text and image_url", () => {
   assert.ok("error" in router.normalizeMessages(bad));
 });
 
+const IMAGE_TURN = [
+  {
+    role: "user",
+    content: [
+      { type: "text", text: "What is this graph?" },
+      { type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } },
+    ],
+  },
+];
+
+check("prepareMessagesForTask strips images for text-only tasks", () => {
+  const stripped = router.prepareMessagesForTask(IMAGE_TURN, "chat");
+  assert.equal(stripped.length, 1);
+  assert.equal(stripped[0].role, "user");
+  assert.equal(stripped[0].content, "What is this graph?");
+});
+
+check("prepareMessagesForTask keeps a placeholder when an image-only turn is stripped", () => {
+  const imageOnly = [{ role: "user", content: [{ type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } }] }];
+  const stripped = router.prepareMessagesForTask(imageOnly, "chat");
+  assert.equal(stripped[0].content, "[Image attached]");
+});
+
+check("prepareMessagesForTask preserves images for the vision task", () => {
+  const kept = router.prepareMessagesForTask(IMAGE_TURN, "vision");
+  assert.deepEqual(kept, IMAGE_TURN);
+});
+
+check("prepareMessagesForTask leaves plain text conversations unchanged", () => {
+  const input = [
+    { role: "user", content: "what is 2+2" },
+    { role: "assistant", content: "$4$" },
+    { role: "user", content: "why" },
+  ];
+  assert.deepEqual(router.prepareMessagesForTask(input, "chat"), input);
+});
+
 /* -------------------------------------------------------------------------
    Request body shape
    ------------------------------------------------------------------------- */
@@ -269,10 +308,9 @@ const NICKNAMES = {
   "beyonder-2-0": ["Beyonder 2.0", "nvidia/nemotron-3-super-120b-a12b:free"],
   "beyonder-2-0-flashy": ["Beyonder 2.0 Flashy", "nvidia/nemotron-3-nano-30b-a3b:free"],
   "beyonder-2-1-think": ["Beyonder 2.1 Think", "nvidia/nemotron-3-ultra-550b-a55b:free"],
-  "beyonder-vision": ["Beyonder Vision", "google/gemini-2.0-flash-exp:free"],
 };
 
-check("the four nicknames are exactly the labels students were promised", () => {
+check("the three nicknames are exactly the labels students were promised", () => {
   assert.deepEqual(Object.keys(router.CHAT_MODELS).sort(), Object.keys(NICKNAMES).sort());
   for (const [slug, [label]] of Object.entries(NICKNAMES)) {
     assert.equal(router.CHAT_MODELS[slug].label, label, `${slug} has the wrong label`);
@@ -285,9 +323,10 @@ check("each nickname resolves to its documented model through the task map", () 
     assert.ok(router.isAiTask(task), `${slug} maps to a task that isn't in the union`);
     assert.equal(router.resolveModel(task, {}), model, `${slug} resolved to the wrong model`);
   }
+  assert.equal(router.resolveModel("vision", {}), "gemini-3-flash-preview");
 });
 
-check("every nickname routes to a :free model and honours admin overrides", () => {
+check("OpenRouter nicknames route to :free models and honour admin overrides", () => {
   for (const slug of Object.keys(router.CHAT_MODELS)) {
     const { task } = router.CHAT_MODELS[slug];
     assert.ok(router.resolveModel(task, {}).endsWith(":free"), `${slug} is not on the free tier`);
@@ -311,13 +350,42 @@ check("an unknown or hostile slug falls back rather than throwing", () => {
   assert.equal(router.resolveChatModelChoice("toString"), router.DEFAULT_CHAT_MODEL);
   assert.equal(router.resolveChatModelChoice("__proto__"), router.DEFAULT_CHAT_MODEL);
   assert.equal(router.resolveChatModelChoice("beyonder-2-1-think"), "beyonder-2-1-think");
+  // Retired picker slug falls back like any unknown value.
+  assert.equal(router.resolveChatModelChoice("beyonder-vision"), router.DEFAULT_CHAT_MODEL);
 });
 
-check("the default and vision slugs are themselves valid choices", () => {
+check("the default slug is a valid picker choice", () => {
   assert.ok(router.isChatModelChoice(router.DEFAULT_CHAT_MODEL));
-  assert.ok(router.isChatModelChoice(router.VISION_CHAT_MODEL));
-  // An attachment must land on the model that can actually read it.
-  assert.equal(router.CHAT_MODELS[router.VISION_CHAT_MODEL].task, "vision");
+  assert.equal(router.isChatModelChoice("beyonder-vision"), false);
+});
+
+check("messagesContainImages detects image_url parts", () => {
+  assert.equal(router.messagesContainImages(IMAGE_TURN), true);
+  assert.equal(router.messagesContainImages([{ role: "user", content: "hi" }]), false);
+});
+
+check("latestUserMessageHasImages is true only on the final user turn", () => {
+  assert.equal(router.latestUserMessageHasImages(IMAGE_TURN), true);
+  assert.equal(
+    router.latestUserMessageHasImages([
+      ...IMAGE_TURN,
+      { role: "assistant", content: "Here is the answer." },
+      { role: "user", content: "follow up" },
+    ]),
+    false,
+  );
+});
+
+check("resolveGeminiVisionModel rejects OpenRouter slugs and keeps Gemini IDs", () => {
+  assert.equal(router.resolveGeminiVisionModel({}), "gemini-3-flash-preview");
+  assert.equal(
+    router.resolveGeminiVisionModel({ openrouter_model_vision: "google/gemini-2.0-flash-exp:free" }),
+    "gemini-3-flash-preview",
+  );
+  assert.equal(
+    router.resolveGeminiVisionModel({ openrouter_model_vision: "gemini-2.5-flash" }),
+    "gemini-2.5-flash",
+  );
 });
 
 check("every choice carries a hint for the picker", () => {
@@ -325,7 +393,7 @@ check("every choice carries a hint for the picker", () => {
     assert.ok(router.isChatModelChoice(choice.slug), `${choice.slug} is not a valid slug`);
     assert.ok(choice.hint && choice.hint.length, `${choice.slug} has no hint`);
   }
-  assert.equal(router.CHAT_MODEL_CHOICES.length, 4);
+  assert.equal(router.CHAT_MODEL_CHOICES.length, 3);
 });
 
 /* -------------------------------------------------------------------------

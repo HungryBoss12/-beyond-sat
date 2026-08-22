@@ -20,12 +20,14 @@ export type AiTask = "chat" | "quick" | "reasoning" | "vision";
  * Fallbacks only. The live values come from `app_settings` so a withdrawn or
  * rate-limited free model is an admin settings change rather than a redeploy —
  * OpenRouter's free tier changes without notice.
+ *
+ * Vision uses the Gemini API directly (`gemini-3-flash-preview`), not OpenRouter.
  */
 export const DEFAULT_MODELS: Record<AiTask, string> = {
   chat: "nvidia/nemotron-3-super-120b-a12b:free",
   quick: "nvidia/nemotron-3-nano-30b-a3b:free",
   reasoning: "nvidia/nemotron-3-ultra-550b-a55b:free",
-  vision: "google/gemini-2.0-flash-exp:free",
+  vision: "gemini-3-flash-preview",
 };
 
 /** The `app_settings` key holding the override for each task. */
@@ -56,15 +58,11 @@ export const CHAT_MODELS = {
     hint: "deepest reasoning",
     task: "reasoning",
   },
-  "beyonder-vision": { label: "Beyonder Vision", hint: "reads images", task: "vision" },
 } as const satisfies Record<string, { label: string; hint: string; task: AiTask }>;
 
 export type ChatModelChoice = keyof typeof CHAT_MODELS;
 
 export const DEFAULT_CHAT_MODEL: ChatModelChoice = "beyonder-2-0";
-
-/** The slug an image attachment forces — a text-only model would guess at a figure. */
-export const VISION_CHAT_MODEL: ChatModelChoice = "beyonder-vision";
 
 export const CHAT_MODEL_CHOICES = Object.entries(CHAT_MODELS).map(([slug, meta]) => ({
   slug: slug as ChatModelChoice,
@@ -157,6 +155,21 @@ export function resolveModel(
 }
 
 /**
+ * Resolves the Gemini model used for image recognition.
+ *
+ * `openrouter_model_vision` predates the Gemini-direct path and may still hold an
+ * OpenRouter slug (`google/gemini-…:free`). Those IDs are invalid on the Gemini
+ * SDK, so anything with a `/` is ignored and the default is used instead.
+ */
+export function resolveGeminiVisionModel(
+  overrides: Record<string, string | null | undefined>,
+): string {
+  const override = overrides[MODEL_SETTING_KEYS.vision]?.trim();
+  if (override && !override.includes("/")) return override;
+  return DEFAULT_MODELS.vision;
+}
+
+/**
  * Validates and normalises the client's message list.
  *
  * Anything the client sends is untrusted, including the roles: a `system` role
@@ -244,6 +257,48 @@ function normalizeParts(content: unknown[]): { parts: AiContentPart[] } | { erro
     return { error: "content part type must be 'text' or 'image_url'" };
   }
   return { parts };
+}
+
+/** True when any turn still carries an `image_url` part (before server-side enrichment). */
+export function messagesContainImages(messages: AiMessage[]): boolean {
+  return messages.some(
+    (message) =>
+      typeof message.content !== "string" &&
+      message.content.some((part) => part.type === "image_url"),
+  );
+}
+
+/** True when the final user turn includes an image — the only turn we re-read with Gemini. */
+export function latestUserMessageHasImages(messages: AiMessage[]): boolean {
+  const last = messages[messages.length - 1];
+  return (
+    last?.role === "user" &&
+    typeof last.content !== "string" &&
+    last.content.some((part) => part.type === "image_url")
+  );
+}
+
+/** Keeps a turn non-empty after image parts are removed for text-only models. */
+export const IMAGE_PLACEHOLDER = "[Image attached]";
+
+/** Historical image turns after recognition — context lives in prior assistant replies. */
+export const EARLIER_IMAGE_PLACEHOLDER = "[Image attached earlier in this chat]";
+
+/**
+ * Text-only OpenRouter models reject `image_url` parts. After image recognition
+ * replaces figures with text, this is a safety net for any leftover attachments.
+ */
+export function prepareMessagesForTask(messages: AiMessage[], task: AiTask): AiMessage[] {
+  if (task === "vision") return messages;
+  return messages.map((message) => {
+    if (typeof message.content === "string") return message;
+    const text = message.content
+      .filter((part): part is { type: "text"; text: string } => part.type === "text")
+      .map((part) => part.text)
+      .join("\n")
+      .trim();
+    return { role: message.role, content: text || IMAGE_PLACEHOLDER };
+  });
 }
 
 export type OpenRouterBody = {

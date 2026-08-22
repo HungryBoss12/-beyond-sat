@@ -48,10 +48,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function callGeminiFlash(
-  apiKey: string,
-  userText: string,
-): Promise<string> {
+async function callGeminiFlash(apiKey: string, userText: string): Promise<string> {
   const ai = new GoogleGenAI({ apiKey });
 
   let text: string | undefined;
@@ -79,10 +76,7 @@ async function callGeminiFlash(
   return text;
 }
 
-async function callOpenRouterFix(opts: {
-  apiKey: string;
-  userText: string;
-}): Promise<string> {
+async function callOpenRouterFix(opts: { apiKey: string; userText: string }): Promise<string> {
   return completeOpenRouterJson({
     apiKey: opts.apiKey,
     system: "Return only a JSON object. No markdown fences.",

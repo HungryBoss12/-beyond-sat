@@ -35,27 +35,35 @@
 INSERT INTO public.app_settings (key, value) VALUES
   ('maintenance_enabled',         'false'),
   ('maintenance_message',         ''),
-  ('openrouter_model_chat',       'meta-llama/llama-3.3-70b-instruct:free'),
-  ('openrouter_model_quick',      'meta-llama/llama-3.2-3b-instruct:free'),
-  ('openrouter_model_reasoning',  'deepseek/deepseek-chat-v3.1:free'),
+  ('openrouter_model_chat',       'nvidia/nemotron-3-super-120b-a12b:free'),
+  ('openrouter_model_quick',      'nvidia/nemotron-3-nano-30b-a3b:free'),
+  ('openrouter_model_reasoning',  'nvidia/nemotron-3-ultra-550b-a55b:free'),
   ('openrouter_model_vision',     'gemini-3-flash-preview')
 ON CONFLICT (key) DO NOTHING;
 
 
 -- --------------------------------------------------------------------------
--- 1b. Retire the first round of model IDs
+-- 1b. Retire withdrawn OpenRouter model IDs
 --
--- An earlier version of this file seeded models that no longer resolve on
--- OpenRouter's free tier. `ON CONFLICT DO NOTHING` above cannot fix an existing
--- row, so this replaces those specific values — and only those. Matching on the
--- old value rather than the key means a model an admin deliberately chose is
--- left alone; re-running this after the first pass is a no-op.
+-- `ON CONFLICT DO NOTHING` above cannot fix an existing row, so this replaces
+-- known-dead values. Matching on the old value leaves a deliberate admin choice
+-- alone; re-running after the first pass is a no-op.
 -- --------------------------------------------------------------------------
-UPDATE public.app_settings SET value = 'meta-llama/llama-3.3-70b-instruct:free'
-WHERE key = 'openrouter_model_chat' AND value = 'nvidia/nemotron-3-super-120b-a12b:free';
+UPDATE public.app_settings SET value = 'nvidia/nemotron-3-super-120b-a12b:free'
+WHERE key = 'openrouter_model_chat' AND value IN (
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'google/gemini-2.0-flash-exp:free',
+  'google/gemini-2.0-flash-001'
+);
 
-UPDATE public.app_settings SET value = 'deepseek/deepseek-chat-v3.1:free'
-WHERE key = 'openrouter_model_reasoning' AND value = 'deepseek/deepseek-r1:free';
+UPDATE public.app_settings SET value = 'nvidia/nemotron-3-nano-30b-a3b:free'
+WHERE key = 'openrouter_model_quick' AND value = 'meta-llama/llama-3.2-3b-instruct:free';
+
+UPDATE public.app_settings SET value = 'nvidia/nemotron-3-ultra-550b-a55b:free'
+WHERE key = 'openrouter_model_reasoning' AND value IN (
+  'deepseek/deepseek-chat-v3.1:free',
+  'deepseek/deepseek-r1:free'
+);
 
 UPDATE public.app_settings SET value = 'gemini-3-flash-preview'
 WHERE key = 'openrouter_model_vision' AND value IN (

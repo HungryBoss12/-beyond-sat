@@ -30,6 +30,20 @@ export const DEFAULT_MODELS: Record<AiTask, string> = {
   vision: "gemini-3-flash-preview",
 };
 
+/**
+ * OpenRouter IDs that no longer resolve — usually from an old MAINTENANCE_MODE.sql
+ * seed. Falling back to DEFAULT_MODELS keeps chat working until an admin updates
+ * /admin/settings or the SQL migration is re-run.
+ */
+const WITHDRAWN_OPENROUTER_MODELS = new Set([
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "meta-llama/llama-3.2-3b-instruct:free",
+  "deepseek/deepseek-chat-v3.1:free",
+  "deepseek/deepseek-r1:free",
+  "google/gemini-2.0-flash-exp:free",
+  "google/gemini-2.0-flash-001",
+]);
+
 /** The `app_settings` key holding the override for each task. */
 export const MODEL_SETTING_KEYS: Record<AiTask, string> = {
   chat: "openrouter_model_chat",
@@ -151,7 +165,11 @@ export function resolveModel(
   const override = overrides[MODEL_SETTING_KEYS[task]];
   // An empty-string setting means "unset" — the admin form saves "" when a field
   // is cleared, and sending that to OpenRouter would be a 400.
-  return override && override.trim() ? override.trim() : DEFAULT_MODELS[task];
+  const value = override && override.trim() ? override.trim() : DEFAULT_MODELS[task];
+  if (task !== "vision" && WITHDRAWN_OPENROUTER_MODELS.has(value)) {
+    return DEFAULT_MODELS[task];
+  }
+  return value;
 }
 
 /**

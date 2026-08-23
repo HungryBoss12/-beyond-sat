@@ -102,6 +102,23 @@ check("a blank or whitespace override falls back to the default", () => {
   );
 });
 
+check("withdrawn OpenRouter overrides fall back to the current default", () => {
+  assert.equal(
+    router.resolveModel("chat", { openrouter_model_chat: "meta-llama/llama-3.3-70b-instruct:free" }),
+    router.DEFAULT_MODELS.chat,
+  );
+  assert.equal(
+    router.resolveModel("quick", { openrouter_model_quick: "meta-llama/llama-3.2-3b-instruct:free" }),
+    router.DEFAULT_MODELS.quick,
+  );
+  assert.equal(
+    router.resolveModel("reasoning", {
+      openrouter_model_reasoning: "deepseek/deepseek-chat-v3.1:free",
+    }),
+    router.DEFAULT_MODELS.reasoning,
+  );
+});
+
 check("an unknown task falls back to chat rather than throwing", () => {
   assert.equal(router.resolveTask("nonsense"), "chat");
   assert.equal(router.resolveTask(undefined), "chat");

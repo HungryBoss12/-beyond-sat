@@ -214,7 +214,12 @@ check("prepareMessagesForTask strips images for text-only tasks", () => {
 });
 
 check("prepareMessagesForTask keeps a placeholder when an image-only turn is stripped", () => {
-  const imageOnly = [{ role: "user", content: [{ type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } }] }];
+  const imageOnly = [
+    {
+      role: "user",
+      content: [{ type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } }],
+    },
+  ];
   const stripped = router.prepareMessagesForTask(imageOnly, "chat");
   assert.equal(stripped[0].content, "[Image attached]");
 });
@@ -379,7 +384,9 @@ check("latestUserMessageHasImages is true only on the final user turn", () => {
 check("resolveGeminiVisionModel rejects OpenRouter slugs and keeps Gemini IDs", () => {
   assert.equal(router.resolveGeminiVisionModel({}), "gemini-3-flash-preview");
   assert.equal(
-    router.resolveGeminiVisionModel({ openrouter_model_vision: "google/gemini-2.0-flash-exp:free" }),
+    router.resolveGeminiVisionModel({
+      openrouter_model_vision: "google/gemini-2.0-flash-exp:free",
+    }),
     "gemini-3-flash-preview",
   );
   assert.equal(

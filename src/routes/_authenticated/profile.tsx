@@ -17,6 +17,15 @@ import { format } from "date-fns";
 import { HighlightShortcutsCard } from "@/components/HighlightShortcutsCard";
 import { PageHead, Panel as Surface, PanelGlow, Skeleton } from "@/components/ui/panel";
 import { HeadSkeleton, PanelGridSkeleton, ListSkeleton } from "@/components/ui/skeletons";
+import { ClassChatSetupForm } from "@/components/classes/ClassChatSetupForm";
+import { AttendanceGrid } from "@/components/classes/AttendanceGrid";
+import {
+  getChatProfile,
+  listAttendance,
+  resolveAvatarUrl,
+  type ChatProfile,
+  type LessonAttendance,
+} from "@/lib/classes";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   component: Profile,
@@ -90,11 +99,33 @@ function Profile() {
   const [attemptsTotal, setAttemptsTotal] = useState(0);
   const [correctTotal, setCorrectTotal] = useState(0);
   const [dateOptions, setDateOptions] = useState<ExamDateOpt[]>([]);
+  const [chat, setChat] = useState<ChatProfile | null>(null);
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
+  const [attendance, setAttendance] = useState<LessonAttendance[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [editingInfo, setEditingInfo] = useState(false);
   const [editingGoals, setEditingGoals] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  async function reloadChat(userId: string) {
+    const [c, att] = await Promise.all([
+      getChatProfile(userId).catch(() => null),
+      listAttendance(userId).catch(() => [] as LessonAttendance[]),
+    ]);
+    setChat(c);
+    setAttendance(att);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    void resolveAvatarUrl(chat?.avatar_url).then((url) => {
+      if (!cancelled) setAvatarSrc(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [chat?.avatar_url]);
 
   useEffect(() => {
     (async () => {
@@ -129,6 +160,7 @@ function Profile() {
       const rows = (att ?? []) as { is_correct: boolean | null }[];
       setAttemptsTotal(rows.length);
       setCorrectTotal(rows.filter((r) => r.is_correct).length);
+      await reloadChat(u.id);
       setLoading(false);
     })();
   }, []);
@@ -155,6 +187,7 @@ function Profile() {
     : null;
 
   const displayName =
+    chat?.username ||
     profile?.full_name ||
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
     email.split("@")[0] ||
@@ -166,6 +199,7 @@ function Profile() {
       .join("")
       .slice(0, 2)
       .toUpperCase() || "S";
+  const needsClassSetup = !chat?.chat_setup_completed || !chat?.class_id;
 
   async function saveInfo(form: Partial<ProfileRow>) {
     if (!uid) return;
@@ -222,16 +256,42 @@ function Profile() {
     <div className="space-y-6">
       <PageHead title="Profile" subtitle="Your account, goals and test history." />
 
+      {needsClassSetup && (
+        <Surface tone="brand" className="p-6 md:p-8">
+          <PanelGlow />
+          <h2 className="mb-1 text-lg font-black text-white">Finish your Classes setup</h2>
+          <p className="mb-4 text-sm text-brand-100">
+            Pick a username and join a class group to unlock chats and homework.
+          </p>
+          <ClassChatSetupForm
+            compact
+            submitLabel="Save class profile"
+            onDone={() => void reloadChat(uid)}
+          />
+        </Surface>
+      )}
+
       {/* Identity card — the one focal brand surface on this screen. */}
       <Surface tone="brand" className="overflow-hidden p-6 md:p-8">
         <PanelGlow />
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-brand-400 text-2xl font-black text-white shadow-brand md:h-20 md:w-20">
-            {initials}
-          </div>
+          {avatarSrc ? (
+            <img
+              src={avatarSrc}
+              alt=""
+              className="h-16 w-16 shrink-0 rounded-full object-cover shadow-brand md:h-20 md:w-20"
+            />
+          ) : (
+            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-brand-400 text-2xl font-black text-white shadow-brand md:h-20 md:w-20">
+              {initials}
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <div className="truncate text-2xl font-black md:text-3xl">{displayName}</div>
             <div className="truncate text-sm text-brand-100">{email}</div>
+            {chat?.username && (
+              <div className="mt-1 text-xs font-semibold text-brand-100">@{chat.username}</div>
+            )}
             {student?.level && (
               <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand-400 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white">
                 <Sparkles className="h-3 w-3" /> {student.level}
@@ -267,6 +327,10 @@ function Profile() {
             value={accuracy != null ? `${accuracy}%` : "—"}
           />
         </div>
+      </Surface>
+
+      <Surface className="p-5">
+        <AttendanceGrid rows={attendance} />
       </Surface>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

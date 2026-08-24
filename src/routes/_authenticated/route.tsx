@@ -49,6 +49,7 @@ function Layout() {
     pathname.startsWith("/onboarding") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/beyond-ai") ||
+    pathname.startsWith("/classes") ||
     pathname.startsWith("/practice/session");
   if (bare) return <Outlet />;
   return (

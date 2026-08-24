@@ -1138,11 +1138,54 @@
   animation: nav-profile-ping 0.65s ease-out;
 }
 
-.group:hover .nav-ico-admin,
-.group:focus-visible .nav-ico-admin,
-.group:active .nav-ico-admin,
-.group[data-nav-play] .nav-ico-admin {
-  animation: nav-shield 0.45s ease-out;
+.group:hover .nav-class-a,
+.group:focus-visible .nav-class-a,
+.group:active .nav-class-a,
+.group[data-nav-play] .nav-class-a {
+  animation: nav-class-gather-a 0.7s ease-in-out;
+}
+.group:hover .nav-class-b,
+.group:focus-visible .nav-class-b,
+.group:active .nav-class-b,
+.group[data-nav-play] .nav-class-b {
+  animation: nav-class-gather-b 0.7s ease-in-out;
+}
+
+.nav-rail-pill,
+.nav-tab-pill {
+  transition:
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    top 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    left 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, top, left, width, height;
+}
+
+@keyframes nav-class-gather-a {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  45% {
+    transform: translate(1.6px, 0.4px);
+  }
+}
+
+@keyframes nav-class-gather-b {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  45% {
+    transform: translate(-1.8px, -0.2px);
+  }
+}
+
+.nav-class-a,
+.nav-class-b {
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 /* Left column: top grows down, bottom shrinks from its top to make room, then
@@ -1337,6 +1380,8 @@
   .nav-ico-news,
   .nav-ico-profile,
   .nav-ico-admin,
+  .nav-class-a,
+  .nav-class-b,
   .nav-tile,
   .nav-bar,
   .nav-star-lg,

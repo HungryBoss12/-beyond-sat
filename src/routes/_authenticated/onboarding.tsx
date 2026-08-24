@@ -4,6 +4,8 @@ import { CalendarDays, Loader2, Sparkles, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/panel";
+import { ClassChatSetupForm } from "@/components/classes/ClassChatSetupForm";
+import { getChatProfile } from "@/lib/classes";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   component: Onboarding,
@@ -19,11 +21,8 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 });
 
 type ExamDateOpt = { id: string; exam_date: string; label: string | null };
+type Step = "goals" | "class";
 
-/* `exam_date` is a Postgres DATE, so it arrives as a bare "YYYY-MM-DD".
-   `new Date("2026-08-29")` parses that as UTC midnight, which formats as the
-   28th for anyone west of Greenwich. Split the parts and build a local date so
-   the day shown is the day stored. */
 function parseLocalDate(ymd: string): Date {
   const [y, m, d] = ymd.split("-").map(Number);
   return new Date(y, (m ?? 1) - 1, d ?? 1);
@@ -39,16 +38,11 @@ function todayYmd(): string {
 function Onboarding() {
   const navigate = useNavigate();
   const [uid, setUid] = useState<string | null>(null);
+  const [step, setStep] = useState<Step>("goals");
   const [examDate, setExamDate] = useState<string>("");
   const [targetRw, setTargetRw] = useState<string>("700");
   const [targetMath, setTargetMath] = useState<string>("700");
   const [dateOptions, setDateOptions] = useState<ExamDateOpt[]>([]);
-  /* When an admin hasn't published any exam dates yet, onboarding used to be a
-     dead end: the only control was a select with nothing in it, so Continue
-     stayed disabled forever. Since every authenticated route redirects here
-     until intro_completed is true, that locked *everyone* out of the app —
-     including the first admin, the only person who could add the dates.
-     Manual entry is the escape hatch. */
   const [manual, setManual] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -73,11 +67,11 @@ function Onboarding() {
       if (cancelled) return;
       setUid(user.id);
 
-      const [{ data: prof }, { data: sp }, { data: dates }] = await Promise.all([
+      const [{ data: prof }, { data: sp }, { data: dates }, chat] = await Promise.all([
         supabase.from("profiles").select("intro_completed").eq("id", user.id).maybeSingle(),
         supabase
           .from("student_profiles")
-          .select("exam_date,target_rw,target_math,target_score")
+          .select("exam_date,target_rw,target_math,target_score,intro_completed_at")
           .eq("user_id", user.id)
           .maybeSingle(),
         supabase
@@ -86,19 +80,21 @@ function Onboarding() {
           .eq("active", true)
           .gte("exam_date", todayYmd())
           .order("exam_date", { ascending: true }),
+        getChatProfile(user.id).catch(() => null),
       ]);
 
-      if (prof?.intro_completed) {
+      if (prof?.intro_completed && chat?.chat_setup_completed && chat.class_id) {
         navigate({ to: "/dashboard", replace: true });
         return;
+      }
+
+      if (prof?.intro_completed || sp?.intro_completed_at) {
+        setStep("class");
       }
 
       const opts = (dates ?? []) as ExamDateOpt[];
       setDateOptions(opts);
       if (sp?.exam_date) {
-        /* Keep a previously saved date even when it isn't one of the published
-           options — it was chosen deliberately, so drop into manual mode
-           rather than silently discarding it. */
         setExamDate(sp.exam_date);
         if (!opts.some((o) => o.exam_date === sp.exam_date)) setManual(true);
       }
@@ -132,7 +128,7 @@ function Onboarding() {
     setErr(null);
   }
 
-  async function finish() {
+  async function finishGoals() {
     if (!uid) return;
     if (!examDate) {
       setErr("Please pick your exam date.");
@@ -206,13 +202,10 @@ function Onboarding() {
       }
     }
     setSaving(false);
-    navigate({ to: "/dashboard", replace: true });
+    setStep("class");
   }
 
   if (loading) {
-    /* This route renders outside the app shell, so the skeleton has to draw its
-       own centred card on the white page — head, two target fields, the date
-       select and the button. */
     return (
       <div className="grid min-h-screen place-items-center bg-white p-6">
         <div className="w-full max-w-md space-y-4">
@@ -234,6 +227,19 @@ function Onboarding() {
   const fieldClass =
     "w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-lg font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none";
 
+  if (step === "class") {
+    return (
+      <div className="grid min-h-screen place-items-center bg-white p-6">
+        <div className="pop-in w-full max-w-md rounded-3xl border border-brand-400/40 bg-brand-600 p-8 text-white shadow-brand md:p-10">
+          <ClassChatSetupForm
+            submitLabel="Enter BeyondSAT"
+            onDone={() => navigate({ to: "/dashboard", replace: true })}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="grid min-h-screen place-items-center bg-white p-6">
       <div className="pop-in w-full max-w-md rounded-3xl border border-brand-400/40 bg-brand-600 p-8 text-white shadow-brand md:p-10">
@@ -244,8 +250,8 @@ function Onboarding() {
           Set your SAT goals
         </h1>
         <p className="mt-2 text-sm text-brand-100">
-          Pick your exam date and set separate targets for English and Math. You can update these
-          any time from your profile.
+          Pick your exam date and set separate targets for English and Math. Next you&apos;ll join
+          your class group for Classes chat and homework.
         </p>
 
         <div className="mt-6 grid grid-cols-2 gap-3">
@@ -347,8 +353,6 @@ function Onboarding() {
           </div>
         )}
 
-        {/* Errors read as a darker inset chip with a light ring rather than red —
-            the copy already says what went wrong. */}
         {err && (
           <div className="mt-3 rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
             {err}
@@ -356,12 +360,12 @@ function Onboarding() {
         )}
 
         <button
-          onClick={finish}
+          onClick={finishGoals}
           disabled={saving || !examDate || !rwNum || !mathNum}
           className="btn-brand mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-400 py-3.5 font-bold text-white disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Continue to BeyondSAT
+          Continue — join your class
         </button>
       </div>
     </div>

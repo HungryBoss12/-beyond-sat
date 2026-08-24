@@ -1,8 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   BookOpen,
-  Newspaper,
   User,
   Flame,
   LogOut,
@@ -21,15 +20,15 @@ import { RevealLink } from "@/components/ui/reveal-card";
 /**
  * Six is the practical maximum for the mobile tab bar: at `grid-cols-6` on a
  * 360px viewport each cell is 60px, which the `w-12` active pill and a short
- * label still fit. A seventh needs a different pattern — a "More" tab — not
- * another column.
+ * label still fit. Classes replaced News in the primary bar (News stays
+ * reachable from the dashboard / other links).
  */
 const NAV = [
   { to: "/dashboard", label: "Dashboard", kind: "dashboard" },
   { to: "/practice", label: "Practice", kind: "practice", icon: BookOpen },
+  { to: "/classes", label: "Classes", kind: "classes" },
   { to: "/analysis", label: "Analysis", kind: "analysis" },
   { to: "/beyond-ai", label: "Beyond AI", kind: "ai" },
-  { to: "/news", label: "News", kind: "news", icon: Newspaper },
   { to: "/profile", label: "Profile", kind: "profile" },
 ] as const;
 
@@ -64,6 +63,48 @@ function navPlayHandlers() {
     onPointerEnter: (e: React.PointerEvent<HTMLElement>) => playNavMotion(e.currentTarget),
     onPointerDown: (e: React.PointerEvent<HTMLElement>) => playNavMotion(e.currentTarget),
   };
+}
+
+function useSlidingHighlight(activeKey: string) {
+  const parentRef = useRef<HTMLElement | null>(null);
+  const [box, setBox] = useState({ top: 0, left: 0, width: 0, height: 0, ready: false });
+
+  useLayoutEffect(() => {
+    const parent = parentRef.current;
+    if (!parent) return;
+
+    function measure() {
+      if (!parent) return;
+      const el = parent.querySelector<HTMLElement>(`[data-nav-key="${activeKey}"]`);
+      if (!el) return;
+      setBox({
+        top: el.offsetTop,
+        left: el.offsetLeft,
+        width: el.offsetWidth,
+        height: el.offsetHeight,
+        ready: true,
+      });
+    }
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(parent);
+    const mo = new MutationObserver(measure);
+    mo.observe(parent, { childList: true, subtree: true });
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [activeKey]);
+
+  return { parentRef, box };
+}
+
+function activeNavKey(pathname: string, staff: StaffRole | null): string {
+  const hit = NAV.find((n) => pathname === n.to || pathname.startsWith(n.to + "/"));
+  if (hit) return hit.to;
+  if (staff && pathname.startsWith("/admin")) return "admin";
+  return NAV[0].to;
 }
 
 function NavGlyph({
@@ -102,6 +143,21 @@ function NavGlyph({
         <rect className="nav-bar" x="7" y="13" width="2.4" height="6" rx="0.5" fill="currentColor" />
         <rect className="nav-bar" x="11.3" y="9" width="2.4" height="10" rx="0.5" fill="currentColor" />
         <rect className="nav-bar" x="15.6" y="6.5" width="2.4" height="12.5" rx="0.5" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  if (kind === "classes") {
+    return (
+      <svg viewBox="0 0 24 24" className={cls} aria-hidden="true" fill="none">
+        <g className="nav-class-a" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+          <circle cx="8.2" cy="8" r="2.7" />
+          <path d="M3.4 18.4c.7-3.1 2.5-4.8 4.8-4.8 2.3 0 4.1 1.7 4.8 4.8" />
+        </g>
+        <g className="nav-class-b" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+          <circle cx="16.2" cy="8.4" r="2.35" />
+          <path d="M12.4 18.4c.6-2.6 2.1-4.1 3.8-4.1 1.7 0 3.2 1.5 3.8 4.1" />
+        </g>
       </svg>
     );
   }
@@ -278,27 +334,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const padClass = navOpen ? "lg:pl-64" : "lg:pl-0";
   const shellShift =
     "transition-[padding] duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " + padClass;
+  const currentNav = activeNavKey(pathname, staffRole);
+  const rail = useSlidingHighlight(currentNav);
+  const mobileIdx = NAV.findIndex((n) => n.to === currentNav);
 
   const navLinks = (opts: { onNavigate?: () => void; iconSize: string }) => (
     <>
       {NAV.map((n) => {
-        const active = pathname === n.to || pathname.startsWith(n.to + "/");
+        const active = n.to === currentNav;
         return (
           <RevealLink
             key={n.to}
             to={n.to}
+            data-nav-key={n.to}
             onClick={opts.onNavigate}
             {...navPlayHandlers()}
             className={
-              "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600 " +
-              (active
-                ? "bg-brand-400 text-white shadow-brand"
-                : "text-brand-100 nudge hover:bg-brand-800 hover:text-white")
+              "group relative z-10 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600 " +
+              (active ? "text-white" : "text-brand-100 nudge hover:text-white")
             }
           >
-            {active && (
-              <span className="absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand-200" />
-            )}
             <NavGlyph icon={"icon" in n ? n.icon : undefined} kind={n.kind} className={opts.iconSize} />
             {n.label}
           </RevealLink>
@@ -307,13 +362,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {staffRole && (
         <RevealLink
           to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
+          data-nav-key="admin"
           onClick={opts.onNavigate}
           {...navPlayHandlers()}
           className={
-            "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600 " +
-            (pathname.startsWith("/admin")
-              ? "bg-brand-400 text-white shadow-brand"
-              : "text-brand-100 nudge hover:bg-brand-800 hover:text-white")
+            "group relative z-10 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600 " +
+            (currentNav === "admin" ? "text-white" : "text-brand-100 nudge hover:text-white")
           }
         >
           <NavGlyph icon={Shield} kind="admin" className={opts.iconSize} />
@@ -342,7 +396,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
           </Link>
         </div>
-        <nav className="flex-1 space-y-1 p-4">{navLinks({ iconSize: "h-[18px] w-[18px]" })}</nav>
+        <nav ref={rail.parentRef} className="relative flex-1 space-y-1 p-4">
+          {rail.box.ready && (
+            <span
+              aria-hidden
+              className="nav-rail-pill pointer-events-none absolute rounded-xl bg-brand-400 shadow-brand"
+              style={{
+                top: rail.box.top,
+                left: rail.box.left,
+                width: rail.box.width,
+                height: rail.box.height,
+              }}
+            />
+          )}
+          {navLinks({ iconSize: "h-[18px] w-[18px]" })}
+        </nav>
         <div className="border-t border-brand-400/30 p-4">
           <div className="flex items-center gap-2.5 rounded-xl bg-brand-800 px-3 py-2.5 ring-1 ring-brand-400/40">
             <Flame className="h-5 w-5 fill-brand-200 text-brand-200" />
@@ -483,26 +551,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-400/30 bg-brand-600/95 backdrop-blur-md lg:hidden">
-        <div className="grid grid-cols-6">
+        <div className="relative grid grid-cols-6">
+          <span
+            aria-hidden
+            className="nav-tab-pill pointer-events-none absolute top-1.5 left-0 flex w-1/6 justify-center"
+            style={{
+              transform: `translateX(${Math.max(0, mobileIdx) * 100}%)`,
+              opacity: mobileIdx < 0 ? 0 : 1,
+            }}
+          >
+            <span className="h-7 w-12 rounded-full bg-brand-400" />
+          </span>
           {NAV.map((n) => {
-            const active = pathname === n.to || pathname.startsWith(n.to + "/");
+            const active = n.to === currentNav;
             return (
               <Link
                 key={n.to}
                 to={n.to}
                 {...navPlayHandlers()}
                 className={
-                  "group relative flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 text-[10px] font-semibold transition-colors duration-200 " +
+                  "group relative z-10 flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 text-[10px] font-semibold transition-colors duration-200 " +
                   (active ? "text-white" : "text-brand-100 hover:text-white")
                 }
               >
-                {active && (
-                  <span className="pop-in absolute top-1.5 h-7 w-12 max-w-full rounded-full bg-brand-400" />
-                )}
                 <NavGlyph
                   icon={"icon" in n ? n.icon : undefined}
                   kind={n.kind}
-                  className={"relative mb-0.5 h-5 w-5 " + (active ? "scale-110" : "")}
+                  className={
+                    "relative mb-0.5 h-5 w-5 transition-transform duration-300 " +
+                    (active ? "scale-110" : "")
+                  }
                 />
                 <span className="w-full truncate text-center leading-tight">{n.label}</span>
               </Link>

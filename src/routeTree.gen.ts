@@ -17,6 +17,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAnalysisRouteImport } from './routes/_authenticated/analysis'
 import { Route as AuthenticatedBeyondAiRouteImport } from './routes/_authenticated/beyond-ai'
+import { Route as AuthenticatedClassesRouteImport } from './routes/_authenticated/classes'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
@@ -24,6 +25,7 @@ import { Route as AuthenticatedPracticeRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminClassesRouteImport } from './routes/_authenticated/admin.classes'
 import { Route as AuthenticatedAdminDailyRouteImport } from './routes/_authenticated/admin.daily'
 import { Route as AuthenticatedAdminExamdatesRouteImport } from './routes/_authenticated/admin.examdates'
 import { Route as AuthenticatedAdminHomepageRouteImport } from './routes/_authenticated/admin.homepage'
@@ -81,6 +83,11 @@ const AuthenticatedBeyondAiRoute = AuthenticatedBeyondAiRouteImport.update({
   path: '/beyond-ai',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClassesRoute = AuthenticatedClassesRouteImport.update({
+  id: '/classes',
+  path: '/classes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -116,6 +123,12 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminClassesRoute =
+  AuthenticatedAdminClassesRouteImport.update({
+    id: '/classes',
+    path: '/classes',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminDailyRoute = AuthenticatedAdminDailyRouteImport.update({
   id: '/daily',
   path: '/daily',
@@ -221,12 +234,14 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/analysis': typeof AuthenticatedAnalysisRouteWithChildren
   '/beyond-ai': typeof AuthenticatedBeyondAiRoute
+  '/classes': typeof AuthenticatedClassesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/news': typeof AuthenticatedNewsRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/practice': typeof AuthenticatedPracticeRouteWithChildren
   '/profile': typeof AuthenticatedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/admin/classes': typeof AuthenticatedAdminClassesRoute
   '/admin/daily': typeof AuthenticatedAdminDailyRoute
   '/admin/examdates': typeof AuthenticatedAdminExamdatesRoute
   '/admin/homepage': typeof AuthenticatedAdminHomepageRoute
@@ -253,11 +268,13 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/analysis': typeof AuthenticatedAnalysisRouteWithChildren
   '/beyond-ai': typeof AuthenticatedBeyondAiRoute
+  '/classes': typeof AuthenticatedClassesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/news': typeof AuthenticatedNewsRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/admin/classes': typeof AuthenticatedAdminClassesRoute
   '/admin/daily': typeof AuthenticatedAdminDailyRoute
   '/admin/examdates': typeof AuthenticatedAdminExamdatesRoute
   '/admin/homepage': typeof AuthenticatedAdminHomepageRoute
@@ -287,12 +304,14 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/analysis': typeof AuthenticatedAnalysisRouteWithChildren
   '/_authenticated/beyond-ai': typeof AuthenticatedBeyondAiRoute
+  '/_authenticated/classes': typeof AuthenticatedClassesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/news': typeof AuthenticatedNewsRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/practice': typeof AuthenticatedPracticeRouteWithChildren
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/_authenticated/admin/classes': typeof AuthenticatedAdminClassesRoute
   '/_authenticated/admin/daily': typeof AuthenticatedAdminDailyRoute
   '/_authenticated/admin/examdates': typeof AuthenticatedAdminExamdatesRoute
   '/_authenticated/admin/homepage': typeof AuthenticatedAdminHomepageRoute
@@ -322,12 +341,14 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analysis'
     | '/beyond-ai'
+    | '/classes'
     | '/dashboard'
     | '/news'
     | '/onboarding'
     | '/practice'
     | '/profile'
     | '/auth/callback'
+    | '/admin/classes'
     | '/admin/daily'
     | '/admin/examdates'
     | '/admin/homepage'
@@ -354,11 +375,13 @@ export interface FileRouteTypes {
     | '/signup'
     | '/analysis'
     | '/beyond-ai'
+    | '/classes'
     | '/dashboard'
     | '/news'
     | '/onboarding'
     | '/profile'
     | '/auth/callback'
+    | '/admin/classes'
     | '/admin/daily'
     | '/admin/examdates'
     | '/admin/homepage'
@@ -387,12 +410,14 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/analysis'
     | '/_authenticated/beyond-ai'
+    | '/_authenticated/classes'
     | '/_authenticated/dashboard'
     | '/_authenticated/news'
     | '/_authenticated/onboarding'
     | '/_authenticated/practice'
     | '/_authenticated/profile'
     | '/auth/callback'
+    | '/_authenticated/admin/classes'
     | '/_authenticated/admin/daily'
     | '/_authenticated/admin/examdates'
     | '/_authenticated/admin/homepage'
@@ -480,6 +505,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBeyondAiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/classes': {
+      id: '/_authenticated/classes'
+      path: '/classes'
+      fullPath: '/classes'
+      preLoaderRoute: typeof AuthenticatedClassesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -527,6 +559,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/classes': {
+      id: '/_authenticated/admin/classes'
+      path: '/classes'
+      fullPath: '/admin/classes'
+      preLoaderRoute: typeof AuthenticatedAdminClassesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/daily': {
@@ -652,6 +691,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminClassesRoute: typeof AuthenticatedAdminClassesRoute
   AuthenticatedAdminDailyRoute: typeof AuthenticatedAdminDailyRoute
   AuthenticatedAdminExamdatesRoute: typeof AuthenticatedAdminExamdatesRoute
   AuthenticatedAdminHomepageRoute: typeof AuthenticatedAdminHomepageRoute
@@ -666,6 +706,7 @@ interface AuthenticatedAdminRouteChildren {
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminClassesRoute: AuthenticatedAdminClassesRoute,
   AuthenticatedAdminDailyRoute: AuthenticatedAdminDailyRoute,
   AuthenticatedAdminExamdatesRoute: AuthenticatedAdminExamdatesRoute,
   AuthenticatedAdminHomepageRoute: AuthenticatedAdminHomepageRoute,
@@ -731,6 +772,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedAnalysisRoute: typeof AuthenticatedAnalysisRouteWithChildren
   AuthenticatedBeyondAiRoute: typeof AuthenticatedBeyondAiRoute
+  AuthenticatedClassesRoute: typeof AuthenticatedClassesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRouteWithChildren
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
@@ -742,6 +784,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedAnalysisRoute: AuthenticatedAnalysisRouteWithChildren,
   AuthenticatedBeyondAiRoute: AuthenticatedBeyondAiRoute,
+  AuthenticatedClassesRoute: AuthenticatedClassesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedNewsRoute: AuthenticatedNewsRouteWithChildren,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,

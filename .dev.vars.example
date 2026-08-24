@@ -9,6 +9,12 @@ SUPABASE_PUBLISHABLE_KEY="your-anon-publishable-key"
 # In production set it with: wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 # SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
 #
+# Optional — for `npm run db:push` without interactive prompts:
+# 1. Create a personal access token: https://supabase.com/dashboard/account/tokens
+# 2. Database password: Project Settings → Database → Database password
+# SUPABASE_ACCESS_TOKEN="sbp_..."
+# SUPABASE_DB_PASSWORD="your-db-password"
+#
 # Google AI Studio — admin import vision (/api/import/vision)
 # In production: wrangler secret put GEMINI_API_KEY
 # GEMINI_API_KEY="your-gemini-api-key"

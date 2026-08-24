@@ -17,6 +17,7 @@ import {
   X,
   ChevronRight,
   Upload,
+  GraduationCap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { RevealLink } from "@/components/ui/reveal-card";
@@ -79,6 +80,7 @@ const NAV = [
     adminOnly: true,
   },
   { to: "/admin/news", label: "News", icon: Newspaper, group: "Content" },
+  { to: "/admin/classes", label: "Classes", icon: GraduationCap, group: "Content" },
   { to: "/admin/users", label: "Users", icon: Users, group: "Manage", adminOnly: true },
   { to: "/admin/settings", label: "Settings", icon: Settings, group: "Manage", adminOnly: true },
 ] as const satisfies readonly NavItem[];

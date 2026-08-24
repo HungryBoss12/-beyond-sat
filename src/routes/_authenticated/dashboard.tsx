@@ -33,8 +33,10 @@ import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 import { RW_SKILLS, MATH_SKILLS, scoreBand } from "@/lib/sat";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { FocusNextPanel } from "@/components/ai/FocusNextPanel";
+import { AttendanceGrid } from "@/components/classes/AttendanceGrid";
 import { Panel, PanelGlow, PanelHead, PageHead, EmptyState, Skeleton } from "@/components/ui/panel";
 import { Badge, Delta, MeterRow, StatTile, type Tone } from "@/components/ui/metric";
+import { listAttendance, type LessonAttendance } from "@/lib/classes";
 import { format } from "date-fns";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -94,6 +96,7 @@ function Dashboard() {
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [staffRole, setStaffRole] = useState<StaffRole | null>(null);
+  const [attendance, setAttendance] = useState<LessonAttendance[]>([]);
   const today = format(new Date(), "yyyy-MM-dd");
 
   useEffect(() => {
@@ -101,7 +104,7 @@ function Dashboard() {
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id;
       if (!uid) return;
-      const [{ data: prof }, { data: spData }, { data: sess }, { data: att }, role] =
+      const [{ data: prof }, { data: spData }, { data: sess }, { data: att }, role, lessonAtt] =
         await Promise.all([
           supabase.from("profiles").select("full_name,first_name").eq("id", uid).maybeSingle(),
           supabase
@@ -124,12 +127,14 @@ function Dashboard() {
             .eq("user_id", uid)
             .limit(1000),
           getStaffRole(uid),
+          listAttendance(uid).catch(() => [] as LessonAttendance[]),
         ]);
       setName(prof?.full_name || prof?.first_name || "Student");
       setSp((spData as StudentProfile) ?? null);
       setSessions((sess as Session[]) ?? []);
       setAttempts((att as unknown as AttemptRow[]) ?? []);
       setStaffRole(role);
+      setAttendance(lessonAtt);
       setLoading(false);
     })();
   }, []);
@@ -273,6 +278,10 @@ function Dashboard() {
           accent="emerald"
         />
       </div>
+
+      <Panel>
+        <AttendanceGrid rows={attendance} />
+      </Panel>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <DailyPanel done={dailyDoneToday} streak={sp?.current_streak ?? 0} />

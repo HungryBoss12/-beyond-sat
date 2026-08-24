@@ -16,6 +16,7 @@ export const EDITOR_SECTIONS = [
   "/admin/daily",
   "/admin/mocks",
   "/admin/news",
+  "/admin/classes",
 ] as const;
 
 export function canEditorAccess(pathname: string): boolean {

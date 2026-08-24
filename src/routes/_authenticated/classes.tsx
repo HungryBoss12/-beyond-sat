@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes } from "react";
 import {
   ArrowLeft,
   BookOpen,
@@ -16,6 +16,9 @@ import {
   X,
 } from "lucide-react";
 import { getStaffRole } from "@/lib/admin";
+import { AmbientGlow, RevealCard } from "@/components/ui/reveal-card";
+import { usePointerGlow } from "@/hooks/usePointerGlow";
+import { cn } from "@/lib/utils";
 import {
   displayName,
   getChatProfile,
@@ -54,6 +57,15 @@ export const Route = createFileRoute("/_authenticated/classes")({
 
 type Tab = "chats" | "homeworks";
 
+/** Cursor-lit control — same reveal wash as dashboard cards, for buttons. */
+function RevealButton({
+  className,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
+  const ref = usePointerGlow<HTMLButtonElement>();
+  return <button ref={ref} className={cn("reveal-surface", className)} {...props} />;
+}
+
 function ClassesPage() {
   const [tab, setTab] = useState<Tab>("chats");
   const [me, setMe] = useState<ChatProfile | null>(null);
@@ -77,7 +89,8 @@ function ClassesPage() {
   }, []);
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-brand-900 text-white">
+    <div className="relative isolate flex h-[100dvh] flex-col bg-brand-900 text-white">
+      <AmbientGlow />
       <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-brand-400/30 bg-brand-600 px-3 md:px-4">
         <div className="flex min-w-0 items-center gap-2">
           <Link
@@ -130,7 +143,7 @@ function ClassesPage() {
         </div>
       ) : err && (!me?.class_id || !me.chat_setup_completed) ? (
         <div className="grid flex-1 place-items-center p-6">
-          <div className="max-w-sm rounded-2xl border border-brand-400/40 bg-brand-600 p-6 text-center">
+          <RevealCard className="max-w-sm rounded-2xl border border-brand-400/40 bg-brand-600 p-6 text-center shadow-panel">
             <p className="text-sm text-brand-100">{err}</p>
             <Link
               to="/profile"
@@ -138,7 +151,7 @@ function ClassesPage() {
             >
               Open Profile
             </Link>
-          </div>
+          </RevealCard>
         </div>
       ) : tab === "chats" ? (
         <ChatsPane me={me!} />
@@ -366,14 +379,14 @@ function ChatsPane({ me }: { me: ChatProfile }) {
             <ul className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-brand-400/40 bg-brand-800">
               {hits.map((h) => (
                 <li key={h.id}>
-                  <button
+                  <RevealButton
                     disabled={busy}
                     onClick={() => void startDm(h)}
                     className="tap flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-brand-500"
                   >
                     <span className="font-bold">@{h.username}</span>
                     <span className="truncate text-xs text-brand-100">{h.full_name}</span>
-                  </button>
+                  </RevealButton>
                 </li>
               ))}
             </ul>
@@ -382,7 +395,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
         <ul className="min-h-0 flex-1 overflow-y-auto">
           {threads.map((t) => (
             <li key={t.id}>
-              <button
+              <RevealButton
                 onClick={() => void openThread(t.id)}
                 className={
                   "tap flex w-full items-center gap-2 border-b border-brand-400/20 px-3 py-3 text-left hover:bg-brand-500 " +
@@ -417,7 +430,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                         : "Private"}
                   </span>
                 </span>
-              </button>
+              </RevealButton>
             </li>
           ))}
           {threads.length === 0 && (
@@ -459,7 +472,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                 const deleted = Boolean(m.deleted_at);
                 return (
                   <div key={m.id} className={"flex " + (mine ? "justify-end" : "justify-start")}>
-                    <div
+                    <RevealCard
                       className={
                         "max-w-[80%] rounded-2xl px-3 py-2 text-sm " +
                         (mine ? "bg-brand-400 text-white" : "bg-brand-600 text-white") +
@@ -545,7 +558,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                           )}
                         </>
                       )}
-                    </div>
+                    </RevealCard>
                   </div>
                 );
               })}
@@ -710,7 +723,7 @@ function HomeworksPane({ classId }: { classId: string }) {
           Loading homework…
         </div>
       ) : loadErr ? (
-        <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center text-sm text-brand-100">
+        <RevealCard className="rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center text-sm text-brand-100 shadow-panel">
           {loadErr}
           <button
             type="button"
@@ -719,17 +732,18 @@ function HomeworksPane({ classId }: { classId: string }) {
           >
             Try again
           </button>
-        </div>
+        </RevealCard>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center text-sm text-brand-100">
+        <RevealCard className="rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center text-sm text-brand-100 shadow-panel">
           No homework yet for your class.
-        </div>
+        </RevealCard>
       ) : (
         <ul className="space-y-3">
           {items.map((a) => (
-            <li
+            <RevealCard
               key={a.id}
-              className="rounded-2xl border border-brand-400/40 bg-brand-600 p-4 shadow-panel"
+              as="li"
+              className="lift rounded-2xl border border-brand-400/40 bg-brand-600 p-4 shadow-panel"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -769,14 +783,14 @@ function HomeworksPane({ classId }: { classId: string }) {
                   ))}
                 </div>
               )}
-            </li>
+            </RevealCard>
           ))}
         </ul>
       )}
 
       {active && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-brand-900/70 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-float">
+          <RevealCard className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-float">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-brand-100">
@@ -846,7 +860,7 @@ function HomeworksPane({ classId }: { classId: string }) {
                 />
               </label>
             </div>
-          </div>
+          </RevealCard>
         </div>
       )}
     </div>

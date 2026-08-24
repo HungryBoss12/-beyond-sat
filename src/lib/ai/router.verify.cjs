@@ -104,11 +104,15 @@ check("a blank or whitespace override falls back to the default", () => {
 
 check("withdrawn OpenRouter overrides fall back to the current default", () => {
   assert.equal(
-    router.resolveModel("chat", { openrouter_model_chat: "meta-llama/llama-3.3-70b-instruct:free" }),
+    router.resolveModel("chat", {
+      openrouter_model_chat: "meta-llama/llama-3.3-70b-instruct:free",
+    }),
     router.DEFAULT_MODELS.chat,
   );
   assert.equal(
-    router.resolveModel("quick", { openrouter_model_quick: "meta-llama/llama-3.2-3b-instruct:free" }),
+    router.resolveModel("quick", {
+      openrouter_model_quick: "meta-llama/llama-3.2-3b-instruct:free",
+    }),
     router.DEFAULT_MODELS.quick,
   );
   assert.equal(
@@ -231,7 +235,12 @@ check("prepareMessagesForTask strips images for text-only tasks", () => {
 });
 
 check("prepareMessagesForTask keeps a placeholder when an image-only turn is stripped", () => {
-  const imageOnly = [{ role: "user", content: [{ type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } }] }];
+  const imageOnly = [
+    {
+      role: "user",
+      content: [{ type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } }],
+    },
+  ];
   const stripped = router.prepareMessagesForTask(imageOnly, "chat");
   assert.equal(stripped[0].content, "[Image attached]");
 });
@@ -396,7 +405,9 @@ check("latestUserMessageHasImages is true only on the final user turn", () => {
 check("resolveGeminiVisionModel rejects OpenRouter slugs and keeps Gemini IDs", () => {
   assert.equal(router.resolveGeminiVisionModel({}), "gemini-3-flash-preview");
   assert.equal(
-    router.resolveGeminiVisionModel({ openrouter_model_vision: "google/gemini-2.0-flash-exp:free" }),
+    router.resolveGeminiVisionModel({
+      openrouter_model_vision: "google/gemini-2.0-flash-exp:free",
+    }),
     "gemini-3-flash-preview",
   );
   assert.equal(

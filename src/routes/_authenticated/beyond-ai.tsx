@@ -30,11 +30,7 @@ import {
   type Conversation,
 } from "@/lib/ai/conversations";
 import { loadAiContext } from "@/lib/ai/context";
-import {
-  CHAT_MODEL_CHOICES,
-  DEFAULT_CHAT_MODEL,
-  type ChatModelChoice,
-} from "@/lib/ai/router";
+import { CHAT_MODEL_CHOICES, DEFAULT_CHAT_MODEL, type ChatModelChoice } from "@/lib/ai/router";
 
 /**
  * The Beyond AI section (/beyond-ai).
@@ -556,8 +552,8 @@ function Welcome({
       {showTip && (
         <p className="mx-auto mt-2 max-w-md text-sm text-white/80">
           Ask about a question you missed, a concept that isn't sticking, or what to study next.
-          Attach a photo of a question — any model you pick will read it and answer. Answers come back
-          with full working, and maths is properly typeset.
+          Attach a photo of a question — any model you pick will read it and answer. Answers come
+          back with full working, and maths is properly typeset.
         </p>
       )}
       <div className="mt-6 flex flex-wrap justify-center gap-2">

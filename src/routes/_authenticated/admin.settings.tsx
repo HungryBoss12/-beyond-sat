@@ -151,7 +151,9 @@ function AdminSettings() {
         title="Beyond AI models"
         description={
           <>
-            Each task routes to its own model. Chat, quick, and reasoning use OpenRouter; vision uses the Gemini API directly. Leave a field empty to use the built-in default. Browse OpenRouter IDs at{" "}
+            Each task routes to its own model. Chat, quick, and reasoning use OpenRouter; vision
+            uses the Gemini API directly. Leave a field empty to use the built-in default. Browse
+            OpenRouter IDs at{" "}
             <a
               href="https://openrouter.ai/models"
               target="_blank"

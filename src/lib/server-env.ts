@@ -67,6 +67,17 @@ export async function verifySupabaseUser(
 }
 
 /**
+ * Confirms the caller is staff (admin or editor) via `bs_is_staff`.
+ *
+ * Import routes must check this after `verifySupabaseUser` — any signed-in
+ * student would otherwise burn Gemini/OpenRouter quota through `/api/import/*`.
+ */
+export async function verifyStaffUser(config: SupabaseConfig, token: string): Promise<boolean> {
+  const result = await callRpc<boolean>(config, "bs_is_staff", token);
+  return result === true;
+}
+
+/**
  * Calls a Postgres function through PostgREST.
  *
  * The caller's token is forwarded when supplied so RLS and `auth.uid()` see the

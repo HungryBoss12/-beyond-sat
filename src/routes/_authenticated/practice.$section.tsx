@@ -14,8 +14,10 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import {
   SECTION_LABEL,
-  formatSourceDate,
   stripModuleSuffix,
+  paperKey,
+  paperDateSortKey,
+  resolvePaperSourceDate,
   difficultyLabel,
   type Section,
   type Difficulty,
@@ -63,6 +65,7 @@ type TestSet = {
   difficulty: Difficulty;
   source_month: number | null;
   source_year: number | null;
+  created_at: string;
   count: number;
   /** The student's own progress, from their sessions. Never another user's. */
   status: "new" | "in_progress" | "done";
@@ -70,7 +73,19 @@ type TestSet = {
   score: { correct: number; total: number } | null;
 };
 
-type Group = { key: string; label: string; sets: TestSet[] };
+/** One dated section of the browse list. Papers never share a card. */
+type DateGroup = {
+  key: string;
+  label: string;
+  papers: PaperGroup[];
+};
+
+/** Module 1 / Module 2 rows for a single paper title (e.g. "May 2024 V2"). */
+type PaperGroup = {
+  key: string;
+  title: string;
+  modules: TestSet[];
+};
 
 /**
  * Display order for the difficulty filter. The `sat_difficulty` enum carries both
@@ -103,7 +118,7 @@ function SectionBrowse() {
            where that migration hasn't been applied yet. */
         supabase
           .from("tests")
-          .select("id,title,module,difficulty,source_month,source_year")
+          .select("id,title,module,difficulty,source_month,source_year,created_at")
           .eq("section", section)
           .order("source_year", { ascending: false, nullsFirst: false })
           .order("source_month", { ascending: false, nullsFirst: false })
@@ -198,23 +213,54 @@ function SectionBrowse() {
     };
   }, [section]);
 
-  /* Grouped by the date printed on the paper, newest first. A set with no date
-     goes to "Unsorted" at the bottom rather than disappearing — an undated set is
-     an admin oversight, and hiding it makes the oversight invisible.
-
-     Undated sets take the key "0000-00" so that the single descending sort puts
-     them last. A sentinel like "zzz" would sort *first*, which is exactly
-     backwards. */
-  const groups = useMemo<Group[]>(() => {
-    const map = new Map<string, Group>();
+  /* Date → paper → modules. Newest year/month first; within a date, newest
+     `created_at` first. Titles without source fields still get a date when the
+     name carries a year/month (e.g. "2025 June E"). Truly undated land last. */
+  const groups = useMemo<DateGroup[]>(() => {
+    const byDate = new Map<string, DateGroup>();
     for (const s of sets) {
-      const label = formatSourceDate(s.source_month, s.source_year);
-      const key = label ? `${s.source_year}-${String(s.source_month).padStart(2, "0")}` : "0000-00";
-      if (!map.has(key)) map.set(key, { key, label: label ?? "Unsorted", sets: [] });
-      map.get(key)!.sets.push(s);
+      const resolved = resolvePaperSourceDate(s.title, s.source_month, s.source_year);
+      const dateKey = resolved ? paperDateSortKey(resolved.year, resolved.month) : "0000-00";
+      const dateLabel = resolved?.label ?? "Unsorted";
+      let date = byDate.get(dateKey);
+      if (!date) {
+        date = { key: dateKey, label: dateLabel, papers: [] };
+        byDate.set(dateKey, date);
+      }
+
+      const pKey = paperKey(s.title, section);
+      let paper = date.papers.find((p) => p.key === pKey);
+      if (!paper) {
+        paper = { key: pKey, title: stripModuleSuffix(s.title), modules: [] };
+        date.papers.push(paper);
+      }
+      paper.modules.push(s);
     }
-    return [...map.values()].sort((a, b) => (a.key < b.key ? 1 : a.key > b.key ? -1 : 0));
-  }, [sets]);
+
+    function newestAdded(paper: PaperGroup): number {
+      let max = 0;
+      for (const m of paper.modules) {
+        const t = Date.parse(m.created_at);
+        if (!Number.isNaN(t) && t > max) max = t;
+      }
+      return max;
+    }
+
+    for (const date of byDate.values()) {
+      for (const paper of date.papers) {
+        paper.modules.sort((a, b) => a.module - b.module || a.title.localeCompare(b.title));
+      }
+      date.papers.sort(
+        (a, b) => newestAdded(b) - newestAdded(a) || a.title.localeCompare(b.title),
+      );
+    }
+
+    return [...byDate.values()].sort((a, b) => {
+      if (a.key === "0000-00") return 1;
+      if (b.key === "0000-00") return -1;
+      return a.key < b.key ? 1 : a.key > b.key ? -1 : 0;
+    });
+  }, [sets, section]);
 
   const difficulties = useMemo(
     () =>
@@ -277,7 +323,8 @@ function SectionBrowse() {
             {SECTION_LABEL[section]}
           </h1>
           <p className="text-sm text-slate-500">
-            Pick a module set by date, or build a mixed set from the whole bank.
+            Newest papers first (by year, then when they were added). Module 1 and Module 2 stay under
+            their own paper.
           </p>
         </div>
       </div>
@@ -356,25 +403,22 @@ function SectionBrowse() {
                   <CalendarDays className="h-3.5 w-3.5" />
                   {g.label}
                   <span className="tabular-nums text-slate-400">
-                    · {g.sets.length} set{g.sets.length === 1 ? "" : "s"}
+                    · {g.papers.length} paper{g.papers.length === 1 ? "" : "s"}
                   </span>
                 </h2>
-                <ul className="stagger-fast grid gap-3 sm:grid-cols-2">
-                  {g.sets.map((s) => (
-                    <SetCard
-                      key={s.id}
-                      set={s}
-                      busy={starting === s.id}
-                      disabled={starting != null && starting !== s.id}
-                      onOpen={() => openSet(s)}
-                      onReview={
-                        s.status === "done" && s.sessionId
-                          ? () => navigate({ to: `/analysis/session/${s.sessionId}` })
-                          : undefined
+                <div className="stagger-fast space-y-3">
+                  {g.papers.map((paper) => (
+                    <PaperCard
+                      key={paper.key}
+                      paper={paper}
+                      starting={starting}
+                      onOpen={openSet}
+                      onReview={(sessionId) =>
+                        navigate({ to: `/analysis/session/${sessionId}` })
                       }
                     />
                   ))}
-                </ul>
+                </div>
               </section>
             ))
           )}
@@ -384,80 +428,117 @@ function SectionBrowse() {
   );
 }
 
-function SetCard({
-  set,
-  busy,
-  disabled,
+function PaperCard({
+  paper,
+  starting,
   onOpen,
   onReview,
 }: {
-  set: TestSet;
-  busy: boolean;
-  disabled: boolean;
-  onOpen: () => void;
-  /** Only supplied for a completed set — reviewing needs a session to review. */
-  onReview?: () => void;
+  paper: PaperGroup;
+  starting: string | null;
+  onOpen: (set: TestSet) => void;
+  onReview: (sessionId: string) => void;
 }) {
-  const label =
-    set.status === "done" ? "Retake" : set.status === "in_progress" ? "Resume" : "Start";
-  const Icon = set.status === "done" ? RotateCcw : Play;
+  const mod1 = paper.modules.filter((s) => s.module === 1);
+  const mod2 = paper.modules.filter((s) => s.module === 2);
 
   return (
-    <li className="flex flex-col justify-between gap-3 rounded-2xl border border-brand-400/40 bg-brand-600 p-4 shadow-panel transition hover:bg-brand-500">
-      <div>
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-bold text-white">{stripModuleSuffix(set.title)}</h3>
-          {set.status === "done" && (
-            <CheckCircle2
-              className="mt-0.5 h-4 w-4 shrink-0 text-brand-200"
-              aria-label="Completed"
-            />
-          )}
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-            {set.count} question{set.count === 1 ? "" : "s"}
-          </span>
-          <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-            Module {set.module}
-          </span>
-          <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-            Difficulty <span className="text-white">{difficultyLabel(set.difficulty)}</span>
-          </span>
-        </div>
-        {set.score && (
-          <div className="mt-2 text-[11px] font-semibold text-brand-100">
-            Last attempt:{" "}
-            <span className="tabular-nums text-white">
-              {set.score.correct}/{set.score.total}
-            </span>
-          </div>
-        )}
-        {set.status === "in_progress" && (
-          <div className="mt-2 text-[11px] font-semibold text-brand-100">In progress</div>
-        )}
+    <div className="overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
+      <div className="border-b border-brand-400/30 px-4 py-3">
+        <h3 className="text-sm font-bold text-white">{paper.title}</h3>
       </div>
-
-      <div className="flex gap-2">
-        {onReview && (
-          <button
-            onClick={onReview}
-            disabled={busy || disabled}
-            className="tap inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-brand-800 px-3 py-2 text-sm font-bold text-white hover:bg-brand-400 disabled:opacity-40"
-          >
-            <BookOpenCheck className="h-4 w-4" />
-            Review
-          </button>
-        )}
-        <button
-          onClick={onOpen}
-          disabled={busy || disabled}
-          className="btn-brand inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-brand-400 px-3 py-2 text-sm font-bold text-white disabled:opacity-40"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
-          {label}
-        </button>
+      {/* Modules stack in one column so Module 1 sits above Module 2. */}
+      <div className="flex flex-col gap-3 p-3">
+        {([1, 2] as const).map((mod) => {
+          const rows = mod === 1 ? mod1 : mod2;
+          return (
+            <div
+              key={mod}
+              className="overflow-hidden rounded-xl border border-brand-400/30 border-l-4 border-l-brand-400 bg-brand-800/50"
+            >
+              <div className="border-b border-brand-400/20 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200">
+                Module {mod}
+              </div>
+              {rows.length === 0 ? (
+                <div className="px-4 py-3 text-xs text-brand-200">Not available</div>
+              ) : (
+                <ul>
+                  {rows.map((set) => {
+                    const busy = starting === set.id;
+                    const disabled = starting != null && starting !== set.id;
+                    const label =
+                      set.status === "done"
+                        ? "Retake"
+                        : set.status === "in_progress"
+                          ? "Resume"
+                          : "Start";
+                    const Icon = set.status === "done" ? RotateCcw : Play;
+                    return (
+                      <li
+                        key={set.id}
+                        className="flex flex-col gap-3 px-4 py-3 transition-colors hover:bg-brand-500/40"
+                      >
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {set.status === "done" && (
+                            <CheckCircle2
+                              className="h-3.5 w-3.5 text-brand-200"
+                              aria-label="Completed"
+                            />
+                          )}
+                          {set.status === "in_progress" && (
+                            <span className="text-[11px] font-semibold text-brand-100">
+                              In progress
+                            </span>
+                          )}
+                          <span className="rounded bg-brand-900/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                            {set.count} question{set.count === 1 ? "" : "s"}
+                          </span>
+                          <span className="rounded bg-brand-900/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                            Difficulty{" "}
+                            <span className="text-white">{difficultyLabel(set.difficulty)}</span>
+                          </span>
+                          {set.score && (
+                            <span className="text-[11px] font-semibold text-brand-100">
+                              Last:{" "}
+                              <span className="tabular-nums text-white">
+                                {set.score.correct}/{set.score.total}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          {set.status === "done" && set.sessionId && (
+                            <button
+                              onClick={() => onReview(set.sessionId!)}
+                              disabled={busy || disabled}
+                              className="tap inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-900/70 px-3 py-2.5 text-sm font-bold text-white hover:bg-brand-400 disabled:opacity-40"
+                            >
+                              <BookOpenCheck className="h-4 w-4" />
+                              Review
+                            </button>
+                          )}
+                          <button
+                            onClick={() => onOpen(set)}
+                            disabled={busy || disabled}
+                            className="btn-brand inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-400 px-3 py-2.5 text-sm font-bold text-white disabled:opacity-40"
+                          >
+                            {busy ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Icon className="h-4 w-4" />
+                            )}
+                            {label}
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          );
+        })}
       </div>
-    </li>
+    </div>
   );
 }

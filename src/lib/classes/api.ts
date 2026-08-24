@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type {
   ChatAttachment,
   ChatMessage,
+  ChatMute,
   ChatProfile,
   ChatThread,
   ClassRow,
@@ -97,6 +98,24 @@ export async function listClassMembers(classId: string): Promise<{ user_id: stri
   return (data ?? []) as { user_id: string; joined_at: string }[];
 }
 
+/** Staff: add a user to a class (moves them if they already belong elsewhere). */
+export async function addClassMember(classId: string, userId: string): Promise<void> {
+  const { error: delErr } = await db.from("class_memberships").delete().eq("user_id", userId);
+  if (delErr) throw delErr;
+  const { error } = await db.from("class_memberships").insert({ class_id: classId, user_id: userId });
+  if (error) throw error;
+}
+
+/** Staff: remove a user from a class. */
+export async function removeClassMember(classId: string, userId: string): Promise<void> {
+  const { error } = await db
+    .from("class_memberships")
+    .delete()
+    .eq("class_id", classId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
 export async function getChatProfile(userId?: string): Promise<ChatProfile | null> {
   let uid = userId;
   if (!uid) {
@@ -153,6 +172,22 @@ export async function searchUsersByUsername(q: string, limit = 20): Promise<Chat
   return (data ?? []) as ChatProfile[];
 }
 
+/** Staff search by username or email (includes users who haven't finished Classes setup). */
+export async function searchUsersForAdmin(q: string, limit = 20): Promise<ChatProfile[]> {
+  const raw = q.trim().replace(/^@/, "");
+  if (raw.length < 2) return [];
+  const needle = raw.replace(/%/g, "").replace(/,/g, "");
+  const { data, error } = await db
+    .from("profiles")
+    .select(
+      "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,email",
+    )
+    .or(`username.ilike.${needle}%,email.ilike.%${needle}%`)
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as ChatProfile[];
+}
+
 export async function listMyThreads(): Promise<ChatThread[]> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) return [];
@@ -188,14 +223,16 @@ export async function listMyThreads(): Promise<ChatThread[]> {
 export async function listThreadMessages(
   threadId: string,
   limit = 80,
+  opts?: { includeDeleted?: boolean },
 ): Promise<{ messages: ChatMessage[]; attachments: ChatAttachment[] }> {
-  const { data, error } = await db
+  let q = db
     .from("chat_messages")
     .select("id,thread_id,sender_id,body,created_at,edited_at,deleted_at")
     .eq("thread_id", threadId)
-    .is("deleted_at", null)
     .order("created_at", { ascending: true })
     .limit(limit);
+  if (!opts?.includeDeleted) q = q.is("deleted_at", null);
+  const { data, error } = await q;
   if (error) throw error;
   const messages = (data ?? []) as ChatMessage[];
   const ids = messages.map((m) => m.id);
@@ -486,8 +523,113 @@ export async function markAttendance(input: {
   if (error) throw error;
 }
 
-export async function signedUrl(bucket: "chat-uploads" | "homework-uploads", path: string): Promise<string> {
-  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
+export async function editMessage(id: string, body: string): Promise<void> {
+  const { error } = await db
+    .from("chat_messages")
+    .update({ body: body.trim() })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteMessage(id: string): Promise<void> {
+  const { error } = await db
+    .from("chat_messages")
+    .update({ deleted_at: new Date().toISOString(), body: "" })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function listClassThreads(classId: string): Promise<ChatThread[]> {
+  const { data, error } = await db
+    .from("chat_threads")
+    .select("id,kind,class_id,subject,title,pinned,updated_at,created_at")
+    .eq("class_id", classId)
+    .order("pinned", { ascending: false })
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ChatThread[];
+}
+
+export async function listMutes(classId: string): Promise<ChatMute[]> {
+  const { data, error } = await db
+    .from("chat_mutes")
+    .select("id,user_id,thread_id,class_id,muted_by,reason,muted_until,created_at")
+    .eq("class_id", classId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ChatMute[];
+}
+
+export async function muteUser(input: {
+  user_id: string;
+  class_id?: string | null;
+  thread_id?: string | null;
+  reason?: string | null;
+  muted_until?: string | null;
+}): Promise<void> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!input.class_id && !input.thread_id) throw new Error("Mute needs a class or thread.");
+  if (input.class_id && input.thread_id) throw new Error("Mute either class-wide or one thread.");
+  await unmuteUser({
+    user_id: input.user_id,
+    class_id: input.class_id,
+    thread_id: input.thread_id,
+  }).catch(() => undefined);
+  const { error } = await db.from("chat_mutes").insert({
+    user_id: input.user_id,
+    class_id: input.class_id ?? null,
+    thread_id: input.thread_id ?? null,
+    muted_by: u.user?.id ?? null,
+    reason: input.reason?.trim() || null,
+    muted_until: input.muted_until ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function unmuteUser(input: {
+  user_id: string;
+  class_id?: string | null;
+  thread_id?: string | null;
+}): Promise<void> {
+  let q = db.from("chat_mutes").delete().eq("user_id", input.user_id);
+  if (input.class_id) q = q.eq("class_id", input.class_id);
+  else if (input.thread_id) q = q.eq("thread_id", input.thread_id);
+  else throw new Error("Unmute needs a class or thread.");
+  const { error } = await q;
+  if (error) throw error;
+}
+
+/** Whether the current user is muted in this thread (class-wide or thread). */
+export async function amIMutedInThread(threadId: string): Promise<boolean> {
+  const { data, error } = await db.rpc("bs_is_chat_muted", { _thread_id: threadId });
+  if (error) throw error;
+  return Boolean(data);
+}
+
+export async function signedUrl(
+  bucket: "chat-uploads" | "homework-uploads",
+  path: string,
+  fileName?: string,
+): Promise<string> {
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600, {
+    download: fileName ?? true,
+  });
   if (error) throw error;
   return data.signedUrl;
+}
+
+/** Sign with Content-Disposition: attachment and trigger a browser download. */
+export async function downloadStorageFile(
+  bucket: "chat-uploads" | "homework-uploads",
+  path: string,
+  fileName: string,
+): Promise<void> {
+  const url = await signedUrl(bucket, path, fileName);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }

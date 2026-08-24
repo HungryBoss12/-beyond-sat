@@ -167,6 +167,55 @@ export function formatSourceDate(month?: number | null, year?: number | null): s
   return `${MONTHS[month - 1]} ${year}`;
 }
 
+const MONTH_NAME_RE =
+  /\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i;
+
+/**
+ * Best-effort paper date for browse ordering: explicit source fields first,
+ * then month/year parsed from the title (e.g. "2025 June E", "June 2025").
+ */
+export function resolvePaperSourceDate(
+  title: string,
+  sourceMonth?: number | null,
+  sourceYear?: number | null,
+): { year: number; month: number; label: string } | null {
+  if (sourceMonth != null && sourceMonth >= 1 && sourceMonth <= 12 && sourceYear != null) {
+    return {
+      year: sourceYear,
+      month: sourceMonth,
+      label: `${MONTHS[sourceMonth - 1]} ${sourceYear}`,
+    };
+  }
+
+  const base = stripModuleSuffix(title);
+  const yearMatch = base.match(/\b(20\d{2}|19\d{2})\b/);
+  const monthMatch = base.match(MONTH_NAME_RE);
+  const parsedYear = yearMatch ? Number(yearMatch[1]) : sourceYear ?? null;
+  let parsedMonth: number | null =
+    sourceMonth != null && sourceMonth >= 1 && sourceMonth <= 12 ? sourceMonth : null;
+  if (parsedMonth == null && monthMatch) {
+    const idx = MONTHS.findIndex((m) => m.toLowerCase() === monthMatch[1].toLowerCase());
+    if (idx >= 0) parsedMonth = idx + 1;
+  }
+
+  if (parsedYear != null && parsedMonth != null) {
+    return {
+      year: parsedYear,
+      month: parsedMonth,
+      label: `${MONTHS[parsedMonth - 1]} ${parsedYear}`,
+    };
+  }
+  if (parsedYear != null) {
+    return { year: parsedYear, month: 0, label: String(parsedYear) };
+  }
+  return null;
+}
+
+/** Sort key `YYYY-MM` (month `00` = year-only). Descending string compare = newest first. */
+export function paperDateSortKey(year: number, month: number): string {
+  return `${year}-${String(Math.max(0, Math.min(12, month))).padStart(2, "0")}`;
+}
+
 /** Strip a trailing module marker from a test title (`· Module 2`, `- Mod 1`, etc.). */
 export function stripModuleSuffix(title: string): string {
   return title

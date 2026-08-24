@@ -8,11 +8,14 @@ import {
   Loader2,
   MessageSquare,
   Paperclip,
+  Pencil,
   Search,
   Send,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
+import { getStaffRole } from "@/lib/admin";
 import {
   displayName,
   getChatProfile,
@@ -25,7 +28,10 @@ import {
   openDirectThread,
   searchUsersByUsername,
   sendMessage,
-  signedUrl,
+  editMessage,
+  deleteMessage,
+  amIMutedInThread,
+  downloadStorageFile,
   upsertSubmission,
   addSubmissionFiles,
   uploadChatFile,
@@ -155,6 +161,10 @@ function ChatsPane({ me }: { me: ChatProfile }) {
   const [hits, setHits] = useState<ChatProfile[]>([]);
   const [sending, setSending] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [isStaff, setIsStaff] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [pendingFile, setPendingFile] = useState<{
@@ -163,6 +173,10 @@ function ChatsPane({ me }: { me: ChatProfile }) {
     mime_type: string | null;
     byte_size: number | null;
   } | null>(null);
+
+  useEffect(() => {
+    void getStaffRole(me.id).then((r) => setIsStaff(Boolean(r)));
+  }, [me.id]);
 
   const reloadThreads = useCallback(async () => {
     const rows = await listMyThreads();
@@ -181,10 +195,14 @@ function ChatsPane({ me }: { me: ChatProfile }) {
     if (!activeId) return;
     let cancelled = false;
     async function load() {
-      const { messages: msgs, attachments: atts } = await listThreadMessages(activeId!);
+      const [{ messages: msgs, attachments: atts }, amMuted] = await Promise.all([
+        listThreadMessages(activeId!, 80, { includeDeleted: isStaff }),
+        amIMutedInThread(activeId!).catch(() => false),
+      ]);
       if (cancelled) return;
       setMessages(msgs);
       setAttachments(atts);
+      setMuted(amMuted);
       const ids = [...new Set(msgs.map((m) => m.sender_id))];
       const map = new Map(profiles);
       for (const id of ids) {
@@ -203,7 +221,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
       window.clearInterval(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeId, me.id]);
+  }, [activeId, me.id, isStaff]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -228,6 +246,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
     setActiveId(id);
     setDraft("");
     setPendingFile(null);
+    setEditingId(null);
   }
 
   async function startDm(user: ChatProfile) {
@@ -246,15 +265,21 @@ function ChatsPane({ me }: { me: ChatProfile }) {
   }
 
   async function submit() {
-    if (!activeId || sending) return;
+    if (!activeId || sending || muted) return;
     const text = draft.trim();
     if (!text && !pendingFile) return;
     setSending(true);
     try {
-      await sendMessage(activeId, text || (pendingFile ? pendingFile.file_name : ""), pendingFile ? [pendingFile] : undefined);
+      await sendMessage(
+        activeId,
+        text || (pendingFile ? pendingFile.file_name : ""),
+        pendingFile ? [pendingFile] : undefined,
+      );
       setDraft("");
       setPendingFile(null);
-      const { messages: msgs, attachments: atts } = await listThreadMessages(activeId);
+      const { messages: msgs, attachments: atts } = await listThreadMessages(activeId, 80, {
+        includeDeleted: isStaff,
+      });
       setMessages(msgs);
       setAttachments(atts);
       await reloadThreads();
@@ -262,6 +287,40 @@ function ChatsPane({ me }: { me: ChatProfile }) {
       alert((e as Error)?.message ?? "Send failed.");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function saveEdit(id: string) {
+    const body = editDraft.trim();
+    if (!body) return alert("Message cannot be empty.");
+    try {
+      await editMessage(id, body);
+      setEditingId(null);
+      if (activeId) {
+        const { messages: msgs, attachments: atts } = await listThreadMessages(activeId, 80, {
+          includeDeleted: isStaff,
+        });
+        setMessages(msgs);
+        setAttachments(atts);
+      }
+    } catch (e) {
+      alert((e as Error)?.message ?? "Edit failed.");
+    }
+  }
+
+  async function removeMessage(id: string) {
+    if (!confirm("Delete this message?")) return;
+    try {
+      await deleteMessage(id);
+      if (activeId) {
+        const { messages: msgs, attachments: atts } = await listThreadMessages(activeId, 80, {
+          includeDeleted: isStaff,
+        });
+        setMessages(msgs);
+        setAttachments(atts);
+      }
+    } catch (e) {
+      alert((e as Error)?.message ?? "Delete failed.");
     }
   }
 
@@ -362,7 +421,9 @@ function ChatsPane({ me }: { me: ChatProfile }) {
             </li>
           ))}
           {threads.length === 0 && (
-            <li className="p-4 text-sm text-brand-100">No chats yet. Join a class to get Maths & EBRW groups.</li>
+            <li className="p-4 text-sm text-brand-100">
+              No chats yet. Join a class to get Maths & EBRW groups.
+            </li>
           )}
         </ul>
       </aside>
@@ -392,14 +453,17 @@ function ChatsPane({ me }: { me: ChatProfile }) {
             <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
               {messages.map((m) => {
                 const mine = m.sender_id === me.id;
+                const canMod = mine || isStaff;
                 const sender = profiles.get(m.sender_id);
                 const files = attsByMsg.get(m.id) ?? [];
+                const deleted = Boolean(m.deleted_at);
                 return (
                   <div key={m.id} className={"flex " + (mine ? "justify-end" : "justify-start")}>
                     <div
                       className={
                         "max-w-[80%] rounded-2xl px-3 py-2 text-sm " +
-                        (mine ? "bg-brand-400 text-white" : "bg-brand-600 text-white")
+                        (mine ? "bg-brand-400 text-white" : "bg-brand-600 text-white") +
+                        (deleted ? " opacity-60" : "")
                       }
                     >
                       {!mine && (
@@ -407,27 +471,91 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                           {sender ? displayName(sender) : "…"}
                         </div>
                       )}
-                      {m.body && <div className="whitespace-pre-wrap">{m.body}</div>}
-                      {files.map((f) => (
-                        <button
-                          key={f.id}
-                          className="mt-1 flex items-center gap-1 text-xs font-semibold underline"
-                          onClick={() =>
-                            void signedUrl("chat-uploads", f.storage_path).then((url) =>
-                              window.open(url, "_blank"),
-                            )
-                          }
-                        >
-                          <Paperclip className="h-3 w-3" />
-                          {f.file_name}
-                        </button>
-                      ))}
+                      {deleted ? (
+                        <div className="italic text-brand-100">Message deleted</div>
+                      ) : editingId === m.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editDraft}
+                            onChange={(e) => setEditDraft(e.target.value)}
+                            rows={2}
+                            className="w-full rounded-lg border border-brand-400/40 bg-brand-800 px-2 py-1.5 text-sm text-white focus:outline-none"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void saveEdit(m.id)}
+                              className="rounded bg-brand-800 px-2 py-1 text-[11px] font-bold"
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingId(null)}
+                              className="rounded px-2 py-1 text-[11px] font-bold text-brand-100"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {m.body && <div className="whitespace-pre-wrap">{m.body}</div>}
+                          {files.map((f) => (
+                            <button
+                              key={f.id}
+                              className="mt-1 flex items-center gap-1 text-xs font-semibold underline"
+                              onClick={() =>
+                                void downloadStorageFile(
+                                  "chat-uploads",
+                                  f.storage_path,
+                                  f.file_name,
+                                ).catch((err) =>
+                                  alert((err as Error)?.message ?? "Download failed."),
+                                )
+                              }
+                            >
+                              <Paperclip className="h-3 w-3" />
+                              {f.file_name}
+                            </button>
+                          ))}
+                          {m.edited_at && (
+                            <div className="mt-0.5 text-[10px] text-brand-100/80">edited</div>
+                          )}
+                          {canMod && (
+                            <div className="mt-1 flex gap-2">
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 hover:text-white"
+                                onClick={() => {
+                                  setEditingId(m.id);
+                                  setEditDraft(m.body);
+                                }}
+                              >
+                                <Pencil className="h-2.5 w-2.5" /> Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 hover:text-white"
+                                onClick={() => void removeMessage(m.id)}
+                              >
+                                <Trash2 className="h-2.5 w-2.5" /> Delete
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
             <div className="border-t border-brand-400/30 bg-brand-600 p-3">
+              {muted && (
+                <div className="mb-2 rounded-lg bg-brand-900/60 px-3 py-2 text-xs font-semibold text-brand-100">
+                  You are muted in this chat and cannot send messages.
+                </div>
+              )}
               {pendingFile && (
                 <div className="mb-2 flex items-center gap-2 text-xs text-brand-100">
                   <Paperclip className="h-3.5 w-3.5" />
@@ -440,7 +568,8 @@ function ChatsPane({ me }: { me: ChatProfile }) {
               <div className="flex items-end gap-2">
                 <button
                   onClick={() => fileRef.current?.click()}
-                  className="tap grid h-10 w-10 place-items-center rounded-lg bg-brand-800 text-brand-100 hover:text-white"
+                  disabled={muted}
+                  className="tap grid h-10 w-10 place-items-center rounded-lg bg-brand-800 text-brand-100 hover:text-white disabled:opacity-40"
                   aria-label="Attach file"
                 >
                   <Paperclip className="h-4 w-4" />
@@ -462,8 +591,9 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   rows={1}
-                  placeholder="Message…"
-                  className="min-h-10 min-w-0 flex-1 resize-none rounded-lg border border-brand-400/40 bg-brand-800 px-3 py-2 text-sm text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
+                  disabled={muted}
+                  placeholder={muted ? "Muted…" : "Message…"}
+                  className="min-h-10 min-w-0 flex-1 resize-none rounded-lg border border-brand-400/40 bg-brand-800 px-3 py-2 text-sm text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none disabled:opacity-40"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -473,7 +603,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                 />
                 <button
                   onClick={() => void submit()}
-                  disabled={sending}
+                  disabled={sending || muted}
                   className="btn-brand grid h-10 w-10 place-items-center rounded-lg bg-brand-400 text-white disabled:opacity-40"
                   aria-label="Send"
                 >
@@ -625,13 +755,11 @@ function HomeworksPane({ classId }: { classId: string }) {
                     <button
                       key={f.id}
                       onClick={() =>
-                        void signedUrl("homework-uploads", f.storage_path).then((url) => {
-                          const ael = document.createElement("a");
-                          ael.href = url;
-                          ael.download = f.file_name;
-                          ael.target = "_blank";
-                          ael.click();
-                        })
+                        void downloadStorageFile(
+                          "homework-uploads",
+                          f.storage_path,
+                          f.file_name,
+                        ).catch((err) => alert((err as Error)?.message ?? "Download failed."))
                       }
                       className="tap inline-flex items-center gap-1.5 rounded-lg bg-brand-800 px-2.5 py-1.5 text-xs font-semibold text-white"
                     >
@@ -668,9 +796,11 @@ function HomeworksPane({ classId }: { classId: string }) {
                 <button
                   key={f.id}
                   onClick={() =>
-                    void signedUrl("homework-uploads", f.storage_path).then((url) =>
-                      window.open(url, "_blank"),
-                    )
+                    void downloadStorageFile(
+                      "homework-uploads",
+                      f.storage_path,
+                      f.file_name,
+                    ).catch((err) => alert((err as Error)?.message ?? "Download failed."))
                   }
                   className="tap flex w-full items-center gap-2 rounded-lg bg-brand-800 px-3 py-2 text-left text-sm font-semibold"
                 >

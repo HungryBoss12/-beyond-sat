@@ -3,30 +3,49 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Check,
   Loader2,
+  MessageSquare,
+  Pencil,
   Plus,
   Trash2,
   Upload,
+  UserPlus,
   Users,
+  VolumeX,
   X,
 } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import {
   SUBJECT_LABEL,
+  addClassMember,
   addHomeworkFiles,
   createClass,
   createHomework,
   deleteClass,
+  deleteMessage,
+  displayName,
+  editMessage,
   getChatProfile,
   listAllClasses,
   listClassAttendanceOnDate,
   listClassMembers,
+  listClassThreads,
   listHomework,
+  listMutes,
   listSubmissionsForAssignment,
+  listThreadMessages,
   markAttendance,
+  muteUser,
+  removeClassMember,
   reviewSubmission,
+  searchUsersForAdmin,
+  unmuteUser,
   updateClass,
   uploadHomeworkFile,
+  type ChatAttachment,
+  type ChatMessage,
+  type ChatMute,
   type ChatProfile,
+  type ChatThread,
   type ClassRow,
   type ClassSubject,
   type HomeworkAssignment,
@@ -48,7 +67,7 @@ function AdminClasses() {
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [selected, setSelected] = useState<ClassRow | null>(null);
-  const [tab, setTab] = useState<"members" | "homework" | "attendance">("homework");
+  const [tab, setTab] = useState<"members" | "homework" | "attendance" | "chat">("homework");
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [savingName, setSavingName] = useState(false);
@@ -244,6 +263,7 @@ function AdminClasses() {
                   {(
                     [
                       ["homework", "Homework"],
+                      ["chat", "Chat"],
                       ["members", "Members"],
                       ["attendance", "Attendance"],
                     ] as const
@@ -262,6 +282,7 @@ function AdminClasses() {
                 </div>
 
                 {tab === "homework" && <HomeworkPanel classId={selected.id} />}
+                {tab === "chat" && <ChatPanel classId={selected.id} />}
                 {tab === "members" && <MembersPanel classId={selected.id} />}
                 {tab === "attendance" && <AttendancePanel classId={selected.id} />}
               </div>
@@ -466,11 +487,18 @@ function MembersPanel({ classId }: { classId: string }) {
   const [rows, setRows] = useState<{ user_id: string; joined_at: string; profile: ChatProfile | null }[]>(
     [],
   );
+  const [mutes, setMutes] = useState<ChatMute[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<ChatProfile[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [allClasses, setAllClasses] = useState<ClassRow[]>([]);
 
-  useEffect(() => {
-    void (async () => {
-      setLoading(true);
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
       const members = await listClassMembers(classId);
       const out = [];
       for (const m of members) {
@@ -480,9 +508,100 @@ function MembersPanel({ classId }: { classId: string }) {
         });
       }
       setRows(out);
+      setMutes(await listMutes(classId).catch(() => []));
+    } finally {
       setLoading(false);
-    })();
+    }
   }, [classId]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  useEffect(() => {
+    void listAllClasses()
+      .then(setAllClasses)
+      .catch(() => setAllClasses([]));
+  }, []);
+
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setHits([]);
+      return;
+    }
+    const t = window.setTimeout(() => {
+      setSearching(true);
+      void searchUsersForAdmin(q)
+        .then((list) => setHits(list.filter((p) => p.class_id !== classId)))
+        .catch(() => setHits([]))
+        .finally(() => setSearching(false));
+    }, 220);
+    return () => window.clearTimeout(t);
+  }, [query, classId]);
+
+  const mutedIds = new Set(mutes.map((m) => m.user_id));
+  const memberIds = new Set(rows.map((r) => r.user_id));
+
+  function classNameFor(cid: string | null | undefined): string | null {
+    if (!cid) return null;
+    return allClasses.find((c) => c.id === cid)?.name ?? "another group";
+  }
+
+  async function addStudent(user: ChatProfile) {
+    if (memberIds.has(user.id)) return;
+    const other = classNameFor(user.class_id);
+    if (other) {
+      if (
+        !confirm(
+          `@${user.username || user.email || "user"} is in “${other}”. Move them to this group?`,
+        )
+      ) {
+        return;
+      }
+    }
+    setAddingId(user.id);
+    try {
+      await addClassMember(classId, user.id);
+      setQuery("");
+      setHits([]);
+      await reload();
+    } catch (e) {
+      alert((e as Error)?.message ?? "Could not add student.");
+    } finally {
+      setAddingId(null);
+    }
+  }
+
+  async function removeStudent(userId: string, label: string) {
+    if (!confirm(`Remove ${label} from this group?`)) return;
+    setBusyId(userId);
+    try {
+      await removeClassMember(classId, userId);
+      await reload();
+    } catch (e) {
+      alert((e as Error)?.message ?? "Could not remove student.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function toggleMute(userId: string) {
+    setBusyId(userId);
+    try {
+      if (mutedIds.has(userId)) {
+        await unmuteUser({ user_id: userId, class_id: classId });
+      } else {
+        const reason = window.prompt("Mute reason (optional):") ?? "";
+        await muteUser({ user_id: userId, class_id: classId, reason: reason || null });
+      }
+      await reload();
+    } catch (e) {
+      alert((e as Error)?.message ?? "Could not update mute.");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -493,22 +612,317 @@ function MembersPanel({ classId }: { classId: string }) {
   }
 
   return (
-    <ul className="divide-y divide-brand-400/30 overflow-hidden rounded-xl border border-brand-400/40">
-      {rows.map((r) => (
-        <li key={r.user_id} className="flex items-center gap-3 px-3 py-2.5">
-          <Users className="h-4 w-4 text-brand-100" />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-bold">
-              {r.profile?.username ? `@${r.profile.username}` : r.profile?.full_name || r.user_id.slice(0, 8)}
-            </div>
-            <div className="text-[11px] text-brand-100">{r.profile?.email}</div>
+    <div className="space-y-3">
+      <div className="rounded-xl border border-brand-400/40 bg-brand-800/60 p-3">
+        <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+          <UserPlus className="h-3.5 w-3.5" />
+          Add student
+        </label>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by username or email…"
+          className={CONTROL}
+        />
+        {searching && (
+          <div className="mt-2 flex items-center gap-2 text-xs text-brand-100">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
           </div>
-        </li>
-      ))}
-      {rows.length === 0 && (
-        <li className="px-3 py-4 text-sm text-brand-100">No students in this class yet.</li>
-      )}
-    </ul>
+        )}
+        {!searching && query.trim().length >= 2 && hits.length === 0 && (
+          <p className="mt-2 text-xs text-brand-100">No matching users.</p>
+        )}
+        {hits.length > 0 && (
+          <ul className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-brand-400/40">
+            {hits.map((h) => {
+              const elsewhere = classNameFor(h.class_id);
+              return (
+                <li
+                  key={h.id}
+                  className="flex items-center gap-2 border-b border-brand-400/30 px-3 py-2 last:border-0"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold">
+                      {h.username ? `@${h.username}` : h.full_name || h.email || h.id.slice(0, 8)}
+                    </div>
+                    <div className="truncate text-[11px] text-brand-100">
+                      {h.email}
+                      {elsewhere ? ` · in ${elsewhere}` : ""}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={addingId === h.id}
+                    onClick={() => void addStudent(h)}
+                    className="btn-brand shrink-0 rounded-lg bg-brand-400 px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
+                  >
+                    {addingId === h.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      <ul className="divide-y divide-brand-400/30 overflow-hidden rounded-xl border border-brand-400/40">
+        {rows.map((r) => {
+          const label = r.profile?.username
+            ? `@${r.profile.username}`
+            : r.profile?.full_name || r.user_id.slice(0, 8);
+          return (
+            <li key={r.user_id} className="flex items-center gap-3 px-3 py-2.5">
+              <Users className="h-4 w-4 text-brand-100" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-bold">
+                  {label}
+                  {mutedIds.has(r.user_id) && (
+                    <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-brand-200">
+                      muted
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] text-brand-100">{r.profile?.email}</div>
+              </div>
+              <button
+                type="button"
+                disabled={busyId === r.user_id}
+                onClick={() => void toggleMute(r.user_id)}
+                className="tap inline-flex items-center gap-1 rounded-lg bg-brand-800 px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40"
+              >
+                {busyId === r.user_id ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <VolumeX className="h-3 w-3" />
+                )}
+                {mutedIds.has(r.user_id) ? "Unmute" : "Mute"}
+              </button>
+              <button
+                type="button"
+                disabled={busyId === r.user_id}
+                onClick={() => void removeStudent(r.user_id, label)}
+                className="tap inline-flex items-center gap-1 rounded-lg bg-brand-900 px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40"
+                title="Remove from group"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </li>
+          );
+        })}
+        {rows.length === 0 && (
+          <li className="px-3 py-4 text-sm text-brand-100">No students in this class yet.</li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+function ChatPanel({ classId }: { classId: string }) {
+  const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [profiles, setProfiles] = useState<Map<string, ChatProfile>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+
+  useEffect(() => {
+    void (async () => {
+      setLoading(true);
+      try {
+        const rows = await listClassThreads(classId);
+        setThreads(rows);
+        if (rows.length) setActiveId((cur) => cur ?? rows[0].id);
+      } catch (e) {
+        alert((e as Error)?.message ?? "Could not load threads.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [classId]);
+
+  const reloadMessages = useCallback(async (threadId: string) => {
+    const { messages: msgs, attachments: atts } = await listThreadMessages(threadId, 120, {
+      includeDeleted: true,
+    });
+    setMessages(msgs);
+    setAttachments(atts);
+    const ids = [...new Set(msgs.map((m) => m.sender_id))];
+    const map = new Map<string, ChatProfile>();
+    for (const id of ids) {
+      const p = await getChatProfile(id).catch(() => null);
+      if (p) map.set(id, p);
+    }
+    setProfiles((prev) => {
+      const next = new Map(prev);
+      for (const [k, v] of map) next.set(k, v);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!activeId) return;
+    void reloadMessages(activeId).catch(() => {});
+    const t = window.setInterval(() => void reloadMessages(activeId).catch(() => {}), 5000);
+    return () => window.clearInterval(t);
+  }, [activeId, reloadMessages]);
+
+  const attsByMsg = (() => {
+    const m = new Map<string, ChatAttachment[]>();
+    for (const a of attachments) {
+      const list = m.get(a.message_id) ?? [];
+      list.push(a);
+      m.set(a.message_id, list);
+    }
+    return m;
+  })();
+
+  function threadLabel(t: ChatThread): string {
+    if (t.kind === "subject_group" && t.subject) return SUBJECT_LABEL[t.subject];
+    if (t.kind === "class_group") return "Class";
+    return t.title || t.kind;
+  }
+
+  async function saveEdit(id: string) {
+    const body = editDraft.trim();
+    if (!body) return alert("Message cannot be empty.");
+    try {
+      await editMessage(id, body);
+      setEditingId(null);
+      if (activeId) await reloadMessages(activeId);
+    } catch (e) {
+      alert((e as Error)?.message ?? "Edit failed.");
+    }
+  }
+
+  async function removeMessage(id: string) {
+    if (!confirm("Delete this message?")) return;
+    try {
+      await deleteMessage(id);
+      if (activeId) await reloadMessages(activeId);
+    } catch (e) {
+      alert((e as Error)?.message ?? "Delete failed.");
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="h-5 w-5 animate-spin text-brand-100" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 md:grid-cols-[180px_1fr]">
+      <ul className="overflow-hidden rounded-xl border border-brand-400/40">
+        {threads.map((t) => (
+          <li key={t.id}>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveId(t.id);
+                setEditingId(null);
+              }}
+              className={
+                "tap flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-bold hover:bg-brand-500 " +
+                (t.id === activeId ? "bg-brand-500" : "")
+              }
+            >
+              <MessageSquare className="h-3.5 w-3.5 shrink-0 text-brand-100" />
+              {threadLabel(t)}
+            </button>
+          </li>
+        ))}
+        {threads.length === 0 && (
+          <li className="px-3 py-4 text-sm text-brand-100">No class threads yet.</li>
+        )}
+      </ul>
+      <div className="max-h-96 space-y-2 overflow-y-auto rounded-xl border border-brand-400/40 p-3">
+        {!activeId ? (
+          <p className="text-sm text-brand-100">Select a thread.</p>
+        ) : messages.length === 0 ? (
+          <p className="text-sm text-brand-100">No messages yet.</p>
+        ) : (
+          messages.map((m) => {
+            const sender = profiles.get(m.sender_id);
+            const deleted = Boolean(m.deleted_at);
+            return (
+              <div
+                key={m.id}
+                className={
+                  "rounded-lg bg-brand-800 px-3 py-2 text-sm " + (deleted ? "opacity-60" : "")
+                }
+              >
+                <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                  {sender ? displayName(sender) : m.sender_id.slice(0, 8)}
+                </div>
+                {deleted ? (
+                  <div className="italic text-brand-100">Message deleted</div>
+                ) : editingId === m.id ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={editDraft}
+                      onChange={(e) => setEditDraft(e.target.value)}
+                      rows={2}
+                      className={CONTROL}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void saveEdit(m.id)}
+                        className="rounded bg-brand-400 px-2 py-1 text-[11px] font-bold"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(null)}
+                        className="rounded px-2 py-1 text-[11px] font-bold text-brand-100"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {m.body && <div className="whitespace-pre-wrap">{m.body}</div>}
+                    {(attsByMsg.get(m.id) ?? []).map((f) => (
+                      <div key={f.id} className="mt-1 text-xs text-brand-100">
+                        Attachment: {f.file_name}
+                      </div>
+                    ))}
+                    {m.edited_at && (
+                      <div className="mt-0.5 text-[10px] text-brand-100/80">edited</div>
+                    )}
+                    <div className="mt-1 flex gap-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 hover:text-white"
+                        onClick={() => {
+                          setEditingId(m.id);
+                          setEditDraft(m.body);
+                        }}
+                      >
+                        <Pencil className="h-2.5 w-2.5" /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 hover:text-white"
+                        onClick={() => void removeMessage(m.id)}
+                      >
+                        <Trash2 className="h-2.5 w-2.5" /> Delete
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
   );
 }
 

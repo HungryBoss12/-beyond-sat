@@ -372,71 +372,18 @@ function AdminTests() {
               <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
                 Single modules
               </h2>
-              <div className="rise-in overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
-                <ul className="divide-y divide-brand-400/30">
-                  {singles.flatMap((g) => [...g.mod1, ...g.mod2]).map((t) => (
-                    <li
-                      key={t.id}
-                      className="flex flex-wrap items-center gap-3 px-4 py-3 transition-colors hover:bg-brand-500"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-white">{t.title}</div>
-                        <div className="mt-1 flex flex-wrap gap-1.5">
-                          <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-                            Module {t.module}
-                          </span>
-                          <span className="rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                            {SECTION_LABEL[t.section]}
-                          </span>
-                          <span
-                            className={
-                              "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
-                              difficultyColor(t.difficulty)
-                            }
-                          >
-                            {t.difficulty}
-                          </span>
-                          <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-                            {counts.get(t.id) ?? 0} q
-                          </span>
-                          {formatSourceDate(t.source_month, t.source_year) && (
-                            <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-                              {formatSourceDate(t.source_month, t.source_year)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setPairing(t)}
-                        className="tap inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
-                      >
-                        <Link2 className="h-3.5 w-3.5" />
-                        Pair with Module {t.module === 1 ? 2 : 1}
-                      </button>
-                      <button
-                        onClick={() => openAddMissing(t)}
-                        className="tap inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Add Module {t.module === 1 ? 2 : 1}
-                      </button>
-                      <button
-                        onClick={() => openEditor(t)}
-                        className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
-                        aria-label="Edit test"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => remove(t.id)}
-                        className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-900 hover:text-white"
-                        aria-label="Delete test"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+              <div className="space-y-4">
+                {singles.map((g) => (
+                  <PaperCard
+                    key={g.key}
+                    group={g}
+                    counts={counts}
+                    onEdit={openEditor}
+                    onRemove={remove}
+                    onPair={(t) => setPairing(t)}
+                    onAddMissing={openAddMissing}
+                  />
+                ))}
               </div>
             </div>
           )}
@@ -755,13 +702,18 @@ function PaperCard({
   counts,
   onEdit,
   onRemove,
+  onPair,
+  onAddMissing,
 }: {
   group: PaperGroup;
   counts: Map<string, number>;
   onEdit: (t: Test) => void;
   onRemove: (id: string) => void;
+  onPair?: (t: Test) => void;
+  onAddMissing?: (t: Test) => void;
 }) {
   const date = formatSourceDate(group.source_month, group.source_year);
+  const existing = [...group.mod1, ...group.mod2][0];
 
   return (
     <div className="rise-in overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
@@ -778,46 +730,81 @@ function PaperCard({
           )}
         </div>
       </div>
-      <ul className="divide-y divide-brand-400/30">
-        {([1, 2] as const).flatMap((mod) =>
-          (mod === 1 ? group.mod1 : group.mod2).map((t) => (
-            <li
-              key={t.id}
-              className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-brand-500"
+      {/* Module 1 stacks above Module 2 under this paper only. */}
+      <div className="flex flex-col gap-3 p-3">
+        {([1, 2] as const).map((mod) => {
+          const rows = mod === 1 ? group.mod1 : group.mod2;
+          return (
+            <div
+              key={mod}
+              className="overflow-hidden rounded-xl border border-brand-400/30 border-l-4 border-l-brand-400 bg-brand-800/50"
             >
-              <span className="w-20 shrink-0 text-xs font-bold uppercase tracking-wider text-brand-200">
+              <div className="border-b border-brand-400/20 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200">
                 Module {mod}
-              </span>
-              <span
-                className={
-                  "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
-                  difficultyColor(t.difficulty)
-                }
-              >
-                {t.difficulty}
-              </span>
-              <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-                {counts.get(t.id) ?? 0} q
-              </span>
-              <div className="flex-1" />
-              <button
-                onClick={() => onEdit(t)}
-                className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
-                aria-label={`Edit Module ${mod}`}
-              >
-                <Edit3 className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => onRemove(t.id)}
-                className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-900 hover:text-white"
-                aria-label={`Delete Module ${mod}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </li>
-          )),
-        )}
-      </ul>
+              </div>
+              {rows.length === 0 ? (
+                <div className="space-y-2 px-4 py-3">
+                  <div className="text-xs text-brand-200">No module yet</div>
+                  {existing && onPair && onAddMissing && (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => onPair(existing)}
+                        className="tap inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
+                      >
+                        <Link2 className="h-3.5 w-3.5" />
+                        Pair
+                      </button>
+                      <button
+                        onClick={() => onAddMissing(existing)}
+                        className="tap inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add Module {mod}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <ul>
+                  {rows.map((t) => (
+                    <li
+                      key={t.id}
+                      className="flex items-center gap-2 px-4 py-2.5 transition-colors hover:bg-brand-500"
+                    >
+                      <span
+                        className={
+                          "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
+                          difficultyColor(t.difficulty)
+                        }
+                      >
+                        {t.difficulty}
+                      </span>
+                      <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                        {counts.get(t.id) ?? 0} q
+                      </span>
+                      <div className="flex-1" />
+                      <button
+                        onClick={() => onEdit(t)}
+                        className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                        aria-label={`Edit Module ${mod}`}
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => onRemove(t.id)}
+                        className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-900 hover:text-white"
+                        aria-label={`Delete Module ${mod}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -103,6 +103,17 @@ export type LessonAttendance = {
   note: string | null;
 };
 
+export type ChatMute = {
+  id: string;
+  user_id: string;
+  thread_id: string | null;
+  class_id: string | null;
+  muted_by: string | null;
+  reason: string | null;
+  muted_until: string | null;
+  created_at: string;
+};
+
 export const SUBJECT_LABEL: Record<ClassSubject, string> = {
   math: "Maths",
   ebrw: "EBRW",

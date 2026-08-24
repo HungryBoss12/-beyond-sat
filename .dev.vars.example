@@ -15,6 +15,10 @@ SUPABASE_PUBLISHABLE_KEY="your-anon-publishable-key"
 # SUPABASE_ACCESS_TOKEN="sbp_..."
 # SUPABASE_DB_PASSWORD="your-db-password"
 #
-# Google AI Studio — admin import vision (/api/import/vision)
+# Google AI Studio — admin import vision + Beyond AI image turns
 # In production: wrangler secret put GEMINI_API_KEY
 # GEMINI_API_KEY="your-gemini-api-key"
+#
+# OpenRouter — Beyond AI chat (/api/ai). Required for Beyond AI to respond.
+# In production: wrangler secret put OPENROUTER_API_KEY
+# OPENROUTER_API_KEY="your-openrouter-api-key"

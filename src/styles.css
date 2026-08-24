@@ -1151,6 +1151,13 @@
   animation: nav-class-gather-b 0.7s ease-in-out;
 }
 
+.group:hover .nav-ico-admin,
+.group:focus-visible .nav-ico-admin,
+.group:active .nav-ico-admin,
+.group[data-nav-play] .nav-ico-admin {
+  animation: nav-shield 0.7s ease-in-out;
+}
+
 .nav-rail-pill,
 .nav-tab-pill {
   transition:
@@ -1357,6 +1364,267 @@
   }
 }
 
+/* Admin sidebar glyphs — each section gets a one-shot unique to its icon. */
+.admin-ico {
+  transform-origin: center;
+  display: block;
+  overflow: visible;
+}
+
+.group:hover .admin-ico-overview,
+.group:focus-visible .admin-ico-overview,
+.group:active .admin-ico-overview,
+.group[data-nav-play] .admin-ico-overview {
+  animation: admin-overview 0.7s ease-in-out;
+}
+.group:hover .admin-ico-homepage,
+.group:focus-visible .admin-ico-homepage,
+.group:active .admin-ico-homepage,
+.group[data-nav-play] .admin-ico-homepage {
+  animation: admin-homepage 0.65s ease-out;
+}
+.group:hover .admin-ico-questions,
+.group:focus-visible .admin-ico-questions,
+.group:active .admin-ico-questions,
+.group[data-nav-play] .admin-ico-questions {
+  animation: admin-questions 0.7s ease-in-out;
+}
+.group:hover .admin-ico-import,
+.group:focus-visible .admin-ico-import,
+.group:active .admin-ico-import,
+.group[data-nav-play] .admin-ico-import {
+  animation: admin-import 0.7s ease-in-out;
+}
+.group:hover .admin-ico-tests,
+.group:focus-visible .admin-ico-tests,
+.group:active .admin-ico-tests,
+.group[data-nav-play] .admin-ico-tests {
+  animation: admin-tests 0.75s ease-in-out;
+}
+.group:hover .admin-ico-daily,
+.group:focus-visible .admin-ico-daily,
+.group:active .admin-ico-daily,
+.group[data-nav-play] .admin-ico-daily {
+  animation: admin-daily 0.7s ease-in-out;
+}
+.group:hover .admin-ico-mocks,
+.group:focus-visible .admin-ico-mocks,
+.group:active .admin-ico-mocks,
+.group[data-nav-play] .admin-ico-mocks {
+  animation: admin-mocks 0.7s ease-out;
+}
+.group:hover .admin-ico-examdates,
+.group:focus-visible .admin-ico-examdates,
+.group:active .admin-ico-examdates,
+.group[data-nav-play] .admin-ico-examdates {
+  animation: admin-examdates 0.75s ease-in-out;
+}
+.group:hover .admin-ico-news,
+.group:focus-visible .admin-ico-news,
+.group:active .admin-ico-news,
+.group[data-nav-play] .admin-ico-news {
+  animation: admin-news 0.55s ease-in-out;
+}
+.group:hover .admin-ico-classes,
+.group:focus-visible .admin-ico-classes,
+.group:active .admin-ico-classes,
+.group[data-nav-play] .admin-ico-classes {
+  animation: admin-classes 0.7s ease-in-out;
+}
+.group:hover .admin-ico-users,
+.group:focus-visible .admin-ico-users,
+.group:active .admin-ico-users,
+.group[data-nav-play] .admin-ico-users {
+  animation: admin-users 0.7s ease-out;
+}
+.group:hover .admin-ico-settings,
+.group:focus-visible .admin-ico-settings,
+.group:active .admin-ico-settings,
+.group[data-nav-play] .admin-ico-settings {
+  animation: admin-settings 0.8s ease-in-out;
+}
+
+@keyframes admin-overview {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.12);
+  }
+  50% {
+    transform: scale(0.92);
+  }
+  75% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes admin-homepage {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-3px);
+  }
+  55% {
+    transform: translateY(1.5px);
+  }
+  70% {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes admin-questions {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  30% {
+    transform: rotate(-14deg) scale(1.08);
+  }
+  55% {
+    transform: rotate(12deg) scale(1.05);
+  }
+  75% {
+    transform: rotate(-4deg) scale(1.02);
+  }
+}
+
+@keyframes admin-import {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-4px);
+  }
+  70% {
+    transform: translateY(1.5px);
+  }
+}
+
+@keyframes admin-tests {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  30% {
+    transform: translateX(-2px) rotate(-6deg);
+  }
+  55% {
+    transform: translateX(2.5px) rotate(5deg);
+  }
+  75% {
+    transform: translateX(-1px) rotate(-2deg);
+  }
+}
+
+@keyframes admin-daily {
+  0%,
+  100% {
+    transform: rotateX(0deg) scale(1);
+  }
+  40% {
+    transform: perspective(80px) rotateX(-28deg) scale(1.06);
+  }
+  70% {
+    transform: perspective(80px) rotateX(8deg) scale(1.02);
+  }
+}
+
+@keyframes admin-mocks {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  35% {
+    transform: scale(1.14);
+    filter: brightness(1.35);
+  }
+  55% {
+    transform: scale(0.96);
+  }
+}
+
+@keyframes admin-examdates {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(8deg) scale(1.05);
+  }
+  50% {
+    transform: rotate(-10deg) scale(1.08);
+  }
+  75% {
+    transform: rotate(4deg) scale(1.02);
+  }
+}
+
+@keyframes admin-news {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  20% {
+    transform: rotate(6deg) translateY(-1px);
+  }
+  45% {
+    transform: rotate(-7deg) translateY(1px);
+  }
+  70% {
+    transform: rotate(3deg) translateY(0);
+  }
+}
+
+@keyframes admin-classes {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  35% {
+    transform: rotate(-12deg) translateY(-2px);
+  }
+  60% {
+    transform: rotate(8deg) translateY(0);
+  }
+  80% {
+    transform: rotate(-3deg);
+  }
+}
+
+@keyframes admin-users {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  40% {
+    transform: scale(1.16);
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.55));
+  }
+  65% {
+    transform: scale(0.97);
+  }
+}
+
+@keyframes admin-settings {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  45% {
+    transform: rotate(90deg);
+  }
+  70% {
+    transform: rotate(75deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1387,7 +1655,20 @@
   .nav-star-lg,
   .nav-star-sm,
   .nav-profile-head,
-  .nav-profile-ring {
+  .nav-profile-ring,
+  .admin-ico,
+  .admin-ico-overview,
+  .admin-ico-homepage,
+  .admin-ico-questions,
+  .admin-ico-import,
+  .admin-ico-tests,
+  .admin-ico-daily,
+  .admin-ico-mocks,
+  .admin-ico-examdates,
+  .admin-ico-news,
+  .admin-ico-classes,
+  .admin-ico-users,
+  .admin-ico-settings {
     animation: none !important;
   }
   .lift:hover,

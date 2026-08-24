@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type LabelHTMLAttributes } from "react";
 import {
   ArrowLeft,
   BookOpen,
@@ -66,6 +66,19 @@ function RevealButton({
   return <button ref={ref} className={cn("reveal-surface", className)} {...props} />;
 }
 
+function RevealLabel({
+  className,
+  children,
+  ...props
+}: LabelHTMLAttributes<HTMLLabelElement>) {
+  const ref = usePointerGlow<HTMLLabelElement>();
+  return (
+    <label ref={ref} className={cn("reveal-surface", className)} {...props}>
+      {children}
+    </label>
+  );
+}
+
 function ClassesPage() {
   const [tab, setTab] = useState<Tab>("chats");
   const [me, setMe] = useState<ChatProfile | null>(null);
@@ -122,7 +135,7 @@ function ClassesPage() {
               ["homeworks", "Homeworks", BookOpen],
             ] as const
           ).map(([id, label, Icon]) => (
-            <button
+            <RevealButton
               key={id}
               onClick={() => setTab(id)}
               className={
@@ -132,7 +145,7 @@ function ClassesPage() {
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
               {label}
-            </button>
+            </RevealButton>
           ))}
         </div>
       </header>
@@ -453,14 +466,14 @@ function ChatsPane({ me }: { me: ChatProfile }) {
         ) : (
           <>
             <div className="flex h-12 items-center gap-2 border-b border-brand-400/30 bg-brand-600 px-3 text-sm font-bold md:px-4">
-              <button
+              <RevealButton
                 type="button"
                 className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 md:hidden"
                 onClick={() => setActiveId(null)}
                 aria-label="Back to chats"
               >
                 <ArrowLeft className="h-4 w-4" />
-              </button>
+              </RevealButton>
               {threadTitle(active)}
             </div>
             <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
@@ -573,20 +586,20 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                 <div className="mb-2 flex items-center gap-2 text-xs text-brand-100">
                   <Paperclip className="h-3.5 w-3.5" />
                   {pendingFile.file_name}
-                  <button onClick={() => setPendingFile(null)} className="ml-auto">
+                  <RevealButton onClick={() => setPendingFile(null)} className="ml-auto">
                     <X className="h-3.5 w-3.5" />
-                  </button>
+                  </RevealButton>
                 </div>
               )}
               <div className="flex items-end gap-2">
-                <button
+                <RevealButton
                   onClick={() => fileRef.current?.click()}
                   disabled={muted}
                   className="tap grid h-10 w-10 place-items-center rounded-lg bg-brand-800 text-brand-100 hover:text-white disabled:opacity-40"
                   aria-label="Attach file"
                 >
                   <Paperclip className="h-4 w-4" />
-                </button>
+                </RevealButton>
                 <input
                   ref={fileRef}
                   type="file"
@@ -614,14 +627,14 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                     }
                   }}
                 />
-                <button
+                <RevealButton
                   onClick={() => void submit()}
                   disabled={sending || muted}
                   className="btn-brand grid h-10 w-10 place-items-center rounded-lg bg-brand-400 text-white disabled:opacity-40"
                   aria-label="Send"
                 >
                   {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </button>
+                </RevealButton>
               </div>
             </div>
           </>
@@ -704,7 +717,7 @@ function HomeworksPane({ classId }: { classId: string }) {
     <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-4 overflow-y-auto p-4 md:p-6">
       <div className="flex flex-wrap items-center gap-2">
         {(["all", "math", "ebrw"] as const).map((s) => (
-          <button
+          <RevealButton
             key={s}
             onClick={() => setSubject(s)}
             className={
@@ -713,7 +726,7 @@ function HomeworksPane({ classId }: { classId: string }) {
             }
           >
             {s === "all" ? "All" : SUBJECT_LABEL[s]}
-          </button>
+          </RevealButton>
         ))}
       </div>
 
@@ -725,13 +738,13 @@ function HomeworksPane({ classId }: { classId: string }) {
       ) : loadErr ? (
         <RevealCard className="rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center text-sm text-brand-100 shadow-panel">
           {loadErr}
-          <button
+          <RevealButton
             type="button"
             onClick={() => void reload()}
             className="tap mt-3 rounded-lg bg-brand-400 px-3 py-1.5 text-xs font-bold text-white"
           >
             Try again
-          </button>
+          </RevealButton>
         </RevealCard>
       ) : items.length === 0 ? (
         <RevealCard className="rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center text-sm text-brand-100 shadow-panel">
@@ -756,17 +769,17 @@ function HomeworksPane({ classId }: { classId: string }) {
                     <p className="mt-2 whitespace-pre-wrap text-sm text-brand-100">{a.body}</p>
                   )}
                 </div>
-                <button
+                <RevealButton
                   onClick={() => void openAssignment(a)}
                   className="tap rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-bold text-white ring-1 ring-brand-400/40 hover:bg-brand-400"
                 >
                   Open
-                </button>
+                </RevealButton>
               </div>
               {filesFor(a.id).length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {filesFor(a.id).map((f) => (
-                    <button
+                    <RevealButton
                       key={f.id}
                       onClick={() =>
                         void downloadStorageFile(
@@ -779,7 +792,7 @@ function HomeworksPane({ classId }: { classId: string }) {
                     >
                       <Download className="h-3.5 w-3.5" />
                       {f.file_name}
-                    </button>
+                    </RevealButton>
                   ))}
                 </div>
               )}
@@ -798,16 +811,16 @@ function HomeworksPane({ classId }: { classId: string }) {
                 </div>
                 <h3 className="text-lg font-black">{active.title}</h3>
               </div>
-              <button onClick={() => setActive(null)} className="tap text-brand-100 hover:text-white">
+              <RevealButton onClick={() => setActive(null)} className="tap text-brand-100 hover:text-white">
                 <X className="h-5 w-5" />
-              </button>
+              </RevealButton>
             </div>
             {active.body && (
               <p className="mb-4 whitespace-pre-wrap text-sm text-brand-100">{active.body}</p>
             )}
             <div className="mb-3 space-y-2">
               {filesFor(active.id).map((f) => (
-                <button
+                <RevealButton
                   key={f.id}
                   onClick={() =>
                     void downloadStorageFile(
@@ -820,7 +833,7 @@ function HomeworksPane({ classId }: { classId: string }) {
                 >
                   <Download className="h-4 w-4" />
                   Download {f.file_name}
-                </button>
+                </RevealButton>
               ))}
             </div>
             <p className="mb-2 text-xs text-brand-100">
@@ -840,15 +853,15 @@ function HomeworksPane({ classId }: { classId: string }) {
               </div>
             )}
             <div className="flex flex-wrap gap-2">
-              <button
+              <RevealButton
                 onClick={() => void submitMakeup()}
                 disabled={uploading}
                 className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-sm font-bold text-white disabled:opacity-40"
               >
                 {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                 Save submission
-              </button>
-              <label className="tap inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-brand-800 px-3 py-2 text-sm font-bold text-white ring-1 ring-brand-400/40">
+              </RevealButton>
+              <RevealLabel className="tap inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-brand-800 px-3 py-2 text-sm font-bold text-white ring-1 ring-brand-400/40">
                 <FilePlus2 className="h-4 w-4" />
                 Upload photos
                 <input
@@ -858,7 +871,7 @@ function HomeworksPane({ classId }: { classId: string }) {
                   className="hidden"
                   onChange={(e) => void attachPhotos(e.target.files)}
                 />
-              </label>
+              </RevealLabel>
             </div>
           </RevealCard>
         </div>

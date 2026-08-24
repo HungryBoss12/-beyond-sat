@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, type PointerEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { canEditorAccess, getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 import {
@@ -43,10 +43,25 @@ export const Route = createFileRoute("/_authenticated/admin")({
 /** Nav order defines section order; labels group the sidebar links. */
 const NAV_GROUPS = ["General", "Content", "Manage"] as const;
 
+type AdminAnim =
+  | "overview"
+  | "homepage"
+  | "questions"
+  | "import"
+  | "tests"
+  | "daily"
+  | "mocks"
+  | "examdates"
+  | "news"
+  | "classes"
+  | "users"
+  | "settings";
+
 type NavItem = {
   to: string;
   label: string;
   icon: LucideIcon;
+  anim: AdminAnim;
   group: (typeof NAV_GROUPS)[number];
   /** Match the path exactly. Needed for "/admin", which is a prefix of every
       other admin route and would otherwise always look active. */
@@ -62,27 +77,43 @@ const NAV = [
     to: "/admin",
     label: "Overview",
     icon: LayoutDashboard,
+    anim: "overview",
     exact: true,
     group: "General",
     adminOnly: true,
   },
-  { to: "/admin/homepage", label: "Homepage", icon: Home, group: "General", adminOnly: true },
-  { to: "/admin/questions", label: "Questions", icon: HelpCircle, group: "Content" },
-  { to: "/admin/import", label: "Add tests", icon: Upload, group: "Content" },
-  { to: "/admin/tests", label: "Tests", icon: FileStack, group: "Content" },
-  { to: "/admin/daily", label: "Daily Tests", icon: CalendarDays, group: "Content" },
-  { to: "/admin/mocks", label: "Mock Exams", icon: ClipboardList, group: "Content" },
+  {
+    to: "/admin/homepage",
+    label: "Homepage",
+    icon: Home,
+    anim: "homepage",
+    group: "General",
+    adminOnly: true,
+  },
+  { to: "/admin/questions", label: "Questions", icon: HelpCircle, anim: "questions", group: "Content" },
+  { to: "/admin/import", label: "Add tests", icon: Upload, anim: "import", group: "Content" },
+  { to: "/admin/tests", label: "Tests", icon: FileStack, anim: "tests", group: "Content" },
+  { to: "/admin/daily", label: "Daily Tests", icon: CalendarDays, anim: "daily", group: "Content" },
+  { to: "/admin/mocks", label: "Mock Exams", icon: ClipboardList, anim: "mocks", group: "Content" },
   {
     to: "/admin/examdates",
     label: "Exam Dates",
     icon: CalendarDays,
+    anim: "examdates",
     group: "Content",
     adminOnly: true,
   },
-  { to: "/admin/news", label: "News", icon: Newspaper, group: "Content" },
-  { to: "/admin/classes", label: "Classes", icon: GraduationCap, group: "Content" },
-  { to: "/admin/users", label: "Users", icon: Users, group: "Manage", adminOnly: true },
-  { to: "/admin/settings", label: "Settings", icon: Settings, group: "Manage", adminOnly: true },
+  { to: "/admin/news", label: "News", icon: Newspaper, anim: "news", group: "Content" },
+  { to: "/admin/classes", label: "Classes", icon: GraduationCap, anim: "classes", group: "Content" },
+  { to: "/admin/users", label: "Users", icon: Users, anim: "users", group: "Manage", adminOnly: true },
+  {
+    to: "/admin/settings",
+    label: "Settings",
+    icon: Settings,
+    anim: "settings",
+    group: "Manage",
+    adminOnly: true,
+  },
 ] as const satisfies readonly NavItem[];
 
 function visibleNav(role: StaffRole) {
@@ -96,6 +127,22 @@ function visibleNav(role: StaffRole) {
 
 function isActive(n: NavItem, pathname: string) {
   return n.exact ? pathname === n.to : pathname === n.to || pathname.startsWith(n.to + "/");
+}
+
+/** Same retrigger pattern as AppShell: hover + click restarts the icon one-shot. */
+function playAdminNavMotion(target: HTMLElement) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  target.removeAttribute("data-nav-play");
+  void target.offsetWidth;
+  target.setAttribute("data-nav-play", "");
+  window.setTimeout(() => target.removeAttribute("data-nav-play"), 900);
+}
+
+function adminNavPlayHandlers() {
+  return {
+    onPointerEnter: (e: PointerEvent<HTMLElement>) => playAdminNavMotion(e.currentTarget),
+    onPointerDown: (e: PointerEvent<HTMLElement>) => playAdminNavMotion(e.currentTarget),
+  };
 }
 
 function AdminLayout() {
@@ -238,6 +285,7 @@ function SidebarBody({
                       key={n.to}
                       to={n.to}
                       onClick={onNavigate}
+                      {...adminNavPlayHandlers()}
                       className={
                         "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold " +
                         (active
@@ -250,10 +298,7 @@ function SidebarBody({
                         <span className="absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand-200" />
                       )}
                       <Icon
-                        className={
-                          "h-[18px] w-[18px] shrink-0 transition-transform duration-300 " +
-                          (active ? "" : "group-hover:scale-110")
-                        }
+                        className={`admin-ico admin-ico-${n.anim} h-[18px] w-[18px] shrink-0`}
                       />
                       {n.label}
                     </RevealLink>

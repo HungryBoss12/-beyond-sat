@@ -1,26 +1,11 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
-import { useState, type PointerEvent } from "react";
+import { useState } from "react";
+import { LayoutGroup, motion } from "motion/react";
 import { supabase } from "@/integrations/supabase/client";
 import { canEditorAccess, getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
-import {
-  LayoutDashboard,
-  HelpCircle,
-  CalendarDays,
-  ClipboardList,
-  Newspaper,
-  Users,
-  ArrowLeft,
-  FileStack,
-  Home,
-  Settings,
-  Menu,
-  X,
-  ChevronRight,
-  Upload,
-  GraduationCap,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ArrowLeft, Menu, X, ChevronRight } from "lucide-react";
 import { RevealLink } from "@/components/ui/reveal-card";
+import { AdminNavIcon, type AdminAnim } from "@/components/admin/AdminNavIcon";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   /* Runs again on every navigation within /admin, so it doubles as the
@@ -43,24 +28,9 @@ export const Route = createFileRoute("/_authenticated/admin")({
 /** Nav order defines section order; labels group the sidebar links. */
 const NAV_GROUPS = ["General", "Content", "Manage"] as const;
 
-type AdminAnim =
-  | "overview"
-  | "homepage"
-  | "questions"
-  | "import"
-  | "tests"
-  | "daily"
-  | "mocks"
-  | "examdates"
-  | "news"
-  | "classes"
-  | "users"
-  | "settings";
-
 type NavItem = {
   to: string;
   label: string;
-  icon: LucideIcon;
   anim: AdminAnim;
   group: (typeof NAV_GROUPS)[number];
   /** Match the path exactly. Needed for "/admin", which is a prefix of every
@@ -76,7 +46,6 @@ const NAV = [
   {
     to: "/admin",
     label: "Overview",
-    icon: LayoutDashboard,
     anim: "overview",
     exact: true,
     group: "General",
@@ -85,31 +54,28 @@ const NAV = [
   {
     to: "/admin/homepage",
     label: "Homepage",
-    icon: Home,
     anim: "homepage",
     group: "General",
     adminOnly: true,
   },
-  { to: "/admin/questions", label: "Questions", icon: HelpCircle, anim: "questions", group: "Content" },
-  { to: "/admin/import", label: "Add tests", icon: Upload, anim: "import", group: "Content" },
-  { to: "/admin/tests", label: "Tests", icon: FileStack, anim: "tests", group: "Content" },
-  { to: "/admin/daily", label: "Daily Tests", icon: CalendarDays, anim: "daily", group: "Content" },
-  { to: "/admin/mocks", label: "Mock Exams", icon: ClipboardList, anim: "mocks", group: "Content" },
+  { to: "/admin/questions", label: "Questions", anim: "questions", group: "Content" },
+  { to: "/admin/import", label: "Add tests", anim: "import", group: "Content" },
+  { to: "/admin/tests", label: "Tests", anim: "tests", group: "Content" },
+  { to: "/admin/daily", label: "Daily Tests", anim: "daily", group: "Content" },
+  { to: "/admin/mocks", label: "Mock Exams", anim: "mocks", group: "Content" },
   {
     to: "/admin/examdates",
     label: "Exam Dates",
-    icon: CalendarDays,
     anim: "examdates",
     group: "Content",
     adminOnly: true,
   },
-  { to: "/admin/news", label: "News", icon: Newspaper, anim: "news", group: "Content" },
-  { to: "/admin/classes", label: "Classes", icon: GraduationCap, anim: "classes", group: "Content" },
-  { to: "/admin/users", label: "Users", icon: Users, anim: "users", group: "Manage", adminOnly: true },
+  { to: "/admin/news", label: "News", anim: "news", group: "Content" },
+  { to: "/admin/classes", label: "Classes", anim: "classes", group: "Content" },
+  { to: "/admin/users", label: "Users", anim: "users", group: "Manage", adminOnly: true },
   {
     to: "/admin/settings",
     label: "Settings",
-    icon: Settings,
     anim: "settings",
     group: "Manage",
     adminOnly: true,
@@ -129,95 +95,61 @@ function isActive(n: NavItem, pathname: string) {
   return n.exact ? pathname === n.to : pathname === n.to || pathname.startsWith(n.to + "/");
 }
 
-/** Same retrigger pattern as AppShell: hover + click restarts the icon one-shot. */
-function playAdminNavMotion(target: HTMLElement) {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  target.removeAttribute("data-nav-play");
-  void target.offsetWidth;
-  target.setAttribute("data-nav-play", "");
-  window.setTimeout(() => target.removeAttribute("data-nav-play"), 900);
-}
-
-function adminNavPlayHandlers() {
-  return {
-    onPointerEnter: (e: PointerEvent<HTMLElement>) => playAdminNavMotion(e.currentTarget),
-    onPointerDown: (e: PointerEvent<HTMLElement>) => playAdminNavMotion(e.currentTarget),
-  };
-}
-
 function AdminLayout() {
   const { staffRole } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const nav = visibleNav(staffRole);
-  const current = nav.find((n) => isActive(n, pathname));
+  const [open, setOpen] = useState(false);
+
+  const current = visibleNav(staffRole).find((n) => isActive(n, pathname));
 
   return (
-    <div className="flex min-h-screen bg-white">
-      {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-brand-400/30 bg-brand-600 lg:flex">
+    <div className="min-h-screen bg-white text-brand-900 lg:grid lg:grid-cols-[260px_1fr]">
+      <aside className="sticky top-0 hidden h-screen flex-col border-r border-brand-400/30 bg-brand-600 lg:flex">
         <SidebarBody pathname={pathname} role={staffRole} />
       </aside>
 
-      {/* Mobile drawer */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="fade-in absolute inset-0 bg-brand-900/60 backdrop-blur-sm"
-            onClick={() => setDrawerOpen(false)}
+      {open && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button
+            className="absolute inset-0 bg-brand-900/50 backdrop-blur-sm"
+            aria-label="Close menu"
+            onClick={() => setOpen(false)}
           />
-          <aside className="slide-in absolute inset-y-0 left-0 flex w-72 flex-col bg-brand-600 shadow-float">
+          <aside className="absolute inset-y-0 left-0 flex w-[min(100%,280px)] flex-col bg-brand-600 shadow-float">
             <SidebarBody
               pathname={pathname}
               role={staffRole}
-              onNavigate={() => setDrawerOpen(false)}
+              onNavigate={() => setOpen(false)}
             />
           </aside>
         </div>
       )}
 
-      <main className="min-w-0 flex-1">
-        {/* Top bar is a brand surface like the sidebar, so its controls use the
-            lighter and darker steps to stay separable from it. */}
-        <header className="sticky top-0 z-20 border-b border-brand-400/30 bg-brand-600/95 backdrop-blur-md">
-          <div className="flex h-16 items-center justify-between gap-3 px-4 md:px-6">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                onClick={() => setDrawerOpen(true)}
-                className="tap grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-brand-400/50 text-white hover:bg-brand-400 lg:hidden"
-                aria-label="Open admin menu"
-              >
-                <Menu className="h-4.5 w-4.5" />
-              </button>
-              <div className="min-w-0">
-                {/* Breadcrumb keeps the group visible now that the sidebar can
-                    be collapsed off-screen on mobile. */}
-                <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-brand-200">
-                  {staffRole === "admin" ? "Admin" : "Editor"}
+      <div className="flex min-w-0 flex-col">
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur lg:px-8">
+          <button
+            onClick={() => setOpen(true)}
+            className="tap grid h-9 w-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+              <span>Admin</span>
+              {current && (
+                <>
                   <ChevronRight className="h-3 w-3" />
-                  <span className="text-brand-100">{current?.group ?? "Content"}</span>
-                </div>
-                <h1
-                  key={pathname}
-                  className="slide-in truncate text-lg font-black tracking-tight text-white md:text-xl"
-                >
-                  {current?.label ?? "Admin"}
-                </h1>
-              </div>
+                  <span className="truncate text-slate-600">{current.label}</span>
+                </>
+              )}
             </div>
-            {/* The badge is the only place the signed-in role is stated, so it
-                reflects the real role rather than a hardcoded "Admin". */}
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-800 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white ring-1 ring-brand-400/50">
-              <span className="pulse-ring h-1.5 w-1.5 rounded-full bg-brand-200" />
-              {staffRole === "admin" ? "Admin" : "Editor"}
-            </span>
           </div>
         </header>
-
-        <div className="max-w-6xl p-4 md:p-8">
+        <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
           <Outlet />
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
@@ -233,6 +165,8 @@ function SidebarBody({
   onNavigate?: () => void;
 }) {
   const nav = visibleNav(role);
+  const [hoveredTo, setHoveredTo] = useState<string | null>(null);
+
   return (
     <>
       <div className="flex h-16 items-center justify-between gap-2.5 border-b border-brand-400/30 px-5">
@@ -268,46 +202,55 @@ function SidebarBody({
       </div>
 
       <nav className="flex-1 space-y-5 overflow-y-auto p-3.5">
-        {NAV_GROUPS.map((group) => {
-          const items = nav.filter((n) => n.group === group);
-          if (items.length === 0) return null;
-          return (
-            <div key={group}>
-              <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-brand-200">
-                {group}
+        <LayoutGroup id="admin-nav">
+          {NAV_GROUPS.map((group) => {
+            const items = nav.filter((n) => n.group === group);
+            if (items.length === 0) return null;
+            return (
+              <div key={group}>
+                <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-brand-200">
+                  {group}
+                </div>
+                <div className="space-y-0.5">
+                  {items.map((n) => {
+                    const active = isActive(n, pathname);
+                    const hovered = hoveredTo === n.to;
+                    return (
+                      <RevealLink
+                        key={n.to}
+                        to={n.to}
+                        onClick={onNavigate}
+                        onPointerEnter={() => setHoveredTo(n.to)}
+                        onPointerLeave={() => setHoveredTo((cur) => (cur === n.to ? null : cur))}
+                        className={
+                          "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold " +
+                          (active
+                            ? "bg-brand-400 text-white shadow-brand"
+                            : "text-brand-100 nudge hover:text-white")
+                        }
+                      >
+                        {!active && hovered && (
+                          <motion.span
+                            layoutId="admin-nav-hover"
+                            className="pointer-events-none absolute inset-0 rounded-xl bg-white/10"
+                            transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                          />
+                        )}
+                        {active && (
+                          <span className="absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand-200" />
+                        )}
+                        <span className="relative z-10">
+                          <AdminNavIcon anim={n.anim} active={active} hovered={hovered} />
+                        </span>
+                        <span className="relative z-10">{n.label}</span>
+                      </RevealLink>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="space-y-0.5">
-                {items.map((n) => {
-                  const active = isActive(n, pathname);
-                  const Icon = n.icon;
-                  return (
-                    <RevealLink
-                      key={n.to}
-                      to={n.to}
-                      onClick={onNavigate}
-                      {...adminNavPlayHandlers()}
-                      className={
-                        "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold " +
-                        (active
-                          ? "bg-brand-400 text-white shadow-brand"
-                          : "text-brand-100 nudge hover:bg-brand-800 hover:text-white")
-                      }
-                    >
-                      {/* Active marker rides the left edge of the pill. */}
-                      {active && (
-                        <span className="absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand-200" />
-                      )}
-                      <Icon
-                        className={`admin-ico admin-ico-${n.anim} h-[18px] w-[18px] shrink-0`}
-                      />
-                      {n.label}
-                    </RevealLink>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </LayoutGroup>
       </nav>
 
       <div className="border-t border-brand-400/30 p-3.5">

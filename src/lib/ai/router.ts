@@ -25,7 +25,9 @@ export type AiTask = "chat" | "quick" | "reasoning" | "vision";
  */
 export const DEFAULT_MODELS: Record<AiTask, string> = {
   chat: "nvidia/nemotron-3-super-120b-a12b:free",
-  quick: "nvidia/nemotron-3-nano-30b-a3b:free",
+  // Nano `:free` was withdrawn on OpenRouter (404 → paid-only). Use the free
+  // auto-router until another stable free nano-class ID exists.
+  quick: "openrouter/free",
   reasoning: "nvidia/nemotron-3-ultra-550b-a55b:free",
   vision: "gemini-3-flash-preview",
 };
@@ -42,6 +44,7 @@ const WITHDRAWN_OPENROUTER_MODELS = new Set([
   "deepseek/deepseek-r1:free",
   "google/gemini-2.0-flash-exp:free",
   "google/gemini-2.0-flash-001",
+  "nvidia/nemotron-3-nano-30b-a3b:free",
 ]);
 
 /** The `app_settings` key holding the override for each task. */

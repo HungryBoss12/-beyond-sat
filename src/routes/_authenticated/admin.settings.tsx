@@ -45,7 +45,7 @@ const EMPTY: Settings = {
  */
 const MODEL_DEFAULTS = {
   openrouter_model_chat: "nvidia/nemotron-3-super-120b-a12b:free",
-  openrouter_model_quick: "nvidia/nemotron-3-nano-30b-a3b:free",
+  openrouter_model_quick: "openrouter/free",
   openrouter_model_reasoning: "nvidia/nemotron-3-ultra-550b-a55b:free",
   openrouter_model_vision: "gemini-3-flash-preview",
 } as const;

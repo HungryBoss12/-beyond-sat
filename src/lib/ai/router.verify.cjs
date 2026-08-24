@@ -70,17 +70,19 @@ const USER = [{ role: "user", content: "solve 2x+3=9" }];
 
 check("each task maps to its documented default model", () => {
   assert.equal(router.resolveModel("chat", {}), "nvidia/nemotron-3-super-120b-a12b:free");
-  assert.equal(router.resolveModel("quick", {}), "nvidia/nemotron-3-nano-30b-a3b:free");
+  assert.equal(router.resolveModel("quick", {}), "openrouter/free");
   assert.equal(router.resolveModel("reasoning", {}), "nvidia/nemotron-3-ultra-550b-a55b:free");
   assert.equal(router.resolveModel("vision", {}), "gemini-3-flash-preview");
 });
 
 check("OpenRouter task defaults are on the free tier", () => {
   // Vision routes through the Gemini API directly — not an OpenRouter :free slug.
+  // `openrouter/free` is OpenRouter's free auto-router (no `:free` suffix).
   for (const task of ["chat", "quick", "reasoning"]) {
+    const id = router.DEFAULT_MODELS[task];
     assert.ok(
-      router.DEFAULT_MODELS[task].endsWith(":free"),
-      `${task} default "${router.DEFAULT_MODELS[task]}" is not a :free model`,
+      id.endsWith(":free") || id === "openrouter/free",
+      `${task} default "${id}" is not a free-tier model`,
     );
   }
 });
@@ -323,7 +325,7 @@ check("every task has a settings key and a default", () => {
 
 const NICKNAMES = {
   "beyonder-2-0": ["Beyonder 2.0", "nvidia/nemotron-3-super-120b-a12b:free"],
-  "beyonder-2-0-flashy": ["Beyonder 2.0 Flashy", "nvidia/nemotron-3-nano-30b-a3b:free"],
+  "beyonder-2-0-flashy": ["Beyonder 2.0 Flashy", "openrouter/free"],
   "beyonder-2-1-think": ["Beyonder 2.1 Think", "nvidia/nemotron-3-ultra-550b-a55b:free"],
 };
 
@@ -343,10 +345,14 @@ check("each nickname resolves to its documented model through the task map", () 
   assert.equal(router.resolveModel("vision", {}), "gemini-3-flash-preview");
 });
 
-check("OpenRouter nicknames route to :free models and honour admin overrides", () => {
+check("OpenRouter nicknames route to free models and honour admin overrides", () => {
   for (const slug of Object.keys(router.CHAT_MODELS)) {
     const { task } = router.CHAT_MODELS[slug];
-    assert.ok(router.resolveModel(task, {}).endsWith(":free"), `${slug} is not on the free tier`);
+    const id = router.resolveModel(task, {});
+    assert.ok(
+      id.endsWith(":free") || id === "openrouter/free",
+      `${slug} is not on the free tier`,
+    );
     // The override path is what makes a withdrawn free model a settings change
     // rather than a redeploy, so the picker must not bypass it.
     const key = router.MODEL_SETTING_KEYS[task];

@@ -9,6 +9,7 @@ import {
   resolveSurface,
   resolveTask,
   CHAT_MODELS,
+  DEFAULT_MODELS,
   type AiChatRequest,
 } from "./router";
 import { geminiVisionChatResponse, replaceImagesWithDescriptions } from "@/lib/gemini/chat-vision";
@@ -249,6 +250,32 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
   } catch (error) {
     console.error("[ai] upstream request failed", error);
     return json({ error: "Beyond AI couldn't be reached. Try again." }, 502);
+  }
+
+  // Withdrawn free models return 404. Retry once with the code default when the
+  // live override (or a freshly withdrawn default) no longer exists.
+  if (upstream.status === 404 && task !== "vision") {
+    const fallback = DEFAULT_MODELS[task];
+    if (fallback && fallback !== model) {
+      console.error(
+        `[ai] model "${model}" was not found upstream; retrying with default "${fallback}".`,
+      );
+      try {
+        upstream = await fetch(OPENROUTER_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "content-type": "application/json",
+            "HTTP-Referer": "https://beyondsat.app",
+            "X-Title": "Beyond SAT",
+          },
+          body: JSON.stringify(buildRequestBody(task, safe, fallback, stream, surface)),
+        });
+      } catch (error) {
+        console.error("[ai] upstream fallback request failed", error);
+        return json({ error: "Beyond AI couldn't be reached. Try again." }, 502);
+      }
+    }
   }
 
   if (!upstream.ok) {

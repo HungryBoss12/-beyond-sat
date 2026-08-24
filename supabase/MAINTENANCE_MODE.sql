@@ -36,7 +36,7 @@ INSERT INTO public.app_settings (key, value) VALUES
   ('maintenance_enabled',         'false'),
   ('maintenance_message',         ''),
   ('openrouter_model_chat',       'nvidia/nemotron-3-super-120b-a12b:free'),
-  ('openrouter_model_quick',      'nvidia/nemotron-3-nano-30b-a3b:free'),
+  ('openrouter_model_quick',      'openrouter/free'),
   ('openrouter_model_reasoning',  'nvidia/nemotron-3-ultra-550b-a55b:free'),
   ('openrouter_model_vision',     'gemini-3-flash-preview')
 ON CONFLICT (key) DO NOTHING;
@@ -56,8 +56,11 @@ WHERE key = 'openrouter_model_chat' AND value IN (
   'google/gemini-2.0-flash-001'
 );
 
-UPDATE public.app_settings SET value = 'nvidia/nemotron-3-nano-30b-a3b:free'
-WHERE key = 'openrouter_model_quick' AND value = 'meta-llama/llama-3.2-3b-instruct:free';
+UPDATE public.app_settings SET value = 'openrouter/free'
+WHERE key = 'openrouter_model_quick' AND value IN (
+  'meta-llama/llama-3.2-3b-instruct:free',
+  'nvidia/nemotron-3-nano-30b-a3b:free'
+);
 
 UPDATE public.app_settings SET value = 'nvidia/nemotron-3-ultra-550b-a55b:free'
 WHERE key = 'openrouter_model_reasoning' AND value IN (

@@ -1,11 +1,6 @@
 import type { Draft } from "./parse";
 
-export type ActivityActor =
-  | "gemini-fix"
-  | "nemotron-recheck"
-  | "gemini-locate"
-  | "crop"
-  | "admin";
+export type ActivityActor = "gemini-fix" | "nemotron-recheck" | "gemini-locate" | "crop" | "admin";
 
 export type ActivityFieldDiff = {
   key: string;

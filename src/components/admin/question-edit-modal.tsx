@@ -1,23 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  ImageIcon,
-  Loader2,
-  Sparkles,
-  Undo2,
-  Upload,
-  Wand2,
-  X,
-} from "lucide-react";
+import { ImageIcon, Loader2, Sparkles, Undo2, Upload, Wand2, X } from "lucide-react";
 import { MixedMathEditor } from "@/components/MixedMathEditor";
-import {
-  cloneAdminQuestion,
-  emptyAdminQuestion,
-  type AdminQuestion,
-} from "@/lib/admin/question";
-import {
-  askQuestionWithGemini,
-  fixQuestionWithGemini,
-} from "@/lib/admin/question-ai";
+import { cloneAdminQuestion, emptyAdminQuestion, type AdminQuestion } from "@/lib/admin/question";
+import { askQuestionWithGemini, fixQuestionWithGemini } from "@/lib/admin/question-ai";
 import { uploadQuestionImage } from "@/lib/import/upload-question-image";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -670,9 +655,7 @@ export async function loadQuestionWithAnswers(
   };
 }
 
-function ensureFourChoices(
-  choices: { id: string; text: string }[],
-): AdminQuestion["choices"] {
+function ensureFourChoices(choices: { id: string; text: string }[]): AdminQuestion["choices"] {
   return (["A", "B", "C", "D"] as const).map((id) => {
     const existing = choices.find((c) => c.id === id);
     return { id, text: existing?.text ?? "" };

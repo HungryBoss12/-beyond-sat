@@ -176,11 +176,7 @@ export function ClassChatSetupForm({
             No classes yet. Ask an admin to create one, then refresh.
           </p>
         ) : (
-          <select
-            value={classId}
-            onChange={(e) => setClassId(e.target.value)}
-            className={CONTROL}
-          >
+          <select value={classId} onChange={(e) => setClassId(e.target.value)} className={CONTROL}>
             <option value="">Select your class…</option>
             {classes.map((c) => (
               <option key={c.id} value={c.id}>

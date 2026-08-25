@@ -67,7 +67,9 @@ function AuthCallback() {
         <div className="rise-in w-full max-w-md rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center shadow-panel md:p-10">
           {error ? (
             <>
-              <h1 className="text-2xl font-black tracking-tight text-white">Sign-in did not finish</h1>
+              <h1 className="text-2xl font-black tracking-tight text-white">
+                Sign-in did not finish
+              </h1>
               <p className="mt-3 rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
                 {error}
               </p>

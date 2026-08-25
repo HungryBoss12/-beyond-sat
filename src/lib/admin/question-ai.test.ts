@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  applyRecToQuestion,
-  questionToRec,
-  softErrorsForQuestion,
-} from "@/lib/admin/question-ai";
+import { applyRecToQuestion, questionToRec, softErrorsForQuestion } from "@/lib/admin/question-ai";
 import { emptyAdminQuestion } from "@/lib/admin/question";
 
 describe("questionToRec / applyRecToQuestion", () => {

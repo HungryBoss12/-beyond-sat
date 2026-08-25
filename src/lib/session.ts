@@ -19,6 +19,18 @@ async function currentUserId(): Promise<string> {
   return uid;
 }
 
+/** Empty import placeholders — never serve these in practice. */
+export function isStubQuestion(text: string | null | undefined): boolean {
+  const t = (text ?? "").trim();
+  if (!t) return true;
+  const lower = t.toLowerCase();
+  return (
+    lower.startsWith("missing question") ||
+    lower.startsWith("[missing") ||
+    lower === "missing"
+  );
+}
+
 function skillMatchesSection(skill: string | null | undefined, section: Section): boolean {
   if (!skill?.trim()) return false;
   const want = skillsFor(section).map((s) => s.toLowerCase());
@@ -28,8 +40,7 @@ function skillMatchesSection(skill: string | null | undefined, section: Section)
 export async function startPracticeSession(f: PracticeFilters): Promise<string> {
   const uid = await currentUserId();
   const limit = f.limit ?? 20;
-  /* Fetch a wider pool then keep only skills that belong to the section
-     (mis-tagged RW skills on math rows). Do not drop MISSING QUESTION stubs. */
+  /* Skip empty / placeholder stubs and skills that don't belong to this section. */
   let q = supabase
     .from("questions")
     .select("id,skill,question_text")
@@ -41,7 +52,11 @@ export async function startPracticeSession(f: PracticeFilters): Promise<string> 
   if (qErr) throw qErr;
 
   const ids = (qs ?? [])
-    .filter((row) => skillMatchesSection(row.skill as string | null, f.section))
+    .filter(
+      (row) =>
+        !isStubQuestion(row.question_text as string | null) &&
+        skillMatchesSection(row.skill as string | null, f.section),
+    )
     .slice(0, limit)
     .map((r) => r.id as string);
 

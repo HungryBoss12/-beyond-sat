@@ -68,6 +68,11 @@ const EXEMPT_PREFIXES = [
   "/favicon",
   "/robots.txt",
   "/manifest",
+  "/sw.js",
+  "/offline.html",
+  "/offline-tetris.js",
+  "/pwa-",
+  "/apple-touch-icon",
 ];
 
 export function isExemptPath(pathname: string): boolean {

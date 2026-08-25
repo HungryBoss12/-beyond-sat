@@ -19,12 +19,6 @@ async function currentUserId(): Promise<string> {
   return uid;
 }
 
-function isStubQuestion(text: string | null | undefined): boolean {
-  const t = (text ?? "").trim();
-  if (!t) return true;
-  return t.toLowerCase().startsWith("missing question");
-}
-
 function skillMatchesSection(skill: string | null | undefined, section: Section): boolean {
   if (!skill?.trim()) return false;
   const want = skillsFor(section).map((s) => s.toLowerCase());
@@ -34,8 +28,8 @@ function skillMatchesSection(skill: string | null | undefined, section: Section)
 export async function startPracticeSession(f: PracticeFilters): Promise<string> {
   const uid = await currentUserId();
   const limit = f.limit ?? 20;
-  /* Fetch a wider pool then filter stubs / wrong-section skills client-side.
-     Mis-imported rows often sit as section=math with RW stems or "MISSING QUESTION". */
+  /* Fetch a wider pool then keep only skills that belong to the section
+     (mis-tagged RW skills on math rows). Do not drop MISSING QUESTION stubs. */
   let q = supabase
     .from("questions")
     .select("id,skill,question_text")
@@ -47,11 +41,7 @@ export async function startPracticeSession(f: PracticeFilters): Promise<string> 
   if (qErr) throw qErr;
 
   const ids = (qs ?? [])
-    .filter(
-      (row) =>
-        !isStubQuestion(row.question_text as string | null) &&
-        skillMatchesSection(row.skill as string | null, f.section),
-    )
+    .filter((row) => skillMatchesSection(row.skill as string | null, f.section))
     .slice(0, limit)
     .map((r) => r.id as string);
 

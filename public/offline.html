@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0761" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>No internet — BeyondSAT</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: Montserrat, system-ui, sans-serif;
+        background: #0b0761;
+        color: #fff;
+        padding: 20px 16px 28px;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+      .bg {
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(135deg, #100e66 0%, #0b0761 55%, #0d0d4c 100%);
+        pointer-events: none;
+      }
+      .blob-a,
+      .blob-b {
+        position: fixed;
+        border-radius: 9999px;
+        filter: blur(64px);
+        pointer-events: none;
+      }
+      .blob-a {
+        width: 16rem;
+        height: 16rem;
+        left: -4rem;
+        top: 3rem;
+        background: rgba(16, 14, 102, 0.55);
+        opacity: 0.7;
+      }
+      .blob-b {
+        width: 18rem;
+        height: 18rem;
+        right: -3rem;
+        bottom: 1rem;
+        background: rgba(13, 13, 76, 0.7);
+      }
+      main {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 22rem;
+        text-align: center;
+      }
+      .logo {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        margin: 0 auto 0.75rem;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+        display: block;
+      }
+      .eyebrow {
+        margin: 0;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #9f9fc2;
+      }
+      h1 {
+        margin: 0.35rem 0 0;
+        font-size: 1.35rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .lead {
+        margin: 0.5rem 0 0;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: rgba(200, 200, 224, 0.95);
+      }
+      .retry {
+        appearance: none;
+        border: 0;
+        margin-top: 1rem;
+        min-width: 9rem;
+        border-radius: 12px;
+        background: #fff;
+        color: #0b0761;
+        font: inherit;
+        font-weight: 700;
+        font-size: 0.85rem;
+        padding: 0.65rem 1rem;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      }
+      .retry:active {
+        transform: scale(0.98);
+      }
+      .tetris {
+        margin-top: 1.25rem;
+        padding: 0.85rem;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.06);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+        text-align: center;
+      }
+      .tetris-title {
+        margin: 0 0 0.55rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #c8c8e0;
+      }
+      .tetris-hud {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-bottom: 0.55rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #e8e8f5;
+      }
+      .tetris-hud button {
+        appearance: none;
+        border: 0;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        font: inherit;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 0.35rem 0.6rem;
+        cursor: pointer;
+      }
+      .board-wrap {
+        position: relative;
+        display: inline-block;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+      }
+      canvas {
+        display: block;
+        width: 180px;
+        height: 360px;
+        background: #040459;
+        touch-action: none;
+      }
+      .overlay {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+        background: rgba(4, 4, 89, 0.72);
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #fff;
+      }
+      .overlay[hidden] {
+        display: none;
+      }
+      .pad {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.4rem;
+        margin-top: 0.65rem;
+      }
+      .pad button {
+        appearance: none;
+        border: 0;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        font: inherit;
+        font-size: 1.05rem;
+        font-weight: 700;
+        min-height: 2.6rem;
+        cursor: pointer;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+      }
+      .pad button:active {
+        background: rgba(255, 255, 255, 0.22);
+      }
+      .hint {
+        margin: 0.55rem 0 0;
+        font-size: 0.68rem;
+        color: rgba(200, 200, 224, 0.75);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg" aria-hidden="true"></div>
+    <div class="blob-a" aria-hidden="true"></div>
+    <div class="blob-b" aria-hidden="true"></div>
+    <main>
+      <div role="alert" aria-live="assertive">
+        <img class="logo" src="/pwa-192x192.png" alt="" width="56" height="56" />
+        <p class="eyebrow">BeyondSAT</p>
+        <h1>No internet connection</h1>
+        <p class="lead">
+          You're offline. Reconnect when you can — or clear a few lines while you wait.
+        </p>
+        <button class="retry" type="button" data-retry onclick="location.reload()">Try again</button>
+      </div>
+
+      <section class="tetris" id="offline-tetris" aria-label="Offline Tetris">
+        <p class="tetris-title">Meanwhile · Tetris</p>
+        <div class="tetris-hud">
+          <span>Score <strong data-score>0</strong></span>
+          <button type="button" data-restart>New game</button>
+        </div>
+        <div class="board-wrap">
+          <canvas data-board width="180" height="360" aria-label="Tetris board"></canvas>
+          <div class="overlay" data-overlay hidden></div>
+        </div>
+        <div class="pad">
+          <button type="button" data-left aria-label="Move left">←</button>
+          <button type="button" data-rotate aria-label="Rotate">↻</button>
+          <button type="button" data-right aria-label="Move right">→</button>
+          <button type="button" data-soft aria-label="Soft drop">↓</button>
+        </div>
+        <p class="hint">Arrow keys / WASD · Space rotates · ↓ soft drop</p>
+      </section>
+    </main>
+    <script src="/offline-tetris.js?v=4"></script>
+    <script>
+      window.startOfflineTetris(document.getElementById("offline-tetris"));
+    </script>
+  </body>
+</html>

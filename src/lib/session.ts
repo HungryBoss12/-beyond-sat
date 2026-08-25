@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Section, Difficulty } from "./sat";
-import { questionCountFor, rawToScaled } from "./sat";
+import { questionCountFor, rawToScaled, skillsFor } from "./sat";
 import { format } from "date-fns";
 
 export type TestType = "practice" | "daily" | "mock";
@@ -19,15 +19,42 @@ async function currentUserId(): Promise<string> {
   return uid;
 }
 
+function isStubQuestion(text: string | null | undefined): boolean {
+  const t = (text ?? "").trim();
+  if (!t) return true;
+  return t.toLowerCase().startsWith("missing question");
+}
+
+function skillMatchesSection(skill: string | null | undefined, section: Section): boolean {
+  if (!skill?.trim()) return false;
+  const want = skillsFor(section).map((s) => s.toLowerCase());
+  return want.includes(skill.trim().toLowerCase());
+}
+
 export async function startPracticeSession(f: PracticeFilters): Promise<string> {
   const uid = await currentUserId();
-  let q = supabase.from("questions").select("id").eq("section", f.section);
+  const limit = f.limit ?? 20;
+  /* Fetch a wider pool then filter stubs / wrong-section skills client-side.
+     Mis-imported rows often sit as section=math with RW stems or "MISSING QUESTION". */
+  let q = supabase
+    .from("questions")
+    .select("id,skill,question_text")
+    .eq("section", f.section);
   if (f.skill) q = q.eq("skill", f.skill);
   if (f.difficulty) q = q.eq("difficulty", f.difficulty);
-  q = q.order("created_at", { ascending: false }).limit(f.limit ?? 20);
+  q = q.order("created_at", { ascending: false }).limit(Math.max(limit * 5, 100));
   const { data: qs, error: qErr } = await q;
   if (qErr) throw qErr;
-  const ids = (qs ?? []).map((r) => r.id as string);
+
+  const ids = (qs ?? [])
+    .filter(
+      (row) =>
+        !isStubQuestion(row.question_text as string | null) &&
+        skillMatchesSection(row.skill as string | null, f.section),
+    )
+    .slice(0, limit)
+    .map((r) => r.id as string);
+
   if (ids.length === 0) throw new Error("No questions match this filter yet.");
 
   const { data: sess, error } = await supabase

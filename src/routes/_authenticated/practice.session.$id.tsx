@@ -2,13 +2,44 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TestPlayer } from "@/components/TestPlayer";
-import type { QuestionRow } from "@/components/QuestionCard";
+import {
+  emptyAnswer,
+  type AnswerState,
+  type QuestionRow,
+} from "@/components/QuestionCard";
 import type { TestType } from "@/lib/session";
 
 export const Route = createFileRoute("/_authenticated/practice/session/$id")({
   component: SessionRunner,
   head: () => ({ meta: [{ title: "Test session — BeyondSAT" }] }),
 });
+
+type SessionMeta = {
+  question_ids?: string[];
+  draft_answers?: unknown;
+  [key: string]: unknown;
+};
+
+function hydrateDraftAnswers(count: number, drafts: unknown): AnswerState[] {
+  const base = Array.from({ length: count }, () => emptyAnswer());
+  if (!Array.isArray(drafts)) return base;
+  for (let i = 0; i < count; i++) {
+    const d = drafts[i];
+    if (!d || typeof d !== "object") continue;
+    const row = d as Partial<AnswerState>;
+    base[i] = {
+      selectedChoiceId:
+        typeof row.selectedChoiceId === "string" ? row.selectedChoiceId : null,
+      gridAnswer: typeof row.gridAnswer === "string" ? row.gridAnswer : "",
+      eliminated: Array.isArray(row.eliminated)
+        ? row.eliminated.filter((x): x is string => typeof x === "string")
+        : [],
+      markedForReview: row.markedForReview === true,
+      highlights: Array.isArray(row.highlights) ? (row.highlights as AnswerState["highlights"]) : [],
+    };
+  }
+  return base;
+}
 
 function SessionRunner() {
   const { id } = Route.useParams();
@@ -19,6 +50,8 @@ function SessionRunner() {
   const [type, setType] = useState<TestType>("practice");
   const [userId, setUserId] = useState<string>("");
   const [duration, setDuration] = useState<number>(0);
+  const [initialAnswers, setInitialAnswers] = useState<AnswerState[] | undefined>();
+  const [sessionMeta, setSessionMeta] = useState<SessionMeta>({});
 
   useEffect(() => {
     (async () => {
@@ -45,7 +78,7 @@ function SessionRunner() {
         return;
       }
       setType(sess.type as TestType);
-      const meta = (sess.metadata as { question_ids?: string[] }) ?? {};
+      const meta = (sess.metadata as SessionMeta) ?? {};
       const ids = meta.question_ids ?? [];
       if (ids.length === 0) {
         setErr("This session has no questions.");
@@ -77,7 +110,9 @@ function SessionRunner() {
       }
       setQuestions(ordered);
 
-      // duration: mocks use module timings; practice/daily sum admin-set per-question limits
+      /* Only mocks get a session clock (module timings). Practice/daily stay
+         Untimed — summing per-question time_limit_seconds produced absurd clocks
+         (e.g. ~2 minutes for a 20-question mixed set). */
       if (sess.type === "mock" && sess.mock_exam_id) {
         const { data: mx } = await supabase
           .from("mock_exams")
@@ -94,16 +129,10 @@ function SessionRunner() {
               (mx.math_module2_time_seconds ?? 0),
           );
         }
-      } else {
-        const total = ordered.reduce((acc, q) => {
-          const limit =
-            "time_limit_seconds" in q && typeof q.time_limit_seconds === "number"
-              ? q.time_limit_seconds
-              : 0;
-          return acc + limit;
-        }, 0);
-        if (total > 0) setDuration(total);
       }
+
+      setInitialAnswers(hydrateDraftAnswers(ordered.length, meta.draft_answers));
+      setSessionMeta(meta);
       setLoading(false);
     })();
   }, [id, navigate]);
@@ -168,6 +197,8 @@ function SessionRunner() {
       userId={userId}
       questions={questions}
       durationSeconds={duration}
+      initialAnswers={initialAnswers}
+      sessionMetadata={sessionMeta}
       onExit={() => navigate({ to: "/practice" })}
     />
   );

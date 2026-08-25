@@ -31,6 +31,10 @@ type Props = {
   questions: QuestionRow[];
   /** Total exam time in seconds; when 0, no timer. */
   durationSeconds?: number;
+  /** Hydrated from test_sessions.metadata.draft_answers on Resume. */
+  initialAnswers?: AnswerState[];
+  /** Current session metadata (question_ids, etc.) — drafts are merged into this. */
+  sessionMetadata?: Record<string, unknown>;
   onExit?: () => void;
 };
 
@@ -57,11 +61,17 @@ export function TestPlayer({
   userId,
   questions,
   durationSeconds = 0,
+  initialAnswers,
+  sessionMetadata,
   onExit,
 }: Props) {
   const navigate = useNavigate();
   const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState<AnswerState[]>(() => questions.map(() => emptyAnswer()));
+  const [answers, setAnswers] = useState<AnswerState[]>(() =>
+    initialAnswers && initialAnswers.length === questions.length
+      ? initialAnswers
+      : questions.map(() => emptyAnswer()),
+  );
   const [showReview, setShowReview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
@@ -77,6 +87,12 @@ export function TestPlayer({
   const startedRef = useRef<number>(Date.now());
   const questionStartRef = useRef<number>(Date.now());
   const timePerQ = useRef<number[]>(questions.map(() => 0));
+  const metaRef = useRef<Record<string, unknown>>(sessionMetadata ?? {});
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    metaRef.current = sessionMetadata ?? {};
+  }, [sessionMetadata]);
 
   /* The footer carries the candidate's name, as Bluebook's does. Fetched here
      rather than threaded down from the route because both callers would
@@ -105,6 +121,31 @@ export function TestPlayer({
   }, [answers]);
 
   useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
+
+  function scheduleDraftSave(next: AnswerState[]) {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      void supabase
+        .from("test_sessions")
+        .update({
+          metadata: {
+            ...metaRef.current,
+            draft_answers: next,
+          },
+        })
+        .eq("id", sessionId)
+        .then(({ error }) => {
+          if (error) console.error("[draft_answers]", error);
+          else metaRef.current = { ...metaRef.current, draft_answers: next };
+        });
+    }, 400);
+  }
+
+  useEffect(() => {
     if (!durationSeconds) return;
     const t = setInterval(() => {
       setTimeLeft((v) => {
@@ -126,8 +167,24 @@ export function TestPlayer({
     setAnswers((prev) => {
       const copy = [...prev];
       copy[i] = a;
+      answersRef.current = copy;
+      scheduleDraftSave(copy);
       return copy;
     });
+  }
+
+  function requestExit() {
+    const hasProgress = questions.some((qq, i) =>
+      answers[i] ? isAnswered(answers[i], qq.kind) || answers[i].markedForReview : false,
+    );
+    if (hasProgress) {
+      const ok = window.confirm(
+        "Leave without submitting? Your answers are saved and you can Resume this set.",
+      );
+      if (!ok) return;
+    }
+    if (onExit) onExit();
+    else navigate({ to: "/practice" });
   }
 
   function goto(i: number) {
@@ -209,6 +266,10 @@ export function TestPlayer({
         rw_score: scaled?.rw ?? null,
         math_score: scaled?.math ?? null,
         score: scaled?.total ?? correct,
+        metadata: {
+          ...metaRef.current,
+          draft_answers: null,
+        },
       })
       .eq("id", sessionId);
 
@@ -292,7 +353,7 @@ export function TestPlayer({
           <div className="flex min-w-0 flex-col items-start">
             <div className="flex items-center gap-2">
               <button
-                onClick={() => (onExit ? onExit() : navigate({ to: "/practice" }))}
+                onClick={requestExit}
                 className="tap grid h-7 w-7 shrink-0 place-items-center rounded text-test-muted hover:bg-test-well hover:text-test-ink"
                 aria-label="Exit"
               >
@@ -399,7 +460,10 @@ export function TestPlayer({
                     </button>
                     <div className="my-1 border-t border-test-line" />
                     <button
-                      onClick={() => (onExit ? onExit() : navigate({ to: "/practice" }))}
+                      onClick={() => {
+                        setShowMore(false);
+                        requestExit();
+                      }}
                       className="tap block w-full px-4 py-2 text-left text-sm text-test-ink hover:bg-test-well"
                     >
                       Exit without submitting
@@ -810,7 +874,7 @@ function ResultsView({
           </div>
           <div className="text-right">
             <div className="text-xs font-bold uppercase tracking-wider text-brand-100">
-              Answered
+              Correct
             </div>
             <div className="mt-1 text-2xl font-black tabular-nums">
               {result.correct}/{result.total}

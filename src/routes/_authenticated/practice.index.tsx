@@ -149,16 +149,21 @@ function PracticeLanding() {
               </div>
             </div>
           </div>
-          <Link
-            to="/practice/daily"
-            aria-disabled={!dailyExists || dailyDone}
-            className={
-              "btn-brand mt-5 inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2.5 text-sm font-bold text-white " +
-              (!dailyExists || dailyDone ? "pointer-events-none opacity-40" : "")
-            }
-          >
-            {dailyDone ? "Completed" : "Start"} <ArrowRight className="h-4 w-4" />
-          </Link>
+          {!dailyExists || dailyDone ? (
+            <span
+              className="btn-brand mt-5 inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2.5 text-sm font-bold text-white opacity-40"
+              aria-disabled="true"
+            >
+              {dailyDone ? "Completed" : "Start"} <ArrowRight className="h-4 w-4" />
+            </span>
+          ) : (
+            <Link
+              to="/practice/daily"
+              className="btn-brand mt-5 inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2.5 text-sm font-bold text-white"
+            >
+              Start <ArrowRight className="h-4 w-4" />
+            </Link>
+          )}
         </Panel>
 
         <Panel>

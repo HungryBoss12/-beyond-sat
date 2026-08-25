@@ -97,6 +97,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [staffRole, setStaffRole] = useState<StaffRole | null>(null);
   const [attendance, setAttendance] = useState<LessonAttendance[]>([]);
+  const [dailyExists, setDailyExists] = useState(false);
   const today = format(new Date(), "yyyy-MM-dd");
 
   useEffect(() => {
@@ -104,40 +105,49 @@ function Dashboard() {
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id;
       if (!uid) return;
-      const [{ data: prof }, { data: spData }, { data: sess }, { data: att }, role, lessonAtt] =
-        await Promise.all([
-          supabase.from("profiles").select("full_name,first_name").eq("id", uid).maybeSingle(),
-          supabase
-            .from("student_profiles")
-            .select(
-              "target_score,exam_date,level,fears,current_streak,longest_streak,last_daily_completed_date",
-            )
-            .eq("user_id", uid)
-            .maybeSingle(),
-          supabase
-            .from("test_sessions")
-            .select("id,type,score,rw_score,math_score,completed_at,started_at")
-            .eq("user_id", uid)
-            .not("completed_at", "is", null)
-            .order("completed_at", { ascending: false })
-            .limit(20),
-          supabase
-            .from("attempts")
-            .select("is_correct, questions(section,skill)")
-            .eq("user_id", uid)
-            .limit(1000),
-          getStaffRole(uid),
-          listAttendance(uid).catch(() => [] as LessonAttendance[]),
-        ]);
+      const [
+        { data: prof },
+        { data: spData },
+        { data: sess },
+        { data: att },
+        role,
+        lessonAtt,
+        { data: dt },
+      ] = await Promise.all([
+        supabase.from("profiles").select("full_name,first_name").eq("id", uid).maybeSingle(),
+        supabase
+          .from("student_profiles")
+          .select(
+            "target_score,exam_date,level,fears,current_streak,longest_streak,last_daily_completed_date",
+          )
+          .eq("user_id", uid)
+          .maybeSingle(),
+        supabase
+          .from("test_sessions")
+          .select("id,type,score,rw_score,math_score,completed_at,started_at")
+          .eq("user_id", uid)
+          .not("completed_at", "is", null)
+          .order("completed_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("attempts")
+          .select("is_correct, questions(section,skill)")
+          .eq("user_id", uid)
+          .limit(1000),
+        getStaffRole(uid),
+        listAttendance(uid).catch(() => [] as LessonAttendance[]),
+        supabase.from("daily_tests").select("id").eq("date", today).maybeSingle(),
+      ]);
       setName(prof?.full_name || prof?.first_name || "Student");
       setSp((spData as StudentProfile) ?? null);
       setSessions((sess as Session[]) ?? []);
       setAttempts((att as unknown as AttemptRow[]) ?? []);
       setStaffRole(role);
       setAttendance(lessonAtt);
+      setDailyExists(!!dt);
       setLoading(false);
     })();
-  }, []);
+  }, [today]);
 
   const mocks = useMemo(() => sessions.filter((s) => s.type === "mock"), [sessions]);
   const dailyDoneToday = sp?.last_daily_completed_date === today;
@@ -284,7 +294,11 @@ function Dashboard() {
       </Panel>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <DailyPanel done={dailyDoneToday} streak={sp?.current_streak ?? 0} />
+        <DailyPanel
+          done={dailyDoneToday}
+          streak={sp?.current_streak ?? 0}
+          dailyExists={dailyExists}
+        />
         <StreakPanel
           current={sp?.current_streak ?? 0}
           longest={sp?.longest_streak ?? 0}
@@ -519,7 +533,29 @@ function AccuracyPanel({
 }
 
 /** Today's daily test — the one saturated surface on the page. */
-function DailyPanel({ done, streak }: { done: boolean; streak: number }) {
+function DailyPanel({
+  done,
+  streak,
+  dailyExists,
+}: {
+  done: boolean;
+  streak: number;
+  dailyExists: boolean;
+}) {
+  const unavailable = !dailyExists;
+  const title = unavailable
+    ? "No daily test today"
+    : done
+      ? "Today's done."
+      : "Keep your streak alive";
+  const subtitle = unavailable
+    ? "Check back when your teacher posts today's set — or jump into Practice."
+    : done
+      ? `You're ${streak} ${streak === 1 ? "day" : "days"} deep. Come back tomorrow to extend it.`
+      : "A quick mixed set. 10–15 minutes, and it feeds your streak.";
+  const ctaTo = unavailable || done ? "/practice" : "/practice/daily";
+  const ctaLabel = unavailable ? "Browse practice" : done ? "Practice more" : "Start today's test";
+
   return (
     <Panel tone="brand" className="overflow-hidden lg:col-span-2">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
@@ -532,26 +568,22 @@ function DailyPanel({ done, streak }: { done: boolean; streak: number }) {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ring-1 ring-white/20">
               <Sparkles className="h-3 w-3" /> Today's daily test
             </span>
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-white">
-              {done ? "Today's done." : "Keep your streak alive"}
-            </h2>
-            <p className="mt-1.5 max-w-md text-sm text-brand-100">
-              {done
-                ? `You're ${streak} ${streak === 1 ? "day" : "days"} deep. Come back tomorrow to extend it.`
-                : "A quick mixed set. 10–15 minutes, and it feeds your streak."}
-            </p>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-white">{title}</h2>
+            <p className="mt-1.5 max-w-md text-sm text-brand-100">{subtitle}</p>
           </div>
           {/* Lit state reads through fill rather than a warm hue — the palette
               is white + #0B0761 only. */}
           <Flame
-            className={"h-11 w-11 shrink-0 " + (done ? "fill-white text-white" : "text-brand-200")}
+            className={
+              "h-11 w-11 shrink-0 " + (done && dailyExists ? "fill-white text-white" : "text-brand-200")
+            }
           />
         </div>
         <Link
-          to={done ? "/practice" : "/practice/daily"}
+          to={ctaTo}
           className="group mt-6 inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-brand-700 tap shadow-lg shadow-brand-900/30 hover:bg-brand-50"
         >
-          {done ? "Practice more" : "Start today's test"}
+          {ctaLabel}
           <ArrowRight className="arrow-slide h-4 w-4" />
         </Link>
       </div>

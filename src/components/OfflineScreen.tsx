@@ -166,7 +166,9 @@ export function OfflineScreenContent({ onRetry }: { onRetry?: () => void }) {
         <WifiOff className="h-5 w-5" aria-hidden />
       </span>
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-200">BeyondSAT</p>
-      <h1 className="mt-1.5 text-xl font-black tracking-tight text-white">No internet connection</h1>
+      <h1 className="mt-1.5 text-xl font-black tracking-tight text-white">
+        No internet connection
+      </h1>
       <p className="mt-2 text-sm leading-relaxed text-brand-100/90">
         You're offline. Reconnect when you can — or clear a few lines while you wait.
       </p>

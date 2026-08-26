@@ -1,8 +1,4 @@
-import {
-  applyFixToDraft,
-  fixDraftWithGemini,
-  type FixDraftResult,
-} from "@/lib/import/fix-broken";
+import { applyFixToDraft, fixDraftWithGemini, type FixDraftResult } from "@/lib/import/fix-broken";
 import { diffRec } from "@/lib/import/activity-log";
 import type { Draft } from "@/lib/import/parse";
 import {
@@ -13,18 +9,13 @@ import {
   type LetterDifficulty,
   type Section,
 } from "@/lib/sat";
-import {
-  cloneAdminQuestion,
-  type AdminChoice,
-  type AdminQuestion,
-} from "./question";
+import { cloneAdminQuestion, type AdminChoice, type AdminQuestion } from "./question";
 
 const CHOICE_LETTERS = ["A", "B", "C", "D"] as const;
 
 /** Flat import-style record for POST /api/import/fix. */
 export function questionToRec(q: AdminQuestion): Record<string, string> {
-  const choice = (id: string) =>
-    (q.choices.find((c) => c.id === id)?.text ?? "").trim();
+  const choice = (id: string) => (q.choices.find((c) => c.id === id)?.text ?? "").trim();
 
   const correct =
     q.kind === "grid_in"
@@ -61,12 +52,7 @@ function parseKind(raw: string): AdminQuestion["kind"] {
 function parseSection(raw: string, fallback: Section): Section {
   const v = raw.trim().toLowerCase();
   if (v === "math" || v === "m") return "math";
-  if (
-    v === "reading_writing" ||
-    v === "reading & writing" ||
-    v === "rw" ||
-    v === "english"
-  ) {
+  if (v === "reading_writing" || v === "reading & writing" || v === "rw" || v === "english") {
     return "reading_writing";
   }
   return fallback;
@@ -91,10 +77,7 @@ function ensureChoices(choices: AdminChoice[]): AdminChoice[] {
 }
 
 /** Merge a flat import-style record back into an AdminQuestion. */
-export function applyRecToQuestion(
-  q: AdminQuestion,
-  rec: Record<string, string>,
-): AdminQuestion {
+export function applyRecToQuestion(q: AdminQuestion, rec: Record<string, string>): AdminQuestion {
   const next = cloneAdminQuestion(q);
   const section = parseSection(rec.section ?? "", next.section);
   const kind = parseKind(rec.kind ?? next.kind);
@@ -164,7 +147,10 @@ function extractJsonObject(text: string): Record<string, unknown> | null {
   }
 }
 
-function applyFixedContent(q: AdminQuestion, content: string): {
+function applyFixedContent(
+  q: AdminQuestion,
+  content: string,
+): {
   question: AdminQuestion;
   changedKeys: string[];
 } {
@@ -229,9 +215,7 @@ export async function fixQuestionWithGemini(
 ): Promise<QuestionAiResult> {
   const errors = softErrorsForQuestion(q);
   const warnings =
-    errors.length === 0
-      ? ["Staff requested a cleanup pass on an existing bank question."]
-      : [];
+    errors.length === 0 ? ["Staff requested a cleanup pass on an existing bank question."] : [];
 
   const first = await fixDraftWithGemini(
     {
@@ -244,7 +228,7 @@ export async function fixQuestionWithGemini(
   );
 
   let content = first.content;
-  let fallback = first.fallback === true;
+  const fallback = first.fallback === true;
 
   try {
     const recheck = await fixDraftWithGemini(

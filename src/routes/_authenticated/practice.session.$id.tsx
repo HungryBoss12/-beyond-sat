@@ -2,11 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TestPlayer } from "@/components/TestPlayer";
-import {
-  emptyAnswer,
-  type AnswerState,
-  type QuestionRow,
-} from "@/components/QuestionCard";
+import { emptyAnswer, type AnswerState, type QuestionRow } from "@/components/QuestionCard";
 import type { TestType } from "@/lib/session";
 
 export const Route = createFileRoute("/_authenticated/practice/session/$id")({
@@ -28,14 +24,15 @@ function hydrateDraftAnswers(count: number, drafts: unknown): AnswerState[] {
     if (!d || typeof d !== "object") continue;
     const row = d as Partial<AnswerState>;
     base[i] = {
-      selectedChoiceId:
-        typeof row.selectedChoiceId === "string" ? row.selectedChoiceId : null,
+      selectedChoiceId: typeof row.selectedChoiceId === "string" ? row.selectedChoiceId : null,
       gridAnswer: typeof row.gridAnswer === "string" ? row.gridAnswer : "",
       eliminated: Array.isArray(row.eliminated)
         ? row.eliminated.filter((x): x is string => typeof x === "string")
         : [],
       markedForReview: row.markedForReview === true,
-      highlights: Array.isArray(row.highlights) ? (row.highlights as AnswerState["highlights"]) : [],
+      highlights: Array.isArray(row.highlights)
+        ? (row.highlights as AnswerState["highlights"])
+        : [],
     };
   }
   return base;

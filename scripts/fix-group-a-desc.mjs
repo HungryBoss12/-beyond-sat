@@ -8,7 +8,13 @@ const env = Object.fromEntries(
     .filter(Boolean)
     .map((l) => {
       const i = l.indexOf("=");
-      return [l.slice(0, i).trim(), l.slice(i + 1).trim().replace(/^"|"$/g, "")];
+      return [
+        l.slice(0, i).trim(),
+        l
+          .slice(i + 1)
+          .trim()
+          .replace(/^"|"$/g, ""),
+      ];
     }),
 );
 
@@ -21,6 +27,8 @@ await client.connect();
 await client.query(
   `update public.classes set description = 'Default student group' where name = 'Group A'`,
 );
-const { rows } = await client.query(`select name, description from public.classes where name = 'Group A'`);
+const { rows } = await client.query(
+  `select name, description from public.classes where name = 'Group A'`,
+);
 console.log(JSON.stringify(rows));
 await client.end();

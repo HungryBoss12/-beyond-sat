@@ -167,10 +167,7 @@ function SignUp() {
               </p>
 
               <div className="mt-8 space-y-4">
-                <GoogleAuthButton
-                  disabled={loading}
-                  onError={(message) => setFormError(message)}
-                />
+                <GoogleAuthButton disabled={loading} onError={(message) => setFormError(message)} />
                 <AuthOrDivider />
               </div>
 

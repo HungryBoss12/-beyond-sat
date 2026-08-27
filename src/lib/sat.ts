@@ -190,7 +190,7 @@ export function resolvePaperSourceDate(
   const base = stripModuleSuffix(title);
   const yearMatch = base.match(/\b(20\d{2}|19\d{2})\b/);
   const monthMatch = base.match(MONTH_NAME_RE);
-  const parsedYear = yearMatch ? Number(yearMatch[1]) : sourceYear ?? null;
+  const parsedYear = yearMatch ? Number(yearMatch[1]) : (sourceYear ?? null);
   let parsedMonth: number | null =
     sourceMonth != null && sourceMonth >= 1 && sourceMonth <= 12 ? sourceMonth : null;
   if (parsedMonth == null && monthMatch) {

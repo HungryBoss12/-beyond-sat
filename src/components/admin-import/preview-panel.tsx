@@ -63,10 +63,7 @@ export function PreviewPanel({
   progress: { done: number; total: number };
   onImport: () => void;
   onAnswerChange?: (index: number, value: string) => void;
-  onChangeDraft?: (
-    index: number,
-    patch: import("./draft-editor").DraftEditorPatch,
-  ) => void;
+  onChangeDraft?: (index: number, patch: import("./draft-editor").DraftEditorPatch) => void;
   onSetReviewed?: (index: number, reviewed: boolean) => void;
   drafts: Draft[] | null;
   sourcePdf?: File | null;
@@ -104,9 +101,7 @@ export function PreviewPanel({
 
   const brokenCount =
     fixableCount ??
-    rows.filter(
-      (p) => p.draftIndex != null && (!p.row.question || p.row.errors.length > 0),
-    ).length;
+    rows.filter((p) => p.draftIndex != null && (!p.row.question || p.row.errors.length > 0)).length;
 
   const fixTotal = fixProgress?.total ?? Math.max(brokenCount, 1);
   const stage1Pct = fixProgress

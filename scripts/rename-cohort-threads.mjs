@@ -8,7 +8,13 @@ const env = Object.fromEntries(
     .filter(Boolean)
     .map((l) => {
       const i = l.indexOf("=");
-      return [l.slice(0, i).trim(), l.slice(i + 1).trim().replace(/^"|"$/g, "")];
+      return [
+        l.slice(0, i).trim(),
+        l
+          .slice(i + 1)
+          .trim()
+          .replace(/^"|"$/g, ""),
+      ];
     }),
 );
 
@@ -27,6 +33,8 @@ const updated = await client.query(
       and t.title ilike '%cohort%'`,
 );
 console.log("THREADS_RENAMED", updated.rowCount);
-const { rows } = await client.query("select id, name, description from public.classes order by name");
+const { rows } = await client.query(
+  "select id, name, description from public.classes order by name",
+);
 console.log(JSON.stringify(rows, null, 2));
 await client.end();

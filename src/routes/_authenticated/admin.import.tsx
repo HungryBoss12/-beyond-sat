@@ -277,10 +277,7 @@ function AdminImport() {
         return;
       }
       setExistingTestId(null);
-      setTitle(
-        title.trim() ||
-          `Math · ${group.label}${mod === 2 ? " · Module 2" : " · Module 1"}`,
-      );
+      setTitle(title.trim() || `Math · ${group.label}${mod === 2 ? " · Module 2" : " · Module 1"}`);
       setSection("math");
       setMonth(group.source_month ?? month);
       setYear(group.source_year ?? year);
@@ -509,9 +506,13 @@ function AdminImport() {
           });
           return;
         }
-        await finishDocument(out.blocks, [`Read the text layer of ${out.pages} page(s) — no AI needed.`], {
-          pdfFile: f,
-        });
+        await finishDocument(
+          out.blocks,
+          [`Read the text layer of ${out.pages} page(s) — no AI needed.`],
+          {
+            pdfFile: f,
+          },
+        );
         return;
       }
 
@@ -618,10 +619,7 @@ function AdminImport() {
     );
   }
 
-  function updateDraft(
-    index: number,
-    patch: { number?: number; rec?: Record<string, string> },
-  ) {
+  function updateDraft(index: number, patch: { number?: number; rec?: Record<string, string> }) {
     setDrafts((current) => {
       if (!current) return current;
       const prev = current[index];
@@ -686,10 +684,7 @@ function AdminImport() {
     setDrafts((current) => (current ? current.filter((_, i) => i !== index) : current));
   }
 
-  async function runManualCrop(
-    index: number,
-    box: { x: number; y: number; w: number; h: number },
-  ) {
+  async function runManualCrop(index: number, box: { x: number; y: number; w: number; h: number }) {
     const file = sourcePdf ?? vision?.file ?? null;
     if (!file || !drafts?.[index]) return;
     setManualCropBusy(true);
@@ -750,9 +745,7 @@ function AdminImport() {
     }
   }
 
-  const fileImport = Boolean(
-    drafts && (sourcePdf || vision?.file || /\.docx$/i.test(fileName)),
-  );
+  const fileImport = Boolean(drafts && (sourcePdf || vision?.file || /\.docx$/i.test(fileName)));
 
   const previewRows = useMemo(() => {
     if (drafts) {
@@ -836,8 +829,7 @@ function AdminImport() {
       })
       .map((p) => {
         const draft = drafts[p.draftIndex!];
-        const soft =
-          mode === "fixExisting" ? softFixHintsForDraft(draft) : [];
+        const soft = mode === "fixExisting" ? softFixHintsForDraft(draft) : [];
         return {
           draftIndex: p.draftIndex!,
           draft,
@@ -894,9 +886,7 @@ function AdminImport() {
     if (!entry?.snapshot || !drafts) return;
     const snap = cloneDraft(entry.snapshot);
     setDrafts((current) =>
-      current
-        ? current.map((d, i) => (i === entry.draftIndex ? snap : d))
-        : current,
+      current ? current.map((d, i) => (i === entry.draftIndex ? snap : d)) : current,
     );
     setActivity((current) => current.filter((e) => e.id !== entryId));
   }
@@ -1503,8 +1493,8 @@ function AdminImport() {
               <div className="mt-4 space-y-4">
                 {mathDiag && (
                   <div className="rounded-xl border border-brand-400/40 bg-brand-800 px-3 py-2 text-xs text-brand-100">
-                    Math bank:{" "}
-                    <strong className="text-white">{mathDiag.mathQuestionCount}</strong> questions ·{" "}
+                    Math bank: <strong className="text-white">{mathDiag.mathQuestionCount}</strong>{" "}
+                    questions ·{" "}
                     <strong className="text-white">{mathDiag.mathSetsWithQuestions}</strong>/
                     {mathDiag.mathSetsTotal} sets with links ·{" "}
                     <strong className="text-white">{mathDiag.orphanCount}</strong> orphans
@@ -1548,7 +1538,9 @@ function AdminImport() {
                     {readError}
                   </div>
                 )}
-                {existingPickerLoading && existingTests.length === 0 && orphanGroups.length === 0 ? (
+                {existingPickerLoading &&
+                existingTests.length === 0 &&
+                orphanGroups.length === 0 ? (
                   <div className="flex items-center gap-2 text-sm text-brand-100">
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading bank…
                   </div>
@@ -1865,15 +1857,15 @@ function AdminImport() {
                     }, then check each question against the page.`}
               </p>
               {mode !== "fixExisting" && (
-              <div className="mt-4">
-                <AnswerKeyBox
-                  value={keyText}
-                  onChange={setKeyText}
-                  onApply={applyKey}
-                  summary={keySummary}
-                  bothModules={module === "both"}
-                />
-              </div>
+                <div className="mt-4">
+                  <AnswerKeyBox
+                    value={keyText}
+                    onChange={setKeyText}
+                    onApply={applyKey}
+                    summary={keySummary}
+                    bothModules={module === "both"}
+                  />
+                </div>
               )}
               {mode === "fixExisting" && <div className="mt-2" />}
               {(readError || parsed?.fatal) && (

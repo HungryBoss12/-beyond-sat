@@ -150,10 +150,7 @@ function findClose(xml: string, open: number, tag: string): number {
  * Underlined Word runs (`<w:u>` with a non-`none` val) are wrapped in `<u>…</u>`
  * so College Board–style vocab emphasis survives into the player via MathText.
  */
-function paragraphContent(
-  xml: string,
-  ctx: DocxContext,
-): { text: string; images: Blob[] } {
+function paragraphContent(xml: string, ctx: DocxContext): { text: string; images: Blob[] } {
   let out = "";
   let figure = false;
   const embedIds: string[] = [];
@@ -192,13 +189,8 @@ function paragraphContent(
   return { text: out, images };
 }
 
-function collectEmbedsAndFigures(
-  xml: string,
-  embedIds: string[],
-  markFigure: () => void,
-) {
-  const token =
-    /<w:drawing[\s>]|<w:pict[\s>]|<v:imagedata[\s>]|r:embed="([^"]+)"/g;
+function collectEmbedsAndFigures(xml: string, embedIds: string[], markFigure: () => void) {
+  const token = /<w:drawing[\s>]|<w:pict[\s>]|<v:imagedata[\s>]|r:embed="([^"]+)"/g;
   let m: RegExpExecArray | null;
   while ((m = token.exec(xml))) {
     const head = m[0];
@@ -291,7 +283,10 @@ function resolveEmbeds(ids: string[], ctx: DocxContext): Blob[] {
   return out;
 }
 
-async function readDocxContext(buf: ArrayBuffer, entries: Map<string, ZipEntry>): Promise<DocxContext> {
+async function readDocxContext(
+  buf: ArrayBuffer,
+  entries: Map<string, ZipEntry>,
+): Promise<DocxContext> {
   const rels = new Map<string, string>();
   const relEntry = entries.get("word/_rels/document.xml.rels");
   if (relEntry) {

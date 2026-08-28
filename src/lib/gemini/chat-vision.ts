@@ -1,6 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import { buildSystemPrompt, IMAGE_RECOGNITION_PROMPT } from "@/lib/ai/prompts";
-import { resolveMaxTokens, EARLIER_IMAGE_PLACEHOLDER, type AiMessage, type AiSurface } from "@/lib/ai/router";
+import {
+  resolveMaxTokens,
+  EARLIER_IMAGE_PLACEHOLDER,
+  type AiMessage,
+  type AiSurface,
+} from "@/lib/ai/router";
 import { GEMINI_CHAT_VISION_MODEL, parseImageDataUrl } from "./config";
 import { GeminiError, mapGeminiSdkError } from "./errors";
 
@@ -81,7 +86,8 @@ async function describeOneImage(
       },
     });
     const text = response.text?.trim();
-    if (!text) throw new GeminiError("EMPTY_RESPONSE", "Gemini returned no image description.", 502);
+    if (!text)
+      throw new GeminiError("EMPTY_RESPONSE", "Gemini returned no image description.", 502);
     return text;
   } catch (error) {
     throw error instanceof GeminiError ? error : mapGeminiSdkError(error);
@@ -149,7 +155,9 @@ export type GeminiVisionChatOptions = {
   surface: AiSurface;
 };
 
-export async function geminiVisionChatResponse(options: GeminiVisionChatOptions): Promise<Response> {
+export async function geminiVisionChatResponse(
+  options: GeminiVisionChatOptions,
+): Promise<Response> {
   const apiKey = options.apiKey.trim();
   if (!apiKey) {
     throw new GeminiError(

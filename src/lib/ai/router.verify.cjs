@@ -106,11 +106,15 @@ check("a blank or whitespace override falls back to the default", () => {
 
 check("withdrawn OpenRouter overrides fall back to the current default", () => {
   assert.equal(
-    router.resolveModel("chat", { openrouter_model_chat: "meta-llama/llama-3.3-70b-instruct:free" }),
+    router.resolveModel("chat", {
+      openrouter_model_chat: "meta-llama/llama-3.3-70b-instruct:free",
+    }),
     router.DEFAULT_MODELS.chat,
   );
   assert.equal(
-    router.resolveModel("quick", { openrouter_model_quick: "meta-llama/llama-3.2-3b-instruct:free" }),
+    router.resolveModel("quick", {
+      openrouter_model_quick: "meta-llama/llama-3.2-3b-instruct:free",
+    }),
     router.DEFAULT_MODELS.quick,
   );
   assert.equal(
@@ -233,7 +237,12 @@ check("prepareMessagesForTask strips images for text-only tasks", () => {
 });
 
 check("prepareMessagesForTask keeps a placeholder when an image-only turn is stripped", () => {
-  const imageOnly = [{ role: "user", content: [{ type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } }] }];
+  const imageOnly = [
+    {
+      role: "user",
+      content: [{ type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } }],
+    },
+  ];
   const stripped = router.prepareMessagesForTask(imageOnly, "chat");
   assert.equal(stripped[0].content, "[Image attached]");
 });
@@ -349,10 +358,7 @@ check("OpenRouter nicknames route to free models and honour admin overrides", ()
   for (const slug of Object.keys(router.CHAT_MODELS)) {
     const { task } = router.CHAT_MODELS[slug];
     const id = router.resolveModel(task, {});
-    assert.ok(
-      id.endsWith(":free") || id === "openrouter/free",
-      `${slug} is not on the free tier`,
-    );
+    assert.ok(id.endsWith(":free") || id === "openrouter/free", `${slug} is not on the free tier`);
     // The override path is what makes a withdrawn free model a settings change
     // rather than a redeploy, so the picker must not bypass it.
     const key = router.MODEL_SETTING_KEYS[task];
@@ -402,7 +408,9 @@ check("latestUserMessageHasImages is true only on the final user turn", () => {
 check("resolveGeminiVisionModel rejects OpenRouter slugs and keeps Gemini IDs", () => {
   assert.equal(router.resolveGeminiVisionModel({}), "gemini-3-flash-preview");
   assert.equal(
-    router.resolveGeminiVisionModel({ openrouter_model_vision: "google/gemini-2.0-flash-exp:free" }),
+    router.resolveGeminiVisionModel({
+      openrouter_model_vision: "google/gemini-2.0-flash-exp:free",
+    }),
     "gemini-3-flash-preview",
   );
   assert.equal(

@@ -68,10 +68,7 @@ export function stripExistingId(rec: Record<string, string>): Record<string, str
 
 export async function diagnoseMathPractice(): Promise<MathPracticeDiag> {
   const [{ count: mathQuestionCount }, testsRes, orphans] = await Promise.all([
-    supabase
-      .from("questions")
-      .select("id", { count: "exact", head: true })
-      .eq("section", "math"),
+    supabase.from("questions").select("id", { count: "exact", head: true }).eq("section", "math"),
     supabase.from("tests").select("id").eq("section", "math"),
     listOrphanMathGroups(),
   ]);
@@ -166,9 +163,7 @@ export async function listOrphanMathGroups(): Promise<OrphanMathGroup[]> {
       all.map((q) => q.id),
     );
 
-  const linkedIds = new Set(
-    (linked ?? []).map((r) => (r as { question_id: string }).question_id),
-  );
+  const linkedIds = new Set((linked ?? []).map((r) => (r as { question_id: string }).question_id));
   const orphans = all.filter((q) => !linkedIds.has(q.id));
   if (orphans.length === 0) return [];
 

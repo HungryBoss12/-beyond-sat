@@ -873,9 +873,7 @@ function ResultsView({
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs font-bold uppercase tracking-wider text-brand-100">
-              Correct
-            </div>
+            <div className="text-xs font-bold uppercase tracking-wider text-brand-100">Correct</div>
             <div className="mt-1 text-2xl font-black tabular-nums">
               {result.correct}/{result.total}
             </div>

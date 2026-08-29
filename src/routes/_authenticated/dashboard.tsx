@@ -575,7 +575,8 @@ function DailyPanel({
               is white + #0B0761 only. */}
           <Flame
             className={
-              "h-11 w-11 shrink-0 " + (done && dailyExists ? "fill-white text-white" : "text-brand-200")
+              "h-11 w-11 shrink-0 " +
+              (done && dailyExists ? "fill-white text-white" : "text-brand-200")
             }
           />
         </div>

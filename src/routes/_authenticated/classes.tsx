@@ -1,5 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type LabelHTMLAttributes } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type LabelHTMLAttributes,
+} from "react";
 import {
   ArrowLeft,
   BookOpen,
@@ -58,19 +66,12 @@ export const Route = createFileRoute("/_authenticated/classes")({
 type Tab = "chats" | "homeworks";
 
 /** Cursor-lit control — same reveal wash as dashboard cards, for buttons. */
-function RevealButton({
-  className,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement>) {
+function RevealButton({ className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
   const ref = usePointerGlow<HTMLButtonElement>();
   return <button ref={ref} className={cn("reveal-surface", className)} {...props} />;
 }
 
-function RevealLabel({
-  className,
-  children,
-  ...props
-}: LabelHTMLAttributes<HTMLLabelElement>) {
+function RevealLabel({ className, children, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
   const ref = usePointerGlow<HTMLLabelElement>();
   return (
     <label ref={ref} className={cn("reveal-surface", className)} {...props}>
@@ -125,8 +126,7 @@ function ClassesPage() {
             aria-hidden
             className="nav-tab-pill pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md bg-brand-400"
             style={{
-              transform:
-                tab === "chats" ? "translateX(0)" : "translateX(calc(100% + 0.25rem))",
+              transform: tab === "chats" ? "translateX(0)" : "translateX(calc(100% + 0.25rem))",
             }}
           />
           {(
@@ -455,9 +455,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
       </aside>
 
       <section
-        className={
-          "min-w-0 flex-1 flex-col bg-brand-900 " + (activeId ? "flex" : "hidden md:flex")
-        }
+        className={"min-w-0 flex-1 flex-col bg-brand-900 " + (activeId ? "flex" : "hidden md:flex")}
       >
         {!active ? (
           <div className="grid flex-1 place-items-center text-sm text-brand-200">
@@ -633,7 +631,11 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                   className="btn-brand grid h-10 w-10 place-items-center rounded-lg bg-brand-400 text-white disabled:opacity-40"
                   aria-label="Send"
                 >
-                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {sending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </RevealButton>
               </div>
             </div>
@@ -697,7 +699,7 @@ function HomeworksPane({ classId }: { classId: string }) {
     if (!active || !fileList?.length) return;
     setUploading(true);
     try {
-      let sub = submission ?? (await upsertSubmission({ assignment_id: active.id, note }));
+      const sub = submission ?? (await upsertSubmission({ assignment_id: active.id, note }));
       const uploaded = [];
       for (const file of Array.from(fileList)) {
         uploaded.push(await uploadHomeworkFile(file));
@@ -811,7 +813,10 @@ function HomeworksPane({ classId }: { classId: string }) {
                 </div>
                 <h3 className="text-lg font-black">{active.title}</h3>
               </div>
-              <RevealButton onClick={() => setActive(null)} className="tap text-brand-100 hover:text-white">
+              <RevealButton
+                onClick={() => setActive(null)}
+                className="tap text-brand-100 hover:text-white"
+              >
                 <X className="h-5 w-5" />
               </RevealButton>
             </div>
@@ -823,11 +828,9 @@ function HomeworksPane({ classId }: { classId: string }) {
                 <RevealButton
                   key={f.id}
                   onClick={() =>
-                    void downloadStorageFile(
-                      "homework-uploads",
-                      f.storage_path,
-                      f.file_name,
-                    ).catch((err) => alert((err as Error)?.message ?? "Download failed."))
+                    void downloadStorageFile("homework-uploads", f.storage_path, f.file_name).catch(
+                      (err) => alert((err as Error)?.message ?? "Download failed."),
+                    )
                   }
                   className="tap flex w-full items-center gap-2 rounded-lg bg-brand-800 px-3 py-2 text-left text-sm font-semibold"
                 >
@@ -858,7 +861,11 @@ function HomeworksPane({ classId }: { classId: string }) {
                 disabled={uploading}
                 className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-sm font-bold text-white disabled:opacity-40"
               >
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {uploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
                 Save submission
               </RevealButton>
               <RevealLabel className="tap inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-brand-800 px-3 py-2 text-sm font-bold text-white ring-1 ring-brand-400/40">

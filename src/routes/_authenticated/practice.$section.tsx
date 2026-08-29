@@ -250,9 +250,7 @@ function SectionBrowse() {
       for (const paper of date.papers) {
         paper.modules.sort((a, b) => a.module - b.module || a.title.localeCompare(b.title));
       }
-      date.papers.sort(
-        (a, b) => newestAdded(b) - newestAdded(a) || a.title.localeCompare(b.title),
-      );
+      date.papers.sort((a, b) => newestAdded(b) - newestAdded(a) || a.title.localeCompare(b.title));
     }
 
     return [...byDate.values()].sort((a, b) => {
@@ -323,8 +321,8 @@ function SectionBrowse() {
             {SECTION_LABEL[section]}
           </h1>
           <p className="text-sm text-slate-500">
-            Newest papers first (by year, then when they were added). Module 1 and Module 2 stay under
-            their own paper.
+            Newest papers first (by year, then when they were added). Module 1 and Module 2 stay
+            under their own paper.
           </p>
         </div>
       </div>
@@ -413,9 +411,7 @@ function SectionBrowse() {
                       paper={paper}
                       starting={starting}
                       onOpen={openSet}
-                      onReview={(sessionId) =>
-                        navigate({ to: `/analysis/session/${sessionId}` })
-                      }
+                      onReview={(sessionId) => navigate({ to: `/analysis/session/${sessionId}` })}
                     />
                   ))}
                 </div>

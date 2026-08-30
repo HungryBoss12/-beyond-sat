@@ -37,10 +37,7 @@ export function DraftReviewer({
   attachingFigure?: boolean;
   showModule?: boolean;
   focusDraftIndex?: number | null;
-  onChangeDraft: (
-    index: number,
-    patch: import("./draft-editor").DraftEditorPatch,
-  ) => void;
+  onChangeDraft: (index: number, patch: import("./draft-editor").DraftEditorPatch) => void;
   onSetReviewed: (index: number, reviewed: boolean) => void;
   onAddAfter?: (index: number) => void;
   onDelete?: (index: number) => void;

@@ -1,10 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 
 function safeName(name: string): string {
-  return name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
+  return name.replace(/[^\w.-]+/g, "_").slice(0, 80);
 }
 
-export async function uploadChatFile(file: File | Blob, filename?: string): Promise<{
+export async function uploadChatFile(
+  file: File | Blob,
+  filename?: string,
+): Promise<{
   storage_path: string;
   file_name: string;
   mime_type: string | null;

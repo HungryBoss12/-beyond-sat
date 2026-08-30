@@ -133,7 +133,7 @@ function AdminClasses() {
   }
 
   async function remove(c: ClassRow) {
-            if (!confirm(`Delete group "${c.name}"? This removes memberships and related threads.`)) return;
+    if (!confirm(`Delete group "${c.name}"? This removes memberships and related threads.`)) return;
     await deleteClass(c.id);
     if (selected?.id === c.id) setSelected(null);
     await reload();
@@ -327,7 +327,8 @@ function HomeworkPanel({ classId }: { classId: string }) {
       });
       if (files.length) {
         const uploaded = [];
-        for (const f of files) uploaded.push(await uploadHomeworkFile(f, f.name, `staff/${classId}`));
+        for (const f of files)
+          uploaded.push(await uploadHomeworkFile(f, f.name, `staff/${classId}`));
         await addHomeworkFiles(hw.id, uploaded);
       }
       setTitle("");
@@ -362,7 +363,9 @@ function HomeworkPanel({ classId }: { classId: string }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-brand-400/40 bg-brand-800 p-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-brand-100">Assign homework</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-brand-100">
+          Assign homework
+        </h3>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <select
             className={CONTROL}
@@ -411,7 +414,11 @@ function HomeworkPanel({ classId }: { classId: string }) {
             disabled={saving}
             className="btn-brand ml-auto inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold disabled:opacity-40"
           >
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            {saving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Plus className="h-3.5 w-3.5" />
+            )}
             Publish
           </button>
         </div>
@@ -484,9 +491,9 @@ function HomeworkPanel({ classId }: { classId: string }) {
 }
 
 function MembersPanel({ classId }: { classId: string }) {
-  const [rows, setRows] = useState<{ user_id: string; joined_at: string; profile: ChatProfile | null }[]>(
-    [],
-  );
+  const [rows, setRows] = useState<
+    { user_id: string; joined_at: string; profile: ChatProfile | null }[]
+  >([]);
   const [mutes, setMutes] = useState<ChatMute[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -987,7 +994,12 @@ function AttendancePanel({ classId }: { classId: string }) {
   return (
     <div className="space-y-3">
       <div className="grid gap-2 sm:grid-cols-2">
-        <input type="date" className={CONTROL} value={date} onChange={(e) => setDate(e.target.value)} />
+        <input
+          type="date"
+          className={CONTROL}
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
         <select
           className={CONTROL}
           value={subject}

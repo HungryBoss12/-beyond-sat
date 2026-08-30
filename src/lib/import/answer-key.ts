@@ -247,8 +247,7 @@ export function applyAnswerKey(
     const targets = drafts
       .map((d, idx) => ({ d, idx }))
       .filter(
-        ({ d, idx }) =>
-          !values.has(idx) && (bucket === "any" || draftModule(d) === Number(bucket)),
+        ({ d, idx }) => !values.has(idx) && (bucket === "any" || draftModule(d) === Number(bucket)),
       )
       .map(({ idx }) => idx);
     indexes.forEach((entry, position) => {

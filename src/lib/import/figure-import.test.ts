@@ -7,11 +7,7 @@ import {
   unionBoxesForDraft,
 } from "./crop-figure";
 import { diffRec } from "./activity-log";
-import {
-  figureDependencyError,
-  figureDependencyReason,
-  needsFigure,
-} from "./figure-dependency";
+import { figureDependencyError, figureDependencyReason, needsFigure } from "./figure-dependency";
 import type { Draft } from "./parse";
 
 describe("figureDependencyReason", () => {

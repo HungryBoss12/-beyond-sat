@@ -88,7 +88,9 @@ export async function joinClass(classId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function listClassMembers(classId: string): Promise<{ user_id: string; joined_at: string }[]> {
+export async function listClassMembers(
+  classId: string,
+): Promise<{ user_id: string; joined_at: string }[]> {
   const { data, error } = await db
     .from("class_memberships")
     .select("user_id,joined_at")
@@ -102,7 +104,9 @@ export async function listClassMembers(classId: string): Promise<{ user_id: stri
 export async function addClassMember(classId: string, userId: string): Promise<void> {
   const { error: delErr } = await db.from("class_memberships").delete().eq("user_id", userId);
   if (delErr) throw delErr;
-  const { error } = await db.from("class_memberships").insert({ class_id: classId, user_id: userId });
+  const { error } = await db
+    .from("class_memberships")
+    .insert({ class_id: classId, user_id: userId });
   if (error) throw error;
 }
 
@@ -248,7 +252,12 @@ export async function listThreadMessages(
 export async function sendMessage(
   threadId: string,
   body: string,
-  attachments?: { storage_path: string; file_name: string; mime_type?: string | null; byte_size?: number | null }[],
+  attachments?: {
+    storage_path: string;
+    file_name: string;
+    mime_type?: string | null;
+    byte_size?: number | null;
+  }[],
 ): Promise<ChatMessage> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Not signed in");
@@ -280,7 +289,9 @@ export async function openDirectThread(otherUserId: string): Promise<string> {
   return data as string;
 }
 
-export async function getDirectPeerProfiles(threadIds: string[]): Promise<Map<string, ChatProfile>> {
+export async function getDirectPeerProfiles(
+  threadIds: string[],
+): Promise<Map<string, ChatProfile>> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user || threadIds.length === 0) return new Map();
   const { data: members, error } = await db
@@ -312,7 +323,10 @@ export async function getDirectPeerProfiles(threadIds: string[]): Promise<Map<st
   return out;
 }
 
-export async function listHomework(classId: string, subject?: ClassSubject): Promise<HomeworkAssignment[]> {
+export async function listHomework(
+  classId: string,
+  subject?: ClassSubject,
+): Promise<HomeworkAssignment[]> {
   let q = db
     .from("homework_assignments")
     .select("id,class_id,subject,title,body,due_at,created_at,created_by")
@@ -360,7 +374,12 @@ export async function listHomeworkFiles(assignmentIds: string[]): Promise<Homewo
 
 export async function addHomeworkFiles(
   assignmentId: string,
-  files: { storage_path: string; file_name: string; mime_type?: string | null; byte_size?: number | null }[],
+  files: {
+    storage_path: string;
+    file_name: string;
+    mime_type?: string | null;
+    byte_size?: number | null;
+  }[],
 ): Promise<void> {
   if (files.length === 0) return;
   const { error } = await db.from("homework_files").insert(
@@ -380,7 +399,9 @@ export async function getMySubmission(assignmentId: string): Promise<HomeworkSub
   if (!u.user) return null;
   const { data, error } = await db
     .from("homework_submissions")
-    .select("id,assignment_id,student_id,note,status,reviewed_by,reviewed_at,review_note,created_at")
+    .select(
+      "id,assignment_id,student_id,note,status,reviewed_by,reviewed_at,review_note,created_at",
+    )
     .eq("assignment_id", assignmentId)
     .eq("student_id", u.user.id)
     .maybeSingle();
@@ -410,7 +431,9 @@ export async function upsertSubmission(input: {
       },
       { onConflict: "assignment_id,student_id" },
     )
-    .select("id,assignment_id,student_id,note,status,reviewed_by,reviewed_at,review_note,created_at")
+    .select(
+      "id,assignment_id,student_id,note,status,reviewed_by,reviewed_at,review_note,created_at",
+    )
     .single();
   if (error) throw error;
   return data as HomeworkSubmission;
@@ -418,7 +441,12 @@ export async function upsertSubmission(input: {
 
 export async function addSubmissionFiles(
   submissionId: string,
-  files: { storage_path: string; file_name: string; mime_type?: string | null; byte_size?: number | null }[],
+  files: {
+    storage_path: string;
+    file_name: string;
+    mime_type?: string | null;
+    byte_size?: number | null;
+  }[],
 ): Promise<void> {
   if (files.length === 0) return;
   const { error } = await db.from("homework_submission_files").insert(
@@ -433,10 +461,14 @@ export async function addSubmissionFiles(
   if (error) throw error;
 }
 
-export async function listSubmissionsForAssignment(assignmentId: string): Promise<HomeworkSubmission[]> {
+export async function listSubmissionsForAssignment(
+  assignmentId: string,
+): Promise<HomeworkSubmission[]> {
   const { data, error } = await db
     .from("homework_submissions")
-    .select("id,assignment_id,student_id,note,status,reviewed_by,reviewed_at,review_note,created_at")
+    .select(
+      "id,assignment_id,student_id,note,status,reviewed_by,reviewed_at,review_note,created_at",
+    )
     .eq("assignment_id", assignmentId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -524,10 +556,7 @@ export async function markAttendance(input: {
 }
 
 export async function editMessage(id: string, body: string): Promise<void> {
-  const { error } = await db
-    .from("chat_messages")
-    .update({ body: body.trim() })
-    .eq("id", id);
+  const { error } = await db.from("chat_messages").update({ body: body.trim() }).eq("id", id);
   if (error) throw error;
 }
 

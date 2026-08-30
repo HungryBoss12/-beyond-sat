@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowLeft, Loader2, RotateCcw } from "lucide-react";
 import { fetchVocabSession, submitVocabReview } from "@/lib/vocab/client";
+import { recordDeckHomeworkProgress } from "@/lib/vocab/homework";
 import { supabase } from "@/integrations/supabase/client";
 import { AmbientGlow } from "@/components/ui/reveal-card";
 import { AnkiDeckCounts } from "@/components/vocab/AnkiDeckCounts";
@@ -221,6 +222,7 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
       inFlightRef.current.add(cardId);
       void submitVocabReview(cardId, rating)
         .then(() => {
+          void recordDeckHomeworkProgress(deckId, rating);
           if (isLast) void finishSession();
         })
         .catch((e) => {
@@ -237,7 +239,7 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
           inFlightRef.current.delete(cardId);
         });
     },
-    [idx, queue, finishSession, reduceMotion],
+    [idx, queue, finishSession, reduceMotion, deckId],
   );
 
   useEffect(() => {

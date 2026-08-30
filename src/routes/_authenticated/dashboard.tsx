@@ -42,6 +42,13 @@ import { format } from "date-fns";
 import { fetchVocabDueSummary } from "@/lib/vocab/client";
 import { VocabDueBanner } from "@/components/vocab/VocabDueBanner";
 import { startVocabReminderPoll } from "@/lib/vocab/reminders";
+import {
+  buildMockTrend,
+  latestMockSummary,
+  type MockSessionRow,
+  type MockTrendPoint,
+} from "@/lib/dashboard-mocks";
+import { DashboardNotificationStack } from "@/components/notifications/DashboardNotificationStack";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -78,15 +85,7 @@ function todayYmd(): string {
   return `${now.getFullYear()}-${m}-${d}`;
 }
 
-type Session = {
-  id: string;
-  type: "practice" | "daily" | "mock";
-  score: number | null;
-  rw_score: number | null;
-  math_score: number | null;
-  completed_at: string | null;
-  started_at: string;
-};
+type Session = MockSessionRow;
 
 type AttemptRow = {
   is_correct: boolean | null;
@@ -132,10 +131,12 @@ function Dashboard() {
           .maybeSingle(),
         supabase
           .from("test_sessions")
-          .select("id,type,score,rw_score,math_score,completed_at,started_at")
+          .select(
+            "id,type,score,rw_score,math_score,completed_at,started_at,total_questions,correct_count,metadata",
+          )
           .eq("user_id", uid)
-          .not("completed_at", "is", null)
-          .order("completed_at", { ascending: false })
+          .eq("type", "mock")
+          .order("started_at", { ascending: false })
           .limit(20),
         supabase
           .from("attempts")
@@ -175,49 +176,27 @@ function Dashboard() {
     }, "Vocab");
   }, [today]);
 
-  const mocks = useMemo(() => sessions.filter((s) => s.type === "mock"), [sessions]);
+  const mocks = sessions;
   const dailyDoneToday = sp?.last_daily_completed_date === today;
 
-  /** Most recent scored mock — the headline "Your Progress" number. */
-  const latest = useMemo(() => {
-    const scored = mocks.filter((m) => m.score != null) as (Session & { score: number })[];
-    if (scored.length === 0) return null;
-    const [current, previous] = scored;
-    return {
-      score: current.score,
-      rw: current.rw_score,
-      math: current.math_score,
-      delta: previous?.score != null ? current.score - previous.score : null,
-      at: current.completed_at,
-    };
-  }, [mocks]);
+  const latest = useMemo(() => latestMockSummary(mocks), [mocks]);
 
   const avg = useMemo(() => {
-    const scored = mocks.filter((m) => m.score != null) as (Session & { score: number })[];
-    if (scored.length === 0) return null;
+    const completed = mocks.filter((m) => m.score != null) as (Session & { score: number })[];
+    if (completed.length === 0) return null;
     const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
-    const rwVals = scored.map((s) => s.rw_score).filter((v): v is number => v != null);
-    const mathVals = scored.map((s) => s.math_score).filter((v): v is number => v != null);
+    const rwVals = completed.map((s) => s.rw_score).filter((v): v is number => v != null);
+    const mathVals = completed.map((s) => s.math_score).filter((v): v is number => v != null);
     return {
-      total: Math.round(mean(scored.map((s) => s.score))),
+      total: Math.round(mean(completed.map((s) => s.score))),
       rw: rwVals.length ? Math.round(mean(rwVals)) : 0,
       math: mathVals.length ? Math.round(mean(mathVals)) : 0,
-      best: Math.max(...scored.map((s) => s.score)),
-      count: scored.length,
+      best: Math.max(...completed.map((s) => s.score)),
+      count: completed.length,
     };
   }, [mocks]);
 
-  /** Score trend, oldest -> newest, for the area chart. */
-  const trend = useMemo(() => {
-    const scored = (mocks.filter((m) => m.score != null) as (Session & { score: number })[])
-      .slice()
-      .reverse()
-      .slice(-6);
-    return scored.map((m) => ({
-      label: m.completed_at ? format(new Date(m.completed_at), "MMM") : "—",
-      score: m.score,
-    }));
-  }, [mocks]);
+  const trend = useMemo(() => buildMockTrend(mocks, 6), [mocks]);
 
   const accuracy = useMemo(() => {
     const graded = attempts.filter((a) => a.is_correct != null);
@@ -304,7 +283,10 @@ function Dashboard() {
       {/* Hero row: headline score + accuracy gauge */}
       <div className="grid gap-5 lg:grid-cols-5">
         <ProgressPanel latest={latest} trend={trend} target={sp?.target_score ?? null} />
-        <AccuracyPanel accuracy={accuracy} />
+        <div className="relative lg:col-span-2">
+          <DashboardNotificationStack />
+          <AccuracyPanel accuracy={accuracy} />
+        </div>
       </div>
 
       {/* Stat chips */}
@@ -373,20 +355,13 @@ function ProgressPanel({
   trend,
   target,
 }: {
-  latest: {
-    score: number;
-    rw: number | null;
-    math: number | null;
-    delta: number | null;
-    at: string | null;
-  } | null;
-  trend: { label: string; score: number }[];
+  latest: ReturnType<typeof latestMockSummary>;
+  trend: MockTrendPoint[];
   target: number | null;
 }) {
-  const band = latest ? scoreBand(latest.score) : null;
-  // Distance to target, shown only when the student has both a target and a
-  // score to compare it against.
-  const gap = latest && target != null ? target - latest.score : null;
+  const band = latest && !latest.incomplete ? scoreBand(latest.score) : null;
+  const gap = latest && !latest.incomplete && target != null ? target - latest.score : null;
+  const completedCount = trend.filter((t) => !t.incomplete).length;
 
   return (
     <Panel tone="soft" className="ring-grad overflow-hidden lg:col-span-3">
@@ -397,7 +372,9 @@ function ProgressPanel({
           icon={Gauge}
           hint={
             latest?.at
-              ? `Latest mock · ${format(new Date(latest.at), "MMM d, yyyy")}`
+              ? latest.incomplete
+                ? `In progress · ${latest.progressPct ?? 0}% answered`
+                : `Latest mock · ${format(new Date(latest.at), "MMM d, yyyy")}`
               : "No mocks yet"
           }
           action={
@@ -417,8 +394,13 @@ function ProgressPanel({
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          {band && <Badge label={band.label} tone={band.tone as Tone} />}
-          {latest?.delta != null && <Delta value={latest.delta} suffix="vs last test" />}
+          {band && !latest?.incomplete && <Badge label={band.label} tone={band.tone as Tone} />}
+          {latest?.incomplete && (
+            <Badge label={`${latest.progressPct ?? 0}% complete`} tone="fair" />
+          )}
+          {latest?.delta != null && !latest.incomplete && (
+            <Delta value={latest.delta} suffix="vs last test" />
+          )}
           {gap != null && gap > 0 && (
             <span className="text-[11px] font-semibold text-brand-100">{gap} points to target</span>
           )}
@@ -431,16 +413,12 @@ function ProgressPanel({
         </div>
 
         <div className="mt-5 h-[188px]">
-          {trend.length < 2 ? (
+          {trend.length < 1 ? (
             <EmptyState
               className="h-full"
               icon={BarChart3}
-              title={trend.length === 0 ? "No trend yet" : "One more mock to go"}
-              body={
-                trend.length === 0
-                  ? "Take a full-length mock exam and your score history starts charting here."
-                  : "Your trend line appears once you have two scored mocks to compare."
-              }
+              title="No trend yet"
+              body="Take a full-length mock exam and your score history starts charting here."
               action={
                 <Link
                   to="/practice"
@@ -451,6 +429,12 @@ function ProgressPanel({
               }
             />
           ) : (
+            <>
+              {completedCount === 1 ? (
+                <p className="mb-2 text-xs text-brand-100">
+                  One scored mock recorded — keep going to compare your trend.
+                </p>
+              ) : null}
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trend} margin={{ top: 12, right: 12, bottom: 0, left: -20 }}>
                 {/* Soft brand wash under the line — lighter than the stroke so
@@ -483,12 +467,26 @@ function ProgressPanel({
                   stroke="#C6C5DA"
                   strokeWidth={2.5}
                   fill="url(#dashTrend)"
-                  dot={{ r: 3.5, fill: "#0B0761", stroke: "#C6C5DA", strokeWidth: 2 }}
+                  dot={(props: { cx?: number; cy?: number; payload?: MockTrendPoint }) => {
+                    const incomplete = props.payload?.incomplete;
+                    return (
+                      <circle
+                        cx={props.cx}
+                        cy={props.cy}
+                        r={3.5}
+                        fill="#0B0761"
+                        stroke={incomplete ? "#94a3b8" : "#C6C5DA"}
+                        strokeWidth={2}
+                        strokeDasharray={incomplete ? "3 2" : undefined}
+                      />
+                    );
+                  }}
                   activeDot={{ r: 6, fill: "#535291", stroke: "#fff", strokeWidth: 2.5 }}
                   animationDuration={900}
                 />
               </AreaChart>
             </ResponsiveContainer>
+            </>
           )}
         </div>
       </div>

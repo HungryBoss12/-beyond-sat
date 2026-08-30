@@ -16,6 +16,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 import { RevealLink } from "@/components/ui/reveal-card";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 /**
  * Seven items fit the mobile tab bar at `grid-cols-7` with truncated labels.
@@ -532,6 +533,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            {pathname === "/dashboard" ? <NotificationBell /> : null}
             <div className="inline-flex items-center gap-1.5 rounded-full border border-brand-400/50 bg-brand-800 px-3 py-1.5 transition-transform duration-200 hover:scale-105">
               <Flame className="h-4 w-4 fill-brand-200 text-brand-200" />
               <span className="text-sm font-bold tabular-nums text-white">{streak}</span>

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BookText, Calculator, ClipboardList, CalendarClock, ArrowRight, Layers } from "lucide-react";
+import { BookText, Calculator, ClipboardList, CalendarClock, ArrowRight } from "lucide-react";
+import { VocabDeckGlyph } from "@/components/vocab/VocabHubGlyphs";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { PageHead, Panel } from "@/components/ui/panel";
@@ -195,7 +196,7 @@ function PracticeLanding() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-600 text-white">
-              <Layers className="h-5 w-5" />
+              <VocabDeckGlyph className="h-5 w-5" />
             </div>
             <div>
               <div className="text-lg font-black text-white">Vocabulary</div>

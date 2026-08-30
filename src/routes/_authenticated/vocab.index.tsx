@@ -10,6 +10,7 @@ import { VocabMark } from "@/components/vocab/VocabMark";
 import { fetchVocabDueSummary } from "@/lib/vocab/client";
 import { startVocabReminderPoll } from "@/lib/vocab/reminders";
 import { supabase } from "@/integrations/supabase/client";
+import { VocabHomeworkPanel } from "@/components/vocab/VocabHomeworkPanel";
 import { hasSeenTip, markTipSeen } from "@/lib/first-visit";
 
 export const Route = createFileRoute("/_authenticated/vocab/")({
@@ -118,6 +119,8 @@ function VocabHub() {
       ) : null}
 
       <VocabDueBanner dueCount={due} deckId={topDeckId} deckTitle={topDeckTitle} embedded />
+
+      <VocabHomeworkPanel />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <RevealLink to="/vocab/decks" className="block">

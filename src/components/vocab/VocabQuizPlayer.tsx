@@ -10,6 +10,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { submitVocabQuiz } from "@/lib/vocab/client";
+import { recordQuizHomeworkCompletion } from "@/lib/vocab/homework";
 import type { VocabQuiz, VocabQuizQuestion } from "@/lib/vocab/types";
 import { cn } from "@/lib/utils";
 import { sheetPeelVariants, vocabSheetStyle, vocabStageStyle } from "./vocab-motion";
@@ -72,6 +73,9 @@ export function VocabQuizPlayer({ quiz, questions }: Props) {
         selected: answersRef.current[qu.id] ?? "",
       }));
       const res = await submitVocabQuiz(quiz.id, payload);
+      if (res.score === res.total) {
+        void recordQuizHomeworkCompletion(quiz.id, res.score, res.total);
+      }
       setResult(res);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Submit failed");

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { FolderTree, Upload } from "lucide-react";
+import { FolderTree, Upload, ClipboardList } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/vocab")({
   component: AdminVocabLayout,
@@ -9,6 +9,7 @@ export const Route = createFileRoute("/_authenticated/admin/vocab")({
 const SUB_NAV = [
   { to: "/admin/vocab", label: "Import", icon: Upload, exact: true },
   { to: "/admin/vocab/decks", label: "Manage decks", icon: FolderTree },
+  { to: "/admin/vocab/assignments", label: "Assignments", icon: ClipboardList },
 ] as const;
 
 function AdminVocabLayout() {

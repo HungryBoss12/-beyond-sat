@@ -12,6 +12,7 @@ import {
   FileStack,
   Info,
   Upload,
+  Database,
 } from "lucide-react";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Panel, PanelGlow, Skeleton } from "@/components/ui/panel";

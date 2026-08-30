@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Compass, RotateCcw, TriangleAlert } from "lucide-react";
+import { RotateCcw, TriangleAlert } from "lucide-react";
+import { NotFoundPage } from "@/components/NotFoundPage";
 
 /**
  * Router-level error and not-found boundaries.
@@ -46,23 +47,5 @@ export function RouteError({ error }: { error: Error }) {
 }
 
 export function RouteNotFound() {
-  return (
-    <div className="grid min-h-[70vh] w-full place-items-center px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center shadow-panel">
-        <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-800 text-white">
-          <Compass className="h-6 w-6" />
-        </span>
-        <h1 className="mt-5 text-xl font-black tracking-tight text-white">Page not found</h1>
-        <p className="mt-2 text-sm text-brand-100">
-          That link doesn&apos;t point anywhere in the app.
-        </p>
-        <Link
-          to="/dashboard"
-          className="btn-brand mt-6 inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2.5 text-sm font-bold text-white"
-        >
-          Go to dashboard
-        </Link>
-      </div>
-    </div>
-  );
+  return <NotFoundPage layout="content" />;
 }

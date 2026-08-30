@@ -20,6 +20,8 @@ All Cloudflare config lives in [`wrangler.jsonc`](./wrangler.jsonc).
 | `SUPABASE_URL`                  | runtime (SSR)                | `wrangler.jsonc` → `vars` | no (public) |
 | `SUPABASE_PUBLISHABLE_KEY`      | runtime (SSR)                | `wrangler.jsonc` → `vars` | no (public) |
 | `SUPABASE_SERVICE_ROLE_KEY`     | runtime (optional)           | `wrangler secret put`     | **YES**     |
+| `TELEGRAM_BOT_TOKEN`            | runtime (Telegram webhook)   | `wrangler secret put`     | **YES**     |
+| `TELEGRAM_WEBHOOK_SECRET`       | runtime (webhook verify)     | `wrangler secret put`     | **YES**     |
 
 The `VITE_*` values are baked into the client bundle at build time, so they must
 be present whenever you run `vite build` (they already are, via `.env`).
@@ -28,9 +30,52 @@ The non-prefixed runtime values are read by the SSR server client
 ([`src/integrations/supabase/client.server.ts`](./src/integrations/supabase/client.server.ts)).
 They're the same public Supabase values and are committed in `wrangler.jsonc`.
 
-**Never** put `SUPABASE_SERVICE_ROLE_KEY` in `wrangler.jsonc` or `.env` — it
-bypasses row-level security. It's currently unused, so you can skip it until an
-admin/server feature needs it.
+**Never** put `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`, or
+`TELEGRAM_WEBHOOK_SECRET` in `wrangler.jsonc` or committed `.env` files.
+
+The Telegram admin bot requires the service-role key for webhook handlers that
+look up users and apply bans without a logged-in admin session.
+
+---
+
+## Telegram admin bot (@mgs_uz_bot)
+
+1. **Revoke and regenerate** the bot token in [@BotFather](https://t.me/BotFather) if
+   the token was ever pasted in chat or committed anywhere.
+2. Set secrets:
+
+   ```bash
+   npx wrangler secret put TELEGRAM_BOT_TOKEN
+   npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
+   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+   ```
+
+3. Deploy, then register the webhook (replace placeholders):
+
+   ```bash
+   curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
+     -H "Content-Type: application/json" \
+     -d "{\"url\":\"https://<your-worker>.workers.dev/api/telegram/webhook\",\"secret_token\":\"<TELEGRAM_WEBHOOK_SECRET>\"}"
+   ```
+
+4. In the app: **Admin → Settings → Telegram admin access** → generate a link code,
+   then message the bot: `/link AB12CD`.
+
+Commands: `/users`, `/user email`, `/tests email`, `/ban email`, `/unban email`, `/help`.
+
+---
+
+## Optional: the service-role secret
+
+Required for the Telegram admin bot and optional admin server features:
+
+```bash
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+# paste the value when prompted — it is encrypted and never stored in git
+```
+
+If you are **not** using the Telegram bot, you can skip this until an admin/server
+feature needs it.
 
 ---
 
@@ -102,17 +147,6 @@ users stay in the app.
 
 The migration `supabase/migrations/20260817000001_handle_new_user_google_names.sql`
 must be applied so Google's `given_name` / `full_name` fill `profiles`.
-
----
-
-## Optional: the service-role secret
-
-Only if/when you wire up the admin Supabase client:
-
-```bash
-npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-# paste the value when prompted — it is encrypted and never stored in git
-```
 
 ---
 

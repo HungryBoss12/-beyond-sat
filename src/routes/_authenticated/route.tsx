@@ -50,7 +50,10 @@ function Layout() {
     pathname.startsWith("/admin") ||
     pathname.startsWith("/beyond-ai") ||
     pathname.startsWith("/classes") ||
-    pathname.startsWith("/practice/session");
+    pathname.startsWith("/practice/session") ||
+    pathname.startsWith("/vocab/deck/") ||
+    pathname === "/vocab/deck" ||
+    pathname.startsWith("/vocab/tests/");
   if (bare) return <Outlet />;
   return (
     <AppShell>

@@ -11,6 +11,7 @@ import {
   BarChart3,
   Gauge,
   CalendarClock,
+  Layers,
 } from "lucide-react";
 import {
   Area,
@@ -38,6 +39,9 @@ import { Panel, PanelGlow, PanelHead, PageHead, EmptyState, Skeleton } from "@/c
 import { Badge, Delta, MeterRow, StatTile, type Tone } from "@/components/ui/metric";
 import { listAttendance, type LessonAttendance } from "@/lib/classes";
 import { format } from "date-fns";
+import { fetchVocabDueSummary } from "@/lib/vocab/client";
+import { VocabDueBanner } from "@/components/vocab/VocabDueBanner";
+import { startVocabReminderPoll } from "@/lib/vocab/reminders";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -98,6 +102,10 @@ function Dashboard() {
   const [staffRole, setStaffRole] = useState<StaffRole | null>(null);
   const [attendance, setAttendance] = useState<LessonAttendance[]>([]);
   const [dailyExists, setDailyExists] = useState(false);
+  const [vocabDue, setVocabDue] = useState(0);
+  const [vocabTopDeckId, setVocabTopDeckId] = useState<string | undefined>();
+  const [vocabTopDeckTitle, setVocabTopDeckTitle] = useState<string | undefined>();
+  const [vocabDueError, setVocabDueError] = useState<string | null>(null);
   const today = format(new Date(), "yyyy-MM-dd");
 
   useEffect(() => {
@@ -145,8 +153,26 @@ function Dashboard() {
       setStaffRole(role);
       setAttendance(lessonAtt);
       setDailyExists(!!dt);
+      try {
+        const summary = await fetchVocabDueSummary();
+        setVocabDue(summary.totalDue);
+        setVocabTopDeckId(summary.topDeck?.id);
+        setVocabTopDeckTitle(summary.topDeck?.title);
+        setVocabDueError(null);
+      } catch (e) {
+        setVocabDue(0);
+        setVocabDueError(e instanceof Error ? e.message : "Could not load due counts");
+      }
       setLoading(false);
     })();
+    return startVocabReminderPoll(async () => {
+      const summary = await fetchVocabDueSummary();
+      setVocabDue(summary.totalDue);
+      setVocabTopDeckId(summary.topDeck?.id);
+      setVocabTopDeckTitle(summary.topDeck?.title);
+      setVocabDueError(null);
+      return summary.totalDue;
+    }, "Vocab");
   }, [today]);
 
   const mocks = useMemo(() => sessions.filter((s) => s.type === "mock"), [sessions]);
@@ -269,6 +295,18 @@ function Dashboard() {
         }
       />
 
+      {vocabDueError ? (
+        <Panel className="border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+          Could not load vocab review counts: {vocabDueError}
+        </Panel>
+      ) : null}
+
+      <VocabDueBanner
+        dueCount={vocabDue}
+        deckId={vocabTopDeckId}
+        deckTitle={vocabTopDeckTitle}
+      />
+
       {/* Hero row: headline score + accuracy gauge */}
       <div className="grid gap-5 lg:grid-cols-5">
         <ProgressPanel latest={latest} trend={trend} target={sp?.target_score ?? null} />
@@ -294,6 +332,7 @@ function Dashboard() {
       </Panel>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <VocabPanel due={vocabDue} streak={sp?.current_streak ?? 0} />
         <DailyPanel
           done={dailyDoneToday}
           streak={sp?.current_streak ?? 0}
@@ -857,4 +896,26 @@ function buildRecs(
     });
   }
   return recs.slice(0, 3);
+}
+
+function VocabPanel({ due, streak }: { due: number; streak: number }) {
+  return (
+    <Panel className="flex h-full flex-col p-5">
+      <PanelHead label="Vocabulary" icon={Layers} tone="brand" />
+      <p className="mt-3 text-sm text-white/70">
+        Anki-style SRS + Words-in-Context quizzes. {due > 0 ? `${due} cards due now.` : "You're caught up on reviews."}
+      </p>
+      <div className="mt-3 flex items-center gap-2 text-sm text-white/60">
+        <Flame className="h-4 w-4 text-orange-400" />
+        <span className="font-bold tabular-nums text-white">{streak}</span>
+        <span>day streak</span>
+      </div>
+      <Link
+        to="/vocab"
+        className="btn-brand mt-auto inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2.5 text-sm font-bold text-white"
+      >
+        Open vocab <ArrowRight className="h-4 w-4" />
+      </Link>
+    </Panel>
+  );
 }

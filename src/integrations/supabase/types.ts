@@ -420,6 +420,7 @@ export type Database = {
           banned_reason: string | null;
           birth_date: string | null;
           city: string | null;
+          class_id: string | null;
           created_at: string;
           email: string | null;
           first_name: string | null;
@@ -430,7 +431,10 @@ export type Database = {
           last_name: string | null;
           last_seen_at: string | null;
           school: string | null;
+          telegram_admin_chat_id: number | null;
+          telegram_username: string | null;
           updated_at: string;
+          username: string | null;
         };
         Insert: {
           banned?: boolean;
@@ -438,6 +442,7 @@ export type Database = {
           banned_reason?: string | null;
           birth_date?: string | null;
           city?: string | null;
+          class_id?: string | null;
           created_at?: string;
           email?: string | null;
           first_name?: string | null;
@@ -448,7 +453,10 @@ export type Database = {
           last_name?: string | null;
           last_seen_at?: string | null;
           school?: string | null;
+          telegram_admin_chat_id?: number | null;
+          telegram_username?: string | null;
           updated_at?: string;
+          username?: string | null;
         };
         Update: {
           banned?: boolean;
@@ -456,6 +464,7 @@ export type Database = {
           banned_reason?: string | null;
           birth_date?: string | null;
           city?: string | null;
+          class_id?: string | null;
           created_at?: string;
           email?: string | null;
           first_name?: string | null;
@@ -466,7 +475,10 @@ export type Database = {
           last_name?: string | null;
           last_seen_at?: string | null;
           school?: string | null;
+          telegram_admin_chat_id?: number | null;
+          telegram_username?: string | null;
           updated_at?: string;
+          username?: string | null;
         };
         Relationships: [];
       };
@@ -542,6 +554,7 @@ export type Database = {
           fears: string[];
           intro_completed_at: string | null;
           last_daily_completed_date: string | null;
+          last_active_at: string | null;
           level: string | null;
           longest_streak: number;
           step: number;
@@ -560,6 +573,7 @@ export type Database = {
           fears?: string[];
           intro_completed_at?: string | null;
           last_daily_completed_date?: string | null;
+          last_active_at?: string | null;
           level?: string | null;
           longest_streak?: number;
           step?: number;
@@ -578,6 +592,7 @@ export type Database = {
           fears?: string[];
           intro_completed_at?: string | null;
           last_daily_completed_date?: string | null;
+          last_active_at?: string | null;
           level?: string | null;
           longest_streak?: number;
           step?: number;
@@ -755,14 +770,316 @@ export type Database = {
         };
         Relationships: [];
       };
+      vocab_cards: {
+        Row: {
+          id: string;
+          word: string;
+          part_of_speech: string;
+          definition: string;
+          dsat_passage: string;
+          roots_etymology: string | null;
+          synonyms: string[];
+          sat_traps: string | null;
+          difficulty_tier: string;
+          deck_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          word: string;
+          part_of_speech: string;
+          definition: string;
+          dsat_passage: string;
+          roots_etymology?: string | null;
+          synonyms?: string[];
+          sat_traps?: string | null;
+          difficulty_tier?: string;
+          deck_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          word?: string;
+          part_of_speech?: string;
+          definition?: string;
+          dsat_passage?: string;
+          roots_etymology?: string | null;
+          synonyms?: string[];
+          sat_traps?: string | null;
+          difficulty_tier?: string;
+          deck_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "vocab_cards_deck_id_fkey";
+            columns: ["deck_id"];
+            isOneToOne: false;
+            referencedRelation: "vocab_decks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      vocab_decks: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      user_card_states: {
+        Row: {
+          id: string;
+          user_id: string;
+          card_id: string;
+          due: string;
+          stability: number;
+          difficulty: number;
+          elapsed_days: number;
+          scheduled_days: number;
+          reps: number;
+          lapses: number;
+          state: number;
+          last_review: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          card_id: string;
+          due?: string;
+          stability?: number;
+          difficulty?: number;
+          elapsed_days?: number;
+          scheduled_days?: number;
+          reps?: number;
+          lapses?: number;
+          state?: number;
+          last_review?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          card_id?: string;
+          due?: string;
+          stability?: number;
+          difficulty?: number;
+          elapsed_days?: number;
+          scheduled_days?: number;
+          reps?: number;
+          lapses?: number;
+          state?: number;
+          last_review?: string | null;
+        };
+        Relationships: [];
+      };
+      vocab_quizzes: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          time_limit_seconds: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          time_limit_seconds?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          time_limit_seconds?: number | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      vocab_quiz_questions: {
+        Row: {
+          id: string;
+          quiz_id: string;
+          vocab_card_id: string | null;
+          passage_text: string;
+          correct_answer: string;
+          options: string[];
+          explanation: string;
+          position: number;
+        };
+        Insert: {
+          id?: string;
+          quiz_id: string;
+          vocab_card_id?: string | null;
+          passage_text: string;
+          correct_answer: string;
+          options: string[];
+          explanation: string;
+          position?: number;
+        };
+        Update: {
+          id?: string;
+          quiz_id?: string;
+          vocab_card_id?: string | null;
+          passage_text?: string;
+          correct_answer?: string;
+          options?: string[];
+          explanation?: string;
+          position?: number;
+        };
+        Relationships: [];
+      };
+      vocab_quiz_attempts: {
+        Row: {
+          id: string;
+          user_id: string;
+          quiz_id: string;
+          score: number;
+          total: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          quiz_id: string;
+          score: number;
+          total: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          quiz_id?: string;
+          score?: number;
+          total?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      vocab_activity_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          activity_date: string;
+          cards_reviewed: number;
+          completed_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          activity_date: string;
+          cards_reviewed?: number;
+          completed_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          activity_date?: string;
+          cards_reviewed?: number;
+          completed_at?: string;
+        };
+        Relationships: [];
+      };
+      admin_telegram_link_codes: {
+        Row: {
+          code: string;
+          admin_user_id: string;
+          expires_at: string;
+          used_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          code: string;
+          admin_user_id: string;
+          expires_at: string;
+          used_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          code?: string;
+          admin_user_id?: string;
+          expires_at?: string;
+          used_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
+      admin_by_telegram_chat: { Args: { p_chat_id: number }; Returns: string | null };
+      admin_consume_telegram_link_code: {
+        Args: { p_code: string; p_chat_id: number };
+        Returns: Json;
+      };
+      admin_create_telegram_link_code: { Args: never; Returns: string };
       admin_set_banned: {
         Args: { p_user_id: string; p_banned: boolean; p_reason?: string | null };
         Returns: undefined;
+      };
+      admin_telegram_link_status: { Args: never; Returns: Json };
+      admin_unlink_telegram: { Args: never; Returns: undefined };
+      admin_user_activity: {
+        Args: { p_user_id: string; p_limit?: number };
+        Returns: {
+          occurred_at: string;
+          kind: string;
+          summary: string;
+          meta: Json;
+        }[];
+      };
+      admin_user_detail: { Args: { p_user_id: string }; Returns: Json };
+      admin_user_sessions: {
+        Args: { p_user_id: string; p_limit?: number; p_offset?: number };
+        Returns: {
+          id: string;
+          type: string;
+          title: string;
+          started_at: string;
+          completed_at: string | null;
+          score: number | null;
+          rw_score: number | null;
+          math_score: number | null;
+          correct_count: number | null;
+          total_questions: number | null;
+          in_progress: boolean;
+        }[];
+      };
+      admin_users_summary: {
+        Args: never;
+        Returns: {
+          id: string;
+          email: string | null;
+          full_name: string | null;
+          created_at: string;
+          last_seen_at: string | null;
+          banned: boolean;
+          role: string;
+          tests_total: number;
+          tests_mock: number;
+          tests_daily: number;
+          tests_practice: number;
+          current_streak: number;
+          last_active_at: string | null;
+          class_name: string | null;
+          accuracy_pct: number | null;
+        }[];
       };
       admin_set_role: {
         Args: { p_user_id: string; p_role: string };
@@ -794,6 +1111,11 @@ export type Database = {
           p_question_id: string;
         };
         Returns: boolean;
+      };
+      bs_is_staff: { Args: { _uid?: string }; Returns: boolean };
+      vocab_due_count: {
+        Args: { p_user_id?: string; p_deck_id?: string | null };
+        Returns: number;
       };
     };
     Enums: {

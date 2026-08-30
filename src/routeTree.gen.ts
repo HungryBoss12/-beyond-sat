@@ -23,6 +23,7 @@ import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/n
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedPracticeRouteImport } from './routes/_authenticated/practice'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthenticatedVocabRouteImport } from './routes/_authenticated/vocab'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminClassesRouteImport } from './routes/_authenticated/admin.classes'
@@ -36,13 +37,21 @@ import { Route as AuthenticatedAdminQuestionsRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminTestsRouteImport } from './routes/_authenticated/admin.tests'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
+import { Route as AuthenticatedAdminVocabRouteImport } from './routes/_authenticated/admin.vocab'
 import { Route as AuthenticatedNewsSlugRouteImport } from './routes/_authenticated/news.$slug'
 import { Route as AuthenticatedPracticeIndexRouteImport } from './routes/_authenticated/practice.index'
 import { Route as AuthenticatedPracticeSectionRouteImport } from './routes/_authenticated/practice.$section'
 import { Route as AuthenticatedPracticeDailyRouteImport } from './routes/_authenticated/practice.daily'
 import { Route as AuthenticatedPracticeMockRouteImport } from './routes/_authenticated/practice.mock'
+import { Route as AuthenticatedVocabIndexRouteImport } from './routes/_authenticated/vocab.index'
+import { Route as AuthenticatedVocabDeckRouteImport } from './routes/_authenticated/vocab.deck'
+import { Route as AuthenticatedVocabDecksRouteImport } from './routes/_authenticated/vocab.decks'
+import { Route as AuthenticatedVocabTestsRouteImport } from './routes/_authenticated/vocab.tests'
+import { Route as AuthenticatedAdminUsersUserIdRouteImport } from './routes/_authenticated/admin.users.$userId'
 import { Route as AuthenticatedAnalysisSessionIdRouteImport } from './routes/_authenticated/analysis.session.$id'
 import { Route as AuthenticatedPracticeSessionIdRouteImport } from './routes/_authenticated/practice.session.$id'
+import { Route as AuthenticatedVocabDeckDeckIdRouteImport } from './routes/_authenticated/vocab.deck.$deckId'
+import { Route as AuthenticatedVocabTestsIdRouteImport } from './routes/_authenticated/vocab.tests.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -111,6 +120,11 @@ const AuthenticatedPracticeRoute = AuthenticatedPracticeRouteImport.update({
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedVocabRoute = AuthenticatedVocabRouteImport.update({
+  id: '/vocab',
+  path: '/vocab',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
@@ -184,6 +198,11 @@ const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminVocabRoute = AuthenticatedAdminVocabRouteImport.update({
+  id: '/vocab',
+  path: '/vocab',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedNewsSlugRoute = AuthenticatedNewsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -213,6 +232,32 @@ const AuthenticatedPracticeMockRoute =
     path: '/mock',
     getParentRoute: () => AuthenticatedPracticeRoute,
   } as any)
+const AuthenticatedVocabIndexRoute = AuthenticatedVocabIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedVocabRoute,
+} as any)
+const AuthenticatedVocabDeckRoute = AuthenticatedVocabDeckRouteImport.update({
+  id: '/deck',
+  path: '/deck',
+  getParentRoute: () => AuthenticatedVocabRoute,
+} as any)
+const AuthenticatedVocabDecksRoute = AuthenticatedVocabDecksRouteImport.update({
+  id: '/decks',
+  path: '/decks',
+  getParentRoute: () => AuthenticatedVocabRoute,
+} as any)
+const AuthenticatedVocabTestsRoute = AuthenticatedVocabTestsRouteImport.update({
+  id: '/tests',
+  path: '/tests',
+  getParentRoute: () => AuthenticatedVocabRoute,
+} as any)
+const AuthenticatedAdminUsersUserIdRoute =
+  AuthenticatedAdminUsersUserIdRouteImport.update({
+    id: '/$userId',
+    path: '/$userId',
+    getParentRoute: () => AuthenticatedAdminUsersRoute,
+  } as any)
 const AuthenticatedAnalysisSessionIdRoute =
   AuthenticatedAnalysisSessionIdRouteImport.update({
     id: '/session/$id',
@@ -224,6 +269,18 @@ const AuthenticatedPracticeSessionIdRoute =
     id: '/session/$id',
     path: '/session/$id',
     getParentRoute: () => AuthenticatedPracticeRoute,
+  } as any)
+const AuthenticatedVocabDeckDeckIdRoute =
+  AuthenticatedVocabDeckDeckIdRouteImport.update({
+    id: '/$deckId',
+    path: '/$deckId',
+    getParentRoute: () => AuthenticatedVocabDeckRoute,
+  } as any)
+const AuthenticatedVocabTestsIdRoute =
+  AuthenticatedVocabTestsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedVocabTestsRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -240,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/practice': typeof AuthenticatedPracticeRouteWithChildren
   '/profile': typeof AuthenticatedProfileRoute
+  '/vocab': typeof AuthenticatedVocabRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/admin/classes': typeof AuthenticatedAdminClassesRoute
   '/admin/daily': typeof AuthenticatedAdminDailyRoute
@@ -251,15 +309,23 @@ export interface FileRoutesByFullPath {
   '/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/tests': typeof AuthenticatedAdminTestsRoute
-  '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
+  '/admin/vocab': typeof AuthenticatedAdminVocabRoute
   '/news/$slug': typeof AuthenticatedNewsSlugRoute
   '/practice/$section': typeof AuthenticatedPracticeSectionRoute
   '/practice/daily': typeof AuthenticatedPracticeDailyRoute
   '/practice/mock': typeof AuthenticatedPracticeMockRoute
+  '/vocab/deck': typeof AuthenticatedVocabDeckRouteWithChildren
+  '/vocab/decks': typeof AuthenticatedVocabDecksRoute
+  '/vocab/tests': typeof AuthenticatedVocabTestsRouteWithChildren
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/practice/': typeof AuthenticatedPracticeIndexRoute
+  '/vocab/': typeof AuthenticatedVocabIndexRoute
+  '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/analysis/session/$id': typeof AuthenticatedAnalysisSessionIdRoute
   '/practice/session/$id': typeof AuthenticatedPracticeSessionIdRoute
+  '/vocab/deck/$deckId': typeof AuthenticatedVocabDeckDeckIdRoute
+  '/vocab/tests/$id': typeof AuthenticatedVocabTestsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -284,15 +350,23 @@ export interface FileRoutesByTo {
   '/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/tests': typeof AuthenticatedAdminTestsRoute
-  '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
+  '/admin/vocab': typeof AuthenticatedAdminVocabRoute
   '/news/$slug': typeof AuthenticatedNewsSlugRoute
   '/practice/$section': typeof AuthenticatedPracticeSectionRoute
   '/practice/daily': typeof AuthenticatedPracticeDailyRoute
   '/practice/mock': typeof AuthenticatedPracticeMockRoute
+  '/vocab/deck': typeof AuthenticatedVocabDeckRouteWithChildren
+  '/vocab/decks': typeof AuthenticatedVocabDecksRoute
+  '/vocab/tests': typeof AuthenticatedVocabTestsRouteWithChildren
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/practice': typeof AuthenticatedPracticeIndexRoute
+  '/vocab': typeof AuthenticatedVocabIndexRoute
+  '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/analysis/session/$id': typeof AuthenticatedAnalysisSessionIdRoute
   '/practice/session/$id': typeof AuthenticatedPracticeSessionIdRoute
+  '/vocab/deck/$deckId': typeof AuthenticatedVocabDeckDeckIdRoute
+  '/vocab/tests/$id': typeof AuthenticatedVocabTestsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -310,6 +384,7 @@ export interface FileRoutesById {
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/practice': typeof AuthenticatedPracticeRouteWithChildren
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/_authenticated/vocab': typeof AuthenticatedVocabRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/_authenticated/admin/classes': typeof AuthenticatedAdminClassesRoute
   '/_authenticated/admin/daily': typeof AuthenticatedAdminDailyRoute
@@ -321,15 +396,23 @@ export interface FileRoutesById {
   '/_authenticated/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/tests': typeof AuthenticatedAdminTestsRoute
-  '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
+  '/_authenticated/admin/vocab': typeof AuthenticatedAdminVocabRoute
   '/_authenticated/news/$slug': typeof AuthenticatedNewsSlugRoute
   '/_authenticated/practice/$section': typeof AuthenticatedPracticeSectionRoute
   '/_authenticated/practice/daily': typeof AuthenticatedPracticeDailyRoute
   '/_authenticated/practice/mock': typeof AuthenticatedPracticeMockRoute
+  '/_authenticated/vocab/deck': typeof AuthenticatedVocabDeckRouteWithChildren
+  '/_authenticated/vocab/decks': typeof AuthenticatedVocabDecksRoute
+  '/_authenticated/vocab/tests': typeof AuthenticatedVocabTestsRouteWithChildren
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/practice/': typeof AuthenticatedPracticeIndexRoute
+  '/_authenticated/vocab/': typeof AuthenticatedVocabIndexRoute
+  '/_authenticated/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/_authenticated/analysis/session/$id': typeof AuthenticatedAnalysisSessionIdRoute
   '/_authenticated/practice/session/$id': typeof AuthenticatedPracticeSessionIdRoute
+  '/_authenticated/vocab/deck/$deckId': typeof AuthenticatedVocabDeckDeckIdRoute
+  '/_authenticated/vocab/tests/$id': typeof AuthenticatedVocabTestsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -347,6 +430,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/practice'
     | '/profile'
+    | '/vocab'
     | '/auth/callback'
     | '/admin/classes'
     | '/admin/daily'
@@ -359,14 +443,22 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/tests'
     | '/admin/users'
+    | '/admin/vocab'
     | '/news/$slug'
     | '/practice/$section'
     | '/practice/daily'
     | '/practice/mock'
+    | '/vocab/deck'
+    | '/vocab/decks'
+    | '/vocab/tests'
     | '/admin/'
     | '/practice/'
+    | '/vocab/'
+    | '/admin/users/$userId'
     | '/analysis/session/$id'
     | '/practice/session/$id'
+    | '/vocab/deck/$deckId'
+    | '/vocab/tests/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -392,14 +484,22 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/tests'
     | '/admin/users'
+    | '/admin/vocab'
     | '/news/$slug'
     | '/practice/$section'
     | '/practice/daily'
     | '/practice/mock'
+    | '/vocab/deck'
+    | '/vocab/decks'
+    | '/vocab/tests'
     | '/admin'
     | '/practice'
+    | '/vocab'
+    | '/admin/users/$userId'
     | '/analysis/session/$id'
     | '/practice/session/$id'
+    | '/vocab/deck/$deckId'
+    | '/vocab/tests/$id'
   id:
     | '__root__'
     | '/'
@@ -416,6 +516,7 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/_authenticated/practice'
     | '/_authenticated/profile'
+    | '/_authenticated/vocab'
     | '/auth/callback'
     | '/_authenticated/admin/classes'
     | '/_authenticated/admin/daily'
@@ -428,14 +529,22 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/tests'
     | '/_authenticated/admin/users'
+    | '/_authenticated/admin/vocab'
     | '/_authenticated/news/$slug'
     | '/_authenticated/practice/$section'
     | '/_authenticated/practice/daily'
     | '/_authenticated/practice/mock'
+    | '/_authenticated/vocab/deck'
+    | '/_authenticated/vocab/decks'
+    | '/_authenticated/vocab/tests'
     | '/_authenticated/admin/'
     | '/_authenticated/practice/'
+    | '/_authenticated/vocab/'
+    | '/_authenticated/admin/users/$userId'
     | '/_authenticated/analysis/session/$id'
     | '/_authenticated/practice/session/$id'
+    | '/_authenticated/vocab/deck/$deckId'
+    | '/_authenticated/vocab/tests/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -547,6 +656,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/vocab': {
+      id: '/_authenticated/vocab'
+      path: '/vocab'
+      fullPath: '/vocab'
+      preLoaderRoute: typeof AuthenticatedVocabRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
@@ -638,6 +754,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/vocab': {
+      id: '/_authenticated/admin/vocab'
+      path: '/vocab'
+      fullPath: '/admin/vocab'
+      preLoaderRoute: typeof AuthenticatedAdminVocabRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/news/$slug': {
       id: '/_authenticated/news/$slug'
       path: '/$slug'
@@ -673,6 +796,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPracticeMockRouteImport
       parentRoute: typeof AuthenticatedPracticeRoute
     }
+    '/_authenticated/vocab/': {
+      id: '/_authenticated/vocab/'
+      path: '/'
+      fullPath: '/vocab/'
+      preLoaderRoute: typeof AuthenticatedVocabIndexRouteImport
+      parentRoute: typeof AuthenticatedVocabRoute
+    }
+    '/_authenticated/vocab/deck': {
+      id: '/_authenticated/vocab/deck'
+      path: '/deck'
+      fullPath: '/vocab/deck'
+      preLoaderRoute: typeof AuthenticatedVocabDeckRouteImport
+      parentRoute: typeof AuthenticatedVocabRoute
+    }
+    '/_authenticated/vocab/decks': {
+      id: '/_authenticated/vocab/decks'
+      path: '/decks'
+      fullPath: '/vocab/decks'
+      preLoaderRoute: typeof AuthenticatedVocabDecksRouteImport
+      parentRoute: typeof AuthenticatedVocabRoute
+    }
+    '/_authenticated/vocab/tests': {
+      id: '/_authenticated/vocab/tests'
+      path: '/tests'
+      fullPath: '/vocab/tests'
+      preLoaderRoute: typeof AuthenticatedVocabTestsRouteImport
+      parentRoute: typeof AuthenticatedVocabRoute
+    }
+    '/_authenticated/admin/users/$userId': {
+      id: '/_authenticated/admin/users/$userId'
+      path: '/$userId'
+      fullPath: '/admin/users/$userId'
+      preLoaderRoute: typeof AuthenticatedAdminUsersUserIdRouteImport
+      parentRoute: typeof AuthenticatedAdminUsersRoute
+    }
     '/_authenticated/analysis/session/$id': {
       id: '/_authenticated/analysis/session/$id'
       path: '/session/$id'
@@ -687,8 +845,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPracticeSessionIdRouteImport
       parentRoute: typeof AuthenticatedPracticeRoute
     }
+    '/_authenticated/vocab/deck/$deckId': {
+      id: '/_authenticated/vocab/deck/$deckId'
+      path: '/$deckId'
+      fullPath: '/vocab/deck/$deckId'
+      preLoaderRoute: typeof AuthenticatedVocabDeckDeckIdRouteImport
+      parentRoute: typeof AuthenticatedVocabDeckRoute
+    }
+    '/_authenticated/vocab/tests/$id': {
+      id: '/_authenticated/vocab/tests/$id'
+      path: '/$id'
+      fullPath: '/vocab/tests/$id'
+      preLoaderRoute: typeof AuthenticatedVocabTestsIdRouteImport
+      parentRoute: typeof AuthenticatedVocabTestsRoute
+    }
   }
 }
+
+interface AuthenticatedAdminUsersRouteChildren {
+  AuthenticatedAdminUsersUserIdRoute: typeof AuthenticatedAdminUsersUserIdRoute
+}
+
+const AuthenticatedAdminUsersRouteChildren: AuthenticatedAdminUsersRouteChildren =
+  {
+    AuthenticatedAdminUsersUserIdRoute: AuthenticatedAdminUsersUserIdRoute,
+  }
+
+const AuthenticatedAdminUsersRouteWithChildren =
+  AuthenticatedAdminUsersRoute._addFileChildren(
+    AuthenticatedAdminUsersRouteChildren,
+  )
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminClassesRoute: typeof AuthenticatedAdminClassesRoute
@@ -701,7 +887,8 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminQuestionsRoute: typeof AuthenticatedAdminQuestionsRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminTestsRoute: typeof AuthenticatedAdminTestsRoute
-  AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRouteWithChildren
+  AuthenticatedAdminVocabRoute: typeof AuthenticatedAdminVocabRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
@@ -716,7 +903,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminQuestionsRoute: AuthenticatedAdminQuestionsRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminTestsRoute: AuthenticatedAdminTestsRoute,
-  AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRouteWithChildren,
+  AuthenticatedAdminVocabRoute: AuthenticatedAdminVocabRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 
@@ -768,6 +956,51 @@ const AuthenticatedPracticeRouteWithChildren =
     AuthenticatedPracticeRouteChildren,
   )
 
+interface AuthenticatedVocabDeckRouteChildren {
+  AuthenticatedVocabDeckDeckIdRoute: typeof AuthenticatedVocabDeckDeckIdRoute
+}
+
+const AuthenticatedVocabDeckRouteChildren: AuthenticatedVocabDeckRouteChildren =
+  {
+    AuthenticatedVocabDeckDeckIdRoute: AuthenticatedVocabDeckDeckIdRoute,
+  }
+
+const AuthenticatedVocabDeckRouteWithChildren =
+  AuthenticatedVocabDeckRoute._addFileChildren(
+    AuthenticatedVocabDeckRouteChildren,
+  )
+
+interface AuthenticatedVocabTestsRouteChildren {
+  AuthenticatedVocabTestsIdRoute: typeof AuthenticatedVocabTestsIdRoute
+}
+
+const AuthenticatedVocabTestsRouteChildren: AuthenticatedVocabTestsRouteChildren =
+  {
+    AuthenticatedVocabTestsIdRoute: AuthenticatedVocabTestsIdRoute,
+  }
+
+const AuthenticatedVocabTestsRouteWithChildren =
+  AuthenticatedVocabTestsRoute._addFileChildren(
+    AuthenticatedVocabTestsRouteChildren,
+  )
+
+interface AuthenticatedVocabRouteChildren {
+  AuthenticatedVocabDeckRoute: typeof AuthenticatedVocabDeckRouteWithChildren
+  AuthenticatedVocabDecksRoute: typeof AuthenticatedVocabDecksRoute
+  AuthenticatedVocabTestsRoute: typeof AuthenticatedVocabTestsRouteWithChildren
+  AuthenticatedVocabIndexRoute: typeof AuthenticatedVocabIndexRoute
+}
+
+const AuthenticatedVocabRouteChildren: AuthenticatedVocabRouteChildren = {
+  AuthenticatedVocabDeckRoute: AuthenticatedVocabDeckRouteWithChildren,
+  AuthenticatedVocabDecksRoute: AuthenticatedVocabDecksRoute,
+  AuthenticatedVocabTestsRoute: AuthenticatedVocabTestsRouteWithChildren,
+  AuthenticatedVocabIndexRoute: AuthenticatedVocabIndexRoute,
+}
+
+const AuthenticatedVocabRouteWithChildren =
+  AuthenticatedVocabRoute._addFileChildren(AuthenticatedVocabRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedAnalysisRoute: typeof AuthenticatedAnalysisRouteWithChildren
@@ -778,6 +1011,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedPracticeRoute: typeof AuthenticatedPracticeRouteWithChildren
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedVocabRoute: typeof AuthenticatedVocabRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -790,6 +1024,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedPracticeRoute: AuthenticatedPracticeRouteWithChildren,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedVocabRoute: AuthenticatedVocabRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =

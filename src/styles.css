@@ -221,6 +221,19 @@
     letter-spacing: -0.02em;
   }
 
+  .vocab-surface {
+    color: #fff;
+  }
+  .vocab-surface h1,
+  .vocab-surface h2,
+  .vocab-surface h3,
+  .vocab-surface h4,
+  .vocab-surface h5,
+  .vocab-surface h6,
+  .vocab-surface a {
+    color: inherit;
+  }
+
   /* UI UX Pro Max: pointer affordance + keyboard focus (preserve brand colors) */
   a,
   button,
@@ -1019,7 +1032,14 @@
 .nav-star-sm,
 .nav-profile-head,
 .nav-profile-body,
-.nav-profile-ring {
+.nav-profile-ring,
+.nav-vocab-deck,
+.nav-vocab-front,
+.nav-vocab-highlight,
+.nav-vocab-line,
+.nav-vocab-srs,
+.nav-vocab-srs-arc,
+.nav-vocab-srs-tip {
   transform-box: fill-box;
 }
 
@@ -1046,6 +1066,39 @@
 .nav-profile-ring {
   transform-origin: center;
   opacity: 0;
+}
+
+.nav-vocab-deck {
+  transform-origin: 50% 85%;
+}
+.nav-vocab-deck-1 {
+  transform-origin: 35% 88%;
+}
+.nav-vocab-deck-2 {
+  transform-origin: 40% 90%;
+}
+.nav-vocab-front {
+  transform-origin: 50% 85%;
+}
+.nav-vocab-highlight {
+  transform-origin: left center;
+}
+.nav-vocab-line {
+  transform-origin: left center;
+}
+.nav-vocab-srs {
+  transform-origin: 70% 68%;
+}
+.nav-vocab-srs-arc,
+.nav-vocab-srs-tip {
+  transform-origin: inherit;
+}
+
+.group:hover .nav-ico-vocab,
+.group:focus-visible .nav-ico-vocab,
+.group:active .nav-ico-vocab,
+.group[data-nav-play] .nav-ico-vocab {
+  animation: nav-vocab-pop 0.72s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .group:hover .nav-tile-tl,
@@ -1149,6 +1202,59 @@
 .group:active .nav-class-b,
 .group[data-nav-play] .nav-class-b {
   animation: nav-class-gather-b 0.7s ease-in-out;
+}
+
+.group:hover .nav-vocab-deck-1,
+.group:focus-visible .nav-vocab-deck-1,
+.group:active .nav-vocab-deck-1,
+.group[data-nav-play] .nav-vocab-deck-1 {
+  animation: nav-vocab-deck-1 0.78s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.group:hover .nav-vocab-deck-2,
+.group:focus-visible .nav-vocab-deck-2,
+.group:active .nav-vocab-deck-2,
+.group[data-nav-play] .nav-vocab-deck-2 {
+  animation: nav-vocab-deck-2 0.78s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.group:hover .nav-vocab-front,
+.group:focus-visible .nav-vocab-front,
+.group:active .nav-vocab-front,
+.group[data-nav-play] .nav-vocab-front {
+  animation: nav-vocab-lift 0.82s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.group:hover .nav-vocab-highlight,
+.group:focus-visible .nav-vocab-highlight,
+.group:active .nav-vocab-highlight,
+.group[data-nav-play] .nav-vocab-highlight {
+  animation: nav-vocab-highlight 0.72s ease-out;
+}
+.group:hover .nav-vocab-line-a,
+.group:focus-visible .nav-vocab-line-a,
+.group:active .nav-vocab-line-a,
+.group[data-nav-play] .nav-vocab-line-a {
+  animation: nav-vocab-line-in 0.65s ease-out;
+}
+.group:hover .nav-vocab-line-b,
+.group:focus-visible .nav-vocab-line-b,
+.group:active .nav-vocab-line-b,
+.group[data-nav-play] .nav-vocab-line-b {
+  animation: nav-vocab-line-in 0.65s ease-out 0.08s;
+}
+.group:hover .nav-vocab-srs-arc,
+.group:focus-visible .nav-vocab-srs-arc,
+.group:active .nav-vocab-srs-arc,
+.group[data-nav-play] .nav-vocab-srs-arc,
+.group:hover .nav-vocab-srs-tip,
+.group:focus-visible .nav-vocab-srs-tip,
+.group:active .nav-vocab-srs-tip,
+.group[data-nav-play] .nav-vocab-srs-tip {
+  animation: none;
+}
+.group:hover .nav-vocab-srs,
+.group:focus-visible .nav-vocab-srs,
+.group:active .nav-vocab-srs,
+.group[data-nav-play] .nav-vocab-srs {
+  animation: nav-vocab-srs-spin 0.9s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .group:hover .nav-ico-admin,
@@ -1364,6 +1470,322 @@
   }
 }
 
+@keyframes nav-vocab-deck-1 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  42% {
+    transform: translate(1.1px, -0.6px) rotate(3.5deg);
+  }
+}
+
+@keyframes nav-vocab-deck-2 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  42% {
+    transform: translate(2px, -1.1px) rotate(6deg);
+  }
+}
+
+@keyframes nav-vocab-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes nav-vocab-lift {
+  0%,
+  100% {
+    transform: translateY(0);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  38% {
+    transform: translateY(-2px);
+    filter: drop-shadow(0 2px 3px rgba(255, 255, 255, 0.22));
+  }
+  62% {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes nav-vocab-highlight {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  35% {
+    transform: scaleX(1.22);
+    opacity: 1;
+  }
+  55% {
+    transform: scaleX(1.08);
+    filter: brightness(1.35);
+  }
+}
+
+@keyframes nav-vocab-line-in {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.42;
+  }
+  40% {
+    transform: scaleX(0.72);
+    opacity: 0.25;
+  }
+}
+
+@keyframes nav-vocab-srs-spin {
+  0%,
+  100% {
+    transform: rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: rotate(-110deg);
+    opacity: 0.92;
+  }
+}
+
+/* Vocab hub tile glyphs — paired flashcard family with shared hover choreography. */
+.vocab-hub-glyph {
+  display: block;
+  overflow: visible;
+}
+
+.vocab-hub-tile {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.25s ease,
+    box-shadow 0.35s ease;
+}
+
+.group:hover .vocab-hub-tile,
+.group:focus-visible .vocab-hub-tile {
+  transform: scale(1.06);
+  background-color: rgb(83 82 145 / 0.32);
+  box-shadow: 0 0 0 1px rgb(198 197 218 / 0.22);
+}
+
+.vocab-hub-deck,
+.vocab-hub-card,
+.vocab-hub-blank,
+.vocab-hub-line,
+.vocab-hub-srs,
+.vocab-hub-srs-arc,
+.vocab-hub-srs-tip,
+.vocab-hub-quiz-badge,
+.vocab-hub-quiz-ring,
+.vocab-hub-quiz-check {
+  transform-box: fill-box;
+}
+
+.vocab-hub-deck {
+  transform-origin: 50% 85%;
+}
+.vocab-hub-deck-1 {
+  transform-origin: 35% 88%;
+}
+.vocab-hub-deck-2 {
+  transform-origin: 40% 90%;
+}
+.vocab-hub-card {
+  transform-origin: 50% 85%;
+}
+.vocab-hub-blank {
+  transform-origin: left center;
+}
+.vocab-hub-line {
+  transform-origin: left center;
+}
+.vocab-hub-srs,
+.vocab-hub-quiz-badge {
+  transform-origin: 70% 68%;
+}
+
+.group:hover .vocab-hub-glyph-interactive,
+.group:focus-visible .vocab-hub-glyph-interactive {
+  animation: vocab-hub-pop 0.74s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.group:hover .vocab-hub-deck-1,
+.group:focus-visible .vocab-hub-deck-1 {
+  animation: vocab-hub-deck-1 0.78s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.group:hover .vocab-hub-deck-2,
+.group:focus-visible .vocab-hub-deck-2 {
+  animation: vocab-hub-deck-2 0.78s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.group:hover .vocab-hub-card,
+.group:focus-visible .vocab-hub-card {
+  animation: vocab-hub-lift 0.82s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.group:hover .vocab-hub-blank:not(.vocab-hub-quiz-blank),
+.group:focus-visible .vocab-hub-blank:not(.vocab-hub-quiz-blank) {
+  animation: vocab-hub-highlight 0.72s ease-out;
+}
+.group:hover .vocab-hub-line-a,
+.group:focus-visible .vocab-hub-line-a {
+  animation: vocab-hub-line-in 0.65s ease-out;
+}
+.group:hover .vocab-hub-line-mid,
+.group:focus-visible .vocab-hub-line-mid {
+  animation: vocab-hub-line-in 0.65s ease-out 0.05s;
+}
+.group:hover .vocab-hub-line-b,
+.group:focus-visible .vocab-hub-line-b {
+  animation: vocab-hub-line-in 0.65s ease-out 0.1s;
+}
+.group:hover .vocab-hub-line-c,
+.group:focus-visible .vocab-hub-line-c {
+  animation: vocab-hub-line-in 0.65s ease-out 0.15s;
+}
+.group:hover .vocab-hub-srs,
+.group:focus-visible .vocab-hub-srs {
+  animation: vocab-hub-srs-spin 0.92s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.group:hover .vocab-hub-quiz-blank,
+.group:focus-visible .vocab-hub-quiz-blank {
+  animation: vocab-hub-quiz-blank 0.78s ease-out;
+}
+.group:hover .vocab-hub-quiz-ring,
+.group:focus-visible .vocab-hub-quiz-ring {
+  animation: vocab-hub-quiz-ring 0.72s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.group:hover .vocab-hub-quiz-check,
+.group:focus-visible .vocab-hub-quiz-check {
+  animation: vocab-hub-quiz-check 0.68s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes vocab-hub-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.07);
+  }
+}
+
+@keyframes vocab-hub-deck-1 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  42% {
+    transform: translate(1.1px, -0.6px) rotate(3.5deg);
+  }
+}
+
+@keyframes vocab-hub-deck-2 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  42% {
+    transform: translate(2px, -1.1px) rotate(6deg);
+  }
+}
+
+@keyframes vocab-hub-lift {
+  0%,
+  100% {
+    transform: translateY(0);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  38% {
+    transform: translateY(-2px);
+    filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.2));
+  }
+  62% {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes vocab-hub-highlight {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  35% {
+    transform: scaleX(1.18);
+    filter: brightness(1.35);
+  }
+  55% {
+    transform: scaleX(1.06);
+  }
+}
+
+@keyframes vocab-hub-line-in {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.38;
+  }
+  40% {
+    transform: scaleX(0.76);
+    opacity: 0.22;
+  }
+}
+
+@keyframes vocab-hub-srs-spin {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-110deg);
+  }
+}
+
+@keyframes vocab-hub-quiz-blank {
+  0%,
+  100% {
+    transform: scale(1);
+    fill-opacity: 0.18;
+  }
+  40% {
+    transform: scale(1.12);
+    fill-opacity: 0.42;
+    filter: brightness(1.4);
+  }
+}
+
+@keyframes vocab-hub-quiz-ring {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.14);
+  }
+}
+
+@keyframes vocab-hub-quiz-check {
+  0%,
+  100% {
+    transform: scale(1) translate(0, 0);
+    opacity: 1;
+  }
+  35% {
+    transform: scale(0.82) translate(-0.4px, 0.4px);
+    opacity: 0.55;
+  }
+  62% {
+    transform: scale(1.08) translate(0.2px, -0.2px);
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1382,6 +1804,7 @@
   .pulse-ring,
   .nav-ico-dashboard,
   .nav-ico-practice,
+  .nav-ico-vocab,
   .nav-ico-analysis,
   .nav-ico-ai,
   .nav-ico-news,
@@ -1389,6 +1812,22 @@
   .nav-ico-admin,
   .nav-class-a,
   .nav-class-b,
+  .nav-vocab-deck,
+  .nav-vocab-front,
+  .nav-vocab-highlight,
+  .nav-vocab-line,
+  .nav-vocab-srs,
+  .nav-vocab-srs-arc,
+  .nav-vocab-srs-tip,
+  .vocab-hub-glyph-interactive,
+  .vocab-hub-deck,
+  .vocab-hub-card,
+  .vocab-hub-blank,
+  .vocab-hub-line,
+  .vocab-hub-srs,
+  .vocab-hub-quiz-badge,
+  .vocab-hub-quiz-ring,
+  .vocab-hub-quiz-check,
   .nav-tile,
   .nav-bar,
   .nav-star-lg,
@@ -1408,7 +1847,8 @@
   .btn-ghost:active,
   .nudge:hover,
   .group:hover .arrow-slide,
-  .group:hover .tile-invert {
+  .group:hover .tile-invert,
+  .group:hover .vocab-hub-tile {
     transform: none !important;
   }
   .btn-brand::after,

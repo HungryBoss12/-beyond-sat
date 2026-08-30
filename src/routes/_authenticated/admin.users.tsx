@@ -1,43 +1,23 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Ban, CircleCheck, Search } from "lucide-react";
+import { Ban, ChevronRight, CircleCheck, Search } from "lucide-react";
 import { format } from "date-fns";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { getStaffRole } from "@/lib/admin";
+import {
+  fetchAdminUsersSummary,
+  type AdminUserSummaryRow,
+} from "@/lib/admin/users";
 import { isOnline, lastSeenLabel } from "@/lib/presence";
 import { errorMessage } from "@/lib/utils";
 
 type Role = "student" | "editor" | "admin";
-
-type UserRow = {
-  id: string;
-  email: string | null;
-  full_name: string | null;
-  created_at: string;
-  last_seen_at: string | null;
-  banned: boolean;
-  role: Role;
-};
-
-type ProfileBase = {
-  id: string;
-  email: string | null;
-  full_name: string | null;
-  created_at: string;
-  last_seen_at?: string | null;
-  banned?: boolean | null;
-};
-
 type Filter = "all" | "online" | "staff" | "banned";
+type SortKey = "created_at" | "tests_total" | "last_seen";
 
-/**
- * True when Postgres is complaining that something doesn't exist rather than
- * that the caller isn't allowed to touch it — 42883 undefined_function, 42703
- * undefined_column, 42P01 undefined_table, plus PostgREST's own PGRST202 for an
- * unresolvable RPC. Distinguishes "the migration hasn't run" from "you don't
- * have permission", which need very different messages.
- */
+type UserRow = AdminUserSummaryRow & { role: Role };
+
 function missingObject(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
   if (error.code && ["42883", "42703", "42P01", "PGRST202"].includes(error.code)) return true;
@@ -45,9 +25,6 @@ function missingObject(error: { code?: string; message?: string } | null): boole
 }
 
 export const Route = createFileRoute("/_authenticated/admin/users")({
-  /* Second line of defence. The parent /admin guard already bounces editors,
-     but this route is the one that hands out roles and bans, so it states its
-     own requirement rather than trusting the layout to keep enforcing it. */
   beforeLoad: async () => {
     const { data } = await supabase.auth.getUser();
     if (!data.user) throw redirect({ to: "/signin" });
@@ -56,87 +33,34 @@ export const Route = createFileRoute("/_authenticated/admin/users")({
   component: AdminUsers,
 });
 
-/* Columns added by the presence/bans migration, kept apart from the ones that
-   have always existed so the query can degrade to the base set. */
-const FULL_COLS = "id,email,full_name,created_at,last_seen_at,banned";
-const BASE_COLS = "id,email,full_name,created_at";
-
 function AdminUsers() {
   const [rows, setRows] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-  /* False until the presence/bans migration has been applied. Drives whether
-     the online dot, the Online/Banned filters and the Ban button are offered
-     at all — showing controls backed by columns and RPCs that don't exist yet
-     just produces errors on click. */
-  const [presenceReady, setPresenceReady] = useState(true);
+  const [insightsReady, setInsightsReady] = useState(true);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("created_at");
+  const [sortAsc, setSortAsc] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  /* Presence is time-relative, so the list has to re-render on a timer or a
-     user who closed their tab would stay green until the next reload. */
   const [, setTick] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     setErr(null);
     try {
-      /* `last_seen_at` and `banned` only exist once the presence/bans migration
-         has run. PostgREST rejects the *entire* request with a 400 when any
-         selected column is missing, so asking for them unconditionally returned
-         no rows at all and the page rendered "No users found" — the users were
-         there the whole time, the select was just invalid. The old error was
-         discarded rather than surfaced, which is what made it look like an
-         empty table instead of a failed query.
-
-         So: try the full select, and fall back to the columns that predate the
-         migration if the server rejects it. */
-      let profs: ProfileBase[] = [];
-      let hasPresence = true;
-      const full = await supabase
-        .from("profiles")
-        .select(FULL_COLS)
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (full.error && !missingObject(full.error)) throw full.error;
-      if (full.error) {
-        hasPresence = false;
-        const base = await supabase
-          .from("profiles")
-          .select(BASE_COLS)
-          .order("created_at", { ascending: false })
-          .limit(500);
-        if (base.error) throw base.error;
-        profs = base.data ?? [];
-      } else {
-        profs = full.data ?? [];
+      const summary = await fetchAdminUsersSummary();
+      if (!summary.migrationReady) {
+        setInsightsReady(false);
+        await loadLegacyUsers();
+        return;
       }
-      setPresenceReady(hasPresence);
-      if (!hasPresence && filter !== "all" && filter !== "staff") setFilter("all");
-
-      /* Unfiltered on purpose — see getStaffRole in lib/admin.ts. Sending
-         `.eq("role", "editor")` would be rejected until the enum migration runs. */
-      const { data: roles, error: rolesErr } = await supabase
-        .from("user_roles")
-        .select("user_id,role");
-      if (rolesErr) throw rolesErr;
-
-      const roleOf = new Map<string, Role>();
-      for (const r of (roles ?? []) as { user_id: string; role: string }[]) {
-        // admin outranks editor when a user somehow holds both.
-        if (r.role === "admin") roleOf.set(r.user_id, "admin");
-        else if (r.role === "editor" && roleOf.get(r.user_id) !== "admin")
-          roleOf.set(r.user_id, "editor");
-      }
+      setInsightsReady(true);
+      if (summary.error) throw new Error(summary.error);
       setRows(
-        profs.map((p) => ({
-          id: p.id,
-          email: p.email,
-          full_name: p.full_name,
-          created_at: p.created_at,
-          last_seen_at: p.last_seen_at ?? null,
-          banned: !!p.banned,
-          role: roleOf.get(p.id) ?? "student",
+        summary.rows.map((r) => ({
+          ...r,
+          role: (r.role as Role) || "student",
         })),
       );
     } catch (e: unknown) {
@@ -145,7 +69,38 @@ function AdminUsers() {
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, []);
+
+  async function loadLegacyUsers() {
+    const FULL_COLS = "id,email,full_name,created_at,last_seen_at,banned";
+    const full = await supabase.from("profiles").select(FULL_COLS).order("created_at", { ascending: false }).limit(500);
+    if (full.error) throw full.error;
+    const { data: roles } = await supabase.from("user_roles").select("user_id,role");
+    const roleOf = new Map<string, Role>();
+    for (const r of (roles ?? []) as { user_id: string; role: string }[]) {
+      if (r.role === "admin") roleOf.set(r.user_id, "admin");
+      else if (r.role === "editor" && roleOf.get(r.user_id) !== "admin") roleOf.set(r.user_id, "editor");
+    }
+    setRows(
+      (full.data ?? []).map((p) => ({
+        id: p.id,
+        email: p.email,
+        full_name: p.full_name,
+        created_at: p.created_at,
+        last_seen_at: p.last_seen_at ?? null,
+        banned: !!p.banned,
+        role: roleOf.get(p.id) ?? "student",
+        tests_total: 0,
+        tests_mock: 0,
+        tests_daily: 0,
+        tests_practice: 0,
+        current_streak: 0,
+        last_active_at: null,
+        class_name: null,
+        accuracy_pct: null,
+      })),
+    );
+  }
 
   useEffect(() => {
     load();
@@ -156,50 +111,11 @@ function AdminUsers() {
     return () => clearInterval(t);
   }, []);
 
-  /* Both mutations go through security-definer RPCs. The client can't be the
-     thing that enforces "admins only" — an editor could call PostgREST
-     directly — so these just surface whatever the database decides. */
   async function setRole(u: UserRow, role: Role) {
     if (role === u.role) return;
     if (u.role === "admin" && !confirm(`Remove admin from ${u.email}?`)) return;
     setBusy(u.id);
-    const { error } = await supabase.rpc("admin_set_role", {
-      p_user_id: u.id,
-      p_role: role,
-    });
-
-    /* `admin_set_role` ships with the same migration as the columns above, so
-       until that's applied the call fails as a missing function rather than a
-       permission problem. Granting admin used to be a plain table write and has
-       to keep working in that window, so fall back to it — RLS ("Admins can
-       manage user_roles") is what authorises it either way, the RPC just states
-       the rule in one place. Editor can't be granted this way at all: the enum
-       value doesn't exist yet and Postgres rejects the cast. */
-    if (error && missingObject(error)) {
-      if (role === "editor") {
-        setBusy(null);
-        alert(
-          "The editor role needs its migration first. Run 20260801000001_add_editor_role_step1.sql, then 20260801000002_editor_role_presence_bans_step2.sql in the Supabase SQL editor.",
-        );
-        return;
-      }
-      await supabase.from("user_roles").delete().eq("user_id", u.id).eq("role", "admin");
-      if (role === "admin") {
-        const { error: insErr } = await supabase
-          .from("user_roles")
-          .insert({ user_id: u.id, role: "admin" });
-        setBusy(null);
-        if (insErr) {
-          alert(insErr.message);
-          return;
-        }
-      } else {
-        setBusy(null);
-      }
-      load();
-      return;
-    }
-
+    const { error } = await supabase.rpc("admin_set_role", { p_user_id: u.id, p_role: role });
     setBusy(null);
     if (error) {
       alert(error.message);
@@ -224,41 +140,58 @@ function AdminUsers() {
     });
     setBusy(null);
     if (error) {
-      alert(
-        missingObject(error)
-          ? "Banning needs the editor-role migration. Run the two SQL files in supabase/migrations (step1, then step2) in the Supabase SQL editor."
-          : error.message,
-      );
+      alert(missingObject(error) ? "Banning needs the editor-role migration." : error.message);
       return;
     }
     load();
   }
 
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortAsc((v) => !v);
+    else {
+      setSortKey(key);
+      setSortAsc(false);
+    }
+  }
+
   const needle = q.trim().toLowerCase();
-  const filtered = rows.filter((r) => {
-    if (
-      needle &&
-      !(r.email ?? "").toLowerCase().includes(needle) &&
-      !(r.full_name ?? "").toLowerCase().includes(needle)
-    )
-      return false;
-    if (filter === "online") return isOnline(r.last_seen_at);
-    if (filter === "staff") return r.role !== "student";
-    if (filter === "banned") return r.banned;
-    return true;
-  });
+  const filtered = useMemo(() => {
+    let list = rows.filter((r) => {
+      if (
+        needle &&
+        !(r.email ?? "").toLowerCase().includes(needle) &&
+        !(r.full_name ?? "").toLowerCase().includes(needle)
+      )
+        return false;
+      if (filter === "online") return isOnline(r.last_seen_at);
+      if (filter === "staff") return r.role !== "student";
+      if (filter === "banned") return r.banned;
+      return true;
+    });
+
+    list = [...list].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "created_at") {
+        cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      } else if (sortKey === "tests_total") {
+        cmp = a.tests_total - b.tests_total;
+      } else {
+        const aT = a.last_seen_at ? new Date(a.last_seen_at).getTime() : 0;
+        const bT = b.last_seen_at ? new Date(b.last_seen_at).getTime() : 0;
+        cmp = aT - bT;
+      }
+      return sortAsc ? cmp : -cmp;
+    });
+    return list;
+  }, [rows, needle, filter, sortKey, sortAsc]);
 
   const onlineCount = rows.filter((r) => isOnline(r.last_seen_at)).length;
-
-  /* Online and Banned both read columns that only exist post-migration, so they
-     drop out until it's applied rather than sitting there filtering to nothing. */
-  const allTabs: [Filter, string][] = [
+  const tabs: [Filter, string][] = [
     ["all", `All ${rows.length}`],
     ["online", `Online ${onlineCount}`],
     ["staff", "Staff"],
     ["banned", "Banned"],
   ];
-  const tabs = presenceReady ? allTabs : allTabs.filter(([k]) => k === "all" || k === "staff");
 
   return (
     <div>
@@ -272,8 +205,6 @@ function AdminUsers() {
             className="w-full rounded-lg border border-brand-400/50 bg-brand-600 py-2 pl-9 pr-3 text-sm text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
           />
         </div>
-        {/* Segmented filter. Active is the lit step, the rest recede. The
-            presence-backed tabs are only offered once the migration has run. */}
         <div className="flex shrink-0 gap-1 rounded-lg border border-brand-400/40 bg-brand-600 p-1">
           {tabs.map(([key, label]) => (
             <button
@@ -292,19 +223,13 @@ function AdminUsers() {
         </div>
       </div>
 
-      {/* The migration gate. Without this the page silently behaves as if every
-          user were offline and unbannable, with no hint as to why. */}
-      {!loading && !err && !presenceReady && (
+      {!loading && !err && !insightsReady && (
         <div className="mt-4 rounded-xl border border-dashed border-brand-300/50 bg-brand-800/50 p-4 text-sm text-brand-100">
-          <span className="font-bold text-white">Presence and bans aren't active yet.</span> Run{" "}
+          <span className="font-bold text-white">User insights migration not applied yet.</span> Run{" "}
           <code className="rounded bg-brand-900 px-1.5 py-0.5 text-xs">
-            20260801000001_add_editor_role_step1.sql
+            20260830000001_admin_user_insights.sql
           </code>{" "}
-          then{" "}
-          <code className="rounded bg-brand-900 px-1.5 py-0.5 text-xs">
-            20260801000002_editor_role_presence_bans_step2.sql
-          </code>{" "}
-          in the Supabase SQL editor. Roles and the user list work regardless.
+          in Supabase. Basic list and role controls still work.
         </div>
       )}
 
@@ -327,107 +252,162 @@ function AdminUsers() {
           {filtered.length === 0 ? (
             <div className="p-8 text-center text-sm text-brand-100">No users found.</div>
           ) : (
-            <ul className="divide-y divide-brand-400/30">
-              {filtered.map((u) => {
-                const online = isOnline(u.last_seen_at);
-                return (
-                  <li key={u.id} className="flex flex-wrap items-center gap-3 px-4 py-3 md:gap-4">
-                    <div className="relative shrink-0">
-                      <div className="grid h-9 w-9 place-items-center rounded-full bg-brand-400 text-xs font-bold text-white">
-                        {(u.full_name || u.email || "?").slice(0, 2).toUpperCase()}
-                      </div>
-                      {/* Presence dot. Online is the light step and pulses;
-                          offline is a hollow ring, so it reads without colour.
-                          Omitted entirely pre-migration — a permanently grey dot
-                          would claim everyone is offline. */}
-                      {presenceReady && (
-                        <span
-                          title={online ? "Online now" : lastSeenLabel(u.last_seen_at)}
-                          className={
-                            "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-brand-600 " +
-                            (online ? "pulse-ring bg-brand-100" : "bg-brand-800")
-                          }
-                        />
-                      )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="truncate text-sm font-semibold text-white">
-                          {u.full_name || "—"}
-                        </span>
-                        {u.role !== "student" && (
-                          <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 ring-1 ring-brand-400/40">
-                            {u.role}
-                          </span>
-                        )}
-                        {u.banned && (
-                          <span className="inline-flex items-center gap-1 rounded bg-brand-900 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white ring-1 ring-brand-300/60">
-                            <Ban className="h-3 w-3" />
-                            Banned
-                          </span>
-                        )}
-                      </div>
-                      <div className="truncate text-xs text-brand-100">
-                        {u.email}
-                        {presenceReady
-                          ? ` · ${online ? "Online now" : lastSeenLabel(u.last_seen_at)}`
-                          : ""}{" "}
-                        · Joined {format(new Date(u.created_at), "MMM d, yyyy")}
-                      </div>
-                    </div>
-
-                    <div className="flex shrink-0 items-center gap-2">
-                      {/* Three-way role picker replaces the old admin toggle now
-                          that editor exists. */}
-                      <select
-                        value={u.role}
-                        disabled={busy === u.id}
-                        onChange={(e) => setRole(u, e.target.value as Role)}
-                        className="rounded-lg border border-brand-400/50 bg-brand-800 px-2 py-1.5 text-xs font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none disabled:opacity-60"
-                        aria-label={`Role for ${u.email}`}
-                      >
-                        <option value="student">Student</option>
-                        <option value="editor">Editor</option>
-                        <option value="admin">Admin</option>
-                      </select>
-
-                      {/* Ban is destructive, so it's the recessed dark step with
-                          a light ring rather than red; unban is the lit button.
-                          Hidden pre-migration since the RPC behind it doesn't
-                          exist yet. */}
-                      {presenceReady && (
-                        <button
-                          onClick={() => toggleBan(u)}
-                          disabled={busy === u.id}
-                          className={
-                            "tap inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:pointer-events-none disabled:opacity-60 " +
-                            (u.banned
-                              ? "btn-brand bg-brand-400 text-white"
-                              : "bg-brand-800 text-white ring-1 ring-brand-400/40 hover:bg-brand-900 hover:ring-brand-300/60")
-                          }
-                        >
-                          {u.banned ? (
-                            <CircleCheck className="h-3.5 w-3.5" />
-                          ) : (
-                            <Ban className="h-3.5 w-3.5" />
-                          )}
-                          {u.banned ? "Unban" : "Ban"}
-                        </button>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+            <>
+              {insightsReady && (
+                <div className="hidden border-b border-brand-400/30 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200 md:grid md:grid-cols-[1fr_100px_80px_100px_120px] md:gap-3">
+                  <span>User</span>
+                  <SortHeader label="Tests" active={sortKey === "tests_total"} asc={sortAsc} onClick={() => toggleSort("tests_total")} />
+                  <span>Streak</span>
+                  <span>Class</span>
+                  <SortHeader label="Last active" active={sortKey === "last_seen"} asc={sortAsc} onClick={() => toggleSort("last_seen")} />
+                </div>
+              )}
+              <ul className="divide-y divide-brand-400/30">
+                {filtered.map((u) => (
+                  <UserListRow
+                    key={u.id}
+                    u={u}
+                    busy={busy === u.id}
+                    insightsReady={insightsReady}
+                    onRole={(role) => setRole(u, role)}
+                    onBan={() => toggleBan(u)}
+                  />
+                ))}
+              </ul>
+            </>
           )}
         </div>
       )}
-
-      <p className="mt-3 text-xs text-slate-500">
-        Online means active in the last 3 minutes. Editors can only reach Questions, Daily Tests,
-        Mock Exams and News — they can't change roles or ban anyone.
-      </p>
     </div>
+  );
+}
+
+function SortHeader({
+  label,
+  active,
+  asc,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  asc: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick} className="tap text-left hover:text-white">
+      {label}
+      {active ? (asc ? " ↑" : " ↓") : ""}
+    </button>
+  );
+}
+
+function UserListRow({
+  u,
+  busy,
+  insightsReady,
+  onRole,
+  onBan,
+}: {
+  u: UserRow;
+  busy: boolean;
+  insightsReady: boolean;
+  onRole: (role: Role) => void;
+  onBan: () => void;
+}) {
+  const online = isOnline(u.last_seen_at);
+  const lastLabel = u.last_active_at
+    ? lastSeenLabel(u.last_active_at)
+    : lastSeenLabel(u.last_seen_at);
+
+  return (
+    <li className="group">
+      <div className="flex flex-wrap items-center gap-3 px-4 py-3 md:gap-4">
+        <Link
+          to="/admin/users/$userId"
+          params={{ userId: u.id }}
+          className="flex min-w-0 flex-1 items-center gap-3 tap rounded-lg hover:bg-brand-800/40 md:grid md:grid-cols-[1fr_100px_80px_100px_120px] md:items-center md:gap-3"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="relative shrink-0">
+              <div className="grid h-9 w-9 place-items-center rounded-full bg-brand-400 text-xs font-bold text-white">
+                {(u.full_name || u.email || "?").slice(0, 2).toUpperCase()}
+              </div>
+              <span
+                title={online ? "Online now" : lastSeenLabel(u.last_seen_at)}
+                className={
+                  "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-brand-600 " +
+                  (online ? "pulse-ring bg-brand-100" : "bg-brand-800")
+                }
+              />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="truncate text-sm font-semibold text-white group-hover:underline">
+                  {u.full_name || "—"}
+                </span>
+                {u.role !== "student" && (
+                  <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 ring-1 ring-brand-400/40">
+                    {u.role}
+                  </span>
+                )}
+                {u.banned && (
+                  <span className="inline-flex items-center gap-1 rounded bg-brand-900 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white ring-1 ring-brand-300/60">
+                    <Ban className="h-3 w-3" />
+                    Banned
+                  </span>
+                )}
+              </div>
+              <div className="truncate text-xs text-brand-100">
+                {u.email}
+                {" · Joined "}
+                {format(new Date(u.created_at), "MMM d, yyyy")}
+              </div>
+            </div>
+          </div>
+          {insightsReady && (
+            <>
+              <div className="hidden text-sm tabular-nums text-white md:block">
+                {u.tests_total}
+                <span className="block text-[10px] text-brand-200">
+                  {u.tests_mock}m · {u.tests_daily}d · {u.tests_practice}p
+                </span>
+              </div>
+              <div className="hidden text-sm font-semibold text-white md:block">{u.current_streak}</div>
+              <div className="hidden truncate text-xs text-brand-100 md:block">{u.class_name || "—"}</div>
+              <div className="hidden text-xs text-brand-100 md:block">
+                {online ? "Online now" : lastLabel}
+              </div>
+            </>
+          )}
+          <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-brand-200 md:hidden" />
+        </Link>
+
+        <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <select
+            value={u.role}
+            disabled={busy}
+            onChange={(e) => onRole(e.target.value as Role)}
+            className="rounded-lg border border-brand-400/50 bg-brand-800 px-2 py-1.5 text-xs font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none disabled:opacity-60"
+          >
+            <option value="student">Student</option>
+            <option value="editor">Editor</option>
+            <option value="admin">Admin</option>
+          </select>
+          <button
+            onClick={onBan}
+            disabled={busy}
+            className={
+              "tap inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-60 " +
+              (u.banned
+                ? "btn-brand bg-brand-400 text-white"
+                : "bg-brand-800 text-white ring-1 ring-brand-400/40 hover:bg-brand-900")
+            }
+          >
+            {u.banned ? <CircleCheck className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
+            {u.banned ? "Unban" : "Ban"}
+          </button>
+        </div>
+      </div>
+    </li>
   );
 }

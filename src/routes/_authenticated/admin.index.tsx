@@ -11,7 +11,7 @@ import {
   Home,
   FileStack,
   Info,
-  Database,
+  Upload,
 } from "lucide-react";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Panel, PanelGlow, Skeleton } from "@/components/ui/panel";
@@ -36,6 +36,12 @@ const SHORTCUTS = [
     label: "Build a mock exam",
     desc: "Assemble a full-length test",
     icon: ClipboardList,
+  },
+  {
+    to: "/admin/vocab",
+    label: "Import vocab deck",
+    desc: "Upload Anki .apkg or generate with AI",
+    icon: Upload,
   },
   {
     to: "/admin/homepage",

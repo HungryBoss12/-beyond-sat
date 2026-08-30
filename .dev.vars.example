@@ -22,3 +22,15 @@ SUPABASE_PUBLISHABLE_KEY="your-anon-publishable-key"
 # OpenRouter — Beyond AI chat (/api/ai). Required for Beyond AI to respond.
 # In production: wrangler secret put OPENROUTER_API_KEY
 # OPENROUTER_API_KEY="your-openrouter-api-key"
+#
+# Telegram admin bot (@mgs_uz_bot) — user control via /users, /user, /ban, etc.
+# Generate a fresh token in @BotFather if one was ever shared in chat.
+# In production: wrangler secret put TELEGRAM_BOT_TOKEN
+# TELEGRAM_BOT_TOKEN="your-telegram-bot-token"
+#
+# Random string for webhook verification (Telegram setWebhook secret_token).
+# In production: wrangler secret put TELEGRAM_WEBHOOK_SECRET
+# TELEGRAM_WEBHOOK_SECRET="generate-a-long-random-string"
+#
+# Service role required for Telegram webhook DB access:
+# SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"

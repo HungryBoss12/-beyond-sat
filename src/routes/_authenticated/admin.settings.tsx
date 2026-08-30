@@ -1,6 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2, Save, Calculator, Sparkles, Wrench, KeyRound } from "lucide-react";
+import { Loader2, Save, Calculator, Sparkles, Wrench, KeyRound, MessageCircle } from "lucide-react";
+import {
+  createTelegramLinkCode,
+  fetchTelegramLinkStatus,
+  unlinkTelegram,
+  type TelegramLinkStatus,
+} from "@/lib/admin/users";
 import type { Json } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -57,6 +63,10 @@ function AdminSettings() {
      sharing one spinner would flash confirmation on the card you didn't touch. */
   const [savingCard, setSavingCard] = useState<string | null>(null);
   const [savedCard, setSavedCard] = useState<string | null>(null);
+  const [tgStatus, setTgStatus] = useState<TelegramLinkStatus | null>(null);
+  const [tgCode, setTgCode] = useState<string | null>(null);
+  const [tgBusy, setTgBusy] = useState(false);
+  const [tgErr, setTgErr] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -72,6 +82,12 @@ function AdminSettings() {
       }
       setSettings(next);
       setLoading(false);
+      try {
+        const status = await fetchTelegramLinkStatus();
+        setTgStatus(status);
+      } catch {
+        setTgStatus(null);
+      }
     })();
   }, []);
 
@@ -335,6 +351,113 @@ function AdminSettings() {
           disabled={loading}
           hint="Changes take up to 30 seconds to reach every visitor."
         />
+      </Card>
+
+      <Card
+        icon={MessageCircle}
+        title="Telegram admin access"
+        description={
+          <>
+            Link this admin account to{" "}
+            <a
+              href="https://t.me/mgs_uz_bot"
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-white underline"
+            >
+              @mgs_uz_bot
+            </a>{" "}
+            to look up users, view stats, and ban or unban from Telegram. Generate a one-time code
+            below, then message the bot: <code className="text-white">/link CODE</code>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-xl bg-brand-800 p-4 ring-1 ring-brand-400/40">
+            <div className="text-sm font-bold text-white">
+              {tgStatus?.linked ? "Telegram linked" : "Not linked"}
+            </div>
+            <p className="mt-1 text-xs text-brand-100">
+              {tgStatus?.linked
+                ? `Chat ID ${tgStatus.chat_id}. Only this chat can run admin bot commands.`
+                : "Generate a code and send /link CODE to the bot within 10 minutes."}
+            </p>
+          </div>
+
+          {tgCode && (
+            <div className="rounded-xl border border-brand-300/50 bg-brand-900/60 p-4">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-brand-200">
+                Link code (expires in 10 min)
+              </div>
+              <code className="mt-2 block text-2xl font-black tracking-widest text-white">{tgCode}</code>
+              <p className="mt-2 text-xs text-brand-100">
+                Message @mgs_uz_bot: <code className="text-white">/link {tgCode}</code>
+              </p>
+            </div>
+          )}
+
+          {tgErr && <p className="text-xs font-semibold text-red-200">{tgErr}</p>}
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={tgBusy || loading}
+              onClick={async () => {
+                setTgBusy(true);
+                setTgErr(null);
+                try {
+                  const code = await createTelegramLinkCode();
+                  setTgCode(code);
+                } catch (e) {
+                  setTgErr(e instanceof Error ? e.message : "Could not create code");
+                } finally {
+                  setTgBusy(false);
+                }
+              }}
+              className="btn-brand inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+            >
+              {tgBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Generate link code
+            </button>
+            {tgStatus?.linked && (
+              <button
+                type="button"
+                disabled={tgBusy}
+                onClick={async () => {
+                  if (!confirm("Unlink Telegram from this admin account?")) return;
+                  setTgBusy(true);
+                  setTgErr(null);
+                  try {
+                    await unlinkTelegram();
+                    setTgStatus({ linked: false, chat_id: null });
+                    setTgCode(null);
+                  } catch (e) {
+                    setTgErr(e instanceof Error ? e.message : "Could not unlink");
+                  } finally {
+                    setTgBusy(false);
+                  }
+                }}
+                className="rounded-lg bg-brand-800 px-4 py-2 text-sm font-semibold text-white ring-1 ring-brand-400/40 hover:bg-brand-900 disabled:opacity-60"
+              >
+                Unlink
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-start gap-3 rounded-xl bg-brand-800 p-4 ring-1 ring-brand-400/40">
+            <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
+            <div className="min-w-0 text-xs text-brand-100">
+              <div className="font-bold text-white">Bot token & webhook secret</div>
+              <p className="mt-1">Store as Worker secrets — never in the database or git.</p>
+              <code className="mt-2 block overflow-x-auto rounded-lg bg-brand-900/60 px-3 py-2 font-mono text-[11px] text-white">
+                npx wrangler secret put TELEGRAM_BOT_TOKEN
+              </code>
+              <code className="mt-2 block overflow-x-auto rounded-lg bg-brand-900/60 px-3 py-2 font-mono text-[11px] text-white">
+                npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
+              </code>
+            </div>
+          </div>
+        </div>
       </Card>
     </div>
   );

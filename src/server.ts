@@ -6,6 +6,11 @@ import { handleAiChat } from "./lib/ai/handler";
 import { handleImportVision } from "./lib/import/vision-handler";
 import { handleImportFix } from "./lib/import/fix-handler";
 import { handleImportFigure } from "./lib/import/figure-handler";
+import { handleVocabAdminSave } from "./lib/vocab/handlers/admin-save";
+import { handleVocabGenerate } from "./lib/vocab/handlers/generate";
+import { handleVocabQuizSubmit } from "./lib/vocab/handlers/quiz-submit";
+import { handleVocabReview, handleVocabSession } from "./lib/vocab/handlers/session";
+import { handleTelegramWebhook } from "./lib/telegram/webhook";
 import { checkMaintenance } from "./lib/maintenance";
 import { maintenanceResponse } from "./lib/maintenance-page";
 
@@ -90,6 +95,30 @@ export default {
 
       if (url.pathname === "/api/import/figure") {
         return await handleImportFigure(request, env);
+      }
+
+      if (url.pathname === "/api/vocab/session") {
+        return await handleVocabSession(request, env);
+      }
+
+      if (url.pathname === "/api/vocab/review") {
+        return await handleVocabReview(request, env);
+      }
+
+      if (url.pathname === "/api/vocab/quiz/submit") {
+        return await handleVocabQuizSubmit(request, env);
+      }
+
+      if (url.pathname === "/api/vocab/generate") {
+        return await handleVocabGenerate(request, env);
+      }
+
+      if (url.pathname === "/api/vocab/admin/save") {
+        return await handleVocabAdminSave(request, env);
+      }
+
+      if (url.pathname === "/api/telegram/webhook") {
+        return await handleTelegramWebhook(request, env);
       }
 
       const maintenance = await checkMaintenance(request, env, Date.now());

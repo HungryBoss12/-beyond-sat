@@ -18,14 +18,13 @@ import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 import { RevealLink } from "@/components/ui/reveal-card";
 
 /**
- * Six is the practical maximum for the mobile tab bar: at `grid-cols-6` on a
- * 360px viewport each cell is 60px, which the `w-12` active pill and a short
- * label still fit. Classes replaced News in the primary bar (News stays
- * reachable from the dashboard / other links).
+ * Seven items fit the mobile tab bar at `grid-cols-7` with truncated labels.
+ * Vocab sits between Practice and Classes as its own primary section.
  */
 const NAV = [
   { to: "/dashboard", label: "Dashboard", kind: "dashboard" },
   { to: "/practice", label: "Practice", kind: "practice", icon: BookOpen },
+  { to: "/vocab", label: "Vocab", kind: "vocab" },
   { to: "/classes", label: "Classes", kind: "classes" },
   { to: "/analysis", label: "Analysis", kind: "analysis" },
   { to: "/beyond-ai", label: "Beyond AI", kind: "ai" },
@@ -177,6 +176,86 @@ function NavGlyph({
           className="nav-star-lg"
           d="M12 3.2 13.85 8.15 19 10 13.85 11.85 12 16.8 10.15 11.85 5 10 10.15 8.15Z"
         />
+      </svg>
+    );
+  }
+
+  if (kind === "vocab") {
+    return (
+      <svg viewBox="0 0 24 24" className={cls} aria-hidden="true" fill="none">
+        <rect
+          className="nav-vocab-deck nav-vocab-deck-2"
+          x="6.2"
+          y="5.4"
+          width="11.5"
+          height="13.5"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.35"
+          opacity="0.28"
+        />
+        <rect
+          className="nav-vocab-deck nav-vocab-deck-1"
+          x="5.1"
+          y="4.3"
+          width="11.5"
+          height="13.5"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.35"
+          opacity="0.52"
+        />
+        <g className="nav-vocab-front">
+          <rect
+            x="4"
+            y="3.2"
+            width="11.5"
+            height="13.5"
+            rx="2"
+            stroke="currentColor"
+            strokeWidth="1.75"
+          />
+          <line
+            className="nav-vocab-line nav-vocab-line-a"
+            x1="6.3"
+            y1="7.2"
+            x2="13.2"
+            y2="7.2"
+            stroke="currentColor"
+            strokeWidth="1.15"
+            strokeLinecap="round"
+            opacity="0.42"
+          />
+          <rect
+            className="nav-vocab-highlight"
+            x="6.3"
+            y="9.35"
+            width="5.8"
+            height="1.55"
+            rx="0.4"
+            fill="currentColor"
+          />
+          <line
+            className="nav-vocab-line nav-vocab-line-b"
+            x1="6.3"
+            y1="12.4"
+            x2="10.8"
+            y2="12.4"
+            stroke="currentColor"
+            strokeWidth="1.15"
+            strokeLinecap="round"
+            opacity="0.42"
+          />
+        </g>
+        <g className="nav-vocab-srs" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+          <path
+            className="nav-vocab-srs-arc"
+            d="M16.8 16.1a3.15 3.15 0 1 0-2.45-3.05"
+            strokeWidth="1.35"
+            fill="none"
+          />
+          <path className="nav-vocab-srs-tip" d="M14.1 12.4l-.15 1.85 1.65-.55" strokeWidth="1.2" fill="none" />
+        </g>
       </svg>
     );
   }
@@ -551,10 +630,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-400/30 bg-brand-600/95 backdrop-blur-md lg:hidden">
-        <div className="relative grid grid-cols-6">
+        <div className="relative grid grid-cols-7">
           <span
             aria-hidden
-            className="nav-tab-pill pointer-events-none absolute top-1.5 left-0 flex w-1/6 justify-center"
+            className="nav-tab-pill pointer-events-none absolute top-1.5 left-0 flex w-[calc(100%/7)] justify-center"
             style={{
               transform: `translateX(${Math.max(0, mobileIdx) * 100}%)`,
               opacity: mobileIdx < 0 ? 0 : 1,

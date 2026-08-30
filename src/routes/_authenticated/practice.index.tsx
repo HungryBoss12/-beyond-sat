@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BookText, Calculator, ClipboardList, CalendarClock, ArrowRight } from "lucide-react";
+import { BookText, Calculator, ClipboardList, CalendarClock, ArrowRight, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { PageHead, Panel } from "@/components/ui/panel";
@@ -190,6 +190,28 @@ function PracticeLanding() {
           </Link>
         </Panel>
       </div>
+
+      <Panel>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-600 text-white">
+              <Layers className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-lg font-black text-white">Vocabulary</div>
+              <div className="text-xs text-brand-100">
+                Spaced repetition deck and Words-in-Context practice tests
+              </div>
+            </div>
+          </div>
+          <Link
+            to="/vocab"
+            className="btn-ghost inline-flex items-center gap-2 rounded-lg border border-brand-300/60 bg-brand-800 px-4 py-2.5 text-sm font-bold text-white"
+          >
+            Study vocab <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </Panel>
     </div>
   );
 }

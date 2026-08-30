@@ -5,7 +5,22 @@ import {
   parseSynonymsField,
   stripAnkiHtml,
 } from "./anki-html";
-import { mapAnkiNoteToVocabItem } from "./parse-apkg";
+import { isAnkiStubNote, mapAnkiNoteToVocabItem } from "./parse-apkg";
+
+describe("isAnkiStubNote", () => {
+  it("detects Anki migration placeholder text", () => {
+    expect(
+      isAnkiStubNote(
+        "Please update to the latest Anki version, then import the .colpkg/.apkg file again.",
+        "",
+      ),
+    ).toBe(true);
+  });
+
+  it("allows real vocabulary", () => {
+    expect(isAnkiStubNote("ephemeral", "lasting for a very short time")).toBe(false);
+  });
+});
 
 describe("stripAnkiHtml", () => {
   it("removes simple tags", () => {
@@ -36,10 +51,33 @@ describe("mapAnkiNoteToVocabItem", () => {
     expect(item?.synonyms).toEqual(["flexible", "pliable"]);
   });
 
+  it("swaps VOCABOOK fields when Word holds the clue and Definition holds the term", () => {
+    const item = mapAnkiNoteToVocabItem({
+      flds: "Unpredictable, inconsistent, irregular\x1fErratic\x1fExample sentence here.",
+      tags: "",
+      model: {
+        name: "VOCABOOK 4F (Word→Definition)",
+        flds: [{ name: "Word" }, { name: "Definition" }, { name: "Example" }],
+      },
+    });
+    expect(item?.word).toBe("Erratic");
+    expect(item?.definition).toContain("Unpredictable");
+  });
+
   it("returns null for empty notes", () => {
     expect(
       mapAnkiNoteToVocabItem({
         flds: "\x1f",
+        tags: "",
+        model: { flds: [{ name: "Front" }, { name: "Back" }] },
+      }),
+    ).toBeNull();
+  });
+
+  it("skips Anki stub placeholder notes", () => {
+    expect(
+      mapAnkiNoteToVocabItem({
+        flds: "Please update to the latest Anki version, then import the .colpkg/.apkg file again.\x1f",
         tags: "",
         model: { flds: [{ name: "Front" }, { name: "Back" }] },
       }),

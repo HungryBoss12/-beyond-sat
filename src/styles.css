@@ -197,9 +197,17 @@
 @layer base {
   * {
     border-color: var(--color-border);
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
   }
   html {
     scroll-behavior: smooth;
+    scrollbar-width: none;
+  }
+  html::-webkit-scrollbar {
+    display: none;
   }
   html,
   body {
@@ -208,6 +216,10 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    scrollbar-width: none;
+  }
+  body::-webkit-scrollbar {
+    display: none;
   }
   h1,
   h2,
@@ -224,6 +236,19 @@
   .vocab-surface {
     color: #fff;
   }
+
+  /* Due-count pills — brand blue only, no orange/red. */
+  .vocab-due-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    background-color: rgb(83 82 145 / 0.45);
+    padding: 0.125rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #ffffff;
+    box-shadow: inset 0 0 0 1px rgb(159 159 194 / 0.45);
+  }
   .vocab-surface h1,
   .vocab-surface h2,
   .vocab-surface h3,
@@ -232,6 +257,40 @@
   .vocab-surface h6,
   .vocab-surface a {
     color: inherit;
+  }
+
+  .vocab-outline-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.8);
+    transition: background-color 0.15s ease;
+    background-color: rgb(83 82 145 / 0.9);
+    color: #fff;
+  }
+  .vocab-outline-btn-primary:hover {
+    background-color: rgb(159 159 194 / 1);
+  }
+
+  .vocab-outline-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.8);
+    transition: background-color 0.15s ease;
+    background-color: transparent;
+    color: #fff;
+  }
+  .vocab-outline-btn-secondary:hover {
+    background-color: rgb(255 255 255 / 0.1);
   }
 
   /* UI UX Pro Max: pointer affordance + keyboard focus (preserve brand colors) */
@@ -457,6 +516,55 @@
 @keyframes spin-slow {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* 404 page emblem — slow float + counter-rotating shell */
+@keyframes not-found-emblem-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes not-found-emblem-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes not-found-emblem-spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes confetti-burst {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--confetti-x, 40px), var(--confetti-y, -60px)) rotate(540deg) scale(0.6);
+  }
+}
+
+@keyframes not-found-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
   }
 }
 
@@ -692,6 +800,43 @@
   animation: spin-slow 18s linear infinite;
 }
 
+@utility not-found-emblem-float {
+  animation: not-found-emblem-float 6s ease-in-out infinite;
+}
+
+@utility not-found-emblem-spin {
+  animation: not-found-emblem-spin 24s linear infinite;
+}
+
+@utility not-found-emblem-spin-reverse {
+  animation: not-found-emblem-spin-reverse 32s linear infinite;
+}
+
+@utility not-found-shake {
+  animation: not-found-shake 0.45s ease-in-out;
+}
+
+.confetti-particle {
+  --confetti-x: calc((var(--i, 1) - 0.5) * 120px);
+  --confetti-y: calc(-40px - var(--i, 1) * 30px);
+  animation: confetti-burst 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.confetti-particle:nth-child(1) { --i: 0.2; }
+.confetti-particle:nth-child(2) { --i: 0.8; }
+.confetti-particle:nth-child(3) { --i: 1.4; }
+.confetti-particle:nth-child(4) { --i: 2.1; }
+.confetti-particle:nth-child(5) { --i: 2.8; }
+.confetti-particle:nth-child(6) { --i: 3.2; }
+.confetti-particle:nth-child(7) { --i: 3.9; }
+.confetti-particle:nth-child(8) { --i: 4.5; }
+.confetti-particle:nth-child(9) { --i: 5.1; }
+.confetti-particle:nth-child(10) { --i: 5.7; }
+.confetti-particle:nth-child(11) { --i: 6.2; }
+.confetti-particle:nth-child(12) { --i: 6.8; }
+.confetti-particle:nth-child(13) { --i: 7.3; }
+.confetti-particle:nth-child(14) { --i: 7.9; }
+
 /* ---------------------------------------------------------------------------
    Interaction
    Buttons and rows need to respond on hover AND on press. The press state is
@@ -700,6 +845,7 @@
 
 /* Baseline for any pressable control. */
 @utility tap {
+  cursor: pointer;
   transition:
     transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.2s ease,
@@ -716,6 +862,7 @@
   position: relative;
   overflow: hidden;
   isolation: isolate;
+  cursor: pointer;
   transition:
     transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.24s ease,
@@ -741,6 +888,60 @@
   }
   &:hover::after {
     transform: translateX(120%);
+  }
+  &:active {
+    transform: translateY(0) scale(0.985);
+  }
+}
+
+/* 404 outline CTAs on white — vivid blue hover on pointer over. */
+@utility not-found-outline-btn {
+  cursor: pointer;
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+  &:hover {
+    transform: translateY(-1px);
+    border-color: #324dc7;
+    background-color: #324dc7;
+    color: #ffffff;
+    box-shadow: 0 8px 22px -10px rgba(50, 77, 199, 0.55);
+  }
+  &:active {
+    transform: translateY(0) scale(0.985);
+  }
+}
+
+@utility not-found-quiz-btn {
+  cursor: pointer;
+  transition:
+    transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+  &:hover:not(:disabled) {
+    border-color: #5b7cff;
+    background-color: color-mix(in srgb, #324dc7 28%, #040459);
+    box-shadow: 0 0 0 1px rgba(91, 124, 255, 0.35);
+  }
+  &:active:not(:disabled) {
+    transform: scale(0.985);
+  }
+}
+
+@utility not-found-home-btn {
+  cursor: pointer;
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+  &:hover {
+    transform: translateY(-1px);
+    background-color: #324dc7;
+    box-shadow: 0 10px 24px -10px rgba(50, 77, 199, 0.55);
   }
   &:active {
     transform: translateY(0) scale(0.985);
@@ -933,6 +1134,50 @@
     background: radial-gradient(
       circle 12rem at var(--px, 50%) var(--py, 50%),
       rgba(255, 255, 255, 0.55),
+      transparent 40%
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+}
+
+/* Vocab full-screen surfaces (#0b0761): tighter white glow tuned for dark navy. */
+@utility vocab-reveal-surface {
+  position: relative;
+  isolation: isolate;
+  --glow: 0;
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: var(--glow);
+    transition: opacity 0.3s ease;
+  }
+
+  &::before {
+    background: radial-gradient(
+      circle 18rem at var(--px, 50%) var(--py, 50%),
+      rgba(255, 255, 255, 0.14),
+      transparent 42%
+    );
+  }
+
+  &::after {
+    padding: 1px;
+    background: radial-gradient(
+      circle 10rem at var(--px, 50%) var(--py, 50%),
+      rgba(255, 255, 255, 0.65),
       transparent 40%
     );
     -webkit-mask:
@@ -1802,6 +2047,10 @@
   .drift,
   .spin-slow,
   .pulse-ring,
+  .not-found-emblem-float,
+  .not-found-emblem-spin,
+  .not-found-emblem-spin-reverse,
+  .confetti-particle,
   .nav-ico-dashboard,
   .nav-ico-practice,
   .nav-ico-vocab,

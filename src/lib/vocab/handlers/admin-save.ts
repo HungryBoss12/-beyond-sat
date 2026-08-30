@@ -1,16 +1,74 @@
 import { jsonResponse, requireStaff } from "../rest";
-import type { DifficultyTier, GeneratedVocabItem } from "../types";
+import type { AnkiDeckNode, DifficultyTier, GeneratedVocabItem } from "../types";
 
 type SavePayload = {
   items: GeneratedVocabItem[];
+  deckTree?: AnkiDeckNode[];
   quizTitle?: string;
   quizId?: string;
   deckName?: string;
-  /** When true, import SRS cards only — no vocab_quizzes row or quiz questions. */
   cardsOnly?: boolean;
 };
 
 const DEFAULT_DECK_ID = "00000000-0000-4000-8000-000000000001";
+
+async function upsertDeckTree(
+  restFetch: typeof import("../rest").restFetch,
+  config: import("@/lib/server-env").SupabaseConfig,
+  token: string,
+  tree: AnkiDeckNode[],
+): Promise<Map<string, string>> {
+  const pathToId = new Map<string, string>();
+  const sorted = [...tree].sort((a, b) => {
+    const depthA = a.path.split("::").length;
+    const depthB = b.path.split("::").length;
+    return depthA - depthB || a.sortOrder - b.sortOrder;
+  });
+
+  for (const node of sorted) {
+    const parentId = node.parentPath ? pathToId.get(node.parentPath) ?? null : null;
+    const { data: existing } = await restFetch<{ id: string }[]>(
+      config,
+      token,
+      `vocab_decks?path=eq.${encodeURIComponent(node.path)}&select=id&limit=1`,
+    );
+    if (existing?.[0]) {
+      pathToId.set(node.path, existing[0].id);
+      await restFetch(config, token, `vocab_decks?id=eq.${existing[0].id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          title: node.title,
+          parent_id: parentId,
+          sort_order: node.sortOrder,
+          is_folder: node.isFolder,
+        }),
+      });
+      continue;
+    }
+
+    const { data: created, error } = await restFetch<{ id: string }[]>(
+      config,
+      token,
+      "vocab_decks",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          title: node.title,
+          path: node.path,
+          parent_id: parentId,
+          sort_order: node.sortOrder,
+          is_folder: node.isFolder,
+          description: null,
+        }),
+        headers: { Prefer: "return=representation" },
+      },
+    );
+    if (error || !created?.[0]) continue;
+    pathToId.set(node.path, created[0].id);
+  }
+
+  return pathToId;
+}
 
 async function resolveDeckId(
   restFetch: typeof import("../rest").restFetch,
@@ -18,24 +76,41 @@ async function resolveDeckId(
   token: string,
   deckName: string | undefined,
   cardsOnly: boolean,
-): Promise<string | null> {
-  if (!cardsOnly) return null;
+  deckTree?: AnkiDeckNode[],
+): Promise<{ defaultDeckId: string | null; pathToId: Map<string, string> }> {
+  if (!cardsOnly) return { defaultDeckId: null, pathToId: new Map() };
+
+  let pathToId = new Map<string, string>();
+  if (deckTree?.length) {
+    pathToId = await upsertDeckTree(restFetch, config, token, deckTree);
+  }
 
   const title = deckName?.trim() || "Imported Deck";
-  const { data: existing } = await restFetch<{ id: string }[]>(
-    config,
-    token,
-    `vocab_decks?title=eq.${encodeURIComponent(title)}&select=id&limit=1`,
-  );
-  if (existing?.[0]) return existing[0].id;
+  if (pathToId.size === 0) {
+    const { data: existing } = await restFetch<{ id: string }[]>(
+      config,
+      token,
+      `vocab_decks?title=eq.${encodeURIComponent(title)}&select=id&limit=1`,
+    );
+    if (existing?.[0]) return { defaultDeckId: existing[0].id, pathToId };
 
-  const { data: created, error } = await restFetch<{ id: string }[]>(config, token, "vocab_decks", {
-    method: "POST",
-    body: JSON.stringify({ title, description: null }),
-    headers: { Prefer: "return=representation" },
-  });
-  if (error || !created?.[0]) return DEFAULT_DECK_ID;
-  return created[0].id;
+    const { data: created, error } = await restFetch<{ id: string }[]>(
+      config,
+      token,
+      "vocab_decks",
+      {
+        method: "POST",
+        body: JSON.stringify({ title, description: null }),
+        headers: { Prefer: "return=representation" },
+      },
+    );
+    if (error || !created?.[0]) return { defaultDeckId: DEFAULT_DECK_ID, pathToId };
+    return { defaultDeckId: created[0].id, pathToId };
+  }
+
+  const firstLeaf = deckTree?.find((n) => !n.isFolder);
+  const defaultDeckId = firstLeaf ? pathToId.get(firstLeaf.path) ?? null : null;
+  return { defaultDeckId, pathToId };
 }
 
 export async function handleVocabAdminSave(request: Request, env: unknown): Promise<Response> {
@@ -60,7 +135,14 @@ export async function handleVocabAdminSave(request: Request, env: unknown): Prom
   const { restFetch } = await import("../rest");
 
   const cardsOnly = body.cardsOnly === true;
-  const deckId = await resolveDeckId(restFetch, auth.config, auth.token, body.deckName, cardsOnly);
+  const { defaultDeckId, pathToId } = await resolveDeckId(
+    restFetch,
+    auth.config,
+    auth.token,
+    body.deckName,
+    cardsOnly,
+    body.deckTree,
+  );
 
   let quizId = typeof body.quizId === "string" ? body.quizId : "";
 
@@ -87,23 +169,31 @@ export async function handleVocabAdminSave(request: Request, env: unknown): Prom
 
   for (const item of body.items) {
     const tier = (item.difficultyTier ?? "Medium") as DifficultyTier;
+    const deckId =
+      (item.ankiDeckPath && pathToId.get(item.ankiDeckPath)) || defaultDeckId;
+
+    const cardPayload = {
+      word: item.word.trim().toLowerCase(),
+      part_of_speech: item.partOfSpeech,
+      definition: item.definition,
+      dsat_passage: item.dSatPassage,
+      roots_etymology: item.rootsEtymology ?? null,
+      synonyms: item.synonyms,
+      sat_traps: item.satTraps ?? null,
+      difficulty_tier: tier,
+      deck_id: deckId,
+      example_sentence: item.exampleSentence ?? null,
+      antonym: item.antonym ?? null,
+      set_label: item.setLabel ?? null,
+    };
+
     const { data: cardRows, error: cardErr } = await restFetch<{ id: string }[]>(
       auth.config,
       auth.token,
       "vocab_cards",
       {
         method: "POST",
-        body: JSON.stringify({
-          word: item.word.trim().toLowerCase(),
-          part_of_speech: item.partOfSpeech,
-          definition: item.definition,
-          dsat_passage: item.dSatPassage,
-          roots_etymology: item.rootsEtymology ?? null,
-          synonyms: item.synonyms,
-          sat_traps: item.satTraps ?? null,
-          difficulty_tier: tier,
-          deck_id: deckId,
-        }),
+        body: JSON.stringify(cardPayload),
         headers: { Prefer: "return=representation" },
       },
     );
@@ -121,12 +211,10 @@ export async function handleVocabAdminSave(request: Request, env: unknown): Prom
           return jsonResponse({ error: `Duplicate word: ${item.word}` }, 409);
         }
         cardId = existing[0].id;
-        if (deckId) {
-          await restFetch(auth.config, auth.token, `vocab_cards?id=eq.${cardId}`, {
-            method: "PATCH",
-            body: JSON.stringify({ deck_id: deckId }),
-          });
-        }
+        await restFetch(auth.config, auth.token, `vocab_cards?id=eq.${cardId}`, {
+          method: "PATCH",
+          body: JSON.stringify(cardPayload),
+        });
       } else {
         return jsonResponse({ error: cardErr }, 500);
       }

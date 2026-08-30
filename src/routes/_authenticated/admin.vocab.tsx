@@ -1,8 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import { Loader2, Sparkles, Save, Trash2, Upload, FileUp } from "lucide-react";
-import { generateVocabContent, saveVocabContent } from "@/lib/vocab/client";
-import type { DifficultyTier, GeneratedVocabItem } from "@/lib/vocab/types";
+import { Loader2, Sparkles, Upload, FileUp, FolderTree } from "lucide-react";
+import {
+  ExampleDeckButton,
+  VocabPreviewPanel,
+} from "@/components/admin-vocab/vocab-preview-panel";
+import { mergeGeneratedIntoDraft, needsVocabAttention, type VocabDraft } from "@/components/admin-vocab/types";
+import { fixVocabWords, generateVocabContent, saveVocabContent } from "@/lib/vocab/client";
+import type { AnkiDeckNode, GeneratedVocabItem } from "@/lib/vocab/types";
 import { PageHead, Panel } from "@/components/ui/panel";
 
 const TOPICS = [
@@ -17,6 +22,8 @@ const TABS = [
   { id: "words" as const, label: "AI · Word list", icon: Sparkles },
 ];
 
+const EXAMPLE_DECK_URL = "/fixtures/vocab/def-word.colpkg";
+
 export const Route = createFileRoute("/_authenticated/admin/vocab")({
   component: AdminVocabPage,
   head: () => ({ meta: [{ title: "Vocab — Admin" }] }),
@@ -24,22 +31,40 @@ export const Route = createFileRoute("/_authenticated/admin/vocab")({
 
 type InputMode = "topic" | "words" | "anki";
 
+function toDrafts(items: GeneratedVocabItem[]): VocabDraft[] {
+  return items.map((item) => ({ ...item, reviewed: false }));
+}
+
 function AdminVocabPage() {
   const [words, setWords] = useState("");
   const [topic, setTopic] = useState(TOPICS[0]);
   const [quizTitle, setQuizTitle] = useState("");
   const [generating, setGenerating] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [loadingExample, setLoadingExample] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [fixing, setFixing] = useState(false);
+  const [fixingIndex, setFixingIndex] = useState<number | null>(null);
+  const fixStopRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [importMeta, setImportMeta] = useState<{ deckName: string; noteCount: number } | null>(
     null,
   );
-  const [items, setItems] = useState<GeneratedVocabItem[]>([]);
+  const [deckTree, setDeckTree] = useState<AnkiDeckNode[]>([]);
+  const [drafts, setDrafts] = useState<VocabDraft[]>([]);
   const [mode, setMode] = useState<InputMode>("anki");
   const [cardsOnly, setCardsOnly] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  async function applyParseResult(result: Awaited<ReturnType<typeof import("@/lib/vocab/parse-apkg").parseApkgFile>>) {
+    setDrafts(toDrafts(result.items));
+    setDeckTree(result.deckTree ?? []);
+    setImportMeta({ deckName: result.deckName, noteCount: result.noteCount });
+    setWarnings(result.warnings);
+    setQuizTitle(result.deckName);
+    setCardsOnly(true);
+  }
 
   async function handleGenerate() {
     setGenerating(true);
@@ -50,7 +75,7 @@ function AdminVocabPage() {
       const result = await generateVocabContent(
         mode === "words" ? { words } : { topic, count: 10 },
       );
-      setItems(result);
+      setDrafts(toDrafts(result));
       setCardsOnly(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generation failed");
@@ -64,15 +89,11 @@ function AdminVocabPage() {
     setError(null);
     setWarnings([]);
     setImportMeta(null);
-    setItems([]);
+    setDrafts([]);
     try {
       const { parseApkgFile } = await import("@/lib/vocab/parse-apkg");
       const result = await parseApkgFile(file);
-      setItems(result.items);
-      setImportMeta({ deckName: result.deckName, noteCount: result.noteCount });
-      setWarnings(result.warnings);
-      setQuizTitle(result.deckName);
-      setCardsOnly(true);
+      await applyParseResult(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not parse Anki deck");
     } finally {
@@ -81,14 +102,37 @@ function AdminVocabPage() {
     }
   }
 
+  async function handleLoadExample() {
+    setLoadingExample(true);
+    setError(null);
+    setWarnings([]);
+    setImportMeta(null);
+    setDrafts([]);
+    try {
+      const res = await fetch(EXAMPLE_DECK_URL);
+      if (!res.ok) throw new Error("Example deck file not found");
+      const blob = await res.blob();
+      const file = new File([blob], "def-word.colpkg", { type: "application/octet-stream" });
+      const { parseApkgFile } = await import("@/lib/vocab/parse-apkg");
+      const result = await parseApkgFile(file);
+      await applyParseResult(result);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load example deck");
+    } finally {
+      setLoadingExample(false);
+    }
+  }
+
   async function handleSave() {
-    if (!items.length) return;
+    if (!drafts.length) return;
     setSaving(true);
     setError(null);
     try {
+      const items = drafts.map(({ reviewed: _r, fixing: _f, ...item }) => item);
       const importCardsOnly = mode === "anki" && cardsOnly;
       const { quizId, count } = await saveVocabContent({
         items,
+        deckTree: mode === "anki" && deckTree.length ? deckTree : undefined,
         quizTitle: quizTitle.trim() || undefined,
         deckName: mode === "anki" && importMeta ? importMeta.deckName : undefined,
         cardsOnly: importCardsOnly,
@@ -105,24 +149,90 @@ function AdminVocabPage() {
     }
   }
 
-  function updateItem(i: number, patch: Partial<GeneratedVocabItem>) {
-    setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
+  function updateDraft(i: number, patch: Partial<VocabDraft>) {
+    setDrafts((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   }
 
-  function removeItem(i: number) {
-    setItems((prev) => prev.filter((_, idx) => idx !== i));
+  function setDraftReviewed(i: number, reviewed: boolean) {
+    updateDraft(i, { reviewed });
+  }
+
+  function removeDraft(i: number) {
+    setDrafts((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  async function fixDraftAt(index: number) {
+    const draft = drafts[index];
+    if (!draft?.word.trim()) return;
+    setFixing(true);
+    setFixingIndex(index);
+    setError(null);
+    try {
+      const [generated] = await fixVocabWords([draft.word.trim()]);
+      if (generated) {
+        updateDraft(index, mergeGeneratedIntoDraft(draft, generated));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fix with AI failed");
+    } finally {
+      setFixing(false);
+      setFixingIndex(null);
+    }
+  }
+
+  async function fixManyDrafts() {
+    const targets = drafts
+      .map((d, i) => ({ d, i }))
+      .filter(({ d }) => needsVocabAttention(d) && !d.reviewed);
+    if (!targets.length) return;
+
+    setFixing(true);
+    fixStopRef.current = false;
+    setError(null);
+    try {
+      for (const { d, i } of targets) {
+        if (fixStopRef.current) break;
+        setFixingIndex(i);
+        try {
+          const [generated] = await fixVocabWords([d.word.trim()]);
+          if (generated) {
+            setDrafts((prev) =>
+              prev.map((row, idx) =>
+                idx === i ? mergeGeneratedIntoDraft(row, generated) : row,
+              ),
+            );
+          }
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Fix with AI failed");
+          break;
+        }
+      }
+    } finally {
+      setFixing(false);
+      setFixingIndex(null);
+    }
   }
 
   const showQuizFields = mode !== "anki" || !cardsOnly;
+  const saveLabel =
+    mode === "anki" && cardsOnly ? "Import to SRS deck" : "Save to database";
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-12">
       <PageHead
         title="Vocabulary"
-        subtitle="Import an Anki .apkg deck for SRS review, or generate SAT-specific cards with AI."
+        subtitle="Import a modern Anki .colpkg or .apkg deck for SRS review, or generate SAT-specific cards with AI."
+        action={
+          <Link
+            to="/admin/vocab/decks"
+            className="tap inline-flex items-center gap-2 rounded-lg border border-brand-300/50 bg-brand-800 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            <FolderTree className="h-4 w-4" />
+            Manage decks
+          </Link>
+        }
       />
 
-      {/* Tab bar — Anki import first and default */}
       <div className="flex flex-wrap gap-2">
         {TABS.map((tab) => {
           const Icon = tab.icon;
@@ -155,8 +265,10 @@ function AdminVocabPage() {
             <div>
               <h2 className="text-lg font-black text-white">Upload Anki deck</h2>
               <p className="mt-1 text-sm text-brand-100">
-                Export from Anki as <strong className="text-white">.apkg</strong> (File → Export).
-                Basic Front/Back note types map automatically.
+                Export from Anki as <strong className="text-white">.apkg</strong> or{" "}
+                <strong className="text-white">.colpkg</strong>. Modern Anki exports (including
+                zstd-compressed collections) are supported. Basic and VOCABOOK-style note types map
+                automatically.
               </p>
             </div>
 
@@ -165,7 +277,7 @@ function AdminVocabPage() {
               type="file"
               accept=".apkg,.colpkg"
               className="sr-only"
-              disabled={parsing}
+              disabled={parsing || loadingExample}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) void handleApkgUpload(file);
@@ -183,29 +295,32 @@ function AdminVocabPage() {
             >
               <FileUp className="mx-auto h-10 w-10 text-brand-200" />
               <p className="mt-3 text-sm font-semibold text-white">
-                Drop your .apkg file here
+                Drop your .apkg or .colpkg file here
               </p>
               <p className="mt-1 text-xs text-brand-100">
                 or click below to browse · max 80 MB
               </p>
-              <button
-                type="button"
-                disabled={parsing}
-                onClick={() => fileRef.current?.click()}
-                className="btn-brand mt-5 inline-flex items-center gap-2 rounded-lg bg-grad-brand px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-              >
-                {parsing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Parsing deck…
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4" />
-                    Choose .apkg file
-                  </>
-                )}
-              </button>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  disabled={parsing || loadingExample}
+                  onClick={() => fileRef.current?.click()}
+                  className="btn-brand inline-flex items-center gap-2 rounded-lg bg-grad-brand px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                >
+                  {parsing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Parsing deck…
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Choose deck file
+                    </>
+                  )}
+                </button>
+                <ExampleDeckButton loading={loadingExample} onClick={() => void handleLoadExample()} />
+              </div>
             </div>
 
             <label className="flex items-start gap-3 text-sm text-brand-100">
@@ -224,7 +339,7 @@ function AdminVocabPage() {
 
             {importMeta ? (
               <p className="rounded-lg bg-emerald-500/15 px-3 py-2 text-sm text-emerald-200 ring-1 ring-emerald-400/30">
-                Parsed <strong>{items.length}</strong> cards from &ldquo;{importMeta.deckName}
+                Parsed <strong>{drafts.length}</strong> cards from &ldquo;{importMeta.deckName}
                 &rdquo; ({importMeta.noteCount} notes in file).
               </p>
             ) : null}
@@ -327,138 +442,24 @@ function AdminVocabPage() {
         ) : null}
       </Panel>
 
-      {items.length > 0 ? (
-        <>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900">Preview ({items.length})</h2>
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void handleSave()}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {mode === "anki" && cardsOnly ? "Import to SRS deck" : "Save to database"}
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {items.map((item, i) => (
-              <Panel key={i} className="space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <input
-                    value={item.word}
-                    onChange={(e) => updateItem(i, { word: e.target.value })}
-                    className="w-full bg-transparent text-xl font-black text-white border-b border-brand-400/30 focus:border-brand-200 outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeItem(i)}
-                    className="text-brand-200 hover:text-red-300"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field
-                    label="Part of speech"
-                    value={item.partOfSpeech}
-                    onChange={(v) => updateItem(i, { partOfSpeech: v })}
-                  />
-                  <Field
-                    label="Difficulty"
-                    value={item.difficultyTier ?? "Medium"}
-                    onChange={(v) => updateItem(i, { difficultyTier: v as DifficultyTier })}
-                  />
-                </div>
-                <Field
-                  label="Definition"
-                  value={item.definition}
-                  onChange={(v) => updateItem(i, { definition: v })}
-                  multiline
-                />
-                <Field
-                  label="dSAT passage"
-                  value={item.dSatPassage}
-                  onChange={(v) => updateItem(i, { dSatPassage: v })}
-                  multiline
-                />
-                <Field
-                  label="Roots / etymology"
-                  value={item.rootsEtymology ?? ""}
-                  onChange={(v) => updateItem(i, { rootsEtymology: v })}
-                />
-                <Field
-                  label="Synonyms (comma-separated)"
-                  value={item.synonyms.join(", ")}
-                  onChange={(v) =>
-                    updateItem(i, {
-                      synonyms: v
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean),
-                    })
-                  }
-                />
-                <Field
-                  label="SAT traps"
-                  value={item.satTraps ?? ""}
-                  onChange={(v) => updateItem(i, { satTraps: v })}
-                  multiline
-                />
-                {showQuizFields ? (
-                  <div className="rounded-lg border border-brand-400/30 bg-brand-800/40 p-3 space-y-2">
-                    <div className="text-xs font-bold uppercase text-brand-200">Quiz question</div>
-                    <Field
-                      label="Passage"
-                      value={item.quizQuestion.passageText}
-                      onChange={(v) =>
-                        updateItem(i, {
-                          quizQuestion: { ...item.quizQuestion, passageText: v },
-                        })
-                      }
-                      multiline
-                    />
-                    <Field
-                      label="Options (comma-separated, 4)"
-                      value={item.quizQuestion.options.join(", ")}
-                      onChange={(v) =>
-                        updateItem(i, {
-                          quizQuestion: {
-                            ...item.quizQuestion,
-                            options: v
-                              .split(",")
-                              .map((s) => s.trim())
-                              .filter(Boolean),
-                          },
-                        })
-                      }
-                    />
-                    <Field
-                      label="Correct answer"
-                      value={item.quizQuestion.correctAnswer}
-                      onChange={(v) =>
-                        updateItem(i, {
-                          quizQuestion: { ...item.quizQuestion, correctAnswer: v },
-                        })
-                      }
-                    />
-                    <Field
-                      label="Explanation"
-                      value={item.quizQuestion.explanation}
-                      onChange={(v) =>
-                        updateItem(i, {
-                          quizQuestion: { ...item.quizQuestion, explanation: v },
-                        })
-                      }
-                      multiline
-                    />
-                  </div>
-                ) : null}
-              </Panel>
-            ))}
-          </div>
-        </>
+      {drafts.length > 0 ? (
+        <VocabPreviewPanel
+          drafts={drafts}
+          saving={saving}
+          fixing={fixing}
+          fixingIndex={fixingIndex}
+          showQuizFields={showQuizFields}
+          saveLabel={saveLabel}
+          onSave={() => void handleSave()}
+          onChange={updateDraft}
+          onSetReviewed={setDraftReviewed}
+          onFixOne={(i) => void fixDraftAt(i)}
+          onFixMany={() => void fixManyDrafts()}
+          onStopFix={() => {
+            fixStopRef.current = true;
+          }}
+          onRemove={removeDraft}
+        />
       ) : null}
     </div>
   );
@@ -472,34 +473,6 @@ function AdminField({ label, children }: { label: string; children: React.ReactN
     <div>
       <label className="text-sm font-semibold text-brand-100">{label}</label>
       {children}
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  multiline,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  multiline?: boolean;
-}) {
-  return (
-    <div>
-      <label className="text-xs font-semibold text-brand-200">{label}</label>
-      {multiline ? (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          rows={2}
-          className={inputCls}
-        />
-      ) : (
-        <input value={value} onChange={(e) => onChange(e.target.value)} className={inputCls} />
-      )}
     </div>
   );
 }

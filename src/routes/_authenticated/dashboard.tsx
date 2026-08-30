@@ -296,16 +296,10 @@ function Dashboard() {
       />
 
       {vocabDueError ? (
-        <Panel className="border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+        <Panel className="border-brand-400/40 bg-brand-800/80 p-4 text-sm text-brand-100">
           Could not load vocab review counts: {vocabDueError}
         </Panel>
       ) : null}
-
-      <VocabDueBanner
-        dueCount={vocabDue}
-        deckId={vocabTopDeckId}
-        deckTitle={vocabTopDeckTitle}
-      />
 
       {/* Hero row: headline score + accuracy gauge */}
       <div className="grid gap-5 lg:grid-cols-5">
@@ -343,6 +337,14 @@ function Dashboard() {
           longest={sp?.longest_streak ?? 0}
           daysToExam={daysToExam}
         />
+        <div className="lg:col-span-2">
+          <VocabDueBanner
+            dueCount={vocabDue}
+            deckId={vocabTopDeckId}
+            deckTitle={vocabTopDeckTitle}
+            embedded
+          />
+        </div>
         {/* One panel, not two. The ranked steps are rule-based and always
             present; the suggestion above them and the ask box below are the
             model's read of the same data, so the student can push back on the
@@ -906,13 +908,13 @@ function VocabPanel({ due, streak }: { due: number; streak: number }) {
         Anki-style SRS + Words-in-Context quizzes. {due > 0 ? `${due} cards due now.` : "You're caught up on reviews."}
       </p>
       <div className="mt-3 flex items-center gap-2 text-sm text-white/60">
-        <Flame className="h-4 w-4 text-orange-400" />
+        <Flame className="h-4 w-4 text-brand-200" />
         <span className="font-bold tabular-nums text-white">{streak}</span>
         <span>day streak</span>
       </div>
       <Link
         to="/vocab"
-        className="btn-brand mt-auto inline-flex items-center gap-2 rounded-lg bg-brand-400 px-4 py-2.5 text-sm font-bold text-white"
+        className="btn-brand mt-auto inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-brand-700 tap shadow-lg shadow-brand-900/20 hover:bg-brand-50"
       >
         Open vocab <ArrowRight className="h-4 w-4" />
       </Link>

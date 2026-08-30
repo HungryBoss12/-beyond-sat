@@ -6,6 +6,7 @@ export type AdminAnim =
   | "overview"
   | "homepage"
   | "questions"
+  | "vocab"
   | "import"
   | "tests"
   | "daily"
@@ -46,6 +47,7 @@ export function AdminNavIcon({ anim, className, hovered: hoveredProp }: Props) {
       {anim === "overview" && <OverviewIcon hovered={h} />}
       {anim === "homepage" && <HomepageIcon hovered={h} />}
       {anim === "questions" && <QuestionsIcon hovered={h} />}
+      {anim === "vocab" && <VocabIcon hovered={h} />}
       {anim === "import" && <ImportIcon hovered={h} />}
       {anim === "tests" && <TestsIcon hovered={h} />}
       {anim === "daily" && <DailyIcon hovered={h} />}
@@ -155,6 +157,87 @@ function QuestionsIcon({ hovered }: { hovered: boolean }) {
       <path d="M9.5 9.2a2.6 2.6 0 0 1 5.1.8c0 1.7-2.5 2.2-2.5 3.8" />
       <circle cx="12" cy="17.2" r="0.9" fill="currentColor" stroke="none" />
     </motion.svg>
+  );
+}
+
+/** Flashcard stack + SRS loop — matches the vocab hub glyph family. */
+function VocabIcon({ hovered }: { hovered: boolean }) {
+  return (
+    <svg {...svgProps}>
+      {/* Back cards in the deck */}
+      <motion.rect
+        x="5.5"
+        y="6.5"
+        width="10"
+        height="12"
+        rx="1.4"
+        strokeOpacity={0.35}
+        animate={{
+          x: hovered ? 6.2 : 5.5,
+          y: hovered ? 5.8 : 6.5,
+          rotate: hovered ? 6 : 0,
+        }}
+        transition={SNAP}
+        style={{ willChange: "transform", transformOrigin: "10px 12px" }}
+      />
+      <motion.rect
+        x="4.5"
+        y="7.5"
+        width="10"
+        height="12"
+        rx="1.4"
+        strokeOpacity={0.55}
+        animate={{
+          x: hovered ? 4.8 : 4.5,
+          y: hovered ? 6.9 : 7.5,
+          rotate: hovered ? -4 : 0,
+        }}
+        transition={SNAP}
+        style={{ willChange: "transform", transformOrigin: "9px 13px" }}
+      />
+      {/* Front card */}
+      <motion.g
+        animate={{ y: hovered ? -2.5 : 0, rotate: hovered ? -2 : 0 }}
+        transition={hovered ? { type: "spring", stiffness: 420, damping: 16 } : SNAP}
+        style={{ willChange: "transform", transformOrigin: "12px 14px" }}
+      >
+        <rect x="3.5" y="8" width="10" height="12" rx="1.4" />
+        <motion.line
+          x1="5.8"
+          y1="11.2"
+          x2="11.2"
+          y2="11.2"
+          animate={{ scaleX: hovered ? 0.72 : 1 }}
+          transition={SNAP}
+          style={{ willChange: "transform", transformOrigin: "5.8px 11.2px" }}
+        />
+        <motion.rect
+          x="5.8"
+          y="13"
+          width="4.8"
+          height="1.3"
+          rx="0.35"
+          fill="currentColor"
+          stroke="none"
+          animate={{
+            scaleX: hovered ? 1.18 : 1,
+            opacity: hovered ? 1 : 0.85,
+          }}
+          transition={SNAP}
+          style={{ willChange: "transform", transformOrigin: "5.8px 13.6px" }}
+        />
+        <line x1="5.8" y1="15.6" x2="9.2" y2="15.6" strokeOpacity={0.45} />
+      </motion.g>
+      {/* SRS interval loop */}
+      <motion.g
+        animate={{ rotate: hovered ? -95 : 0, scale: hovered ? 1.08 : 1 }}
+        transition={SNAP}
+        style={{ willChange: "transform", transformOrigin: "17px 17px" }}
+      >
+        <path d="M16.2 16.8a3.2 3.2 0 1 0-2.5-3.1" strokeWidth={1.65} />
+        <path d="M13.4 13.2l-.2 2 1.8-.6" strokeWidth={1.5} />
+      </motion.g>
+    </svg>
   );
 }
 

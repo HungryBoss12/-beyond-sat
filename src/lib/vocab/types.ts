@@ -6,6 +6,10 @@ export type VocabDeck = {
   id: string;
   title: string;
   description: string | null;
+  parent_id: string | null;
+  sort_order: number;
+  is_folder: boolean;
+  path: string | null;
   created_at: string;
 };
 
@@ -20,7 +24,17 @@ export type VocabCard = {
   sat_traps: string | null;
   difficulty_tier: DifficultyTier;
   deck_id: string | null;
+  example_sentence: string | null;
+  antonym: string | null;
+  set_label: string | null;
   created_at: string;
+};
+
+export type DeckStats = {
+  new_count: number;
+  learning_count: number;
+  review_count: number;
+  total_count: number;
 };
 
 export type UserCardState = {
@@ -90,12 +104,24 @@ export type GeneratedVocabItem = {
   synonyms: string[];
   satTraps?: string;
   difficultyTier?: DifficultyTier;
+  exampleSentence?: string;
+  antonym?: string;
+  setLabel?: string;
+  ankiDeckPath?: string;
   quizQuestion: {
     passageText: string;
     options: string[];
     correctAnswer: string;
     explanation: string;
   };
+};
+
+export type AnkiDeckNode = {
+  path: string;
+  title: string;
+  parentPath: string | null;
+  sortOrder: number;
+  isFolder: boolean;
 };
 
 export type ReviewRating = 1 | 2 | 3 | 4;

@@ -36,7 +36,7 @@ export function VocabStreakWidget({ compact }: { compact?: boolean }) {
   if (compact) {
     return (
       <div className="flex items-center gap-2 text-sm">
-        <Flame className="h-4 w-4 text-orange-400" />
+        <Flame className="h-4 w-4 text-brand-200" />
         <span className="font-bold tabular-nums text-white">{streak}</span>
         <span className="text-white/60">day streak</span>
       </div>
@@ -59,7 +59,7 @@ export function VocabStreakWidget({ compact }: { compact?: boolean }) {
                 <div
                   className={`flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-bold ${
                     active
-                      ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-200"
+                      ? "border-brand-300/50 bg-brand-400/25 text-white"
                       : "border-white/10 bg-white/5 text-white/30"
                   }`}
                 >

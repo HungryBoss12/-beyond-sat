@@ -113,7 +113,7 @@ export function VocabQuizPlayer({ quiz, questions }: Props) {
             {result.score} / {result.total} correct
           </p>
           {result.missedQueued > 0 ? (
-            <p className="mt-2 text-sm text-amber-200">
+            <p className="mt-2 text-sm text-brand-100">
               {result.missedQueued} missed word{result.missedQueued === 1 ? "" : "s"} added to your
               review deck
             </p>
@@ -127,7 +127,7 @@ export function VocabQuizPlayer({ quiz, questions }: Props) {
                 key={qu.id}
                 className={cn(
                   "rounded-xl border p-4",
-                  r?.correct ? "border-emerald-400/30 bg-emerald-500/10" : "border-red-400/30 bg-red-500/10",
+                  r?.correct ? "border-brand-300/40 bg-brand-400/15" : "border-brand-400/30 bg-brand-800/60",
                 )}
               >
                 <div className="text-sm font-bold text-white/60">Question {i + 1}</div>
@@ -240,12 +240,12 @@ export function VocabQuizPlayer({ quiz, questions }: Props) {
                   className={cn(
                     "relative h-10 rounded-lg text-sm font-bold",
                     i === idx ? "bg-brand-400 text-[#0b0761]" : "bg-white/10",
-                    answers[qu.id] ? "ring-1 ring-emerald-400/50" : "",
+                    answers[qu.id] ? "ring-1 ring-brand-300/50" : "",
                   )}
                 >
                   {i + 1}
                   {flagged.has(qu.id) ? (
-                    <Bookmark className="absolute -right-0.5 -top-0.5 h-3 w-3 fill-amber-400 text-amber-400" />
+                    <Bookmark className="absolute -right-0.5 -top-0.5 h-3 w-3 fill-brand-200 text-brand-200" />
                   ) : null}
                 </button>
               ))}
@@ -276,7 +276,7 @@ export function VocabQuizPlayer({ quiz, questions }: Props) {
                 return n;
               })
             }
-            className={cn("tap rounded-lg p-2", flagged.has(q.id) ? "text-amber-400" : "text-white/50")}
+            className={cn("tap rounded-lg p-2", flagged.has(q.id) ? "text-brand-200" : "text-white/50")}
           >
             <Bookmark className={cn("h-5 w-5", flagged.has(q.id) && "fill-current")} />
           </button>

@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowLeft, Loader2, RotateCcw } from "lucide-react";
 import { fetchVocabSession, submitVocabReview } from "@/lib/vocab/client";
 import { supabase } from "@/integrations/supabase/client";
+import { AmbientGlow } from "@/components/ui/reveal-card";
 import {
   emptySessionSummary,
   RATING_LABELS,
@@ -45,7 +46,14 @@ function highlightWord(passage: string, word: string): ReactNode {
 function CardFront({ card }: { card: SessionCard["card"] }) {
   return (
     <>
-      <div className="text-sm uppercase tracking-wide text-white/70">{card.part_of_speech}</div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-sm uppercase tracking-wide text-white/70">{card.part_of_speech}</div>
+        {card.set_label ? (
+          <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/80 ring-1 ring-white/20">
+            {card.set_label}
+          </span>
+        ) : null}
+      </div>
       <h1 className="mt-2 text-4xl font-black text-white">{card.word}</h1>
       <p className="mt-6 text-lg leading-relaxed text-white/85">
         {highlightWord(card.dsat_passage, card.word)}
@@ -56,10 +64,35 @@ function CardFront({ card }: { card: SessionCard["card"] }) {
 }
 
 function CardBack({ card }: { card: SessionCard["card"] }) {
+  const example = card.example_sentence || card.dsat_passage;
   return (
     <>
-      <h2 className="text-xl font-bold text-white">{card.word}</h2>
-      <p className="mt-3 text-lg text-white/90">{card.definition}</p>
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-xl font-bold text-white">{card.word}</h2>
+        {card.set_label ? (
+          <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/80 ring-1 ring-white/20">
+            {card.set_label}
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-4 space-y-3 text-sm">
+        <div>
+          <div className="text-xs font-bold uppercase tracking-wide text-brand-200">Definition</div>
+          <p className="mt-1 text-base text-white/90">{card.definition}</p>
+        </div>
+        {example ? (
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wide text-brand-200">Example</div>
+            <p className="mt-1 italic text-white/80">{example}</p>
+          </div>
+        ) : null}
+        {card.antonym ? (
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wide text-brand-200">Antonym</div>
+            <p className="mt-1 text-white/80">{card.antonym}</p>
+          </div>
+        ) : null}
+      </div>
       {card.roots_etymology ? (
         <p className="mt-4 text-sm text-white/60">
           <span className="font-semibold text-white/80">Roots: </span>
@@ -73,7 +106,7 @@ function CardBack({ card }: { card: SessionCard["card"] }) {
         </p>
       ) : null}
       {card.sat_traps ? (
-        <div className="mt-4 rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-100">
+        <div className="mt-4 rounded-lg border border-brand-400/40 bg-brand-800/70 p-3 text-sm text-brand-100">
           <span className="font-bold">SAT trap: </span>
           {card.sat_traps}
         </div>
@@ -91,6 +124,7 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [streak, setStreak] = useState<number | undefined>();
+  const [deckStats, setDeckStats] = useState({ new: 0, learning: 0, review: 0 });
   const [pressedRating, setPressedRating] = useState<ReviewRating | null>(null);
 
   const sessionRef = useRef<SessionSummary>(emptySessionSummary(deckId, deckTitle));
@@ -112,10 +146,19 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
     setError(null);
     resetSession();
     try {
-      const { cards } = await fetchVocabSession(deckId);
+      const [{ cards }, statsRes] = await Promise.all([
+        fetchVocabSession(deckId),
+        supabase.rpc("vocab_deck_stats", { p_deck_id: deckId }),
+      ]);
       setQueue(cards);
       setIdx(0);
       setFlipped(false);
+      const stats = Array.isArray(statsRes.data) ? statsRes.data[0] : statsRes.data;
+      setDeckStats({
+        new: stats?.new_count ?? 0,
+        learning: stats?.learning_count ?? 0,
+        review: stats?.review_count ?? 0,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load deck");
     } finally {
@@ -222,7 +265,7 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
     return (
       <>
         {error ? (
-          <div className="fixed inset-x-0 top-0 z-50 bg-red-600/90 px-4 py-2 text-center text-sm text-white">
+          <div className="fixed inset-x-0 top-0 z-50 bg-brand-800 px-4 py-2 text-center text-sm text-white ring-1 ring-brand-400/40">
             {error}
           </div>
         ) : null}
@@ -280,7 +323,7 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
           initial="initial"
           animate="animate"
         >
-          <p className="text-red-300">{error}</p>
+          <p className="text-brand-100">{error}</p>
           <div className="flex flex-wrap justify-center gap-3">
             <button type="button" onClick={() => void load()} className="btn-brand tap rounded-xl px-4 py-2">
               Retry
@@ -320,9 +363,10 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
   const cardKey = `${stateId}-${idx}`;
 
   return (
-    <div className="vocab-surface flex min-h-[100dvh] flex-col bg-[#0b0761]">
+    <div className="vocab-surface relative isolate flex min-h-[100dvh] flex-col bg-[#0b0761]">
+      <AmbientGlow />
       {error ? (
-        <div className="bg-red-600/90 px-4 py-2 text-center text-sm text-white">{error}</div>
+        <div className="bg-brand-800 px-4 py-2 text-center text-sm text-white ring-1 ring-brand-400/40">{error}</div>
       ) : null}
       <header className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <Link
@@ -332,6 +376,11 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
           <ArrowLeft className="h-4 w-4" />
           {deckTitle}
         </Link>
+        <div className="flex items-center gap-3 text-xs font-bold tabular-nums">
+          <span className="text-sky-300">{deckStats.new}</span>
+          <span className="text-red-300">{deckStats.learning}</span>
+          <span className="text-emerald-300">{deckStats.review}</span>
+        </div>
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
             key={cardKey}
@@ -404,12 +453,12 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
                 onClick={() => rate(r)}
                 whileTap={reduceMotion ? undefined : { scale: 0.97 }}
                 className={cn(
-                  "tap flex flex-col items-center rounded-xl py-3 text-sm font-bold text-white transition-colors duration-200",
+                  "vocab-reveal-surface tap flex flex-col items-center rounded-xl py-3 text-sm font-bold text-white ring-1 ring-white/25 transition-colors duration-200",
                   pressedRating === r && "opacity-80",
-                  r === 1 && "bg-red-500/20 hover:bg-red-500/30",
-                  r === 2 && "bg-orange-500/20 hover:bg-orange-500/30",
-                  r === 3 && "bg-emerald-500/20 hover:bg-emerald-500/30",
-                  r === 4 && "bg-brand-400/20 hover:bg-brand-400/30",
+                  r === 1 && "bg-brand-900/50 hover:bg-brand-900/70",
+                  r === 2 && "bg-brand-800/55 hover:bg-brand-800/75",
+                  r === 3 && "bg-brand-600/45 hover:bg-brand-600/60",
+                  r === 4 && "bg-brand-400/30 hover:bg-brand-400/45",
                 )}
               >
                 <span>{RATING_LABELS[r]}</span>

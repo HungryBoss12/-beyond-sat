@@ -32,7 +32,7 @@ function VocabDeckByIdPage() {
   if (error) {
     return (
       <div className="vocab-surface flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[#0b0761] p-6 text-center">
-        <p className="text-red-300">{error}</p>
+        <p className="text-brand-100">{error}</p>
         <Link to="/vocab/decks" className="btn-brand tap rounded-xl px-4 py-2 text-sm font-bold">
           Back to decks
         </Link>

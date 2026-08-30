@@ -7,6 +7,7 @@ import { handleImportVision } from "./lib/import/vision-handler";
 import { handleImportFix } from "./lib/import/fix-handler";
 import { handleImportFigure } from "./lib/import/figure-handler";
 import { handleVocabAdminSave } from "./lib/vocab/handlers/admin-save";
+import { handleVocabAdminCard, handleVocabAdminDeck } from "./lib/vocab/handlers/admin-decks";
 import { handleVocabGenerate } from "./lib/vocab/handlers/generate";
 import { handleVocabQuizSubmit } from "./lib/vocab/handlers/quiz-submit";
 import { handleVocabReview, handleVocabSession } from "./lib/vocab/handlers/session";
@@ -115,6 +116,16 @@ export default {
 
       if (url.pathname === "/api/vocab/admin/save") {
         return await handleVocabAdminSave(request, env);
+      }
+
+      const deckAdmin = url.pathname.match(/^\/api\/vocab\/admin\/decks\/([^/]+)$/);
+      if (deckAdmin) {
+        return await handleVocabAdminDeck(request, env, decodeURIComponent(deckAdmin[1]));
+      }
+
+      const cardAdmin = url.pathname.match(/^\/api\/vocab\/admin\/cards\/([^/]+)$/);
+      if (cardAdmin) {
+        return await handleVocabAdminCard(request, env, decodeURIComponent(cardAdmin[1]));
       }
 
       if (url.pathname === "/api/telegram/webhook") {

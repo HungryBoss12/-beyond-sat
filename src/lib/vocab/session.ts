@@ -23,6 +23,28 @@ function sortStates(rows: StateRow[]): StateRow[] {
   });
 }
 
+async function resolveDeckScopeIds(
+  config: SupabaseConfig,
+  token: string,
+  deckId: string,
+): Promise<string[]> {
+  const { data, error } = await restFetch<string[]>(
+    config,
+    token,
+    "rpc/vocab_deck_descendant_ids",
+    {
+      method: "POST",
+      body: JSON.stringify({ p_deck_id: deckId }),
+    },
+  );
+  if (error) throw new Error(error);
+  const ids = (data ?? []).filter(Boolean);
+  return ids.length ? ids : [deckId];
+}
+
+function deckIdInFilter(ids: string[]): string {
+  return `in.(${ids.join(",")})`;
+}
 
 export async function fetchDueSession(
   config: SupabaseConfig,
@@ -31,12 +53,13 @@ export async function fetchDueSession(
   deckId?: string,
 ): Promise<StateRow[]> {
   const nowIso = new Date().toISOString();
+  const deckIds = deckId ? await resolveDeckScopeIds(config, token, deckId) : null;
+  const deckFilter = deckIds ? `&vocab_cards.deck_id=${deckIdInFilter(deckIds)}` : "";
+
   const { data: dueRows, error: dueErr } = await restFetch<StateRow[]>(
     config,
     token,
-    deckId
-      ? `user_card_states?user_id=eq.${userId}&due=lte.${nowIso}&vocab_cards.deck_id=eq.${deckId}&select=*,vocab_cards(*)&limit=50`
-      : `user_card_states?user_id=eq.${userId}&due=lte.${nowIso}&select=*,vocab_cards(*)&limit=50`,
+    `user_card_states?user_id=eq.${userId}&due=lte.${nowIso}${deckFilter}&select=*,vocab_cards(*)&limit=50`,
   );
   if (dueErr) throw new Error(dueErr);
 
@@ -53,8 +76,8 @@ export async function fetchDueSession(
     const ownedIds = new Set((ownedStates ?? []).map((s) => s.card_id));
     states.forEach((s) => ownedIds.add(s.card_id));
 
-    const cardPath = deckId
-      ? `vocab_cards?deck_id=eq.${deckId}&select=*&order=created_at.asc&limit=500`
+    const cardPath = deckIds
+      ? `vocab_cards?deck_id=${deckIdInFilter(deckIds)}&select=*&order=created_at.asc&limit=500`
       : "vocab_cards?select=*&order=created_at.asc&limit=500";
 
     const { data: allCards } = await restFetch<VocabCard[]>(config, token, cardPath);

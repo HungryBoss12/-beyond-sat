@@ -61,7 +61,19 @@ export function buildDeckTreeFromAnki(
     }
   }
 
+  markFoldersWithChildren(nodes);
+
   return [...nodes.values()].sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+/** Any node referenced as a parent becomes a folder (e.g. VOCABOOK root). */
+export function markFoldersWithChildren(nodes: Map<string, AnkiDeckNode>): void {
+  for (const node of nodes.values()) {
+    if (node.parentPath) {
+      const parent = nodes.get(node.parentPath);
+      if (parent) parent.isFolder = true;
+    }
+  }
 }
 
 /** Resolve leaf deck path for a note from Anki card deck id. */

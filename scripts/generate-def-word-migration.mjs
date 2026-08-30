@@ -10,9 +10,12 @@ import { createHash } from "node:crypto";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 const jsonPath = join(root, "supabase/seed-data/def-word-tree.json");
-const outPath = join(root, "supabase/migrations/20260831000006_reseed_def_word_subdecks.sql");
+const outPath = join(root, "supabase/migrations/20260831000008_reseed_def_word_fixed.sql");
 
-const OLD_DECK = "00000000-0000-4000-8000-000000000002";
+const LEGACY_DECK_IDS = [
+  "00000000-0000-4000-8000-000000000001",
+  "00000000-0000-4000-8000-000000000002",
+];
 
 function sqlStr(value) {
   if (value == null) return "NULL";
@@ -28,11 +31,14 @@ const { deckTree, items } = JSON.parse(readFileSync(jsonPath, "utf8"));
 const pathToId = new Map(deckTree.map((d) => [d.path, deckId(d.path)]));
 
 const lines = [
-  "-- Re-seed Def-Word as grouped Anki subdecks. Idempotent.",
+  "-- Full Def-Word re-seed with per-deck card uniqueness. Resets SRS card states.",
   "",
-  `-- Remove monolithic Def-Word deck cards`,
-  `DELETE FROM public.vocab_cards WHERE deck_id = '${OLD_DECK}';`,
-  `DELETE FROM public.vocab_decks WHERE id = '${OLD_DECK}';`,
+  "DELETE FROM public.vocab_cards;",
+  "",
+  ...LEGACY_DECK_IDS.map(
+    (id) =>
+      `DELETE FROM public.vocab_decks WHERE id = '${id}';`,
+  ),
   "",
 ];
 
@@ -62,7 +68,9 @@ for (const deck of sortedDecks) {
   lines.push(
     `VALUES ('${id}', ${sqlStr(deck.title)}, ${sqlStr(`Imported from ${deck.path}`)}, ${parentId ? `'${parentId}'` : "NULL"}, ${deck.sortOrder}, ${deck.isFolder}, ${sqlStr(deck.path)})`,
   );
-  lines.push(`ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, parent_id = EXCLUDED.parent_id, sort_order = EXCLUDED.sort_order, is_folder = EXCLUDED.is_folder, path = EXCLUDED.path;`);
+  lines.push(
+    `ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, parent_id = EXCLUDED.parent_id, sort_order = EXCLUDED.sort_order, is_folder = EXCLUDED.is_folder, path = EXCLUDED.path;`,
+  );
   lines.push("");
 }
 
@@ -75,7 +83,9 @@ for (const item of items) {
   lines.push(
     `VALUES (${sqlStr(item.word)}, ${sqlStr(item.partOfSpeech)}, ${sqlStr(item.definition)}, ${sqlStr(item.dsatPassage)}, ${sqlStr(item.exampleSentence)}, ${sqlStr(item.antonym)}, ${sqlStr(item.setLabel)}, '{}'::text[], ${sqlStr(item.difficultyTier)}, '${deckIdVal}')`,
   );
-  lines.push(`ON CONFLICT (word) DO UPDATE SET definition = EXCLUDED.definition, dsat_passage = EXCLUDED.dsat_passage, example_sentence = EXCLUDED.example_sentence, antonym = EXCLUDED.antonym, set_label = EXCLUDED.set_label, deck_id = EXCLUDED.deck_id;`);
+  lines.push(
+    `ON CONFLICT (deck_id, word) WHERE deck_id IS NOT NULL DO UPDATE SET definition = EXCLUDED.definition, dsat_passage = EXCLUDED.dsat_passage, example_sentence = EXCLUDED.example_sentence, antonym = EXCLUDED.antonym, set_label = EXCLUDED.set_label;`,
+  );
   lines.push("");
 }
 

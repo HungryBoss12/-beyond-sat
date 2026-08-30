@@ -4,24 +4,31 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { AmbientGlow } from "@/components/ui/reveal-card";
 import { PageHead, Panel } from "@/components/ui/panel";
 import { DeckTreeList } from "@/components/vocab/DeckTreeList";
-import { fetchDeckPickerRows, type DeckPickerRow } from "@/lib/vocab/client";
+import { AnkiDeckCountLegend } from "@/components/vocab/AnkiDeckCounts";
+import { fetchDeckPickerRows, fetchVocabDueCount, type DeckPickerRow } from "@/lib/vocab/client";
 import { startVocabReminderPoll } from "@/lib/vocab/reminders";
 
 export const Route = createFileRoute("/_authenticated/vocab/decks")({
   component: VocabDecksPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    hint: typeof search.hint === "string" ? search.hint : undefined,
+  }),
   head: () => ({ meta: [{ title: "Decks — BeyondSAT" }] }),
 });
 
 function VocabDecksPage() {
+  const { hint } = Route.useSearch();
   const [rows, setRows] = useState<DeckPickerRow[]>([]);
+  const [totalDue, setTotalDue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
       try {
-        const data = await fetchDeckPickerRows();
+        const [data, due] = await Promise.all([fetchDeckPickerRows(), fetchVocabDueCount()]);
         setRows(data);
+        setTotalDue(due);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not load decks");
       } finally {
@@ -32,13 +39,12 @@ function VocabDecksPage() {
 
   useEffect(() => {
     return startVocabReminderPoll(async () => {
-      const fresh = await fetchDeckPickerRows();
+      const [fresh, due] = await Promise.all([fetchDeckPickerRows(), fetchVocabDueCount()]);
       setRows(fresh);
-      return fresh.reduce((n, r) => n + r.dueCount, 0);
+      setTotalDue(due);
+      return due;
     }, "Vocab");
   }, []);
-
-  const totalDue = rows.reduce((n, r) => n + r.dueCount, 0);
 
   return (
     <div className="relative isolate mx-auto max-w-2xl space-y-6 pb-10">
@@ -61,11 +67,13 @@ function VocabDecksPage() {
         }
       />
 
-      <div className="flex justify-end gap-4 text-xs font-semibold text-brand-200/80">
-        <span className="text-sky-300">New</span>
-        <span className="text-red-300">Learning</span>
-        <span className="text-emerald-300">Review</span>
-      </div>
+      <AnkiDeckCountLegend />
+
+      {hint === "folder" ? (
+        <Panel className="p-4 text-center text-sm text-brand-100">
+          Folders group subdecks — open a subdeck below to start studying.
+        </Panel>
+      ) : null}
 
       {loading ? (
         <div className="flex justify-center py-16">

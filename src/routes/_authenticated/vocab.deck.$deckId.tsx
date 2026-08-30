@@ -11,6 +11,7 @@ export const Route = createFileRoute("/_authenticated/vocab/deck/$deckId")({
 
 function VocabDeckByIdPage() {
   const { deckId } = Route.useParams();
+  const navigate = Route.useNavigate();
   const [deckTitle, setDeckTitle] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,16 +19,28 @@ function VocabDeckByIdPage() {
     void (async () => {
       const { data, error: err } = await supabase
         .from("vocab_decks")
-        .select("title")
+        .select("title,is_folder")
         .eq("id", deckId)
         .maybeSingle();
       if (err) {
         setError(err.message);
         return;
       }
-      setDeckTitle(data?.title ?? "Deck");
+      if (!data) {
+        setError("Deck not found");
+        return;
+      }
+      if (data.is_folder) {
+        void navigate({
+          to: "/vocab/decks",
+          search: { hint: "folder" },
+          replace: true,
+        });
+        return;
+      }
+      setDeckTitle(data.title ?? "Deck");
     })();
-  }, [deckId]);
+  }, [deckId, navigate]);
 
   if (error) {
     return (

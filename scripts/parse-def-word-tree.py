@@ -74,6 +74,11 @@ for prefix, paths in groups.items():
     for p in paths:
         nodes[p]["parentPath"] = fp
 
+for node in nodes.values():
+    parent = node.get("parentPath")
+    if parent and parent in nodes:
+        nodes[parent]["isFolder"] = True
+
 deck_tree = sorted(nodes.values(), key=lambda x: x["sortOrder"])
 
 cur.execute("SELECT id,name FROM decks")

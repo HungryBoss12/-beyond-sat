@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, RotateCcw } from "lucide-react";
 import { fetchVocabSession, submitVocabReview } from "@/lib/vocab/client";
 import { supabase } from "@/integrations/supabase/client";
 import { AmbientGlow } from "@/components/ui/reveal-card";
+import { AnkiDeckCounts } from "@/components/vocab/AnkiDeckCounts";
 import {
   emptySessionSummary,
   RATING_LABELS,
@@ -376,11 +377,11 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
           <ArrowLeft className="h-4 w-4" />
           {deckTitle}
         </Link>
-        <div className="flex items-center gap-3 text-xs font-bold tabular-nums">
-          <span className="text-sky-300">{deckStats.new}</span>
-          <span className="text-red-300">{deckStats.learning}</span>
-          <span className="text-emerald-300">{deckStats.review}</span>
-        </div>
+        <AnkiDeckCounts
+          newCount={deckStats.new}
+          learningCount={deckStats.learning}
+          reviewCount={deckStats.review}
+        />
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
             key={cardKey}

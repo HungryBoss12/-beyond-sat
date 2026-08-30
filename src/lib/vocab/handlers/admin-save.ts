@@ -202,10 +202,11 @@ export async function handleVocabAdminSave(request: Request, env: unknown): Prom
 
     if (cardErr) {
       if (cardErr.includes("duplicate") || cardErr.includes("23505")) {
+        const deckFilter = deckId ? `&deck_id=eq.${deckId}` : "";
         const { data: existing } = await restFetch<{ id: string }[]>(
           auth.config,
           auth.token,
-          `vocab_cards?word=eq.${encodeURIComponent(item.word.trim().toLowerCase())}&select=id`,
+          `vocab_cards?word=eq.${encodeURIComponent(item.word.trim().toLowerCase())}${deckFilter}&select=id&limit=1`,
         );
         if (!existing?.[0]) {
           return jsonResponse({ error: `Duplicate word: ${item.word}` }, 409);

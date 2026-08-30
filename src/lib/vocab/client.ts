@@ -346,7 +346,7 @@ export async function fetchDeckPickerRows(): Promise<DeckPickerRow[]> {
     }),
   );
 
-  return rows.filter((r) => r.is_folder || r.cardCount > 0);
+  return rows.filter((r) => r.cardCount > 0);
 }
 
 export type VocabDueSummary = {

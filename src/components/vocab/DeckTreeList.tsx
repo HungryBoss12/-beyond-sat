@@ -1,31 +1,10 @@
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, Layers } from "lucide-react";
+import { ChevronDown, ChevronRight, FolderOpen, Layers } from "lucide-react";
 import { RevealLink } from "@/components/ui/reveal-card";
 import { Panel } from "@/components/ui/panel";
+import { usePointerGlow } from "@/hooks/usePointerGlow";
+import { AnkiDeckCounts } from "@/components/vocab/AnkiDeckCounts";
 import type { DeckPickerRow } from "@/lib/vocab/client";
-
-function AnkiCounts({ row }: { row: DeckPickerRow }) {
-  const { newCount, learningCount, reviewCount } = row;
-  if (row.is_folder) {
-    return (
-      <div className="flex items-center gap-2 tabular-nums text-sm">
-        <span className="text-sky-300">{newCount || 0}</span>
-        <span className="text-brand-200/40">|</span>
-        <span className="text-red-300">{learningCount || 0}</span>
-        <span className="text-brand-200/40">|</span>
-        <span className="text-emerald-300">{reviewCount || 0}</span>
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-center gap-2 tabular-nums text-sm font-bold">
-      <span className="min-w-[1.25rem] text-right text-sky-300">{newCount || 0}</span>
-      <span className="min-w-[1.25rem] text-right text-red-300">{learningCount || 0}</span>
-      <span className="min-w-[1.25rem] text-right text-emerald-300">{reviewCount || 0}</span>
-    </div>
-  );
-}
 
 function DeckRow({ row }: { row: DeckPickerRow }) {
   return (
@@ -38,15 +17,59 @@ function DeckRow({ row }: { row: DeckPickerRow }) {
             </div>
             <div className="min-w-0">
               <h3 className="truncate font-bold text-white">{row.title}</h3>
-              <p className="text-xs text-white/50">
+              <p className="text-xs text-brand-100">
                 {row.cardCount} card{row.cardCount === 1 ? "" : "s"}
               </p>
             </div>
           </div>
-          <AnkiCounts row={row} />
+          <AnkiDeckCounts
+            newCount={row.newCount}
+            learningCount={row.learningCount}
+            reviewCount={row.reviewCount}
+          />
         </div>
       </Panel>
     </RevealLink>
+  );
+}
+
+function FolderRow({
+  row,
+  depth,
+  isOpen,
+  childCount,
+  onToggle,
+}: {
+  row: DeckPickerRow;
+  depth: number;
+  isOpen: boolean;
+  childCount: number;
+  onToggle: () => void;
+}) {
+  const ref = usePointerGlow<HTMLButtonElement>();
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onToggle}
+      style={{ marginLeft: depth * 12 }}
+      className="reveal-surface tap flex w-full items-center justify-between gap-3 rounded-2xl border border-brand-400/40 bg-brand-600 px-4 py-3 text-left text-white shadow-panel transition hover:border-brand-400/60"
+    >
+      <span className="flex min-w-0 items-center gap-2.5 font-bold">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-400/25 text-brand-100 ring-1 ring-brand-300/30">
+          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </span>
+        <FolderOpen className="h-4 w-4 shrink-0 text-brand-200" aria-hidden />
+        <span className="truncate">{row.title}</span>
+        <span className="text-xs font-semibold text-brand-100">({childCount})</span>
+      </span>
+      <AnkiDeckCounts
+        newCount={row.newCount}
+        learningCount={row.learningCount}
+        reviewCount={row.reviewCount}
+      />
+    </button>
   );
 }
 
@@ -68,28 +91,22 @@ export function DeckTreeList({ rows }: { rows: DeckPickerRow[] }) {
   }, [rows]);
 
   function toggle(id: string) {
-    setOpen((prev) => ({ ...prev, [id]: !prev[id] }));
+    setOpen((prev) => ({ ...prev, [id]: !(prev[id] ?? false) }));
   }
 
   function renderNode(row: DeckPickerRow, depth = 0): React.ReactNode {
     if (row.is_folder) {
       const children = byParent.get(row.id) ?? [];
-      const isOpen = open[row.id] ?? true;
+      const isOpen = open[row.id] ?? false;
       return (
         <div key={row.id} className="space-y-2">
-          <button
-            type="button"
-            onClick={() => toggle(row.id)}
-            className="vocab-reveal-surface tap flex w-full items-center justify-between rounded-xl border border-white/20 bg-brand-800/60 px-4 py-3 text-left ring-1 ring-white/10"
-            style={{ marginLeft: depth * 12 }}
-          >
-            <span className="flex items-center gap-2 font-bold text-white">
-              {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              {row.title}
-              <span className="text-xs font-normal text-white/50">({children.length})</span>
-            </span>
-            <AnkiCounts row={row} />
-          </button>
+          <FolderRow
+            row={row}
+            depth={depth}
+            isOpen={isOpen}
+            childCount={children.length}
+            onToggle={() => toggle(row.id)}
+          />
           {isOpen ? (
             <div className="space-y-2">
               {children.map((child) => renderNode(child, depth + 1))}

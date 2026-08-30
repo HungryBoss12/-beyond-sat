@@ -33,6 +33,7 @@ import { Route as AuthenticatedAdminHomepageRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminImportRouteImport } from './routes/_authenticated/admin.import'
 import { Route as AuthenticatedAdminMocksRouteImport } from './routes/_authenticated/admin.mocks'
 import { Route as AuthenticatedAdminNewsRouteImport } from './routes/_authenticated/admin.news'
+import { Route as AuthenticatedAdminNotificationsRouteImport } from './routes/_authenticated/admin.notifications'
 import { Route as AuthenticatedAdminQuestionsRouteImport } from './routes/_authenticated/admin.questions'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminTestsRouteImport } from './routes/_authenticated/admin.tests'
@@ -180,6 +181,12 @@ const AuthenticatedAdminNewsRoute = AuthenticatedAdminNewsRouteImport.update({
   path: '/news',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminNotificationsRoute =
+  AuthenticatedAdminNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminQuestionsRoute =
   AuthenticatedAdminQuestionsRouteImport.update({
     id: '/questions',
@@ -334,6 +341,7 @@ export interface FileRoutesByFullPath {
   '/admin/import': typeof AuthenticatedAdminImportRoute
   '/admin/mocks': typeof AuthenticatedAdminMocksRoute
   '/admin/news': typeof AuthenticatedAdminNewsRoute
+  '/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
   '/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/tests': typeof AuthenticatedAdminTestsRoute
@@ -379,6 +387,7 @@ export interface FileRoutesByTo {
   '/admin/import': typeof AuthenticatedAdminImportRoute
   '/admin/mocks': typeof AuthenticatedAdminMocksRoute
   '/admin/news': typeof AuthenticatedAdminNewsRoute
+  '/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
   '/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/tests': typeof AuthenticatedAdminTestsRoute
@@ -428,6 +437,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/import': typeof AuthenticatedAdminImportRoute
   '/_authenticated/admin/mocks': typeof AuthenticatedAdminMocksRoute
   '/_authenticated/admin/news': typeof AuthenticatedAdminNewsRoute
+  '/_authenticated/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
   '/_authenticated/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/tests': typeof AuthenticatedAdminTestsRoute
@@ -478,6 +488,7 @@ export interface FileRouteTypes {
     | '/admin/import'
     | '/admin/mocks'
     | '/admin/news'
+    | '/admin/notifications'
     | '/admin/questions'
     | '/admin/settings'
     | '/admin/tests'
@@ -523,6 +534,7 @@ export interface FileRouteTypes {
     | '/admin/import'
     | '/admin/mocks'
     | '/admin/news'
+    | '/admin/notifications'
     | '/admin/questions'
     | '/admin/settings'
     | '/admin/tests'
@@ -571,6 +583,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/import'
     | '/_authenticated/admin/mocks'
     | '/_authenticated/admin/news'
+    | '/_authenticated/admin/notifications'
     | '/_authenticated/admin/questions'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/tests'
@@ -774,6 +787,13 @@ declare module '@tanstack/react-router' {
       path: '/news'
       fullPath: '/admin/news'
       preLoaderRoute: typeof AuthenticatedAdminNewsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/notifications': {
+      id: '/_authenticated/admin/notifications'
+      path: '/notifications'
+      fullPath: '/admin/notifications'
+      preLoaderRoute: typeof AuthenticatedAdminNotificationsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/questions': {
@@ -984,6 +1004,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminImportRoute: typeof AuthenticatedAdminImportRoute
   AuthenticatedAdminMocksRoute: typeof AuthenticatedAdminMocksRoute
   AuthenticatedAdminNewsRoute: typeof AuthenticatedAdminNewsRoute
+  AuthenticatedAdminNotificationsRoute: typeof AuthenticatedAdminNotificationsRoute
   AuthenticatedAdminQuestionsRoute: typeof AuthenticatedAdminQuestionsRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminTestsRoute: typeof AuthenticatedAdminTestsRoute
@@ -1000,6 +1021,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminImportRoute: AuthenticatedAdminImportRoute,
   AuthenticatedAdminMocksRoute: AuthenticatedAdminMocksRoute,
   AuthenticatedAdminNewsRoute: AuthenticatedAdminNewsRoute,
+  AuthenticatedAdminNotificationsRoute: AuthenticatedAdminNotificationsRoute,
   AuthenticatedAdminQuestionsRoute: AuthenticatedAdminQuestionsRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminTestsRoute: AuthenticatedAdminTestsRoute,

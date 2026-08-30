@@ -1,11 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, Send, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { PageHead, Panel } from "@/components/ui/panel";
+import { AdminAudiencePicker } from "@/components/admin/AdminAudiencePicker";
+import { AdminFieldLabel, AdminSelect, adminInputCls } from "@/components/admin/AdminSelect";
 import { listActiveClasses } from "@/lib/classes/api";
-import { signedUrl } from "@/lib/classes/api";
-import { uploadHomeworkFile } from "@/lib/classes/uploads";
-import { createNotification } from "@/lib/notifications/client";
 import { fetchVocabDecks } from "@/lib/vocab/client";
 import {
   createVocabHomework,
@@ -15,14 +14,13 @@ import {
   type VocabHomeworkAssignment,
 } from "@/lib/vocab/homework";
 import { supabase } from "@/integrations/supabase/client";
+import { validateNotificationAudience } from "@/lib/notifications/admin";
+import type { NotificationAudience } from "@/lib/notifications/types";
 
 export const Route = createFileRoute("/_authenticated/admin/vocab/assignments")({
   component: AdminVocabAssignmentsPage,
   head: () => ({ meta: [{ title: "Assignments — Admin" }] }),
 });
-
-const inputCls =
-  "mt-1 w-full rounded-lg border border-brand-400/40 bg-brand-800 px-3 py-2 text-sm text-white";
 
 function AdminVocabAssignmentsPage() {
   const [assignments, setAssignments] = useState<VocabHomeworkAssignment[]>([]);
@@ -43,15 +41,10 @@ function AdminVocabAssignmentsPage() {
   const [quizId, setQuizId] = useState("");
   const [cardTarget, setCardTarget] = useState(20);
   const [recurrence, setRecurrence] = useState<"once" | "daily" | "weekly">("daily");
-  const [audienceType, setAudienceType] = useState<"class" | "all" | "users">("all");
+  const [audienceType, setAudienceType] = useState<NotificationAudience>("all");
   const [classId, setClassId] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [displaySeconds, setDisplaySeconds] = useState(604800);
-
-  const [notifyTitle, setNotifyTitle] = useState("");
-  const [notifyBody, setNotifyBody] = useState("");
-  const [notifyLink, setNotifyLink] = useState("");
-  const [notifyImage, setNotifyImage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,8 +86,42 @@ function AdminVocabAssignmentsPage() {
     [assignments, selectedId],
   );
 
+  const classOptions = useMemo(
+    () => classes.map((c) => ({ value: c.id, label: c.name })),
+    [classes],
+  );
+  const deckOptions = useMemo(
+    () => decks.map((d) => ({ value: d.id, label: d.title })),
+    [decks],
+  );
+  const quizOptions = useMemo(
+    () => quizzes.map((q) => ({ value: q.id, label: q.title })),
+    [quizzes],
+  );
+  const userOptions = useMemo(
+    () =>
+      profiles.map((p) => ({
+        id: p.id,
+        label: p.full_name?.trim() || `Student ${p.id.slice(0, 8)}`,
+      })),
+    [profiles],
+  );
+
   async function handleCreateAssignment() {
     if (!title.trim()) return;
+    const audienceErr = validateNotificationAudience(audienceType, classId, selectedUsers);
+    if (audienceErr) {
+      setError(audienceErr);
+      return;
+    }
+    if (targetType === "deck" && !deckId) {
+      setError("Choose a deck.");
+      return;
+    }
+    if (targetType === "quiz" && !quizId) {
+      setError("Choose a quiz.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -121,44 +148,11 @@ function AdminVocabAssignmentsPage() {
     }
   }
 
-  async function handleSendNotification() {
-    if (!notifyTitle.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await createNotification({
-        title: notifyTitle,
-        body: notifyBody,
-        imageUrl: notifyImage ?? undefined,
-        linkUrl: notifyLink || undefined,
-        linkLabel: "Open",
-        audienceType,
-        classId: audienceType === "class" ? classId : undefined,
-        userIds: audienceType === "users" ? selectedUsers : undefined,
-        displaySeconds,
-      });
-      setNotifyTitle("");
-      setNotifyBody("");
-      setNotifyLink("");
-      setNotifyImage(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Notification failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function onNotifyImage(file: File) {
-    const uploaded = await uploadHomeworkFile(file, file.name, "notifications");
-    const url = await signedUrl("homework-uploads", uploaded.storage_path, file.name);
-    setNotifyImage(url);
-  }
-
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-12">
       <PageHead
         title="Vocab assignments"
-        subtitle="Assign deck study or quizzes, track student progress, and send dashboard notifications."
+        subtitle="Assign deck study or quizzes and track student progress. Send standalone alerts from Notifications."
       />
 
       {loading ? (
@@ -171,22 +165,19 @@ function AdminVocabAssignmentsPage() {
             <Panel className="border-red-400/40 bg-red-900/20 p-4 text-sm text-red-200">{error}</Panel>
           ) : null}
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Panel className="space-y-4">
-              <h2 className="text-lg font-black text-white">New assignment</h2>
-              <label className="block text-sm font-semibold text-brand-100">
-                Title
-                <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
-              </label>
-              <label className="block text-sm font-semibold text-brand-100">
-                Instructions
+          <Panel className="space-y-4">
+            <h2 className="text-lg font-black text-white">New assignment</h2>
+              <AdminFieldLabel label="Title">
+                <input value={title} onChange={(e) => setTitle(e.target.value)} className={adminInputCls} />
+              </AdminFieldLabel>
+              <AdminFieldLabel label="Instructions">
                 <textarea
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
                   rows={2}
-                  className={inputCls}
+                  className={adminInputCls}
                 />
-              </label>
+              </AdminFieldLabel>
               <div className="flex gap-2">
                 {(["deck", "quiz"] as const).map((t) => (
                   <button
@@ -194,7 +185,7 @@ function AdminVocabAssignmentsPage() {
                     type="button"
                     onClick={() => setTargetType(t)}
                     className={
-                      "rounded-lg px-3 py-2 text-sm font-bold " +
+                      "rounded-lg px-3 py-2 text-sm font-bold transition-colors " +
                       (targetType === t ? "bg-brand-600 text-white" : "bg-brand-900 text-brand-100")
                     }
                   >
@@ -204,104 +195,64 @@ function AdminVocabAssignmentsPage() {
               </div>
               {targetType === "deck" ? (
                 <>
-                  <label className="block text-sm font-semibold text-brand-100">
-                    Deck
-                    <select value={deckId} onChange={(e) => setDeckId(e.target.value)} className={inputCls}>
-                      <option value="">Select deck</option>
-                      {decks.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.title}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block text-sm font-semibold text-brand-100">
-                    Cards to review (all Good/Easy)
+                  <AdminSelect
+                    label="Deck"
+                    value={deckId}
+                    onValueChange={setDeckId}
+                    options={deckOptions}
+                    placeholder="Select deck"
+                  />
+                  <AdminFieldLabel label="Cards to review (all Good/Easy)">
                     <input
                       type="number"
                       min={1}
                       value={cardTarget}
                       onChange={(e) => setCardTarget(Number(e.target.value))}
-                      className={inputCls}
+                      className={adminInputCls}
                     />
-                  </label>
+                  </AdminFieldLabel>
                 </>
               ) : (
-                <label className="block text-sm font-semibold text-brand-100">
-                  Quiz
-                  <select value={quizId} onChange={(e) => setQuizId(e.target.value)} className={inputCls}>
-                    <option value="">Select quiz</option>
-                    {quizzes.map((q) => (
-                      <option key={q.id} value={q.id}>
-                        {q.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <AdminSelect
+                  label="Quiz"
+                  value={quizId}
+                  onValueChange={setQuizId}
+                  options={quizOptions}
+                  placeholder="Select quiz"
+                />
               )}
-              <label className="block text-sm font-semibold text-brand-100">
-                Recurrence
-                <select
-                  value={recurrence}
-                  onChange={(e) => setRecurrence(e.target.value as typeof recurrence)}
-                  className={inputCls}
-                >
-                  <option value="once">Once</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                </select>
-              </label>
-              <label className="block text-sm font-semibold text-brand-100">
-                Audience
-                <select
-                  value={audienceType}
-                  onChange={(e) => setAudienceType(e.target.value as typeof audienceType)}
-                  className={inputCls}
-                >
-                  <option value="all">All students</option>
-                  <option value="class">Class</option>
-                  <option value="users">Selected students</option>
-                </select>
-              </label>
-              {audienceType === "class" ? (
-                <select value={classId} onChange={(e) => setClassId(e.target.value)} className={inputCls}>
-                  <option value="">Select class</option>
-                  {classes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-              {audienceType === "users" ? (
-                <select
-                  multiple
-                  value={selectedUsers}
-                  onChange={(e) =>
-                    setSelectedUsers(Array.from(e.target.selectedOptions, (o) => o.value))
-                  }
-                  className={inputCls + " min-h-28"}
-                >
-                  {profiles.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.full_name ?? p.id}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-              <label className="block text-sm font-semibold text-brand-100">
-                Notification display (seconds)
+              <AdminSelect
+                label="Recurrence"
+                value={recurrence}
+                onValueChange={(v) => setRecurrence(v as typeof recurrence)}
+                options={[
+                  { value: "once", label: "Once" },
+                  { value: "daily", label: "Daily" },
+                  { value: "weekly", label: "Weekly" },
+                ]}
+              />
+              <AdminAudiencePicker
+                audienceType={audienceType}
+                onAudienceTypeChange={setAudienceType}
+                classId={classId}
+                onClassIdChange={setClassId}
+                classes={classOptions}
+                users={userOptions}
+                selectedUserIds={selectedUsers}
+                onSelectedUserIdsChange={setSelectedUsers}
+              />
+              <AdminFieldLabel
+                label="Notification display (seconds)"
+                hint="e.g. 3600 = 1 hour · 86400 = 1 day"
+              >
                 <input
                   type="number"
                   min={1}
                   value={displaySeconds}
                   onChange={(e) => setDisplaySeconds(Number(e.target.value))}
-                  className={inputCls}
+                  className={adminInputCls}
                 />
-                <span className="mt-1 block text-xs text-brand-200/70">
-                  e.g. 3600 = 1 hour · 86400 = 1 day
-                </span>
-              </label>
+              </AdminFieldLabel>
               <button
                 type="button"
                 disabled={busy}
@@ -310,61 +261,14 @@ function AdminVocabAssignmentsPage() {
               >
                 Publish assignment
               </button>
-            </Panel>
-
-            <Panel className="space-y-4">
-              <h2 className="text-lg font-black text-white">Send notification</h2>
-              <label className="block text-sm font-semibold text-brand-100">
-                Title
-                <input
-                  value={notifyTitle}
-                  onChange={(e) => setNotifyTitle(e.target.value)}
-                  className={inputCls}
-                />
-              </label>
-              <label className="block text-sm font-semibold text-brand-100">
-                Message
-                <textarea
-                  value={notifyBody}
-                  onChange={(e) => setNotifyBody(e.target.value)}
-                  rows={3}
-                  className={inputCls}
-                />
-              </label>
-              <label className="block text-sm font-semibold text-brand-100">
-                Link URL
-                <input
-                  value={notifyLink}
-                  onChange={(e) => setNotifyLink(e.target.value)}
-                  placeholder="/vocab or /classes"
-                  className={inputCls}
-                />
-              </label>
-              <label className="block text-sm font-semibold text-brand-100">
-                Image
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="mt-1 block text-sm text-brand-100"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void onNotifyImage(f);
-                  }}
-                />
-              </label>
-              {notifyImage ? (
-                <img src={notifyImage} alt="" className="h-16 w-16 rounded-lg object-cover" />
-              ) : null}
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleSendNotification()}
-                className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-              >
-                <Send className="h-4 w-4" /> Send notification
-              </button>
-            </Panel>
-          </div>
+            <p className="text-xs text-brand-200">
+              Need a one-off dashboard alert?{" "}
+              <Link to="/admin/notifications" className="font-semibold text-white underline">
+                Open Notifications
+              </Link>
+              .
+            </p>
+          </Panel>
 
           <Panel className="space-y-4">
             <h2 className="text-lg font-black text-white">Assignments</h2>

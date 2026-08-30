@@ -11,6 +11,7 @@ export type UserNotification = {
   source_id: string | null;
   created_at: string;
   expires_at: string;
+  overlay_display_seconds: number;
   read_at: string | null;
   dismissed_at: string | null;
 };

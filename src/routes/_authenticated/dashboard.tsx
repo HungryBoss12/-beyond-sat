@@ -44,6 +44,8 @@ import { VocabDueBanner } from "@/components/vocab/VocabDueBanner";
 import { startVocabReminderPoll } from "@/lib/vocab/reminders";
 import {
   buildMockTrend,
+  chartReadyTrend,
+  countMockTestsTaken,
   latestMockSummary,
   type MockSessionRow,
   type MockTrendPoint,
@@ -181,6 +183,8 @@ function Dashboard() {
 
   const latest = useMemo(() => latestMockSummary(mocks), [mocks]);
 
+  const testsTakenCount = useMemo(() => countMockTestsTaken(mocks), [mocks]);
+
   const avg = useMemo(() => {
     const completed = mocks.filter((m) => m.score != null) as (Session & { score: number })[];
     if (completed.length === 0) return null;
@@ -197,6 +201,7 @@ function Dashboard() {
   }, [mocks]);
 
   const trend = useMemo(() => buildMockTrend(mocks, 6), [mocks]);
+  const chartTrend = useMemo(() => chartReadyTrend(trend), [trend]);
 
   const accuracy = useMemo(() => {
     const graded = attempts.filter((a) => a.is_correct != null);
@@ -253,6 +258,7 @@ function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <DashboardNotificationStack />
       <PageHead
         title={`Welcome back, ${name.split(" ")[0]}.`}
         subtitle={
@@ -282,16 +288,15 @@ function Dashboard() {
 
       {/* Hero row: headline score + accuracy gauge */}
       <div className="grid gap-5 lg:grid-cols-5">
-        <ProgressPanel latest={latest} trend={trend} target={sp?.target_score ?? null} />
+        <ProgressPanel latest={latest} trend={trend} chartTrend={chartTrend} target={sp?.target_score ?? null} />
         <div className="relative lg:col-span-2">
-          <DashboardNotificationStack />
           <AccuracyPanel accuracy={accuracy} />
         </div>
       </div>
 
       {/* Stat chips */}
       <div className="grid grid-cols-2 gap-4 stagger lg:grid-cols-4">
-        <StatTile icon={ClipboardList} value={avg?.count ?? 0} label="Tests taken" accent="slate" />
+        <StatTile icon={ClipboardList} value={testsTakenCount} label="Tests taken" accent="slate" />
         <StatTile icon={BarChart3} value={avg?.total ?? 0} label="Average score" accent="brand" />
         <StatTile icon={Trophy} value={avg?.best ?? 0} label="Best score" accent="amber" />
         <StatTile
@@ -353,10 +358,12 @@ function Dashboard() {
 function ProgressPanel({
   latest,
   trend,
+  chartTrend,
   target,
 }: {
   latest: ReturnType<typeof latestMockSummary>;
   trend: MockTrendPoint[];
+  chartTrend: MockTrendPoint[];
   target: number | null;
 }) {
   const band = latest && !latest.incomplete ? scoreBand(latest.score) : null;
@@ -435,8 +442,8 @@ function ProgressPanel({
                   One scored mock recorded — keep going to compare your trend.
                 </p>
               ) : null}
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trend} margin={{ top: 12, right: 12, bottom: 0, left: -20 }}>
+            <ResponsiveContainer width="100%" height="100%" minHeight={188}>
+              <AreaChart data={chartTrend} margin={{ top: 12, right: 12, bottom: 0, left: -12 }}>
                 {/* Soft brand wash under the line — lighter than the stroke so
                     the data reads first and the fill is only atmosphere. */}
                 <defs>
@@ -464,18 +471,23 @@ function ProgressPanel({
                 <Area
                   type="monotone"
                   dataKey="score"
-                  stroke="#C6C5DA"
+                  stroke="#FFFFFF"
                   strokeWidth={2.5}
                   fill="url(#dashTrend)"
-                  dot={(props: { cx?: number; cy?: number; payload?: MockTrendPoint }) => {
+                  dot={(props: {
+                    cx?: number;
+                    cy?: number;
+                    payload?: MockTrendPoint;
+                  }) => {
+                    if (props.payload?.anchor) return null;
                     const incomplete = props.payload?.incomplete;
                     return (
                       <circle
                         cx={props.cx}
                         cy={props.cy}
-                        r={3.5}
+                        r={4}
                         fill="#0B0761"
-                        stroke={incomplete ? "#94a3b8" : "#C6C5DA"}
+                        stroke={incomplete ? "#94a3b8" : "#FFFFFF"}
                         strokeWidth={2}
                         strokeDasharray={incomplete ? "3 2" : undefined}
                       />
@@ -802,11 +814,13 @@ function ChartTip({
   suffix = "",
 }: {
   active?: boolean;
-  payload?: { value?: number | string }[];
+  payload?: { value?: number | string; payload?: MockTrendPoint }[];
   label?: string | number;
   suffix?: string;
 }) {
   if (!active || !payload?.length) return null;
+  const row = payload[0].payload;
+  if (row?.anchor) return null;
   return (
     <div className="rounded-xl border border-brand-400/40 bg-brand-600/95 px-3 py-2 shadow-float backdrop-blur">
       {label != null && (

@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 import { RevealLink } from "@/components/ui/reveal-card";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { NotificationAnchorProvider } from "@/components/notifications/NotificationAnchorContext";
 
 /**
  * Seven items fit the mobile tab bar at `grid-cols-7` with truncated labels.
@@ -458,6 +459,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
+    <NotificationAnchorProvider>
     <div className="min-h-screen bg-white text-brand-900">
       <aside
         className={
@@ -670,5 +672,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
     </div>
+    </NotificationAnchorProvider>
   );
 }

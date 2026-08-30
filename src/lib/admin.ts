@@ -17,6 +17,7 @@ export const EDITOR_SECTIONS = [
   "/admin/mocks",
   "/admin/news",
   "/admin/classes",
+  "/admin/notifications",
   "/admin/vocab",
 ] as const;
 

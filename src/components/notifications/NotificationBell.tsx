@@ -4,9 +4,12 @@ import { Bell, BellRing } from "lucide-react";
 import {
   fetchMyNotifications,
   markNotificationRead,
+  NOTIFICATIONS_CHANGED_EVENT,
+  NOTIFICATION_LANDED_EVENT,
   type UserNotification,
 } from "@/lib/notifications/client";
 import { NotificationInbox } from "./NotificationInbox";
+import { useNotificationAnchorOptional } from "./NotificationAnchorContext";
 
 type Props = {
   onNotificationsChange?: (items: UserNotification[]) => void;
@@ -14,11 +17,39 @@ type Props = {
 
 export function NotificationBell({ onNotificationsChange }: Props) {
   const reduceMotion = useReducedMotion();
+  const anchor = useNotificationAnchorOptional();
   const [open, setOpen] = useState(false);
+  const [landingPulse, setLandingPulse] = useState(false);
   const [items, setItems] = useState<UserNotification[]>([]);
   const [pulse, setPulse] = useState(false);
   const prevCount = useRef(0);
   const rootRef = useRef<HTMLDivElement>(null);
+  const flashTimerRef = useRef<number | null>(null);
+
+  const setRootRef = (el: HTMLDivElement | null) => {
+    rootRef.current = el;
+    if (anchor) anchor.bellRef.current = el;
+  };
+
+  useEffect(() => {
+    if (!anchor) return;
+    anchor.registerPulse(() => {
+      setPulse(true);
+      window.setTimeout(() => setPulse(false), 2400);
+    });
+    anchor.registerFlashInbox(() => {
+      setOpen(true);
+      setLandingPulse(true);
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+      flashTimerRef.current = window.setTimeout(() => {
+        setLandingPulse(false);
+        setOpen(false);
+      }, 1400);
+    });
+    return () => {
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    };
+  }, [anchor]);
 
   const unread = items.filter((n) => !n.read_at).length;
 
@@ -36,7 +67,19 @@ export function NotificationBell({ onNotificationsChange }: Props) {
   useEffect(() => {
     void refresh();
     const id = window.setInterval(() => void refresh(), 60_000);
-    return () => window.clearInterval(id);
+    function onChanged() {
+      void refresh();
+    }
+    function onLanded() {
+      void refresh();
+    }
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
+    window.addEventListener(NOTIFICATION_LANDED_EVENT, onLanded);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
+      window.removeEventListener(NOTIFICATION_LANDED_EVENT, onLanded);
+    };
   }, []);
 
   useEffect(() => {
@@ -50,7 +93,7 @@ export function NotificationBell({ onNotificationsChange }: Props) {
   const Icon = unread > 0 ? BellRing : Bell;
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={setRootRef} data-notification-bell className="relative">
       <AnimatePresence>
         {pulse && !reduceMotion ? (
           <motion.span
@@ -60,19 +103,6 @@ export function NotificationBell({ onNotificationsChange }: Props) {
             exit={{ opacity: 0 }}
             transition={{ duration: 1.6, ease: "easeOut" }}
             className="pointer-events-none absolute inset-0 rounded-full ring-2 ring-white/70"
-          />
-        ) : null}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {pulse && !reduceMotion ? (
-          <motion.span
-            key="tab"
-            initial={{ opacity: 0, x: 8, width: 0 }}
-            animate={{ opacity: 1, x: -6, width: 28 }}
-            exit={{ opacity: 0, x: 4, width: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="pointer-events-none absolute right-full top-1/2 mr-1 h-2 -translate-y-1/2 rounded-full bg-white/90"
           />
         ) : null}
       </AnimatePresence>
@@ -104,6 +134,8 @@ export function NotificationBell({ onNotificationsChange }: Props) {
       <NotificationInbox
         open={open}
         items={items}
+        landingPulse={landingPulse}
+        inboxRef={anchor ? anchor.registerInboxRef : undefined}
         onClose={() => setOpen(false)}
         onRefresh={() => void refresh()}
       />

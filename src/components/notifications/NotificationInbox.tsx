@@ -18,7 +18,14 @@ type Props = {
   landingPulse?: boolean;
 };
 
-export function NotificationInbox({ open, items, onClose, onRefresh, inboxRef, landingPulse }: Props) {
+export function NotificationInbox({
+  open,
+  items,
+  onClose,
+  onRefresh,
+  inboxRef,
+  landingPulse,
+}: Props) {
   const reduceMotion = useReducedMotion();
 
   async function handleDelete(id: string) {
@@ -52,7 +59,9 @@ export function NotificationInbox({ open, items, onClose, onRefresh, inboxRef, l
           </div>
           <div className="max-h-[min(70vh,420px)] overflow-y-auto rounded-b-2xl">
             {items.length === 0 ? (
-              <p className="px-5 py-10 text-center text-sm text-brand-100">No notifications right now.</p>
+              <p className="px-5 py-10 text-center text-sm text-brand-100">
+                No notifications right now.
+              </p>
             ) : (
               items.map((n) => (
                 <div
@@ -73,7 +82,9 @@ export function NotificationInbox({ open, items, onClose, onRefresh, inboxRef, l
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-black text-white">{n.title}</div>
                       {n.body ? (
-                        <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-brand-100">{n.body}</p>
+                        <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-brand-100">
+                          {n.body}
+                        </p>
                       ) : null}
                       <div className="mt-1.5 text-[10px] text-brand-200">
                         {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}

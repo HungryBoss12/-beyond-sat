@@ -38,7 +38,10 @@ export function VocabHomeworkPanel() {
       const done = completion?.status === "completed";
       const progress =
         a.target_type === "deck"
-          ? Math.min(100, Math.round(((completion?.cards_reviewed ?? 0) / (a.card_target ?? 1)) * 100))
+          ? Math.min(
+              100,
+              Math.round(((completion?.cards_reviewed ?? 0) / (a.card_target ?? 1)) * 100),
+            )
           : done
             ? 100
             : 0;
@@ -59,10 +62,7 @@ export function VocabHomeworkPanel() {
       <PanelHead label="Homework" icon={Clock} tone="brand" />
       <div className="mt-4 space-y-3">
         {rows.map(({ a, done, progress, link, completion }) => (
-          <div
-            key={a.id}
-            className="rounded-xl border border-brand-400/30 bg-brand-800/50 p-4"
-          >
+          <div key={a.id} className="rounded-xl border border-brand-400/30 bg-brand-800/50 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="font-bold text-white">{a.title}</div>
@@ -76,13 +76,13 @@ export function VocabHomeworkPanel() {
                   {a.recurrence !== "once" ? ` · ${a.recurrence}` : ""}
                 </p>
               </div>
-              {done ? (
-                <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" />
-              ) : null}
+              {done ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" /> : null}
             </div>
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-brand-900">
               <div
-                className={"h-full transition-all duration-500 " + (done ? "bg-emerald-400" : "bg-brand-300")}
+                className={
+                  "h-full transition-all duration-500 " + (done ? "bg-emerald-400" : "bg-brand-300")
+                }
                 style={{ width: `${progress}%` }}
               />
             </div>

@@ -50,7 +50,8 @@ function VocabHubTip() {
             </button>
           </div>
           <p className="mt-1 text-sm text-brand-100">
-            Study cards daily to build your streak. Missed quiz words go straight into your SRS queue.
+            Study cards daily to build your streak. Missed quiz words go straight into your SRS
+            queue.
           </p>
         </div>
       </div>
@@ -129,9 +130,7 @@ function VocabHub() {
               <div className="vocab-hub-tile grid h-11 w-11 place-items-center rounded-xl bg-brand-400 text-white ring-1 ring-brand-300/25">
                 <VocabDeckGlyph className="h-7 w-7" interactive />
               </div>
-              {due > 0 ? (
-                <span className="vocab-due-badge">{due} due</span>
-              ) : null}
+              {due > 0 ? <span className="vocab-due-badge">{due} due</span> : null}
             </div>
             <h2 className="mt-4 text-lg font-bold text-white">Decks</h2>
             <p className="mt-1 text-sm text-brand-100">
@@ -150,8 +149,8 @@ function VocabHub() {
             </div>
             <h2 className="mt-4 text-lg font-bold text-white">Practice tests</h2>
             <p className="mt-1 text-sm text-brand-100">
-              {quizCount} Words-in-Context quiz{quizCount === 1 ? "" : "zes"}. Missed words auto-queue
-              for review.
+              {quizCount} Words-in-Context quiz{quizCount === 1 ? "" : "zes"}. Missed words
+              auto-queue for review.
             </p>
             <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-brand-200 group-hover:gap-2 transition-all">
               Browse tests <ArrowRight className="h-4 w-4" />

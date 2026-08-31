@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { Loader2, Sparkles, Upload, FileUp, FolderTree } from "lucide-react";
+import { ExampleDeckButton, VocabPreviewPanel } from "@/components/admin-vocab/vocab-preview-panel";
 import {
-  ExampleDeckButton,
-  VocabPreviewPanel,
-} from "@/components/admin-vocab/vocab-preview-panel";
-import { mergeGeneratedIntoDraft, needsVocabAttention, type VocabDraft } from "@/components/admin-vocab/types";
+  mergeGeneratedIntoDraft,
+  needsVocabAttention,
+  type VocabDraft,
+} from "@/components/admin-vocab/types";
 import { fixVocabWords, generateVocabContent, saveVocabContent } from "@/lib/vocab/client";
 import type { AnkiDeckNode, GeneratedVocabItem } from "@/lib/vocab/types";
 import { PageHead, Panel } from "@/components/ui/panel";
@@ -57,7 +58,9 @@ function AdminVocabImportPage() {
   const [cardsOnly, setCardsOnly] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  async function applyParseResult(result: Awaited<ReturnType<typeof import("@/lib/vocab/parse-apkg").parseApkgFile>>) {
+  async function applyParseResult(
+    result: Awaited<ReturnType<typeof import("@/lib/vocab/parse-apkg").parseApkgFile>>,
+  ) {
     setDrafts(toDrafts(result.items));
     setDeckTree(result.deckTree ?? []);
     setImportMeta({ deckName: result.deckName, noteCount: result.noteCount });
@@ -197,9 +200,7 @@ function AdminVocabImportPage() {
           const [generated] = await fixVocabWords([d.word.trim()]);
           if (generated) {
             setDrafts((prev) =>
-              prev.map((row, idx) =>
-                idx === i ? mergeGeneratedIntoDraft(row, generated) : row,
-              ),
+              prev.map((row, idx) => (idx === i ? mergeGeneratedIntoDraft(row, generated) : row)),
             );
           }
         } catch (e) {
@@ -214,8 +215,7 @@ function AdminVocabImportPage() {
   }
 
   const showQuizFields = mode !== "anki" || !cardsOnly;
-  const saveLabel =
-    mode === "anki" && cardsOnly ? "Import to SRS deck" : "Save to database";
+  const saveLabel = mode === "anki" && cardsOnly ? "Import to SRS deck" : "Save to database";
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-12">
@@ -297,9 +297,7 @@ function AdminVocabImportPage() {
               <p className="mt-3 text-sm font-semibold text-white">
                 Drop your .apkg or .colpkg file here
               </p>
-              <p className="mt-1 text-xs text-brand-100">
-                or click below to browse · max 80 MB
-              </p>
+              <p className="mt-1 text-xs text-brand-100">or click below to browse · max 80 MB</p>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
                 <button
                   type="button"
@@ -319,7 +317,10 @@ function AdminVocabImportPage() {
                     </>
                   )}
                 </button>
-                <ExampleDeckButton loading={loadingExample} onClick={() => void handleLoadExample()} />
+                <ExampleDeckButton
+                  loading={loadingExample}
+                  onClick={() => void handleLoadExample()}
+                />
               </div>
             </div>
 
@@ -353,11 +354,7 @@ function AdminVocabImportPage() {
               </p>
             </div>
             <AdminField label="Topic">
-              <select
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                className={inputCls}
-              >
+              <select value={topic} onChange={(e) => setTopic(e.target.value)} className={inputCls}>
                 {TOPICS.map((t) => (
                   <option key={t} value={t}>
                     {t}

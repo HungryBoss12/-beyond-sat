@@ -35,10 +35,7 @@ const lines = [
   "",
   "DELETE FROM public.vocab_cards;",
   "",
-  ...LEGACY_DECK_IDS.map(
-    (id) =>
-      `DELETE FROM public.vocab_decks WHERE id = '${id}';`,
-  ),
+  ...LEGACY_DECK_IDS.map((id) => `DELETE FROM public.vocab_decks WHERE id = '${id}';`),
   "",
 ];
 

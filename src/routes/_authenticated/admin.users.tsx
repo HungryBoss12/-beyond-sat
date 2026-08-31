@@ -5,10 +5,7 @@ import { Ban, ChevronRight, CircleCheck, Search } from "lucide-react";
 import { format } from "date-fns";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { getStaffRole } from "@/lib/admin";
-import {
-  fetchAdminUsersSummary,
-  type AdminUserSummaryRow,
-} from "@/lib/admin/users";
+import { fetchAdminUsersSummary, type AdminUserSummaryRow } from "@/lib/admin/users";
 import { isOnline, lastSeenLabel } from "@/lib/presence";
 import { errorMessage } from "@/lib/utils";
 
@@ -73,13 +70,18 @@ function AdminUsers() {
 
   async function loadLegacyUsers() {
     const FULL_COLS = "id,email,full_name,created_at,last_seen_at,banned";
-    const full = await supabase.from("profiles").select(FULL_COLS).order("created_at", { ascending: false }).limit(500);
+    const full = await supabase
+      .from("profiles")
+      .select(FULL_COLS)
+      .order("created_at", { ascending: false })
+      .limit(500);
     if (full.error) throw full.error;
     const { data: roles } = await supabase.from("user_roles").select("user_id,role");
     const roleOf = new Map<string, Role>();
     for (const r of (roles ?? []) as { user_id: string; role: string }[]) {
       if (r.role === "admin") roleOf.set(r.user_id, "admin");
-      else if (r.role === "editor" && roleOf.get(r.user_id) !== "admin") roleOf.set(r.user_id, "editor");
+      else if (r.role === "editor" && roleOf.get(r.user_id) !== "admin")
+        roleOf.set(r.user_id, "editor");
     }
     setRows(
       (full.data ?? []).map((p) => ({
@@ -256,10 +258,20 @@ function AdminUsers() {
               {insightsReady && (
                 <div className="hidden border-b border-brand-400/30 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200 md:grid md:grid-cols-[1fr_100px_80px_100px_120px] md:gap-3">
                   <span>User</span>
-                  <SortHeader label="Tests" active={sortKey === "tests_total"} asc={sortAsc} onClick={() => toggleSort("tests_total")} />
+                  <SortHeader
+                    label="Tests"
+                    active={sortKey === "tests_total"}
+                    asc={sortAsc}
+                    onClick={() => toggleSort("tests_total")}
+                  />
                   <span>Streak</span>
                   <span>Class</span>
-                  <SortHeader label="Last active" active={sortKey === "last_seen"} asc={sortAsc} onClick={() => toggleSort("last_seen")} />
+                  <SortHeader
+                    label="Last active"
+                    active={sortKey === "last_seen"}
+                    asc={sortAsc}
+                    onClick={() => toggleSort("last_seen")}
+                  />
                 </div>
               )}
               <ul className="divide-y divide-brand-400/30">
@@ -372,8 +384,12 @@ function UserListRow({
                   {u.tests_mock}m · {u.tests_daily}d · {u.tests_practice}p
                 </span>
               </div>
-              <div className="hidden text-sm font-semibold text-white md:block">{u.current_streak}</div>
-              <div className="hidden truncate text-xs text-brand-100 md:block">{u.class_name || "—"}</div>
+              <div className="hidden text-sm font-semibold text-white md:block">
+                {u.current_streak}
+              </div>
+              <div className="hidden truncate text-xs text-brand-100 md:block">
+                {u.class_name || "—"}
+              </div>
               <div className="hidden text-xs text-brand-100 md:block">
                 {online ? "Online now" : lastLabel}
               </div>

@@ -25,9 +25,7 @@ export function isStubQuestion(text: string | null | undefined): boolean {
   if (!t) return true;
   const lower = t.toLowerCase();
   return (
-    lower.startsWith("missing question") ||
-    lower.startsWith("[missing") ||
-    lower === "missing"
+    lower.startsWith("missing question") || lower.startsWith("[missing") || lower === "missing"
   );
 }
 
@@ -41,10 +39,7 @@ export async function startPracticeSession(f: PracticeFilters): Promise<string> 
   const uid = await currentUserId();
   const limit = f.limit ?? 20;
   /* Skip empty / placeholder stubs and skills that don't belong to this section. */
-  let q = supabase
-    .from("questions")
-    .select("id,skill,question_text")
-    .eq("section", f.section);
+  let q = supabase.from("questions").select("id,skill,question_text").eq("section", f.section);
   if (f.skill) q = q.eq("skill", f.skill);
   if (f.difficulty) q = q.eq("difficulty", f.difficulty);
   q = q.order("created_at", { ascending: false }).limit(Math.max(limit * 5, 100));

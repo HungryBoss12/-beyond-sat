@@ -145,9 +145,9 @@ export async function createVocabHomework(input: CreateVocabHomeworkInput): Prom
   if (error || !row) throw new Error(error?.message ?? "Could not create assignment");
 
   if (input.audienceType === "users" && input.userIds?.length) {
-    const { error: juErr } = await supabase.from("vocab_homework_assignment_users").insert(
-      input.userIds.map((user_id) => ({ assignment_id: row.id, user_id })),
-    );
+    const { error: juErr } = await supabase
+      .from("vocab_homework_assignment_users")
+      .insert(input.userIds.map((user_id) => ({ assignment_id: row.id, user_id })));
     if (juErr) throw new Error(juErr.message);
   }
 

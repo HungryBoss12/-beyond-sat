@@ -93,8 +93,8 @@ export function VocabReviewer({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs leading-relaxed text-brand-100">
-          <strong className="text-white">Review each word.</strong> Check fields, use Fix with AI
-          to enrich SAT content, then mark reviewed. {reviewedCount}/{drafts.length} checked.
+          <strong className="text-white">Review each word.</strong> Check fields, use Fix with AI to
+          enrich SAT content, then mark reviewed. {reviewedCount}/{drafts.length} checked.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <button

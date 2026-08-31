@@ -288,7 +288,12 @@ function Dashboard() {
 
       {/* Hero row: headline score + accuracy gauge */}
       <div className="grid gap-5 lg:grid-cols-5">
-        <ProgressPanel latest={latest} trend={trend} chartTrend={chartTrend} target={sp?.target_score ?? null} />
+        <ProgressPanel
+          latest={latest}
+          trend={trend}
+          chartTrend={chartTrend}
+          target={sp?.target_score ?? null}
+        />
         <div className="relative lg:col-span-2">
           <AccuracyPanel accuracy={accuracy} />
         </div>
@@ -442,62 +447,58 @@ function ProgressPanel({
                   One scored mock recorded — keep going to compare your trend.
                 </p>
               ) : null}
-            <ResponsiveContainer width="100%" height="100%" minHeight={188}>
-              <AreaChart data={chartTrend} margin={{ top: 12, right: 12, bottom: 0, left: -12 }}>
-                {/* Soft brand wash under the line — lighter than the stroke so
+              <ResponsiveContainer width="100%" height="100%" minHeight={188}>
+                <AreaChart data={chartTrend} margin={{ top: 12, right: 12, bottom: 0, left: -12 }}>
+                  {/* Soft brand wash under the line — lighter than the stroke so
                     the data reads first and the fill is only atmosphere. */}
-                <defs>
-                  <linearGradient id="dashTrend" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#C6C5DA" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#C6C5DA" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="#535291" strokeOpacity={0.55} vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#C6C5DA", fontSize: 11, fontWeight: 600 }}
-                  dy={6}
-                />
-                <YAxis
-                  domain={[400, 1600]}
-                  ticks={[400, 800, 1200, 1600]}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#C6C5DA", fontSize: 10 }}
-                />
-                <Tooltip content={<ChartTip suffix=" / 1600" />} />
-                <Area
-                  type="monotone"
-                  dataKey="score"
-                  stroke="#FFFFFF"
-                  strokeWidth={2.5}
-                  fill="url(#dashTrend)"
-                  dot={(props: {
-                    cx?: number;
-                    cy?: number;
-                    payload?: MockTrendPoint;
-                  }) => {
-                    if (props.payload?.anchor) return null;
-                    const incomplete = props.payload?.incomplete;
-                    return (
-                      <circle
-                        cx={props.cx}
-                        cy={props.cy}
-                        r={4}
-                        fill="#0B0761"
-                        stroke={incomplete ? "#94a3b8" : "#FFFFFF"}
-                        strokeWidth={2}
-                        strokeDasharray={incomplete ? "3 2" : undefined}
-                      />
-                    );
-                  }}
-                  activeDot={{ r: 6, fill: "#535291", stroke: "#fff", strokeWidth: 2.5 }}
-                  animationDuration={900}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+                  <defs>
+                    <linearGradient id="dashTrend" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#C6C5DA" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="#C6C5DA" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="#535291" strokeOpacity={0.55} vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "#C6C5DA", fontSize: 11, fontWeight: 600 }}
+                    dy={6}
+                  />
+                  <YAxis
+                    domain={[400, 1600]}
+                    ticks={[400, 800, 1200, 1600]}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "#C6C5DA", fontSize: 10 }}
+                  />
+                  <Tooltip content={<ChartTip suffix=" / 1600" />} />
+                  <Area
+                    type="monotone"
+                    dataKey="score"
+                    stroke="#FFFFFF"
+                    strokeWidth={2.5}
+                    fill="url(#dashTrend)"
+                    dot={(props: { cx?: number; cy?: number; payload?: MockTrendPoint }) => {
+                      if (props.payload?.anchor) return null;
+                      const incomplete = props.payload?.incomplete;
+                      return (
+                        <circle
+                          cx={props.cx}
+                          cy={props.cy}
+                          r={4}
+                          fill="#0B0761"
+                          stroke={incomplete ? "#94a3b8" : "#FFFFFF"}
+                          strokeWidth={2}
+                          strokeDasharray={incomplete ? "3 2" : undefined}
+                        />
+                      );
+                    }}
+                    activeDot={{ r: 6, fill: "#535291", stroke: "#fff", strokeWidth: 2.5 }}
+                    animationDuration={900}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </>
           )}
         </div>
@@ -626,7 +627,8 @@ function DailyPanel({
               is white + #0B0761 only. */}
           <Flame
             className={
-              "h-11 w-11 shrink-0 " + (done && dailyExists ? "fill-white text-white" : "text-brand-200")
+              "h-11 w-11 shrink-0 " +
+              (done && dailyExists ? "fill-white text-white" : "text-brand-200")
             }
           />
         </div>
@@ -917,7 +919,8 @@ function VocabPanel({ due, streak }: { due: number; streak: number }) {
     <Panel className="flex h-full flex-col p-5">
       <PanelHead label="Vocabulary" icon={Layers} tone="brand" />
       <p className="mt-3 text-sm text-white/70">
-        Anki-style SRS + Words-in-Context quizzes. {due > 0 ? `${due} cards due now.` : "You're caught up on reviews."}
+        Anki-style SRS + Words-in-Context quizzes.{" "}
+        {due > 0 ? `${due} cards due now.` : "You're caught up on reviews."}
       </p>
       <div className="mt-3 flex items-center gap-2 text-sm text-white/60">
         <Flame className="h-4 w-4 text-brand-200" />

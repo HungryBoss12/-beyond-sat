@@ -3,9 +3,7 @@ import type { AnkiDeckNode } from "./types";
 const DECK_SEP = "\u001f";
 
 /** Parse Anki deck rows into a path tree with optional prefix grouping for flat names. */
-export function buildDeckTreeFromAnki(
-  rows: { id: number; name: string }[],
-): AnkiDeckNode[] {
+export function buildDeckTreeFromAnki(rows: { id: number; name: string }[]): AnkiDeckNode[] {
   const nodes = new Map<string, AnkiDeckNode>();
   let order = 0;
 

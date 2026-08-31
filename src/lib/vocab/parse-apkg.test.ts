@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  firstLine,
-  guessPartOfSpeech,
-  parseSynonymsField,
-  stripAnkiHtml,
-} from "./anki-html";
+import { firstLine, guessPartOfSpeech, parseSynonymsField, stripAnkiHtml } from "./anki-html";
 import { isAnkiStubNote, mapAnkiNoteToVocabItem } from "./parse-apkg";
 
 describe("isAnkiStubNote", () => {

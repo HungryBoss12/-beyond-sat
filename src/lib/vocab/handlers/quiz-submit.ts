@@ -52,8 +52,7 @@ export async function handleVocabQuizSubmit(request: Request, env: unknown): Pro
   for (const a of answers) {
     const q = byId.get(a.questionId);
     if (!q) continue;
-    const ok =
-      a.selected.trim().toLowerCase() === q.correct_answer.trim().toLowerCase();
+    const ok = a.selected.trim().toLowerCase() === q.correct_answer.trim().toLowerCase();
     if (ok) score += 1;
     else if (q.vocab_card_id) missedCardIds.push(q.vocab_card_id);
     results.push({

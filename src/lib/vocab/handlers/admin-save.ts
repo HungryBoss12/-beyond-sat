@@ -26,7 +26,7 @@ async function upsertDeckTree(
   });
 
   for (const node of sorted) {
-    const parentId = node.parentPath ? pathToId.get(node.parentPath) ?? null : null;
+    const parentId = node.parentPath ? (pathToId.get(node.parentPath) ?? null) : null;
     const { data: existing } = await restFetch<{ id: string }[]>(
       config,
       token,
@@ -109,7 +109,7 @@ async function resolveDeckId(
   }
 
   const firstLeaf = deckTree?.find((n) => !n.isFolder);
-  const defaultDeckId = firstLeaf ? pathToId.get(firstLeaf.path) ?? null : null;
+  const defaultDeckId = firstLeaf ? (pathToId.get(firstLeaf.path) ?? null) : null;
   return { defaultDeckId, pathToId };
 }
 
@@ -169,8 +169,7 @@ export async function handleVocabAdminSave(request: Request, env: unknown): Prom
 
   for (const item of body.items) {
     const tier = (item.difficultyTier ?? "Medium") as DifficultyTier;
-    const deckId =
-      (item.ankiDeckPath && pathToId.get(item.ankiDeckPath)) || defaultDeckId;
+    const deckId = (item.ankiDeckPath && pathToId.get(item.ankiDeckPath)) || defaultDeckId;
 
     const cardPayload = {
       word: item.word.trim().toLowerCase(),

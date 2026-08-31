@@ -25,10 +25,7 @@ describe("buildDeckTreeFromAnki", () => {
 
   it("markFoldersWithChildren promotes parents with child references", () => {
     const nodes = new Map<string, AnkiDeckNode>([
-      [
-        "root",
-        { path: "root", title: "Root", parentPath: null, sortOrder: 0, isFolder: false },
-      ],
+      ["root", { path: "root", title: "Root", parentPath: null, sortOrder: 0, isFolder: false }],
       [
         "root::child",
         { path: "root::child", title: "Child", parentPath: "root", sortOrder: 1, isFolder: false },

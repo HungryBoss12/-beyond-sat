@@ -108,9 +108,7 @@ export function DeckTreeList({ rows }: { rows: DeckPickerRow[] }) {
             onToggle={() => toggle(row.id)}
           />
           {isOpen ? (
-            <div className="space-y-2">
-              {children.map((child) => renderNode(child, depth + 1))}
-            </div>
+            <div className="space-y-2">{children.map((child) => renderNode(child, depth + 1))}</div>
           ) : null}
         </div>
       );

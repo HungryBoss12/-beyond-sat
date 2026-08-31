@@ -36,7 +36,12 @@ function stripHtml(raw) {
 }
 
 function firstLine(text) {
-  return text.split(/\n+/).map((s) => s.trim()).find(Boolean) ?? text.trim();
+  return (
+    text
+      .split(/\n+/)
+      .map((s) => s.trim())
+      .find(Boolean) ?? text.trim()
+  );
 }
 
 function loadModels() {

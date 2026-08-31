@@ -118,11 +118,7 @@ function AdminLayout() {
             onClick={() => setOpen(false)}
           />
           <aside className="absolute inset-y-0 left-0 flex w-[min(100%,280px)] flex-col bg-brand-600 shadow-float">
-            <SidebarBody
-              pathname={pathname}
-              role={staffRole}
-              onNavigate={() => setOpen(false)}
-            />
+            <SidebarBody pathname={pathname} role={staffRole} onNavigate={() => setOpen(false)} />
           </aside>
         </div>
       )}

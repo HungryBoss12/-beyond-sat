@@ -46,11 +46,7 @@ export function SatPracticeWidget() {
         If Page X equals 404, what is the best next step?
       </p>
 
-      <div
-        role="group"
-        aria-labelledby="not-found-quiz-question"
-        className="mt-4 space-y-2.5"
-      >
+      <div role="group" aria-labelledby="not-found-quiz-question" className="mt-4 space-y-2.5">
         {OPTIONS.map((opt) => {
           const isSelected = selected === opt.id;
           const isWrong = wrongId === opt.id;

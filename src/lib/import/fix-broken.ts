@@ -1,11 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Draft } from "./parse";
-import {
-  cloneDraft,
-  diffRec,
-  makeActivityEntry,
-  type ActivityEntry,
-} from "./activity-log";
+import { cloneDraft, diffRec, makeActivityEntry, type ActivityEntry } from "./activity-log";
 
 async function authHeader(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();

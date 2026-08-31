@@ -130,10 +130,14 @@ function AdminNotificationsPage() {
       ) : (
         <>
           {error ? (
-            <Panel className="border-red-400/40 bg-red-900/20 p-4 text-sm text-red-200">{error}</Panel>
+            <Panel className="border-red-400/40 bg-red-900/20 p-4 text-sm text-red-200">
+              {error}
+            </Panel>
           ) : null}
           {sent ? (
-            <Panel className="border-brand-300/40 bg-brand-800/60 p-4 text-sm text-brand-100">{sent}</Panel>
+            <Panel className="border-brand-300/40 bg-brand-800/60 p-4 text-sm text-brand-100">
+              {sent}
+            </Panel>
           ) : null}
 
           <div className="grid gap-6 lg:grid-cols-5">
@@ -146,7 +150,11 @@ function AdminNotificationsPage() {
               </div>
 
               <AdminFieldLabel label="Title">
-                <input value={title} onChange={(e) => setTitle(e.target.value)} className={adminInputCls} />
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className={adminInputCls}
+                />
               </AdminFieldLabel>
               <AdminFieldLabel label="Message">
                 <textarea
@@ -223,8 +231,8 @@ function AdminNotificationsPage() {
                     >
                       <div className="truncate text-sm font-bold text-white">{n.title}</div>
                       <div className="mt-1 text-[11px] text-brand-100">
-                        {format(new Date(n.created_at), "MMM d, yyyy · h:mm a")} · {n.overlay_display_seconds}s
-                        on-screen · {n.audience_type}
+                        {format(new Date(n.created_at), "MMM d, yyyy · h:mm a")} ·{" "}
+                        {n.overlay_display_seconds}s on-screen · {n.audience_type}
                       </div>
                     </li>
                   ))}

@@ -52,8 +52,7 @@ export async function handleTelegramWebhook(request: Request, env: unknown): Pro
   hydrateServerEnv(env);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  const chatId =
-    update.message?.chat.id ?? update.callback_query?.message?.chat.id ?? null;
+  const chatId = update.message?.chat.id ?? update.callback_query?.message?.chat.id ?? null;
   if (chatId == null) {
     return new Response("OK");
   }
@@ -105,11 +104,7 @@ async function handleCallback(
         await sendTelegramMessage(token, chatId, "User unbanned.");
       }
     } catch (e) {
-      await sendTelegramMessage(
-        token,
-        chatId,
-        e instanceof Error ? e.message : "Action failed.",
-      );
+      await sendTelegramMessage(token, chatId, e instanceof Error ? e.message : "Action failed.");
     }
   }
 }
@@ -133,7 +128,7 @@ async function dispatchCommand(
       chatId,
       result.ok
         ? "Linked! You can now use admin commands. Send /help for the list."
-        : result.error ?? "Link failed.",
+        : (result.error ?? "Link failed."),
     );
     return;
   }
@@ -211,12 +206,9 @@ async function dispatchCommand(
           await sendTelegramMessage(token, chatId, "You cannot ban your own account.");
           break;
         }
-        await sendTelegramMessage(
-          token,
-          chatId,
-          `Ban ${user.email ?? user.id}?`,
-          { replyMarkup: banConfirmKeyboard(user.id, cmd.reason) },
-        );
+        await sendTelegramMessage(token, chatId, `Ban ${user.email ?? user.id}?`, {
+          replyMarkup: banConfirmKeyboard(user.id, cmd.reason),
+        });
         break;
       }
       case "unban": {

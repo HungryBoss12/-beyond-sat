@@ -78,7 +78,9 @@ function AdminVocabAssignmentsPage() {
       setProgress([]);
       return;
     }
-    void listHomeworkCompletions(selectedId).then(setProgress).catch(() => setProgress([]));
+    void listHomeworkCompletions(selectedId)
+      .then(setProgress)
+      .catch(() => setProgress([]));
   }, [selectedId]);
 
   const selectedAssignment = useMemo(
@@ -90,10 +92,7 @@ function AdminVocabAssignmentsPage() {
     () => classes.map((c) => ({ value: c.id, label: c.name })),
     [classes],
   );
-  const deckOptions = useMemo(
-    () => decks.map((d) => ({ value: d.id, label: d.title })),
-    [decks],
-  );
+  const deckOptions = useMemo(() => decks.map((d) => ({ value: d.id, label: d.title })), [decks]);
   const quizOptions = useMemo(
     () => quizzes.map((q) => ({ value: q.id, label: q.title })),
     [quizzes],
@@ -162,105 +161,111 @@ function AdminVocabAssignmentsPage() {
       ) : (
         <>
           {error ? (
-            <Panel className="border-red-400/40 bg-red-900/20 p-4 text-sm text-red-200">{error}</Panel>
+            <Panel className="border-red-400/40 bg-red-900/20 p-4 text-sm text-red-200">
+              {error}
+            </Panel>
           ) : null}
 
           <Panel className="space-y-4">
             <h2 className="text-lg font-black text-white">New assignment</h2>
-              <AdminFieldLabel label="Title">
-                <input value={title} onChange={(e) => setTitle(e.target.value)} className={adminInputCls} />
-              </AdminFieldLabel>
-              <AdminFieldLabel label="Instructions">
-                <textarea
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  rows={2}
-                  className={adminInputCls}
-                />
-              </AdminFieldLabel>
-              <div className="flex gap-2">
-                {(["deck", "quiz"] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTargetType(t)}
-                    className={
-                      "rounded-lg px-3 py-2 text-sm font-bold transition-colors " +
-                      (targetType === t ? "bg-brand-600 text-white" : "bg-brand-900 text-brand-100")
-                    }
-                  >
-                    {t === "deck" ? "Deck study" : "Quiz"}
-                  </button>
-                ))}
-              </div>
-              {targetType === "deck" ? (
-                <>
-                  <AdminSelect
-                    label="Deck"
-                    value={deckId}
-                    onValueChange={setDeckId}
-                    options={deckOptions}
-                    placeholder="Select deck"
-                  />
-                  <AdminFieldLabel label="Cards to review (all Good/Easy)">
-                    <input
-                      type="number"
-                      min={1}
-                      value={cardTarget}
-                      onChange={(e) => setCardTarget(Number(e.target.value))}
-                      className={adminInputCls}
-                    />
-                  </AdminFieldLabel>
-                </>
-              ) : (
+            <AdminFieldLabel label="Title">
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className={adminInputCls}
+              />
+            </AdminFieldLabel>
+            <AdminFieldLabel label="Instructions">
+              <textarea
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                rows={2}
+                className={adminInputCls}
+              />
+            </AdminFieldLabel>
+            <div className="flex gap-2">
+              {(["deck", "quiz"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTargetType(t)}
+                  className={
+                    "rounded-lg px-3 py-2 text-sm font-bold transition-colors " +
+                    (targetType === t ? "bg-brand-600 text-white" : "bg-brand-900 text-brand-100")
+                  }
+                >
+                  {t === "deck" ? "Deck study" : "Quiz"}
+                </button>
+              ))}
+            </div>
+            {targetType === "deck" ? (
+              <>
                 <AdminSelect
-                  label="Quiz"
-                  value={quizId}
-                  onValueChange={setQuizId}
-                  options={quizOptions}
-                  placeholder="Select quiz"
+                  label="Deck"
+                  value={deckId}
+                  onValueChange={setDeckId}
+                  options={deckOptions}
+                  placeholder="Select deck"
                 />
-              )}
+                <AdminFieldLabel label="Cards to review (all Good/Easy)">
+                  <input
+                    type="number"
+                    min={1}
+                    value={cardTarget}
+                    onChange={(e) => setCardTarget(Number(e.target.value))}
+                    className={adminInputCls}
+                  />
+                </AdminFieldLabel>
+              </>
+            ) : (
               <AdminSelect
-                label="Recurrence"
-                value={recurrence}
-                onValueChange={(v) => setRecurrence(v as typeof recurrence)}
-                options={[
-                  { value: "once", label: "Once" },
-                  { value: "daily", label: "Daily" },
-                  { value: "weekly", label: "Weekly" },
-                ]}
+                label="Quiz"
+                value={quizId}
+                onValueChange={setQuizId}
+                options={quizOptions}
+                placeholder="Select quiz"
               />
-              <AdminAudiencePicker
-                audienceType={audienceType}
-                onAudienceTypeChange={setAudienceType}
-                classId={classId}
-                onClassIdChange={setClassId}
-                classes={classOptions}
-                users={userOptions}
-                selectedUserIds={selectedUsers}
-                onSelectedUserIdsChange={setSelectedUsers}
+            )}
+            <AdminSelect
+              label="Recurrence"
+              value={recurrence}
+              onValueChange={(v) => setRecurrence(v as typeof recurrence)}
+              options={[
+                { value: "once", label: "Once" },
+                { value: "daily", label: "Daily" },
+                { value: "weekly", label: "Weekly" },
+              ]}
+            />
+            <AdminAudiencePicker
+              audienceType={audienceType}
+              onAudienceTypeChange={setAudienceType}
+              classId={classId}
+              onClassIdChange={setClassId}
+              classes={classOptions}
+              users={userOptions}
+              selectedUserIds={selectedUsers}
+              onSelectedUserIdsChange={setSelectedUsers}
+            />
+            <AdminFieldLabel
+              label="Notification display (seconds)"
+              hint="e.g. 3600 = 1 hour · 86400 = 1 day"
+            >
+              <input
+                type="number"
+                min={1}
+                value={displaySeconds}
+                onChange={(e) => setDisplaySeconds(Number(e.target.value))}
+                className={adminInputCls}
               />
-              <AdminFieldLabel
-                label="Notification display (seconds)"
-                hint="e.g. 3600 = 1 hour · 86400 = 1 day"
-              >
-                <input
-                  type="number"
-                  min={1}
-                  value={displaySeconds}
-                  onChange={(e) => setDisplaySeconds(Number(e.target.value))}
-                  className={adminInputCls}
-                />
-              </AdminFieldLabel>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleCreateAssignment()}
-                className="btn-brand rounded-lg bg-grad-brand px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-              >
-                Publish assignment
-              </button>
+            </AdminFieldLabel>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleCreateAssignment()}
+              className="btn-brand rounded-lg bg-grad-brand px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+            >
+              Publish assignment
+            </button>
             <p className="text-xs text-brand-200">
               Need a one-off dashboard alert?{" "}
               <Link to="/admin/notifications" className="font-semibold text-white underline">
@@ -344,9 +349,7 @@ function AdminVocabAssignmentsPage() {
                           <td className="py-2">
                             <span
                               className={
-                                row.status === "completed"
-                                  ? "text-emerald-300"
-                                  : "text-brand-100"
+                                row.status === "completed" ? "text-emerald-300" : "text-brand-100"
                               }
                             >
                               {row.status}

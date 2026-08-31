@@ -115,15 +115,7 @@ function OverviewIcon({ hovered }: { hovered: boolean }) {
         transition={SNAP}
         style={{ willChange: "transform" }}
       />
-      <motion.rect
-        x="13"
-        y="13"
-        width="8"
-        height="8"
-        rx="1.5"
-        fill="currentColor"
-        stroke="none"
-      />
+      <motion.rect x="13" y="13" width="8" height="8" rx="1.5" fill="currentColor" stroke="none" />
     </motion.svg>
   );
 }
@@ -351,7 +343,15 @@ function MocksIcon({ hovered }: { hovered: boolean }) {
         style={{ willChange: "transform" }}
       >
         <path d="M9 5V3.8a1.2 1.2 0 0 1 1.2-1.2h3.6A1.2 1.2 0 0 1 15 3.8V5" />
-        <rect x="10.2" y="2.6" width="3.6" height="2.2" rx="0.6" fill="currentColor" stroke="none" />
+        <rect
+          x="10.2"
+          y="2.6"
+          width="3.6"
+          height="2.2"
+          rx="0.6"
+          fill="currentColor"
+          stroke="none"
+        />
       </motion.g>
     </svg>
   );
@@ -417,11 +417,7 @@ function NotificationsIcon({ hovered }: { hovered: boolean }) {
         rotate: hovered ? [0, -14, 14, -10, 8, 0] : 0,
         scale: hovered ? 1.08 : 1,
       }}
-      transition={
-        hovered
-          ? { duration: 0.55, ease: EASE }
-          : SNAP
-      }
+      transition={hovered ? { duration: 0.55, ease: EASE } : SNAP}
       style={{ willChange: "transform", transformOrigin: "12px 6px" }}
     >
       <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />

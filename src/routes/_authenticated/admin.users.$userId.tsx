@@ -215,7 +215,9 @@ function Header({
     <div className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-brand-400/40 bg-brand-600 p-4 shadow-panel">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-xl font-black text-white">{profile.full_name || profile.email || "User"}</h2>
+          <h2 className="text-xl font-black text-white">
+            {profile.full_name || profile.email || "User"}
+          </h2>
           {role !== "student" && (
             <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 ring-1 ring-brand-400/40">
               {role}
@@ -232,8 +234,7 @@ function Header({
           {profile.email}
           {" · "}
           {online ? "Online now" : lastSeenLabel(profile.last_seen_at ?? null)}
-          {profile.created_at &&
-            ` · Joined ${format(new Date(profile.created_at), "MMM d, yyyy")}`}
+          {profile.created_at && ` · Joined ${format(new Date(profile.created_at), "MMM d, yyyy")}`}
           {detail.class_name && ` · ${detail.class_name}`}
         </p>
       </div>
@@ -306,7 +307,9 @@ function OverviewTab({ detail }: { detail: AdminUserDetail }) {
           <dl className="grid gap-2 sm:grid-cols-2">
             {identityRows.map(([k, v]) => (
               <div key={String(k)} className="rounded-lg bg-brand-800/60 px-3 py-2">
-                <dt className="text-[10px] font-bold uppercase tracking-wider text-brand-200">{k}</dt>
+                <dt className="text-[10px] font-bold uppercase tracking-wider text-brand-200">
+                  {k}
+                </dt>
                 <dd className="text-sm font-semibold text-white">{String(v)}</dd>
               </div>
             ))}
@@ -318,7 +321,9 @@ function OverviewTab({ detail }: { detail: AdminUserDetail }) {
           <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {goalRows.map(([k, v]) => (
               <div key={String(k)} className="rounded-lg bg-brand-800/60 px-3 py-2">
-                <dt className="text-[10px] font-bold uppercase tracking-wider text-brand-200">{k}</dt>
+                <dt className="text-[10px] font-bold uppercase tracking-wider text-brand-200">
+                  {k}
+                </dt>
                 <dd className="text-sm font-semibold text-white">{String(v)}</dd>
               </div>
             ))}
@@ -343,7 +348,9 @@ function VocabTab({ detail }: { detail: AdminUserDetail }) {
           key={String(label)}
           className="rounded-xl border border-brand-400/40 bg-brand-800/60 px-4 py-3"
         >
-          <div className="text-[10px] font-bold uppercase tracking-wider text-brand-200">{label}</div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-brand-200">
+            {label}
+          </div>
           <div className="mt-1 text-2xl font-black text-white">{value}</div>
         </div>
       ))}

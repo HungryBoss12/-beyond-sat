@@ -80,7 +80,12 @@ export async function submitVocabQuiz(
     score?: number;
     total?: number;
     percent?: number;
-    results?: { questionId: string; correct: boolean; correctAnswer: string; explanation: string }[];
+    results?: {
+      questionId: string;
+      correct: boolean;
+      correctAnswer: string;
+      explanation: string;
+    }[];
     missedQueued?: number;
     error?: string;
   };
@@ -277,7 +282,12 @@ export async function fetchDeckPickerRows(): Promise<DeckPickerRow[]> {
         const stats = await fetchDeckStats(deck.id);
         statsByDeck.set(deck.id, stats);
       } catch {
-        statsByDeck.set(deck.id, { new_count: 0, learning_count: 0, review_count: 0, total_count: 0 });
+        statsByDeck.set(deck.id, {
+          new_count: 0,
+          learning_count: 0,
+          review_count: 0,
+          total_count: 0,
+        });
       }
     }),
   );

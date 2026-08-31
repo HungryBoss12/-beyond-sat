@@ -23,20 +23,15 @@ export async function enqueueMissedWords(
     );
 
     if (existing?.[0]) {
-      await restFetch(
-        config,
-        token,
-        `user_card_states?id=eq.${existing[0].id}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            due: nowIso,
-            state: existing[0].reps > 0 ? 3 : 0,
-            lapses: existing[0].lapses + 1,
-          }),
-          headers: { Prefer: "return=minimal" },
-        },
-      );
+      await restFetch(config, token, `user_card_states?id=eq.${existing[0].id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          due: nowIso,
+          state: existing[0].reps > 0 ? 3 : 0,
+          lapses: existing[0].lapses + 1,
+        }),
+        headers: { Prefer: "return=minimal" },
+      });
     } else {
       const seed = emptyFsrsState();
       await restFetch(config, token, "user_card_states", {

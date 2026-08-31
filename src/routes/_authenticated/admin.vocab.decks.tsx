@@ -10,11 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { PageHead, Panel } from "@/components/ui/panel";
-import {
-  deleteVocabDeck,
-  fetchVocabDecks,
-  patchVocabDeck,
-} from "@/lib/vocab/client";
+import { deleteVocabDeck, fetchVocabDecks, patchVocabDeck } from "@/lib/vocab/client";
 import type { VocabDeck } from "@/lib/vocab/types";
 
 export const Route = createFileRoute("/_authenticated/admin/vocab/decks")({
@@ -55,7 +51,8 @@ function AdminDeckNode({
 
   async function remove() {
     const label = deck.is_folder ? "folder and subdecks" : "deck";
-    if (!confirm(`Delete "${deck.title}" ${label}? Cards will be unassigned from this deck.`)) return;
+    if (!confirm(`Delete "${deck.title}" ${label}? Cards will be unassigned from this deck.`))
+      return;
     setBusy(true);
     try {
       await deleteVocabDeck(deck.id);
@@ -76,7 +73,11 @@ function AdminDeckNode({
             onClick={() => setOpen((v) => !v)}
             className="tap flex min-w-0 flex-1 items-center gap-2 text-left font-bold text-white"
           >
-            {open ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
+            {open ? (
+              <ChevronDown className="h-4 w-4 shrink-0" />
+            ) : (
+              <ChevronRight className="h-4 w-4 shrink-0" />
+            )}
             <FolderTree className="h-4 w-4 shrink-0 text-brand-200" />
             <span className="truncate">{deck.title}</span>
             <span className="text-xs font-normal text-brand-200">({children.length})</span>
@@ -119,7 +120,10 @@ function AdminDeckNode({
   }
 
   return (
-    <Panel className="flex items-center justify-between gap-3 p-3" style={{ marginLeft: depth * 12 }}>
+    <Panel
+      className="flex items-center justify-between gap-3 p-3"
+      style={{ marginLeft: depth * 12 }}
+    >
       <div className="min-w-0">
         <div className="truncate font-bold text-white">{deck.title}</div>
         {deck.path ? <div className="truncate text-xs text-brand-200/70">{deck.path}</div> : null}

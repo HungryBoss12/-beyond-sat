@@ -75,10 +75,12 @@ export async function handleVocabAdminCard(
     if (typeof body.part_of_speech === "string") patch.part_of_speech = body.part_of_speech.trim();
     if (typeof body.definition === "string") patch.definition = body.definition.trim();
     if (typeof body.dsat_passage === "string") patch.dsat_passage = body.dsat_passage.trim();
-    if (typeof body.roots_etymology === "string") patch.roots_etymology = body.roots_etymology.trim();
+    if (typeof body.roots_etymology === "string")
+      patch.roots_etymology = body.roots_etymology.trim();
     if (typeof body.sat_traps === "string") patch.sat_traps = body.sat_traps.trim();
     if (typeof body.difficulty_tier === "string") patch.difficulty_tier = body.difficulty_tier;
-    if (typeof body.example_sentence === "string") patch.example_sentence = body.example_sentence.trim();
+    if (typeof body.example_sentence === "string")
+      patch.example_sentence = body.example_sentence.trim();
     if (typeof body.antonym === "string") patch.antonym = body.antonym.trim();
     if (typeof body.set_label === "string") patch.set_label = body.set_label.trim();
     if (Array.isArray(body.synonyms)) {

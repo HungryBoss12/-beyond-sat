@@ -50,9 +50,7 @@ export async function searchUsers(
     profileQuery = profileQuery.or(`email.ilike.%${escaped}%,full_name.ilike.%${escaped}%`);
   }
 
-  const { data: profiles } = await profileQuery
-    .order("created_at", { ascending: false })
-    .limit(10);
+  const { data: profiles } = await profileQuery.order("created_at", { ascending: false }).limit(10);
 
   const rows = profiles ?? [];
   const enriched = await Promise.all(
@@ -62,7 +60,11 @@ export async function searchUsers(
           .from("test_sessions")
           .select("id", { count: "exact", head: true })
           .eq("user_id", p.id),
-        supabase.from("student_profiles").select("current_streak").eq("user_id", p.id).maybeSingle(),
+        supabase
+          .from("student_profiles")
+          .select("current_streak")
+          .eq("user_id", p.id)
+          .maybeSingle(),
       ]);
       return {
         ...p,
@@ -102,7 +104,11 @@ export async function fetchUserDetail(
   supabase: AdminClient,
   userId: string,
 ): Promise<AdminUserDetail | null> {
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
   if (!profile) return null;
 
   const [

@@ -1,11 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
-import {
-  Ban,
-  BookOpen,
-  ClipboardCheck,
-  PlayCircle,
-  Sparkles,
-} from "lucide-react";
+import { Ban, BookOpen, ClipboardCheck, PlayCircle, Sparkles } from "lucide-react";
 import type { AdminActivityRow } from "@/lib/admin/users";
 
 const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = {

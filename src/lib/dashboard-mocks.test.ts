@@ -51,6 +51,56 @@ describe("dashboard-mocks", () => {
     expect(mockDisplayScore(completed)?.score).toBe(1300);
   });
 
+  it("projects practice session accuracy onto the SAT band", () => {
+    const practice: MockSessionRow = {
+      ...base,
+      id: "p1",
+      type: "practice",
+      score: 15,
+      completed_at: "2026-08-03T10:00:00Z",
+      correct_count: 15,
+      total_questions: 20,
+      metadata: { draft_answers: null },
+    };
+    expect(mockDisplayScore(practice)?.score).toBe(1300);
+  });
+
+  it("buildMockTrend includes practice and mock sessions chronologically", () => {
+    const practice: MockSessionRow = {
+      ...base,
+      id: "p1",
+      type: "practice",
+      completed_at: "2026-08-01T10:00:00Z",
+      correct_count: 10,
+      total_questions: 20,
+      metadata: { draft_answers: null },
+    };
+    const completed: MockSessionRow = {
+      ...base,
+      id: "2",
+      score: 1200,
+      completed_at: "2026-08-02T10:00:00Z",
+      metadata: { draft_answers: null },
+    };
+    const trend = buildMockTrend([completed, practice]);
+    expect(trend).toHaveLength(2);
+    expect(trend[0].id).toBe("p1");
+    expect(trend[1].id).toBe("2");
+  });
+
+  it("countMockTestsTaken includes practice sessions", () => {
+    const practice: MockSessionRow = {
+      ...base,
+      id: "p1",
+      type: "practice",
+      completed_at: "2026-08-03T10:00:00Z",
+      correct_count: 8,
+      total_questions: 10,
+      metadata: { draft_answers: null },
+    };
+    expect(countMockTestsTaken([practice])).toBe(1);
+  });
+
   it("buildMockTrend includes incomplete and completed mocks", () => {
     const completed: MockSessionRow = {
       ...base,

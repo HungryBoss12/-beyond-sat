@@ -1,0 +1,626 @@
+[
+  {
+    "module": 1,
+    "position": 1,
+    "kind": "multiple_choice",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]\nThe system of two equations, $y = x + 3$ and $y = -2x$ is graphed in the xy-plane as shown.",
+    "question_text": "Which ordered pair is a solution to this system?",
+    "choices": [
+      "(0, 3)",
+      "(3, 0)",
+      "(-1, 2)",
+      "(1, -2)"
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 2,
+    "kind": "multiple_choice",
+    "prompt": "The function $f$ is defined by $f(x) = 3x + 6$.",
+    "question_text": "What is the value of $f(2)$?",
+    "choices": [
+      "12",
+      "18",
+      "20",
+      "24"
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 3,
+    "kind": "multiple_choice",
+    "prompt": "If $x + 10 = 800$,",
+    "question_text": "what is the value of $x$?",
+    "choices": [
+      "790",
+      "150",
+      "90",
+      "9"
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 4,
+    "kind": "multiple_choice",
+    "prompt": "Casey is raising $h$ horses and $g$ goats. Each horse requires 2 acres of land, and each goat requires 1 acre of land. The $h$ horses and $g$ goats require a total of 21 acres of land.",
+    "question_text": "Which equation represents this situation?",
+    "choices": [
+      "$h + g = 21$",
+      "$2h + g = 21$",
+      "$h + 2g = 21$",
+      "$2h + 2g = 21$"
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 5,
+    "kind": "multiple_choice",
+    "prompt": "The function $f(t) = 3(t - 6)^2 + 3$ gives a toy car's height above the ground in inches, $t$ seconds after it started moving on an elevated track, where $t \\ge 0$.",
+    "question_text": "Which of the following is the best interpretation of the vertex of the graph of $f$ in the xy-plane?",
+    "choices": [
+      "The toy car's minimum height was 3 inches above the ground.",
+      "The toy car's minimum height was 6 inches above the ground.",
+      "The toy car's height was 3 inches above the ground when it started moving.",
+      "The toy car's height was 6 inches above the ground when it started moving."
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 6,
+    "kind": "multiple_choice",
+    "prompt": "Which expression is equivalent to $4x^3 + 8x^3$?",
+    "question_text": "Which expression is equivalent to $4x^3 + 8x^3$?",
+    "choices": [
+      "$12x^6$",
+      "$32x^6$",
+      "$12x^3$",
+      "$32x^3$"
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 7,
+    "kind": "multiple_choice",
+    "prompt": "Two numbers have a product $y$, such that one number is $x$ and the other number is 99 less than $x$.",
+    "question_text": "Which of the following equations represents the relationship between $x$ and $y$?",
+    "choices": [
+      "$y = x + (x - 99)$",
+      "$y = 99x$",
+      "$y = x(x + 99)$",
+      "$y = x(x - 99)$"
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 8,
+    "kind": "grid_in",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]\nA bank account was opened with an initial deposit. Over the next several months, regular deposits were made into this account, and there were no withdrawals made during this time. The graph of the function $f$ shown, where $y = f(x)$ estimates the account balance, in dollars, in this bank account $x$ months since the initial deposit.",
+    "question_text": "To the nearest whole dollar, what is the amount of the initial deposit estimated by the graph?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "35"
+    ]
+  },
+  {
+    "module": 1,
+    "position": 9,
+    "kind": "multiple_choice",
+    "prompt": "The function $f(m) = 7m$ models the force, in newtons, acting on each object in a certain field as a function of the object's mass $m$, in kilograms.",
+    "question_text": "Which statement is the best interpretation of $f(4) = 28$ in this context?",
+    "choices": [
+      "The estimated force acting on an object with a mass of 4 kilograms is 28 newtons.",
+      "The estimated force acting on an object with a mass of 28 kilograms is 4 newtons.",
+      "The estimated force acting on an object with a mass of 7 kilograms is 4 newtons.",
+      "The estimated force acting on an object with a mass of 7 kilograms is 28 newtons."
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 10,
+    "kind": "multiple_choice",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]\nIn the figure shown, lines $r$ and $s$ are parallel and line $t$ intersects both lines. If $x = 40$,",
+    "question_text": "which of the following must be true?",
+    "choices": [
+      "$y = 140$",
+      "$y = 40$",
+      "$y = 50$",
+      "$y = 80$"
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 11,
+    "kind": "multiple_choice",
+    "prompt": "The graph of a polynomial function $f$ in the xy-plane passes through the point $(5, 7)$.",
+    "question_text": "What is the value of $f(5)$?",
+    "choices": [
+      "5",
+      "7",
+      "12",
+      "35"
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 12,
+    "kind": "multiple_choice",
+    "prompt": "Consider the given system of equations:\n$y = -x$\n$y = x$\nThe solution to the given system of equations is $(x, y)$.",
+    "question_text": "What is the value of $x$?",
+    "choices": [
+      "-5",
+      "-1",
+      "0",
+      "5"
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 13,
+    "kind": "grid_in",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]\nIn the right triangle shown, $k$ is a constant. The value of $\\sin(A) = \\frac{k}{22}$.",
+    "question_text": "What is the value of $k$?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "22"
+    ]
+  },
+  {
+    "module": 1,
+    "position": 14,
+    "kind": "multiple_choice",
+    "prompt": "The functions $g$ and $h$ are defined by the given equations:\n$g(x) = x^2 + 6$\n$h(x) = x + 25$\nIf $g(a) = h(a)$, where $a > 0$ is a constant,",
+    "question_text": "what is the value of $a^2$?",
+    "choices": [
+      "5",
+      "16",
+      "31",
+      "51"
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 15,
+    "kind": "multiple_choice",
+    "prompt": "If $2^x = 16$,",
+    "question_text": "what is the value of $2^{x+4}$?",
+    "choices": [
+      "8",
+      "33",
+      "128",
+      "256"
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 16,
+    "kind": "multiple_choice",
+    "prompt": "A circle has center $O$, and points $A$ and $B$ lie on the circle. The measure of arc $AB$ is $20^\\circ$, and the length of this arc is 4 inches.",
+    "question_text": "What is the circumference, in inches, of the circle?",
+    "choices": [
+      "4",
+      "8",
+      "16",
+      "72"
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 17,
+    "kind": "multiple_choice",
+    "prompt": "For $x > 0$, as $x$ increases by 1, the value of $f(x)$ increases by a constant amount.",
+    "question_text": "Which of the following could describe this function?",
+    "choices": [
+      "Decreasing exponential",
+      "Decreasing linear",
+      "Increasing exponential",
+      "Increasing linear"
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 18,
+    "kind": "grid_in",
+    "prompt": "In the given system of equations, $a$ is a constant. The system has infinitely many solutions:\n$3x + 4y = 15$\n$a x + 10y = 37.5$",
+    "question_text": "What is the value of $a$?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "7.5"
+    ]
+  },
+  {
+    "module": 1,
+    "position": 19,
+    "kind": "multiple_choice",
+    "prompt": "The functions $f$ and $g$ are defined as $f(x) = x + 3$ and $g(x) = x^2 - 4$. If the function $h$ is defined as $h(x) = f(x) + g(x)$,",
+    "question_text": "what is the y-intercept of the graph of $h$ in the xy-plane?",
+    "choices": [
+      "(0, 3)",
+      "(0, -1)",
+      "(0, -4)",
+      "(0, -7)"
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 1,
+    "position": 20,
+    "kind": "grid_in",
+    "prompt": "A beaker containing a liquid is placed on a table. The function $f(t) = 363(0.95)^t$ gives the approximate temperature, in kelvins, of the liquid $t$ minutes after the beaker was placed on the table.",
+    "question_text": "According to this function, what was the approximate temperature, in kelvins, of the liquid when the beaker was placed on the table?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "363"
+    ]
+  },
+  {
+    "module": 1,
+    "position": 21,
+    "kind": "grid_in",
+    "prompt": "A researcher surveyed undergraduate students, graduate students, and postdoctoral students. The number of undergraduate students surveyed was 7,450% of the number of postdoctoral students surveyed and the number of graduate students surveyed was 24% of the number of undergraduate students surveyed. If there were 3,576 graduate students surveyed,",
+    "question_text": "what was the sum of the number of undergraduate students and postdoctoral students surveyed?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "15100"
+    ]
+  },
+  {
+    "module": 1,
+    "position": 22,
+    "kind": "grid_in",
+    "prompt": "Consider the function $f(x) = (x - 14)^2 - 196$.",
+    "question_text": "What is the minimum value of the given function?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "-196"
+    ]
+  },
+  {
+    "module": 2,
+    "position": 1,
+    "kind": "multiple_choice",
+    "prompt": "A line in the xy-plane has a slope of 3 and passes through the point $(0, 4)$.",
+    "question_text": "Which equation represents this line?",
+    "choices": [
+      "$y = 4x + 3$",
+      "$y = 3x + 4$",
+      "$y = 3x - 4$",
+      "$y = -3x + 4$"
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 2,
+    "kind": "multiple_choice",
+    "prompt": "Cristina was elected to the city council. Each city council person is required to attend at least 21 of the 27 scheduled council meetings in a year to keep their position.",
+    "question_text": "Which inequality represents the number of city council meetings, $n$, Cristina must attend in a year to keep her position on the city council?",
+    "choices": [
+      "$n \\le 21$",
+      "$n < 21$",
+      "$n \\ge 21$",
+      "$n > 21$"
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 3,
+    "kind": "multiple_choice",
+    "prompt": "The function $f(x) = 440 - 80x$ gives the predicted height above the ground $f(x)$, in feet, of a model airplane $x$ minutes after it begins to descend.",
+    "question_text": "What is the predicted height above the ground, in feet, of the model airplane 4 minutes after it begins to descend?",
+    "choices": [
+      "120",
+      "160",
+      "240",
+      "440"
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 4,
+    "kind": "multiple_choice",
+    "prompt": "$v = w - u$\nThe given equation relates the distinct positive numbers $u, v,$ and $w$.",
+    "question_text": "Which equation correctly expresses $w$ in terms of $u$ and $v$?",
+    "choices": [
+      "$w = v + u$",
+      "$w = v - u$",
+      "$w = u - v$",
+      "$w = \\frac{v}{u}$"
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 5,
+    "kind": "multiple_choice",
+    "prompt": "Which expression is equivalent to $x^6 \\cdot x^3$?",
+    "question_text": "Which expression is equivalent to $x^6 \\cdot x^3$?",
+    "choices": [
+      "$x^9$",
+      "$x^{18}$",
+      "$2x^9$",
+      "$x^3$"
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 6,
+    "kind": "multiple_choice",
+    "prompt": "If $3x = 12$,",
+    "question_text": "what is the value of $5x$?",
+    "choices": [
+      "4",
+      "15",
+      "20",
+      "60"
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 7,
+    "kind": "multiple_choice",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]\nWhich of the following best represents the line of best fit shown?",
+    "question_text": "Which of the following best represents the line of best fit shown?",
+    "choices": [
+      "$y = -2x + 10$",
+      "$y = -0.5x + 10$",
+      "$y = 0.5x + 2$",
+      "$y = 2x + 1$"
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 8,
+    "kind": "multiple_choice",
+    "prompt": "In triangle $ABC$, angle $B$ is a right angle. The length of side $AB$ is 6 and the length of side $BC$ is 8.",
+    "question_text": "What is the length of side $AC$?",
+    "choices": [
+      "7",
+      "10",
+      "14",
+      "48"
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 9,
+    "kind": "multiple_choice",
+    "prompt": "To cut a lawn, Antwan charges a fee of $10.00 for his equipment and $8.50 per hour spent cutting a lawn. Taylor charges a fee of $7.00 for her equipment and $9.50 per hour spent cutting a lawn. If $a$ represents the number of hours spent cutting a lawn,",
+    "question_text": "what are all the values of $a$ for which Taylor's total charge is greater than Antwan's total charge?",
+    "choices": [
+      "$a < 3$",
+      "$a > 3$",
+      "$a < 17$",
+      "$a > 17$"
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 10,
+    "kind": "grid_in",
+    "prompt": "In the xy-plane, line $k$ has a slope of 3 and an x-intercept of $(4, 0)$.",
+    "question_text": "What is the y-coordinate of the y-intercept of line $k$?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "-12"
+    ]
+  },
+  {
+    "module": 2,
+    "position": 11,
+    "kind": "multiple_choice",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]\nThe given table shows the number of even and odd integers contained in list A and list B. No integer is contained in both lists.",
+    "question_text": "What fraction of the even integers represented in the table are in list A?",
+    "choices": [
+      "3/10",
+      "4/7",
+      "1/2",
+      "2/5"
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 12,
+    "kind": "multiple_choice",
+    "prompt": "In a certain state, the population of pheasants, a type of bird, is estimated each year by counting the number of pheasants observed along certain roads in the state. On average, each year from 2005 to 2015 the number of pheasants counted per mile of road decreased by 3.5% of the number of pheasants per mile of road the previous year. Based on this average, if there were 6.22 pheasants per mile of road in this state in 2005,",
+    "question_text": "which of the following best approximates the number of pheasants per mile of road in 2015?",
+    "choices": [
+      "$6.22(1.035)^{10}$",
+      "$6.22(0.035)^{10}$",
+      "$6.22(0.965)^{10}$",
+      "$6.22(1 - 0.35)^{10}$"
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 13,
+    "kind": "grid_in",
+    "prompt": "The function $f$ is defined by $f(x) = 5x - 8$.",
+    "question_text": "For what value of $x$ is $f(x) = 12$?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "4"
+    ]
+  },
+  {
+    "module": 2,
+    "position": 14,
+    "kind": "multiple_choice",
+    "prompt": "$2x^2 - 12x - 13 = 0$\nOne solution to the given equation can be written as $x = 3 + \\sqrt{k}$, where $k$ is a constant.",
+    "question_text": "What is the value of $k$?",
+    "choices": [
+      "13",
+      "14",
+      "31",
+      "15.5"
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 15,
+    "kind": "multiple_choice",
+    "prompt": "Data set F consists of 55 integers, where the value of each integer is between 150 and 260. Data set G consists of the same 55 integers in data set F as well as the integer 10.",
+    "question_text": "Which of the following must be less for data set G than for data set F?\nI. The mean\nII. The median",
+    "choices": [
+      "I only",
+      "II only",
+      "I and II",
+      "Neither I nor II"
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 16,
+    "kind": "multiple_choice",
+    "prompt": "A gallery had $x$ artifacts in a collection. When more artifacts were added to the collection, the number of artifacts increased by 149%.",
+    "question_text": "What is the resulting number of artifacts in the collection in terms of $x$?",
+    "choices": [
+      "$0.49x$",
+      "$1.49x$",
+      "$2.00x$",
+      "$2.49x$"
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 17,
+    "kind": "grid_in",
+    "prompt": "The function $f$ is defined by $f(x) = ax + b$, where $a$ and $b$ are constants and $a > 0$. In the xy-plane, the graph of $f$ has a y-intercept at $(0, 5)$ and passes through the point $(3, 29)$.",
+    "question_text": "What is the value of $f(3)$?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "29"
+    ]
+  },
+  {
+    "module": 2,
+    "position": 18,
+    "kind": "multiple_choice",
+    "prompt": "One gallon of sealant costs $S$ dollars and will cover $A$ square feet of a surface. A deck has a total surface area of $k$ square feet.",
+    "question_text": "Which of the following represents the cost $C$, in dollars, of the sealant needed to cover the deck twice?",
+    "choices": [
+      "$\\frac{k S}{A}$",
+      "$\\frac{A S}{2k}$",
+      "$\\frac{2 k S}{A}$",
+      "$\\frac{2 A S}{k}$"
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 19,
+    "kind": "multiple_choice",
+    "prompt": "A right square pyramid has a height of 11 centimeters (cm). A second right square pyramid has a height of 22 centimeters. The area of the bases of each of the two pyramids is 400 cm$^2$.",
+    "question_text": "Which of the following is closest to the difference in the surface area of the second pyramid and the surface area of the first pyramid, in cm$^2$?",
+    "choices": [
+      "209",
+      "220",
+      "367",
+      "551"
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": []
+  },
+  {
+    "module": 2,
+    "position": 20,
+    "kind": "grid_in",
+    "prompt": "An object's speed is increasing at a rate of 5.70 meters per second squared.",
+    "question_text": "What is this rate, in miles per minute squared, rounded to the nearest tenth? (Use 1 mile = 1,609 meters.)",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "12.8"
+    ]
+  },
+  {
+    "module": 2,
+    "position": 21,
+    "kind": "grid_in",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]\nFor triangle $ABC$, the length of $AB$ is 11 less than the length of $AC$. Point $D$ (not shown) lies on $AC$ such that $BD$ (not shown) is perpendicular to $AC$.",
+    "question_text": "What is the value of $\\tan(A)$?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "32/21"
+    ]
+  },
+  {
+    "module": 2,
+    "position": 22,
+    "kind": "grid_in",
+    "prompt": "$-x^2 + 12x + c = 0$\nIn the given equation, $c$ is a constant. If the equation has exactly one solution,",
+    "question_text": "what is the value of $c$?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "-37"
+    ]
+  }
+]

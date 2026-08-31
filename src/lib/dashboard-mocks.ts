@@ -24,6 +24,16 @@ export type MockTrendPoint = {
   anchor?: boolean;
 };
 
+const TRACKED_TYPES = new Set<MockSessionRow["type"]>(["mock", "practice", "daily"]);
+
+function isTrackedSession(session: MockSessionRow): boolean {
+  return TRACKED_TYPES.has(session.type);
+}
+
+function sessionWhen(session: MockSessionRow): string {
+  return session.completed_at ?? session.started_at;
+}
+
 function parseMetadata(session: MockSessionRow): MockSessionRow["metadata"] {
   const raw = session.metadata;
   if (!raw) return null;
@@ -37,24 +47,48 @@ function parseMetadata(session: MockSessionRow): MockSessionRow["metadata"] {
   return raw;
 }
 
-function countDraftProgress(drafts: AnswerState[] | null | undefined): number {
+export function countDraftProgress(drafts: AnswerState[] | null | undefined): number {
   if (!drafts?.length) return 0;
   return drafts.filter(
     (a) => !!a.selectedChoiceId || a.gridAnswer.trim().length > 0 || a.markedForReview,
   ).length;
 }
 
+/** Completion % for a practice set — 100 when done, answered/total when in progress. */
+export function practiceSetProgressPct(
+  completed: boolean,
+  totalQuestions: number,
+  draftAnswers: AnswerState[] | null | undefined,
+): number {
+  if (completed) return 100;
+  if (totalQuestions <= 0) return 0;
+  const answered = countDraftProgress(draftAnswers);
+  return Math.min(100, Math.round((answered / totalQuestions) * 100));
+}
+
+/** Project accuracy onto the 400–1600 band for practice/daily sets. */
+function projectedScore(correct: number, total: number): number {
+  if (total <= 0) return 400;
+  return Math.round(400 + (correct / total) * 1200);
+}
+
 function resolveCompletedScore(session: MockSessionRow): number | null {
-  if (session.score != null && Number.isFinite(Number(session.score))) {
-    return Math.round(Number(session.score));
-  }
-  if (session.rw_score != null && session.math_score != null) {
-    return session.rw_score + session.math_score;
-  }
   const total = session.total_questions ?? 0;
-  if (session.completed_at && session.correct_count != null && total > 0) {
-    return Math.round(400 + (session.correct_count / total) * 1200);
+
+  if (session.type === "mock") {
+    if (session.rw_score != null && session.math_score != null) {
+      return session.rw_score + session.math_score;
+    }
+    if (session.score != null && Number.isFinite(Number(session.score))) {
+      const scaled = Math.round(Number(session.score));
+      if (scaled >= 400) return scaled;
+    }
   }
+
+  if (session.completed_at && session.correct_count != null && total > 0) {
+    return projectedScore(session.correct_count, total);
+  }
+
   return null;
 }
 
@@ -66,11 +100,11 @@ function trendLabel(when: string, sessionId: string, usedLabels: Map<string, num
   return `${base} · ${sessionId.slice(0, 4)}`;
 }
 
-/** Best available display score for a mock — real score when finished, else progress band. */
+/** Best available display score — SAT scale for mocks, projected band for practice/daily. */
 export function mockDisplayScore(session: MockSessionRow): MockTrendPoint | null {
-  if (session.type !== "mock") return null;
+  if (!isTrackedSession(session)) return null;
 
-  const when = session.completed_at ?? session.started_at;
+  const when = sessionWhen(session);
   const completedScore = resolveCompletedScore(session);
 
   if (session.completed_at && completedScore != null) {
@@ -89,11 +123,10 @@ export function mockDisplayScore(session: MockSessionRow): MockTrendPoint | null
   const answered = countDraftProgress(parseMetadata(session)?.draft_answers);
   if (answered > 0) {
     const progressPct = Math.round((answered / total) * 100);
-    const score = Math.round(400 + (answered / total) * 1200);
     return {
       id: session.id,
       label: format(new Date(when), "MMM d"),
-      score,
+      score: projectedScore(answered, total),
       incomplete: true,
       progressPct,
     };
@@ -117,23 +150,29 @@ export function mockHasActivity(session: MockSessionRow): boolean {
 }
 
 export function countMockTestsTaken(sessions: MockSessionRow[]): number {
-  return sessions.filter((s) => s.type === "mock" && mockHasActivity(s)).length;
+  return sessions.filter((s) => isTrackedSession(s) && mockHasActivity(s)).length;
 }
 
 export function buildMockTrend(sessions: MockSessionRow[], limit = 8): MockTrendPoint[] {
-  const mocks = sessions.filter((s) => s.type === "mock");
+  const tracked = sessions
+    .filter(isTrackedSession)
+    .slice()
+    .sort(
+      (a, b) => new Date(sessionWhen(a)).getTime() - new Date(sessionWhen(b)).getTime(),
+    );
+
   const usedLabels = new Map<string, number>();
   const points: MockTrendPoint[] = [];
-  for (const m of mocks) {
+  for (const m of tracked) {
     const pt = mockDisplayScore(m);
     if (!pt) continue;
-    const when = m.completed_at ?? m.started_at;
+    const when = sessionWhen(m);
     points.push({
       ...pt,
       label: trendLabel(when, m.id, usedLabels),
     });
   }
-  return points.slice().reverse().slice(-limit);
+  return points.slice(-limit);
 }
 
 /** Recharts Area needs at least two X positions to draw a visible segment. */
@@ -156,17 +195,31 @@ export function chartReadyTrend(points: MockTrendPoint[]): MockTrendPoint[] {
   return points;
 }
 
+export function completedSessionScore(session: MockSessionRow): number | null {
+  if (!session.completed_at) return null;
+  return resolveCompletedScore(session);
+}
+
 export function latestMockSummary(sessions: MockSessionRow[]) {
-  const mocks = sessions.filter((s) => s.type === "mock");
-  const scored = mocks.filter((m) => resolveCompletedScore(m) != null && m.completed_at);
-  if (scored.length > 0) {
-    const [current, previous] = scored;
+  const tracked = sessions.filter(isTrackedSession);
+  const completed = tracked
+    .filter((m) => m.completed_at && resolveCompletedScore(m) != null)
+    .sort(
+      (a, b) =>
+        new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime(),
+    );
+
+  const mockCompleted = completed.filter((m) => m.type === "mock");
+  const pool = mockCompleted.length > 0 ? mockCompleted : completed;
+
+  if (pool.length > 0) {
+    const [current, previous] = pool;
     const currentScore = resolveCompletedScore(current)!;
     const previousScore = previous ? resolveCompletedScore(previous) : null;
     return {
       score: currentScore,
-      rw: current.rw_score,
-      math: current.math_score,
+      rw: current.type === "mock" ? current.rw_score : null,
+      math: current.type === "mock" ? current.math_score : null,
       delta: previousScore != null ? currentScore - previousScore : null,
       at: current.completed_at,
       incomplete: false as const,
@@ -174,7 +227,7 @@ export function latestMockSummary(sessions: MockSessionRow[]) {
     };
   }
 
-  const inProgress = mocks.find((m) => mockDisplayScore(m)?.incomplete);
+  const inProgress = tracked.find((m) => mockDisplayScore(m)?.incomplete);
   const pt = inProgress ? mockDisplayScore(inProgress) : null;
   if (!pt) return null;
 

@@ -1,0 +1,948 @@
+[
+  {
+    "module": 1,
+    "position": 1,
+    "kind": "multiple_choice",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]",
+    "question_text": "The system of two equations,  and  is graphed in the xy-plane as shown. Which ordered pair is a solution to this system?",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 2,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "The function  is defined by  What is the value of",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": "24"
+      }
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 3,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "If  what is the value of",
+    "choices": [
+      {
+        "id": "A",
+        "text": "790"
+      },
+      {
+        "id": "B",
+        "text": "150"
+      },
+      {
+        "id": "C",
+        "text": "90"
+      },
+      {
+        "id": "D",
+        "text": "9"
+      }
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 4,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "Casey is raising  horses and  goats. Each horse requires 2 acres of land, and each goat requires 1 acre of land. The  horses and  goats require a total of 21 acres of land. Which equation represents this situation?",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 5,
+    "kind": "multiple_choice",
+    "prompt": "The function  gives a toy car's height above the ground  in inches,  seconds after it started moving on an elevated track, where  Which of the following is the best interpretation of the vertex of the graph of  in the xy-plane?\nB) The toy car's minimum height was 6 inches above the ground.\nC) The toy car's height was 3 inches above the ground when it started moving.",
+    "question_text": "D) The toy car's height was 6 inches above the ground when it started moving.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "The toy car's minimum height was 3 inches above the ground."
+      }
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 6,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "Which expression is equivalent to",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 7,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "Two numbers have a product y, such that one number is  and the other number is 99 less than . Which of the following equations represents the relationship between  and ?",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 8,
+    "kind": "grid_in",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]",
+    "question_text": "A bank account was opened with an initial deposit. Over the next several months, regular deposits were made into this account, and there were no withdrawals made during this time. The graph of the function f shown, where  estimates the account balance, in dollars, in this bank account  months since the initial deposit. To the nearest whole dollar, what is the amount of the initial deposit estimated by the graph?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "35"
+    ]
+  },
+  {
+    "module": 1,
+    "position": 9,
+    "kind": "multiple_choice",
+    "prompt": "The function  models the force, in newtons, acting on each object in a certain field as a function of the object's mass , in kilograms. Which statement is the best interpretation of  in this context?\nB) The estimated force acting on an object with a mass of 28 kilograms is 4 newtons.\nC) The estimated force acting on an object with a mass of 7 kilograms is 4 newtons.",
+    "question_text": "D) The estimated force acting on an object with a mass of 7 kilograms is 28 newtons.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "The estimated force acting on an object with a mass of 4 kilograms is 28 newtons."
+      }
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 10,
+    "kind": "multiple_choice",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]",
+    "question_text": "In the figure shown, lines  and  are parallel and line t intersects both lines. If  which of the following must be true?",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 11,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "The graph of a polynomial function  in the xy-plane passes through the point . What is the value of ?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "5"
+      },
+      {
+        "id": "B",
+        "text": "7"
+      },
+      {
+        "id": "C",
+        "text": "12"
+      },
+      {
+        "id": "D",
+        "text": "35"
+      }
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 12,
+    "kind": "multiple_choice",
+    "prompt": "$$y=-xy=x$$",
+    "question_text": "The solution to the given system of equations is  What is the value of",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": "0"
+      },
+      {
+        "id": "D",
+        "text": "5"
+      }
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 13,
+    "kind": "grid_in",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]",
+    "question_text": "In the right triangle shown,  is a constant. The value of , where  is a constant. What is the value of k?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "22"
+    ]
+  },
+  {
+    "module": 1,
+    "position": 14,
+    "kind": "multiple_choice",
+    "prompt": "The functions  and  are defined by the given equations.\n$$gx=$$\n$$hx=+$$",
+    "question_text": "If  where is a constant, what is the value of",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": "31"
+      },
+      {
+        "id": "D",
+        "text": "51"
+      }
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 15,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "If  what is the value of",
+    "choices": [
+      {
+        "id": "A",
+        "text": "8"
+      },
+      {
+        "id": "B",
+        "text": "33"
+      },
+      {
+        "id": "C",
+        "text": "128"
+      },
+      {
+        "id": "D",
+        "text": "256"
+      }
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 16,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "A circle has center O, and points A and B lie on the circle. The measure of arc AB is 20, and the length of this arc is 4 inches. What is the circumference, in inches, of the circle?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "4"
+      },
+      {
+        "id": "B",
+        "text": "8"
+      },
+      {
+        "id": "C",
+        "text": "16"
+      },
+      {
+        "id": "D",
+        "text": "72"
+      }
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 17,
+    "kind": "multiple_choice",
+    "prompt": "For , the function  is defined as follows:\nequals 111% of .\nWhich of the following could describe this function?",
+    "question_text": "C) Increasing exponential\t\t\tD) Increasing linear",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 18,
+    "kind": "grid_in",
+    "prompt": null,
+    "question_text": "In the given system of equations,  is a constant. The system has infinitely many solutions. What is the value of",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "7.5"
+    ]
+  },
+  {
+    "module": 1,
+    "position": 19,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "The functions  and  are defined as  and  If the function  is defined as  what is the  intercept of the graph of  in the  plane?",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 1,
+    "position": 21,
+    "kind": "grid_in",
+    "prompt": null,
+    "question_text": "A researcher surveyed undergraduate students, graduate students, and postdoctoral students. The number of undergraduate students surveyed was 7,450% of the number of postdoctoral students surveyed and the number of graduate students surveyed was 24% of the number of undergraduate students surveyed. If there were 3,576 graduate students surveyed, what was the sum of the number of undergraduate students and postdoctoral students surveyed?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "15100"
+    ]
+  },
+  {
+    "module": 1,
+    "position": 22,
+    "kind": "grid_in",
+    "prompt": null,
+    "question_text": "What is the minimum value of the given function?",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "-196"
+    ]
+  },
+  {
+    "module": 2,
+    "position": 1,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "A line in the  plane has a slope of  and passes through the point  Which equation represents this line?",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 2,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "Cristina was elected to the city council. Each city council person is required to attend at least 21 of the 27 scheduled council meetings in a year to keep their position. Which inequality represents the number of city council meetings, , Cristina must attend in a year to keep her position on the city council?",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 3,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "The function  gives the predicted height above the ground  in feet, of a model airplane x minutes after it begins to descend. What is the predicted height above the ground, in feet, of the model airplane 4 minutes after it begins to descend?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "120"
+      },
+      {
+        "id": "B",
+        "text": "160"
+      },
+      {
+        "id": "C",
+        "text": "240"
+      },
+      {
+        "id": "D",
+        "text": "440"
+      }
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 4,
+    "kind": "multiple_choice",
+    "prompt": "$$v=-$$",
+    "question_text": "The given equation relates the distinct positive numbers  and . Which equation correctly expresses  in terms of  and ?",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 5,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "Which expression is equivalent to",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 6,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "If  what is the value of",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 7,
+    "kind": "multiple_choice",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]",
+    "question_text": "Which of the following best represents the line of best fit shown?\nC) \t\tD)",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 8,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "In triangle  angle  is a right angle. The length of side  is  and the length of side  is  What is the length of side",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 9,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "To cut a lawn, Antwan charges a fee of $10.00 for his equipment and $8.50 per hour spent cutting a lawn. Taylor charges a fee of $7.00 for her equipment and $9.50 per hour spent cutting a lawn. If a represents the number of hours spent cutting a lawn, what are all the values of  for which Taylor's total charge is greater than Antwan's total charge?",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "B",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 10,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "In the  plane, line  has a slope of  and an  intercept of  What is the  coordinate of the  intercept of line",
+    "choices": [],
+    "correct_choice_id": "D",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 11,
+    "kind": "multiple_choice",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]",
+    "question_text": "The given table shows the number of even and odd integers contained in list A and list B. No integer is contained in both lists. What fraction of the even integers represented in the table are in list A?",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 12,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "In a certain state, the population of pheasants, a type of bird, is estimated each year by counting the number of pheasants observed along certain roads in the state. On average, each year from 2005 to 2015 the number of pheasants counted per mile of road decreased by 3.5% of the number of pheasants per mile of road the previous year. Based on this average, if there were 6.22 pheasants per mile of road in this state in 2005, which of the following best approximates the number of pheasants per mile of road in 2015?\nC) \t\tD)",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 13,
+    "kind": "grid_in",
+    "prompt": null,
+    "question_text": "The function  is defined by  For what value of  is",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "4"
+    ]
+  },
+  {
+    "module": 2,
+    "position": 14,
+    "kind": "multiple_choice",
+    "prompt": "$$2-12x-13=0$$",
+    "question_text": "One solution to the given equation can be written as  where h and k are integer constants. What is the value of",
+    "choices": [
+      {
+        "id": "A",
+        "text": "13"
+      },
+      {
+        "id": "B",
+        "text": "14"
+      },
+      {
+        "id": "C",
+        "text": "31"
+      },
+      {
+        "id": "D",
+        "text": "65"
+      }
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 15,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "Data set F consists of 55 integers, where the value of each integer is between 150 and 260. Data set G consists of the same 55 integers in data set F as well as the integer 10. Which of the following must be less for data set G than for data set F?\nI. The mean\nII. The median",
+    "choices": [
+      {
+        "id": "A",
+        "text": "I only"
+      },
+      {
+        "id": "B",
+        "text": "II only"
+      },
+      {
+        "id": "C",
+        "text": "I and II"
+      },
+      {
+        "id": "D",
+        "text": "Neither I nor II"
+      }
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 16,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "A gallery had  artifacts in a collection. When more artifacts were added to the collection, the number of artifacts increased by 149%. What is the resulting number of artifacts in the collection in terms of ?",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "D",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 17,
+    "kind": "grid_in",
+    "prompt": null,
+    "question_text": "The function  is defined by  where  and  are constants and  In the  plane, the graph of  has a  intercept at  and passes through the point  What is the value of",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "29"
+    ]
+  },
+  {
+    "module": 2,
+    "position": 18,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "One gallon of sealant costs  and will cover square feet of a surface. A deck has a total surface area of  square feet. Which of the following represents the cost  in dollars, of the sealant needed to cover the deck twice?",
+    "choices": [
+      {
+        "id": "A",
+        "text": ""
+      },
+      {
+        "id": "B",
+        "text": ""
+      },
+      {
+        "id": "C",
+        "text": ""
+      },
+      {
+        "id": "D",
+        "text": ""
+      }
+    ],
+    "correct_choice_id": "C",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 19,
+    "kind": "multiple_choice",
+    "prompt": null,
+    "question_text": "A right square pyramid has a height of 11 centimeters (cm). A second right square pyramid has a height of 22 centimeters. The area of the bases of each of the two pyramids is  cm$^{2}$. Which of the following is closest to the difference in the surface area of the second pyramid and the surface area of the first pyramid, in cm$^{2}$?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "209"
+      },
+      {
+        "id": "B",
+        "text": "220"
+      },
+      {
+        "id": "C",
+        "text": "367"
+      },
+      {
+        "id": "D",
+        "text": "551"
+      }
+    ],
+    "correct_choice_id": "A",
+    "correct_grid_answers": null
+  },
+  {
+    "module": 2,
+    "position": 20,
+    "kind": "grid_in",
+    "prompt": null,
+    "question_text": "An object's speed is increasing at a rate of 5.70 meters per second squared. What is this rate, in <u>miles per minute squared</u>, rounded to the nearest tenth? (Use 1 mile 1,609 meters.)",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "12.8"
+    ]
+  },
+  {
+    "module": 2,
+    "position": 21,
+    "kind": "grid_in",
+    "prompt": "[FIGURE NEEDED — add an image URL for this question]",
+    "question_text": "For triangle  the length of  is 11 less than the length of  Point  (not shown) lies on  such that  (not shown) is perpendicular to  What is the value of",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "32/21"
+    ]
+  },
+  {
+    "module": 2,
+    "position": 22,
+    "kind": "grid_in",
+    "prompt": null,
+    "question_text": "In the given equation,  is a constant. If the equation has exactly one solution, what is the value of",
+    "choices": [],
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "-37"
+    ]
+  }
+]

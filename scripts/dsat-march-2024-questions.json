@@ -1,0 +1,2747 @@
+[
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 1,
+    "question_text": "As used in the text, what does the phrase \"concern myself with\" most nearly mean?",
+    "prompt": "The following text is from Rudolfo Anaya's 1972 novel Bless Me, Ultima. The young narrator is eating breakfast with his two sisters in their home in rural New Mexico.\n\n\"I sat across the table from Deborah and Teresa and ate my atole and the hot tortilla with butter. I said very little. I usually spoke very little to my two sisters. They were older than I and they were very close. They usually spent the entire day in the attic, playing dolls and giggling. I did not concern myself with those things.\"",
+    "choices": [
+      {
+        "id": "A",
+        "text": "craft"
+      },
+      {
+        "id": "B",
+        "text": "get angry about"
+      },
+      {
+        "id": "C",
+        "text": "care about"
+      },
+      {
+        "id": "D",
+        "text": "earn"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Craft and Structure",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 2,
+    "question_text": "Which choice completes the text with the most logical and precise word or phrase?",
+    "prompt": "The percentage of US forest land that a 2023 federal report identified as being either mature or old growth exceeds other recent estimates. Given how little ______ there is among scientists regarding the scope of these categories, this discrepancy shouldn't be surprising: forest researchers regularly dispute one another's classifications.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "interest"
+      },
+      {
+        "id": "B",
+        "text": "deliberation"
+      },
+      {
+        "id": "C",
+        "text": "vigilance"
+      },
+      {
+        "id": "D",
+        "text": "consensus"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Craft and Structure",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 3,
+    "question_text": "Which choice completes the text with the most logical and precise word or phrase?",
+    "prompt": "Karam Kang has demonstrated that lobbying does little to alter probability that a particular energy policy under consideration by the United States Congress will be enacted, but lobbying is not as ______ finding seems to suggest. As Kang herself notes, lobbying can shape which policy proposals members of Congress bring forward for consideration in the first place.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "counterproductive"
+      },
+      {
+        "id": "B",
+        "text": "cynical"
+      },
+      {
+        "id": "C",
+        "text": "biased"
+      },
+      {
+        "id": "D",
+        "text": "ineffectual"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Craft and Structure",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 4,
+    "question_text": "Which choice completes the text with the most logical and precise word or phrase?",
+    "prompt": "Though it does not guarantee a book's commercial success, ______ can play a big role in that success – a well-executed marketing campaign helped to make Danielle Steel's novel The Gift, the fourth-best-selling novel of 1994.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "originality"
+      },
+      {
+        "id": "B",
+        "text": "publicity"
+      },
+      {
+        "id": "C",
+        "text": "complexity"
+      },
+      {
+        "id": "D",
+        "text": "practicality"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Craft and Structure",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 5,
+    "question_text": "Which choice completes the text with the most logical and precise word or phrase?",
+    "prompt": "People sometimes dismiss a claim if it comes from a source they regard as self-interested, but from a strictly logical perspective, the source of a claim is ______: it has no direct bearing on whether the claim is true.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "implicit"
+      },
+      {
+        "id": "B",
+        "text": "indisputable"
+      },
+      {
+        "id": "C",
+        "text": "indistinct"
+      },
+      {
+        "id": "D",
+        "text": "irrelevant"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Craft and Structure",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 6,
+    "question_text": "Which choice best describes the function of the underlined sentence in the text as a whole?",
+    "prompt": "When people think of dinosaurs with feathers, they typically think of winged dinosaurs, such as the four-winged Microraptor. However, many dinosaurs that didn't have wings also had feathers on their bodies. For instance, research indicates that the wingless, speedy Ornithomimus likely had feathers.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "It reveals that the dinosaurs mentioned earlier in the text used their feathers for an important purpose."
+      },
+      {
+        "id": "B",
+        "text": "It gives an example of a dinosaur with the characteristics mentioned earlier in the text."
+      },
+      {
+        "id": "C",
+        "text": "It defines a term related to the type of dinosaur feathers mentioned earlier in the text."
+      },
+      {
+        "id": "D",
+        "text": "It indicates that the dinosaurs mentioned earlier in the text weren't the only ones that had feathers."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Craft and Structure",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 7,
+    "question_text": "Which choice best describes the function of the underlined portion in the text as a whole?",
+    "prompt": "The following text is from Annie Dillard's 1987 autobiographical novel An American Childhood. The narrator is a young girl living in Pittsburgh.\n\nI walked. My mother had given me the freedom of the streets as soon as I could say our telephone number. I walked and memorized the neighborhood. I made a mental map and located myself upon it. At night in bed I rehearsed the small world's scheme and set challenges: Find the store using backyards only. Imagine a route from the school to my friend's house.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "It describes the narrator trying to memorize her telephone number."
+      },
+      {
+        "id": "B",
+        "text": "It provides examples of what the narrator thinks about at night."
+      },
+      {
+        "id": "C",
+        "text": "It gives directions to the narrator's favorite local store."
+      },
+      {
+        "id": "D",
+        "text": "It portrays the narrator's relationship with her mother."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Craft and Structure",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 8,
+    "question_text": "Which choice best states the main purpose of the text?",
+    "prompt": "Gus Edwards's atmospheric play Black Body Blues was produced in 1978 by the groundbreaking Negro Ensemble Company (NEC). NEC cofounder Douglas Turner Ward, who worked as an actor, director, and playwright, had met actor and producer Robert Hooks while they were performing in a 1960 touring production of Lorraine Hansberry's play A Raisin in the Sun. Together, they envisioned a theater company that would nurture and showcase the work of Black theater professionals. Since NEC's founding in 1967, its workshops and performances have given Black playwrights, including Edwards, a forum for their compelling stories.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "To show how the play A Raisin in the Sun influenced Ward and Hooks."
+      },
+      {
+        "id": "B",
+        "text": "To bring attention to a work by Gus Edwards."
+      },
+      {
+        "id": "C",
+        "text": "To describe how Ward and Hooks's creative partnership changed over time."
+      },
+      {
+        "id": "D",
+        "text": "To discuss the origin and importance of the NEC."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 9,
+    "question_text": "Based on the text, what is one disadvantage of some conventional thermal methods?",
+    "prompt": "The food industry has long used thermal technologies to preserve food in large batches. Recent advancements in infrared heating were made through research in Mexico on the preservation of bean flour. Infrared heating is generally considered to be an improvement over more conventional thermal preservation methods: whereas conventional methods transfer energy from the surface of a food to its interior, infrared heating uses high-intensity infrared light to generate heat within the food itself, thus reducing industrial cooking times.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "They are especially vulnerable to technological breakdowns."
+      },
+      {
+        "id": "B",
+        "text": "They are only effective in heating foods that are lightweight and small in size."
+      },
+      {
+        "id": "C",
+        "text": "Their cooking times are longer than those of other methods."
+      },
+      {
+        "id": "D",
+        "text": "They require more energy than other methods do."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 10,
+    "question_text": "The author makes which point about the Spanish language?",
+    "prompt": "\"Cocoa\" is an example of a loanword – that is, a word that originated in one language and was later adopted by another. The word came to English indirectly from cacao, the Spanish word for the plant that chocolate is made from. Spanish had borrowed it from Nahuatl, an Indigenous language of Central Mexico, in which the word's original form is cacahuatl. \"Iguana\" is also Indigenous in origin and entered English through Spanish. But in this case, the original source was Taino, a language of the Caribbean islands, in which the word for the group of related lizard species is iwana.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "It has served as a medium through which Indigenous languages have influenced English."
+      },
+      {
+        "id": "B",
+        "text": "Its contribution to English vocabulary roughly equals the collective contribution by Indigenous languages."
+      },
+      {
+        "id": "C",
+        "text": "It has borrowed words from Indigenous languages and contributed words to them."
+      },
+      {
+        "id": "D",
+        "text": "It adopted Nahuatl and Taino words in approximately equal numbers."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 11,
+    "question_text": "Which choice most effectively uses data from the table to complete the statement?",
+    "prompt": "Table — Total Areas of Five Tribal Nations around the United States:\n| Tribal Nation | Location | Area (square miles) |\n| Cherokee Nation | Oklahoma | 6,963 |\n| Northern Cheyenne Tribe | Montana | 707 |\n| Mandan, Hidatsa, and Arikara Nation | North Dakota | 1,583 |\n| Colville Tribes | Washington | 2,185 |\n| Muscogee Nation | Oklahoma | 4,867 |\n\nIn terms of total area, the Navajo Nation is the largest tribal nation in the United States. It covers 24,425 square miles in Arizona, Colorado, and New Mexico. Most tribal nations in the US are much smaller. For example, the total area of the Muscogee Nation in Oklahoma is 4,867 square miles. And in Washington, the total area of the Colville Tribes is ______.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "2,185 square miles"
+      },
+      {
+        "id": "B",
+        "text": "707 square miles"
+      },
+      {
+        "id": "C",
+        "text": "6,963 square miles"
+      },
+      {
+        "id": "D",
+        "text": "1,583 square miles"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 12,
+    "question_text": "Which choice most effectively uses data from the table to complete the statement?",
+    "prompt": "Table — Millions of Metric Tons of Copper Mined in 1995 and 2020:\n| Country | 1995 | 2020 |\n| Poland | 0.38 | 0.39 |\n| Kazakhstan | 0.26 | 0.55 |\n| Chile | 2.49 | 5.73 |\n| Canada | 0.73 | 0.59 |\n\nWhile doing research for a paper about copper mining, a student finds a table with information about four different countries. The student notes that the country that mined 0.55 million metric tons of copper in 2020 had mined ______.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "0.26 million metric tons of copper in 1995"
+      },
+      {
+        "id": "B",
+        "text": "0.59 million metric tons of copper in 1995"
+      },
+      {
+        "id": "C",
+        "text": "2.49 million metric tons of copper in 1995"
+      },
+      {
+        "id": "D",
+        "text": "0.38 million metric tons of copper in 1995"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 13,
+    "question_text": "Which quotation from \"A Pair of Silk Stockings\" most effectively illustrates the claim?",
+    "prompt": "\"A Pair of Silk Stockings\" is an 1897 short story written by Kate Chopin. In the story, Chopin suggests that the protagonist, Mrs. Sommers, experiences a shift in her sense of self as a result of putting on certain articles of clothing, writing, ____.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Mrs. Sommers was one who knew the value of bargains; who could stand for hours making her way inch by inch toward the desired object that was selling below cost."
+      },
+      {
+        "id": "B",
+        "text": "She held back her skirts and turned her feet one way and her head another way as she glanced down at the polished pointed-tipped boots."
+      },
+      {
+        "id": "C",
+        "text": "She would buy so and so many yards of percale for new shirt waists for the boys and Janie and Mag."
+      },
+      {
+        "id": "D",
+        "text": "Her stockings and boots and well-fitting gloves had worked marvels in her bearing — had given her a feeling of assurance, a sense of belonging to the well-dressed multitude."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 14,
+    "question_text": "Which choice most effectively uses data from the table to complete the student's conclusion?",
+    "prompt": "Table — Average Hours Worked per Person per Year in 1950 and 2017:\n| Country | 1950 | 2017 | Change in hours | Percent change in hours |\n| Argentina | 2,034 | 1,692 | -342 | -17% |\n| Ireland | 2,419 | 1,746 | -674 | -28% |\n| Mexico | 2,432 | 2,255 | -177 | -7% |\n| United Kingdom | 2,184 | 1,670 | -514 | -24% |\n(Calculations may be inexact due to rounding.)\n\nA student in an economics course is examining the decline since 1950 in average hours worked per person per year in various nations due to both increased productivity and the adoption of policies that limit working hours. The first task in this investigation is to determine how the decline in Argentina compares to that in other countries. The student finds that ____.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "the decline in number of hours worked was greater in Argentina than it was in Ireland, the United Kingdom, or Mexico"
+      },
+      {
+        "id": "B",
+        "text": "while the number of hours worked rose in Argentina between 1950 and 2017, it declined in Ireland, the United Kingdom, and Mexico"
+      },
+      {
+        "id": "C",
+        "text": "though the percent decrease in hours worked in Argentina was greater than that in Ireland and Mexico, it was less than that in the United Kingdom"
+      },
+      {
+        "id": "D",
+        "text": "though the percent decrease in hours worked in Argentina was less than that in Ireland and the United Kingdom, it was greater than that in Mexico"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 15,
+    "question_text": "Which choice most logically completes the text?",
+    "prompt": "The Mammillaria cactus M. guerreronis occurs naturally only in the state of Guerrero in Mexico, and the smallness of its range makes it especially vulnerable to extinction. The traditional single-species approach to conservation emphasizes the need to focus on individual species most at risk, like M. guerreronis, but recently, conservationists have argued that an ecosystem-based approach that incorporates the many interactions between the climate, terrain, and various species of a given geographical area may lead to better outcomes for all the species in a given location. If this view is correct, the single-species approach to the conservation of M. guerreronis could thus ______.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "lead to a better understanding of how the distribution of Mammillaria species throughout Mexico has affected their survival"
+      },
+      {
+        "id": "B",
+        "text": "allow conservationists to better consider how climatic changes affecting Guerrero may reduce the number of species competing with M. guerreronis"
+      },
+      {
+        "id": "C",
+        "text": "erroneously shift the focus of conservation efforts away from M. guerreronis itself"
+      },
+      {
+        "id": "D",
+        "text": "fail to consider the ways in which the survival of M. guerreronis may be influenced by changes in the populations of other species that inhabit Guerrero"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 16,
+    "question_text": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    "prompt": "It is widely known that New York City's Museum of Modern Art (MoMA) ______ a vast collection of oil paintings, including Paul Klee's In the Grass and Fernand Léger's Contrast of Forms.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "houses"
+      },
+      {
+        "id": "B",
+        "text": "to have housed"
+      },
+      {
+        "id": "C",
+        "text": "housing"
+      },
+      {
+        "id": "D",
+        "text": "to house"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Standard English Conventions",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 17,
+    "question_text": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    "prompt": "An accomplished birder might be able to spot thousands of different species over the course of a career, from Amadina erythrocephala to Arborophila rufogularis, but no birder has ever achieved the ultimate ______ an in-person glimpse of all 10,000-plus species of birds.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "goal catching"
+      },
+      {
+        "id": "B",
+        "text": "goal. Catching"
+      },
+      {
+        "id": "C",
+        "text": "goal: catching"
+      },
+      {
+        "id": "D",
+        "text": "goal; catching"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Standard English Conventions",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 18,
+    "question_text": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    "prompt": "Today, the Michelin Guide is widely known as the arbiter of fine dining with its coveted 3-star rating being awarded to top restaurants like Kitcho Arashiyama in ______ when brothers Andre and Edouard Michelin created the guide in 1900, it was little more than a marketing gimmick — a way to increase profits for their tire company by encouraging their customers to drive across France, visiting the guide's recommended hotels and restaurants along the way.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Kyoto; however,"
+      },
+      {
+        "id": "B",
+        "text": "Kyoto,"
+      },
+      {
+        "id": "C",
+        "text": "Kyoto, however,"
+      },
+      {
+        "id": "D",
+        "text": "Kyoto"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Standard English Conventions",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 19,
+    "question_text": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    "prompt": "When attempting to determine a fault's seismic history, geophysicists like Dr. Estella Atekwana at the University of Delaware rely in part on data about the fault's physical dimensions and geological ______ the Imperial fault in Imperial County, California, the US Geological Survey compiles such data in several ways: by exchanging information with state geological surveys, by linking maps of the fault with sources that offer detailed descriptions of it, and by maintaining a database of quantitative data such as the fault's length (46 km).",
+    "choices": [
+      {
+        "id": "A",
+        "text": "features for"
+      },
+      {
+        "id": "B",
+        "text": "features, for"
+      },
+      {
+        "id": "C",
+        "text": "features. For"
+      },
+      {
+        "id": "D",
+        "text": "features and for"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Standard English Conventions",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 20,
+    "question_text": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    "prompt": "In 1987, chemist Ahmed Zewail devised a novel technique in optical spectroscopy that allowed him to study ultrafast chemical reactions occurring within molecules. Years later, he ______ for this groundbreaking research with the Robert A. Welch Award and the Priestley Medal from the American Chemical Society and hence would become known as the father of femtochemistry.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "had been honored"
+      },
+      {
+        "id": "B",
+        "text": "would be honored"
+      },
+      {
+        "id": "C",
+        "text": "is honored"
+      },
+      {
+        "id": "D",
+        "text": "will be honored"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Standard English Conventions",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 21,
+    "question_text": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    "prompt": "For Canada, a member of the North Atlantic Treaty Organization (NATO) since 1949, NATO's principle of collective defense confers both benefits and ______ organization's many members, nations as disparate as the US and Slovenia, are all bound to defend Canada, the reverse is also true.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "obligations: while the"
+      },
+      {
+        "id": "B",
+        "text": "obligations; the"
+      },
+      {
+        "id": "C",
+        "text": "obligations, while the"
+      },
+      {
+        "id": "D",
+        "text": "obligations. The"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Standard English Conventions",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 22,
+    "question_text": "Which choice completes the text with the most logical transition?",
+    "prompt": "If you could travel in a spaceship to Elara, one of Jupiter's many moons, you'd find a moon with a prograde orbit. This means that Elara orbits Jupiter in the same direction that Jupiter rotates on its axis. ______ at Pasiphae, another Jovian moon, you'd find an example of a retrograde orbit, with the moon revolving around Jupiter in the opposite direction.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "For example,"
+      },
+      {
+        "id": "B",
+        "text": "Specifically,"
+      },
+      {
+        "id": "C",
+        "text": "In other words,"
+      },
+      {
+        "id": "D",
+        "text": "Elsewhere,"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Expression of Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 23,
+    "question_text": "The student wants to describe how scientific understanding about the glass's origin has evolved. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
+    "prompt": "While researching a topic, a student has taken the following notes:\n• Scientists have long sought to determine the origin of glass in Chile's Atacama Desert.\n• A 2017 study concluded that ancient grass fires had melted the area's sandy soil into glass.\n• In 2021, a different study revealed that the mineral signatures of glass samples were consistent with the mineral signatures of comet samples collected by NASA.\n• That study concluded that the glass had formed as a result of a cometary explosion close to the desert's surface.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Mineral signatures of glass samples are consistent with those of comet samples collected by NASA, according to new research."
+      },
+      {
+        "id": "B",
+        "text": "A 2017 study concluded that ancient grass fires had caused the glass's formation, but new research suggests that the glass formed as a result of a cometary explosion close to the desert's surface."
+      },
+      {
+        "id": "C",
+        "text": "Scientists have long sought to determine the origin of the glass, with one study concluding that it formed when ancient grass fires melted the area's sandy soil."
+      },
+      {
+        "id": "D",
+        "text": "Although scientists have long sought to determine the origin of the glass, only recently have they begun to consider comets as a possible cause."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Expression of Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 24,
+    "question_text": "Which choice most effectively uses information from the given sentences to emphasize a difference between Water Line and Seven Earth Mountain?",
+    "prompt": "While researching a topic, a student has taken the following notes:\n• Maya Lin is a US artist known for her memorials and large-scale installation artworks.\n• She became famous in 1982 when she completed the Vietnam Veterans Memorial, which consists of two 246-foot granite walls.\n• She completed Water Line in 2006.\n• It is an installation composed of aluminum tubing that fills an entire gallery room.\n• She completed Seven Earth Mountain in 2015.\n• It is an installation composed of soil that fills an entire gallery room.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Maya Lin's Water Line is composed of aluminum tubing; Seven Earth Mountain, by contrast, is composed of soil."
+      },
+      {
+        "id": "B",
+        "text": "Maya Lin is known for her memorials and installation art, such as Water Line and Seven Earth Mountain."
+      },
+      {
+        "id": "C",
+        "text": "After completing the Vietnam Veterans Memorial, Maya Lin completed Water Line, another large-scale work."
+      },
+      {
+        "id": "D",
+        "text": "The sprawling size of Maya Lin's Vietnam Veterans Memorial is echoed in Water Line, a work made of aluminum tubing that fills an entire gallery room."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Expression of Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 25,
+    "question_text": "The student wants to explain what a sky island is. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
+    "prompt": "While researching a topic, a student has taken the following notes:\n• The Peloncillo-Pan Duro Mountains are a mountain range located in northwestern Mexico.\n• The range is one of the dozens of \"sky islands\" in the southwestern US and northwestern Mexico.\n• A sky island is an isolated mountain range whose environment differs drastically from that of the surrounding lowlands.\n• The US Forest Service (USFS) said, \"The mountains are 'islands' surrounded by deserts that are 'seas'.\"\n• The USFS said, \"Each Sky Island is a unique ecosystem.\"",
+    "choices": [
+      {
+        "id": "A",
+        "text": "The Peloncillo-Pan Duro Mountains are an isolated mountain range located in northwestern Mexico whose environment differs drastically from that of the surrounding lowlands."
+      },
+      {
+        "id": "B",
+        "text": "A sky island is an isolated mountain range, such as the Peloncillo-Pan Duro Mountains in northwestern Mexico, whose environment differs drastically from that of the surrounding lowlands."
+      },
+      {
+        "id": "C",
+        "text": "The Peloncillo-Pan Duro Mountains, which are considered to be a sky island, are located in northwestern Mexico."
+      },
+      {
+        "id": "D",
+        "text": "The USFS considers the Peloncillo-Pan Duro Mountains to be a \"unique ecosystem.\""
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Expression of Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 26,
+    "question_text": "Which choice most effectively uses information from the given sentences to emphasize the number of gold medals won by Daniel Dias?",
+    "prompt": "While researching a topic, a student has taken the following notes:\n• The Paralympic Games are a series of international sporting events involving athletes with an impairment.\n• A gold medal indicates that an athlete finished in first place.\n• Rolf Heinzmann competed as a Paralympic alpine skier from 1980 to 2002.\n• He won fourteen medals, twelve of which were gold.\n• Daniel Dias competed as a Paralympic swimmer from 2008 to 2020.\n• He won thirty-eight medals, twenty-five of which were gold.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "In his career as a Paralympic swimmer, Daniel Dias won thirty-eight total medals – twenty-five of them were gold."
+      },
+      {
+        "id": "B",
+        "text": "Both multiple gold medalists, Rolf Heinzmann and Daniel Dias debuted at the Paralympic Games in 1980 and 2008, respectively."
+      },
+      {
+        "id": "C",
+        "text": "At the Paralympic Games, a gold medal indicates a first-place finish, and some accomplished athletes like Rolf Heinzmann have won many."
+      },
+      {
+        "id": "D",
+        "text": "An accomplished Paralympian with thirty-eight total medals, Daniel Dias competed as a swimmer from 2008 to 2020."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Expression of Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "reading_writing",
+    "position": 27,
+    "question_text": "The student wants to make a generalization about brown seaweed. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
+    "prompt": "While researching a topic, a student has taken the following notes:\n• The human tongue contains taste receptors for a rich, savory flavor called umami.\n• Umami is triggered by the compounds in a variety of foods, including pork and tomato paste.\n• Participants in a study tasted a sample of macrokelp, a type of brown seaweed.\n• They rated its umami intensity as moderate.\n• The participants tasted a sample of ma-konbu, another type of brown seaweed.\n• They rated its umami intensity as high.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Macrokelp is a type of brown seaweed, as is ma-konbu."
+      },
+      {
+        "id": "B",
+        "text": "In a research study, participants tasted samples of macrokelp and ma-konbu, two types of brown seaweed."
+      },
+      {
+        "id": "C",
+        "text": "Participants in a study rated the umami intensity of various seaweeds."
+      },
+      {
+        "id": "D",
+        "text": "Some types of brown seaweed trigger umami flavor in human taste buds."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Expression of Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 1,
+    "question_text": "Which choice completes the text with the most logical and precise word or phrase?",
+    "prompt": "Although Oscar Micheaux's 1920 film Within Our Gates and Ossie Davis's 1970 film Cotton Comes to Harlem may have had some ______ at the time of their initial release, their place in critics' estimations is now more secure. In 2018, for example, critics for the New York Times described the former as \"stunning\" and the latter as \"especially pointed.\"",
+    "choices": [
+      {
+        "id": "A",
+        "text": "collaborators"
+      },
+      {
+        "id": "B",
+        "text": "imitators"
+      },
+      {
+        "id": "C",
+        "text": "precursors"
+      },
+      {
+        "id": "D",
+        "text": "detractors"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Craft and Structure",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 2,
+    "question_text": "Which choice completes the text with the most logical and precise word or phrase?",
+    "prompt": "Political scientists have found that although voters claim to prefer candidates who have nuanced perspectives on issues and who show a willingness to compromise, when asked to compare speeches expressing such views with speeches expressing ______ views, voters tend to regard the unyielding rhetoric of the latter more favorably.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "dogmatic"
+      },
+      {
+        "id": "B",
+        "text": "vacillating"
+      },
+      {
+        "id": "C",
+        "text": "banal"
+      },
+      {
+        "id": "D",
+        "text": "disingenuous"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Craft and Structure",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 3,
+    "question_text": "Which choice completes the text with the most logical and precise word or phrase?",
+    "prompt": "A number of recording artists ______ distinctions between Indigenous music and other musical styles. For example, Choctaw singer-songwriter Samantha Crain incorporated elements of Choctaw hymns into folk-pop on her single \"When We Remain,\" and Oji-Cree/Mi'kmaq musician Anachnid combined Indigenous flute and powwow vocals with electronic music on her album Dreamweaver.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "disguise"
+      },
+      {
+        "id": "B",
+        "text": "reject"
+      },
+      {
+        "id": "C",
+        "text": "observe"
+      },
+      {
+        "id": "D",
+        "text": "replace"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Craft and Structure",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 4,
+    "question_text": "Which choice best states the main purpose of the text?",
+    "prompt": "Today composer Scott Joplin is mainly celebrated for his catchy ragtime pieces \"Maple Leaf Rag\" and \"The Entertainer.\" However, by overlooking his less famous works, listeners will miss the full range of Joplin's creativity. For instance, his waltz \"Pleasant Moments\" and his opera \"Treemonisha\" skillfully blend ragtime and classical music. These masterpieces deserve as much fame as Joplin's biggest hits.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "To argue that more attention should be given to Joplin's lesser-known works."
+      },
+      {
+        "id": "B",
+        "text": "To describe the similarities and differences between ragtime music and opera."
+      },
+      {
+        "id": "C",
+        "text": "To explain how Joplin learned to compose and perform ragtime music."
+      },
+      {
+        "id": "D",
+        "text": "To encourage music lovers to listen to music by many different composers."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 5,
+    "question_text": "Which choice best states the main purpose of the text?",
+    "prompt": "Desolation Island, first published in 1978, is a novel in Patrick O'Brian's Aubrey/Maturin series, which includes twenty completed books. Some critics have found fault with the abrupt endings of Desolation Island and other books in the series, saying that they do not finish conclusively but arbitrarily stop. But other critics argue that the books should not be thought of as discrete texts with traditional beginnings and endings but as a single incredibly long work, similar to other multivolume stories, such as John Galsworthy's The Forsyte Saga.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "To explain why many critics find the Aubrey/Maturin novels to be remarkably entertaining despite flaws in the novels' structures."
+      },
+      {
+        "id": "B",
+        "text": "To describe a characteristic of the Aubrey/Maturin novels and offer two differing viewpoints on this characteristic."
+      },
+      {
+        "id": "C",
+        "text": "To argue that the Aubrey/Maturin series should have the literary renown of The Forsyte Saga."
+      },
+      {
+        "id": "D",
+        "text": "To present a reason the unusual structure that O'Brian uses for Desolation Island makes it one of his most complex books."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 6,
+    "question_text": "Based on the texts, how would the author of Text 2 most likely respond to the evaluation of Asimov's writing style in the underlined claim in Text 1?",
+    "prompt": "Text 1: Isaac Asimov, author of The Naked Sun and Pebble in the Sky, is highly regarded despite his mediocre writing style. His prose is workmanlike; his characters are flat and discuss ideas rather than emotions. That his work is enjoyable despite this is a testament to his prodigious imagination—even if people read his books only for the ideas, they will have plenty to consider.\n\nText 2: Asimov is critiqued for his style, but it is wrong to fault a writer for failing to do what he never intended to do. For example, although most of his novel Foundation consists of people discussing science and politics and we find out little about his characters' lives, Asimov wanted to convey the vast sweep of human history over centuries, and one of his points is that at such a timescale, individuals don't matter. Thus, his lack of characterization is central to Asimov's thematic aims.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "By asserting that Asimov's minimal characterization is likely a conscious choice that helps him convey an important idea."
+      },
+      {
+        "id": "B",
+        "text": "By arguing that Asimov's writing style should be judged against the styles of historians rather than those of fiction writers."
+      },
+      {
+        "id": "C",
+        "text": "By agreeing that Asimov's prose is flawed but disagreeing about the quality of his characters."
+      },
+      {
+        "id": "D",
+        "text": "By pointing out that the flatness of Asimov's characters is a feature of The Naked Sun and Pebble in the Sky but not of Foundation."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 7,
+    "question_text": "Information in the text best supports which statement about hiDNA?",
+    "prompt": "Reyjane P. Oliveira and colleagues relied on historical DNA (hiDNA) — genomic data incidentally preserved in specimens housed in natural history collections — to investigate the evolutionary trajectory of the Malagasy grass genus Chasechloa. Although this approach offers unique benefits, such as the ability to ascertain the biogeographical origins of organisms, it remains a relatively underutilized resource because hiDNA is often to some extent degraded, a situation not easily remediable under current methodological paradigms and with extant DNA extraction and analysis technologies.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "It may yield insights that other types of genomic data cannot."
+      },
+      {
+        "id": "B",
+        "text": "It may be underused because of its controversial status among scientists."
+      },
+      {
+        "id": "C",
+        "text": "It has thus far proved valuable mainly to researchers studying flora."
+      },
+      {
+        "id": "D",
+        "text": "It tends to be much more degraded than other types of DNA of comparable age."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 8,
+    "question_text": "Which choice best states the main idea of the text?",
+    "prompt": "Meredith F. Protas and colleagues have explored how convergent evolution — a phenomenon that occurs when the same trait evolves independently in two reproductively separate lineages — can result from a genetic mechanism shared by both lineages. Meanwhile, Cynthia C. Steiner and colleagues have investigated how convergence occurs through different genetic mechanisms, but the relative prevalence of convergence through shared and different genetic processes is still poorly understood. This motivated biologists Delbert A. Green II and Cassandra G. Extavour to evaluate both types of convergence in a single study for their 2012 paper.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Green and Extavour's study was conducted using data from the studies by Protas and colleagues and Steiner and colleagues."
+      },
+      {
+        "id": "B",
+        "text": "Green and Extavour's study addresses convergent evolution more comprehensively than the studies by Protas and colleagues and Steiner and colleagues do."
+      },
+      {
+        "id": "C",
+        "text": "Both the study by Protas and colleagues and that by Green and Extavour compare convergence through shared genetic mechanisms to convergence through different genetic mechanisms."
+      },
+      {
+        "id": "D",
+        "text": "Before Green and Extavour's study, convergent evolution was assumed to require a shared genetic mechanism between two lineages that share the trait."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 9,
+    "question_text": "Which finding, if true, would most directly support the researchers' conclusion?",
+    "prompt": "Over time, marine mollusks called nautilids continually add segments to their shells, and the chemical composition of each segment is influenced by the available materials in the surrounding water when the segment forms. Paleontologist Amane Tajika and colleagues analyzed the septa (the walls between shell chambers) of one male (samples labeled \"M\") and one female (samples labeled \"F\") nautilid, finding that sample M06 had the same concentration of oxygen-18 as did water approximately 120 meters deep and that the oxygen-18 concentration in sample F14 matched that of water at approximately 385 meters deep. Tajika et al. concluded that sample M06 formed at a higher point in the water column than did F14.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "In nautilids, sex predicts septa growth rate more strongly than does oxygen-18 concentration in the surrounding water."
+      },
+      {
+        "id": "B",
+        "text": "Regardless of sex, nautilids spend most of their lives at depths of 50 meters or greater, where oxygen-18 concentrations typically differ from those higher in the water column."
+      },
+      {
+        "id": "C",
+        "text": "Male nautilids tend to show higher concentrations of oxygen-18 than do female nautilids inhabiting the same point in the water column."
+      },
+      {
+        "id": "D",
+        "text": "Among nautilids, there is no effect of sex on the uptake of oxygen-18 from water or its deposition in septa."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 10,
+    "question_text": "Which finding, if true, would most directly challenge the second research team's conclusion?",
+    "prompt": "Callie W. Babbitt, Hema Madaka, and colleagues assembled a database of materials used in consumer electronics by studying products in the lab and by gathering data from similar product studies. The team gave each of these studies a rating for level of traceability (with a higher rating for clearer descriptions of procedures) and for category consistency (with a higher rating for using materials categories more closely aligned with the categories in the team's database). Based on these ratings, a second research team concluded that the methodology was better explained in a study by Greg L. Kozak and Gregory A. Keoleian than it was in a study by Martin Streicher-Porte and colleagues.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "The study by Kozak and Keoleian had a lower consistency rating than the study by Streicher-Porte and colleagues did."
+      },
+      {
+        "id": "B",
+        "text": "The study by Kozak and Keoleian had a high consistency rating and a high traceability rating."
+      },
+      {
+        "id": "C",
+        "text": "The study by Streicher-Porte and colleagues had a medium consistency rating and a medium traceability rating."
+      },
+      {
+        "id": "D",
+        "text": "The study by Kozak and Keoleian had a lower traceability rating than the study by Streicher-Porte and colleagues did."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 11,
+    "question_text": "Which finding, if true, would most directly support the researchers' conclusion?",
+    "prompt": "Periods of subfreezing temperatures in Alaska have been growing shorter in response to climate warming, potentially enabling increased carbon dioxide (CO₂) absorption through greater productivity of creeping dogwood (Cornus canadensis) plants and other vegetation, but also potentially enabling increased CO₂ output through greater heterotrophic respiration (CO₂ generated by the activity of soil microorganisms). Hydrologist Yonghong Yi and her colleagues developed a model incorporating numerous inputs – years of solar radiation and snow cover data among them – to evaluate the effects of warming on the CO₂ balance in Alaska, concluding that net CO₂ is likely to increase if warming hastens spring snow melt.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Early snow melt reduces the amount of soil moisture available for the growth of plant species such as C. canadensis, and it raises the rate of heterotrophic respiration."
+      },
+      {
+        "id": "B",
+        "text": "Early snow melt extends the period in which plant species such as C. canadensis can absorb CO₂, but has no effect on the rate of heterotrophic respiration."
+      },
+      {
+        "id": "C",
+        "text": "Early snow melt slows the growth of plant species such as C. canadensis by reducing soil insulation, and it suppresses heterotrophic respiration."
+      },
+      {
+        "id": "D",
+        "text": "Early snow melt amplifies the effect of solar radiation on the growth of plant species such as C. canadensis and on the rate of heterotrophic respiration."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 12,
+    "question_text": "Based on the text, the author would most likely agree with which statement about household income?",
+    "prompt": "In Armenia, use of solid fuel (e.g., coal, wood) as a share of total household fuel use fell by approximately 90 percent between 2000 and 2018; such shifts are typically explained by appeal to the energy ladder, a model holding that fuel choice is mediated mainly by household income (specifically, high-technology fuels displace solid fuels as incomes rise). Boukary Ouedraogo's study of fuel use in Burkina Faso shows how reductive this model is, however: although income of course constrained fuel choice, several factors, including the frequency with which certain dishes are cooked, influenced decisions.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "It constrains the amount of fuel households use but not the type of fuel they use."
+      },
+      {
+        "id": "B",
+        "text": "It affects household fuel choice but not for the reasons assumed by the energy ladder model."
+      },
+      {
+        "id": "C",
+        "text": "It can explain some but not all of the differences in fuel choice across households."
+      },
+      {
+        "id": "D",
+        "text": "It is often said to influence household fuel choice but actually does not."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 13,
+    "question_text": "Which choice most logically completes the text?",
+    "prompt": "The Socio-Economic Panel (SOEP) is a longitudinal study surveying approximately 12,000 individuals in Germany to glean extended trends in childhood development. To carry out the necessary sampling of the population over many years, SOEP needs extensive financial support, but this method provides valuable insights into causal relationships. However, when questions of causation are irrelevant, as with a transportation study seeking only to reveal the number of people per day who use a city's public transportation system, longitudinal methods are unnecessary, and so ____.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "the expense of SOEP is likely greater than the cost of longitudinal studies of transportation"
+      },
+      {
+        "id": "B",
+        "text": "conclusions drawn from SOEP are likely to be more authoritative than those from the transportation study"
+      },
+      {
+        "id": "C",
+        "text": "longitudinal methods are suitable for studies of childhood development but ought to be avoided for those of transportation"
+      },
+      {
+        "id": "D",
+        "text": "the success of the transportation study likely requires significantly less financial outlay than that needed for SOEP"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 14,
+    "question_text": "Which choice most logically completes the text?",
+    "prompt": "The many editions of James Joyce's 1922 novel Ulysses are not textually identical, and scholars debate which versions reflect Joyce's authorial intent. One no longer widely read edition is the 1984 \"critical and synoptic edition\" edited by Hans Walter Gabler, which followed French and German editorial theories rather than editorial traditions of the United States and United Kingdom and which was later found to have introduced errors due to Gabler's choice to consult facsimile manuscripts rather than using only originals. However, few Joyce scholars worldwide had expertise in such textual issues, and most of those who did worked on the edition with Gabler. So, it is unsurprising that initial scholarly reviews of the 1984 edition were mostly ____.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "negative, since any scholar with expertise in editorial theories of the United States and United Kingdom as well as French and German editorial theories most likely worked with Gabler on the 1984 edition and would therefore not review it"
+      },
+      {
+        "id": "B",
+        "text": "negative, since those Joyce scholars with the necessary expertise to write a review of the 1984 edition would be aware that facsimile manuscripts cannot be produced with a high enough fidelity to the original to ensure that relying on them will not introduce editorial errors"
+      },
+      {
+        "id": "C",
+        "text": "positive, since scholars who reviewed the 1984 edition were unaffiliated with its production and were mostly either Joyce specialists who were largely unfamiliar with editorial theories and practices or specialists in such theories and practices who were insufficiently familiar with Joyce"
+      },
+      {
+        "id": "D",
+        "text": "positive, since the scholars best positioned to review the edition were those who worked on it and were therefore unlikely to publish critical reviews of their own work"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 15,
+    "question_text": "Which choice most logically completes the text?",
+    "prompt": "Arthurian legends (tales related to the character of King Arthur) derive from many sources, such as Annales Cambriae, composed around 970, and the Mabinogion from the 12th and 13th centuries. One of the most significant sources, Geoffrey of Monmouth's History of the Kings of Britain, was written in Latin in the 1130s; some material from it was later adapted by the Norman poet Wace into the Roman de Brut in 1155. But while no source before 1155 includes references to the famous Round Table at which Arthur's knights assembled, both the Roman de Brut and Sir Thomas Malory's 15th century compilation of Arthurian legends, Le Morte d'Arthur do. It can therefore be inferred that ______.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Le Morte d'Arthur is more historically accurate than History, because the Mabinogion had not been written when Geoffrey of Monmouth was writing his work"
+      },
+      {
+        "id": "B",
+        "text": "Geoffrey of Monmouth's accounts of Arthurian legends in his History are more similar overall in content to the accounts in the Mabinogion than they are to the accounts in Roman de Brut"
+      },
+      {
+        "id": "C",
+        "text": "Malory did not use Annales Cambriae as a source for information he presented about the Round Table"
+      },
+      {
+        "id": "D",
+        "text": "Geoffrey of Monmouth was unaware of stories of the Round Table when composing his History, though historians know that works containing such stories were available to him"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Information and Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 16,
+    "question_text": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    "prompt": "In Puerto Rico, it's not unusual for a city or town to be known by a nickname that corresponds to one of its notable features, like landscape, climate, famous residents, or chief exports. For example, the Puerto Rican municipality of Florida has also been called \"the Town of Cayenalisa Pineapple,\" a nickname that alludes to what the area is well ______ the pineapple, one of its most popular exports.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "known: for"
+      },
+      {
+        "id": "B",
+        "text": "known for:"
+      },
+      {
+        "id": "C",
+        "text": "known for"
+      },
+      {
+        "id": "D",
+        "text": "known for;"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Standard English Conventions",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 17,
+    "question_text": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    "prompt": "A region of the Soviet Union encompassing the present-day city of Tiraspol, Moldova, the Romanian-speaking Moldavian Autonomous Soviet Socialist Republic was in fact only nominally autonomous. President Mikhail Gorbachev's reforms, by helping the Moldavian Republic and other Soviet republics established along ethnolinguistic lines assert their prerogatives, ______ to the Soviet Union's breakup.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "which contributed"
+      },
+      {
+        "id": "B",
+        "text": "contributed"
+      },
+      {
+        "id": "C",
+        "text": "having contributed"
+      },
+      {
+        "id": "D",
+        "text": "contributing"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Standard English Conventions",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 18,
+    "question_text": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    "prompt": "Minerals can be classified by how much light passes through them. For example, all (or almost all) light passes through zorite, which is classified as ______ only some light to pass through; amesite is instead classified as translucent.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "transparent, allowing"
+      },
+      {
+        "id": "B",
+        "text": "transparent allowing"
+      },
+      {
+        "id": "C",
+        "text": "transparent. Allowing"
+      },
+      {
+        "id": "D",
+        "text": "transparent and allowing"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Standard English Conventions",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 19,
+    "question_text": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    "prompt": "The artist Jean-Honoré Fragonard's painting The Progress of Love: Meeting, symbolically ______ to portray the sense of excitement that infuses new relationships, is a highly regarded example of allegory.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "functioning"
+      },
+      {
+        "id": "B",
+        "text": "has functioned"
+      },
+      {
+        "id": "C",
+        "text": "functions"
+      },
+      {
+        "id": "D",
+        "text": "was functioning"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Standard English Conventions",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 20,
+    "question_text": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    "prompt": "The relationship between genomes and epigenomes reveals how cells with identical DNA develop different ______ whereas the genome in each cell contains a complete DNA sequence, the epigenome consists of chemical compounds that determine which traits in the sequence will be expressed.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "functions:"
+      },
+      {
+        "id": "B",
+        "text": "functions and,"
+      },
+      {
+        "id": "C",
+        "text": "functions"
+      },
+      {
+        "id": "D",
+        "text": "functions,"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Standard English Conventions",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 21,
+    "question_text": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    "prompt": "That the geographic center of North America lay in the state of North Dakota was conceded by all ______ establishing its precise coordinates proved more divisive.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "involved,"
+      },
+      {
+        "id": "B",
+        "text": "involved;"
+      },
+      {
+        "id": "C",
+        "text": "involved:"
+      },
+      {
+        "id": "D",
+        "text": "involved"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Standard English Conventions",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 22,
+    "question_text": "Which choice completes the text with the most logical transition?",
+    "prompt": "Monument 61 is the name given to a 13-ton stone statue of a human head that was created during the ancient Olmec civilization. It was discovered in Veracruz, Mexico, at the San Lorenzo archaeological site. ______ at the La Venta site in the state of Tabasco, another colossal head statue called Monument 4 was discovered.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "As a result,"
+      },
+      {
+        "id": "B",
+        "text": "Specifically,"
+      },
+      {
+        "id": "C",
+        "text": "For example,"
+      },
+      {
+        "id": "D",
+        "text": "Elsewhere,"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Expression of Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 23,
+    "question_text": "Which choice completes the text with the most logical transition?",
+    "prompt": "In the South Asian country of Sri Lanka, the percentage of the population living in cities increased from 18.3% to 18.7% between 2015 and 2020; this upward trend in urbanization was seen throughout that part of the continent. ______ from 2015 to 2020, the overall percentage of the South Asian population living in cities rose from 34.5% to 36.6%.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Nevertheless,"
+      },
+      {
+        "id": "B",
+        "text": "Indeed,"
+      },
+      {
+        "id": "C",
+        "text": "In reality,"
+      },
+      {
+        "id": "D",
+        "text": "Later,"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Expression of Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 24,
+    "question_text": "Which choice completes the text with the most logical transition?",
+    "prompt": "Ugandan American professor Peter Nazareth believed that Elvis Presley's music is best understood not as a homogeneous collection but as an anthology (because Elvis showcased the contributions of a wide range of gospel, blues, and rock artists). ______ Nazareth entitled his college course on Elvis and his music, which focused on Elvis's many musical influences, \"Elvis as Anthology.\"",
+    "choices": [
+      {
+        "id": "A",
+        "text": "In sum,"
+      },
+      {
+        "id": "B",
+        "text": "To that end,"
+      },
+      {
+        "id": "C",
+        "text": "In addition,"
+      },
+      {
+        "id": "D",
+        "text": "That is,"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Expression of Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 25,
+    "question_text": "Which choice most effectively uses information from the given sentences to explain why The Mother's Recompense entered the public domain?",
+    "prompt": "While researching a topic, a student has taken the following notes:\n• A copyright prevents a book's contents from being reproduced (published) without permission from the copyright holder.\n• When a book's copyright expires, the book enters the public domain.\n• Public domain books can be legally reproduced by anyone.\n• The Mother's Recompense is a novel by Edith Wharton.\n• It was published in 1925 and entered the public domain on January 1, 2021 (ninety-six years later).",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Once The Mother's Recompense entered the public domain, anyone could publish its contents."
+      },
+      {
+        "id": "B",
+        "text": "The Mother's Recompense, a novel by Edith Wharton, is freely available to the public."
+      },
+      {
+        "id": "C",
+        "text": "Before The Mother's Recompense entered the public domain only its copyright holder could give permission for others to reproduce its contents."
+      },
+      {
+        "id": "D",
+        "text": "The copyright to The Mother's Recompense expired in 2021, causing the novel to enter the public domain."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Expression of Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 26,
+    "question_text": "The student wants to provide a specific example of what municipalities provide. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
+    "prompt": "While researching a topic, a student has taken the following notes:\n• Alfajayucan is a municipality in the state of Hidalgo, Mexico.\n• Municipalities are governmental regions responsible for providing many public services to their residents.\n• Alfajayucan completed a water treatment plant in 2006.\n• One service they provide is water treatment.\n• Alfajayucan's population was 19,162 in 2020.\n• Hidalgo is divided into 84 municipalities.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Alfajayucan is one of 84 municipalities in Hidalgo, Mexico."
+      },
+      {
+        "id": "B",
+        "text": "In 2020, the municipality of Alfajayucan had a population of 19,162."
+      },
+      {
+        "id": "C",
+        "text": "The municipality Alfajayucan in Hidalgo is responsible for providing many public services."
+      },
+      {
+        "id": "D",
+        "text": "Water treatment is just one of the many public services that municipalities provide."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Expression of Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "reading_writing",
+    "position": 27,
+    "question_text": "The student wants to compare the hardness of apatite and diamond. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
+    "prompt": "While researching a topic, a student has taken the following notes:\n• The Mohs scale of mineral hardness is a ten-point scale that orders minerals by hardness based on their ability to scratch other minerals.\n• Minerals with larger numbers are harder than minerals with smaller numbers and can leave visible scratches on them.\n• Minerals with smaller numbers are softer than minerals with larger numbers and cannot leave visible scratches on them.\n• The mineral apatite has a Mohs scale number of 5.\n• The mineral topaz has a Mohs scale number of 8.\n• The mineral diamond has a Mohs scale number of 10.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "A mineral with a Mohs number of 8, like topaz, is harder than one with a Mohs number of 5, like apatite."
+      },
+      {
+        "id": "B",
+        "text": "The Mohs scale of mineral hardness can be used to order topaz, apatite, and diamond by their ability to scratch other minerals."
+      },
+      {
+        "id": "C",
+        "text": "Diamond can leave visible scratches on apatite, which means that diamond is harder than apatite."
+      },
+      {
+        "id": "D",
+        "text": "Diamond can leave visible scratches on topaz, which is why diamond has a higher number than topaz on the Mohs scale of mineral hardness."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Expression of Ideas",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 1,
+    "question_text": "Which of the following equations best represents the line of best fit shown?",
+    "prompt": "Scatterplot: relationship between variables x and y with a line of best fit. The line passes through approximately (0, 1.5), (4, 9.5), and (7, 15.5), indicating a positive linear trend with slope about 2 and y-intercept about 1.5.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "y = (5/3)x + 3"
+      },
+      {
+        "id": "B",
+        "text": "y = 2x + 1.5"
+      },
+      {
+        "id": "C",
+        "text": "y = 3x + 1.5"
+      },
+      {
+        "id": "D",
+        "text": "y = -3x + 1.5"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Problem-Solving and Data Analysis",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 2,
+    "question_text": "Which is the solution (x, y) to the given system of equations?",
+    "prompt": "3x - 4y = 5\nx = 7",
+    "choices": [
+      {
+        "id": "A",
+        "text": "(7, 4)"
+      },
+      {
+        "id": "B",
+        "text": "(7, 12)"
+      },
+      {
+        "id": "C",
+        "text": "(7, -12)"
+      },
+      {
+        "id": "D",
+        "text": "(7, -4)"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 3,
+    "question_text": "What value of x is the solution to the equation 20x + 24 = 28x?",
+    "prompt": null,
+    "choices": [
+      {
+        "id": "A",
+        "text": "1/4"
+      },
+      {
+        "id": "B",
+        "text": "1/3"
+      },
+      {
+        "id": "C",
+        "text": "3"
+      },
+      {
+        "id": "D",
+        "text": "5"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 4,
+    "question_text": "What is the value of f(20)?",
+    "prompt": "The function f is defined by f(x) = (7/10)x + 74.",
+    "choices": [],
+    "kind": "grid_in",
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "88"
+    ],
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 5,
+    "question_text": "What is the value of f(36)?",
+    "prompt": "The function f is defined by f(x) = 8 + √x.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "0"
+      },
+      {
+        "id": "B",
+        "text": "14"
+      },
+      {
+        "id": "C",
+        "text": "17"
+      },
+      {
+        "id": "D",
+        "text": "26"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Advanced Math",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 6,
+    "question_text": "What is the measure, in degrees, of angle F?",
+    "prompt": "Triangles ABC and DEF are congruent, where A corresponds to D and B and E are right angles. The measure of angle A is 27°.",
+    "choices": [],
+    "kind": "grid_in",
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "63"
+    ],
+    "skill": "Geometry and Trigonometry",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 7,
+    "question_text": "How many visitors are located in room C?",
+    "prompt": "At a convention center, there are a total of 325 visitors. Each visitor is located in either room A, room B, or room C. If one of these visitors is selected at random, the probability of selecting a visitor who is located in room A is 0.48, and the probability of selecting a visitor who is located in room B is 0.16.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "25"
+      },
+      {
+        "id": "B",
+        "text": "36"
+      },
+      {
+        "id": "C",
+        "text": "104"
+      },
+      {
+        "id": "D",
+        "text": "117"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Problem-Solving and Data Analysis",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 8,
+    "question_text": "According to the model, about how many gallons of gasoline are used to drive each mile?",
+    "prompt": "g(m) = -0.05m + 14.1\nThe given function g models the number of gallons of gasoline that remains from a full gas tank in a car after driving m miles.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "0.05"
+      },
+      {
+        "id": "B",
+        "text": "14.1"
+      },
+      {
+        "id": "C",
+        "text": "20"
+      },
+      {
+        "id": "D",
+        "text": "282"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 9,
+    "question_text": "What is the center of the circle in the xy-plane defined by the equation (x - 9)² + (y + 6)² = 81?",
+    "prompt": null,
+    "choices": [
+      {
+        "id": "A",
+        "text": "(-9, -6)"
+      },
+      {
+        "id": "B",
+        "text": "(-9, 6)"
+      },
+      {
+        "id": "C",
+        "text": "(9, -6)"
+      },
+      {
+        "id": "D",
+        "text": "(9, 6)"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Advanced Math",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 10,
+    "question_text": "What is the value of 4x - 4?",
+    "prompt": "If 2x + 3 = 9, what is the value of 4x - 4?",
+    "choices": [],
+    "kind": "grid_in",
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "8"
+    ],
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 11,
+    "question_text": "Which of the following is the best interpretation of 6,000 in this context?",
+    "prompt": "f(x) = 6,000(0.7)ˣ\nA conservation scientist implemented a program to reduce a certain invasive insect population in an area. The given function estimates this insect species' population x years after 2008, where x ≤ 8.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "The estimated percent decrease in the insect population for this species and area every 8 years after 2008"
+      },
+      {
+        "id": "B",
+        "text": "The estimated percent decrease in the insect population for this species and area each year after 2008"
+      },
+      {
+        "id": "C",
+        "text": "The estimated insect population for this species and area 8 years after 2008"
+      },
+      {
+        "id": "D",
+        "text": "The estimated initial insect population for this species and area in 2008"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Problem-Solving and Data Analysis",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 12,
+    "question_text": "What is the slope of line s?",
+    "prompt": "Line r is defined by the equation 4x - 5y = 8. Line s is parallel to line r in the xy-plane.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "5/4"
+      },
+      {
+        "id": "B",
+        "text": "4/5"
+      },
+      {
+        "id": "C",
+        "text": "-4"
+      },
+      {
+        "id": "D",
+        "text": "-5"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 13,
+    "question_text": "Which equation represents this situation?",
+    "prompt": "The cost to rent a bus from Company X is $750 for the first 2 hours and an additional $50 per hour for each hour after the first 2 hours. If the total cost to rent the bus from Company X for t hours, where t > 2, is $1,050, which equation represents this situation?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "750(t - 2) + 50t = 1,050"
+      },
+      {
+        "id": "B",
+        "text": "750(2t) + 50t = 1,050"
+      },
+      {
+        "id": "C",
+        "text": "750 + 50(t - 2) = 1,050"
+      },
+      {
+        "id": "D",
+        "text": "750 + 50(2t) = 1,050"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 14,
+    "question_text": "Which statement is the best interpretation of the y-intercept of the graph of this equation in the xy-plane?",
+    "prompt": "y = -(1/4)x² + x + 28\nThe given equation models a company's active projects over 6 months, where y is the estimated number of active projects x months after the end of April 2012, where 0 < x < 6.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "At the end of April 2012, the estimated number of active projects was 0."
+      },
+      {
+        "id": "B",
+        "text": "At the end of April 2012, the estimated number of active projects was 28."
+      },
+      {
+        "id": "C",
+        "text": "At the end of May 2012, the estimated number of active projects was 0."
+      },
+      {
+        "id": "D",
+        "text": "At the end of May 2012, the estimated number of active projects was 28."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Advanced Math",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 15,
+    "question_text": "What is the value of cos(S)?",
+    "prompt": "In right triangle RST, the sum of the measures of angle R and angle S is 90 degrees. The value of sin(R) is (4√2)/9.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "(4√2)/9"
+      },
+      {
+        "id": "B",
+        "text": "(4√2)/7"
+      },
+      {
+        "id": "C",
+        "text": "(7√2)/8"
+      },
+      {
+        "id": "D",
+        "text": "(9√2)/8"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Geometry and Trigonometry",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 16,
+    "question_text": "How much more, in dollars, did a ton of river rock cost Odalys than a cubic yard of mulch? Enter decimal form only.",
+    "prompt": "19.5x + 29.75y = 394\nOdalys ordered mulch and river rock, which cost a total of $394, for her home. The given equation represents the relationship between the number of cubic yards of mulch, x, and the number of tons of river rock, y, Odalys ordered.",
+    "choices": [],
+    "kind": "grid_in",
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "10.25"
+    ],
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 17,
+    "question_text": "Which of the following is closest to the volume, in cubic inches, of this hemisphere?",
+    "prompt": "A hemisphere is half of a sphere. If a hemisphere has a radius of 50 inches, which of the following is closest to the volume, in cubic inches, of this hemisphere?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "5,200"
+      },
+      {
+        "id": "B",
+        "text": "20,900"
+      },
+      {
+        "id": "C",
+        "text": "196,300"
+      },
+      {
+        "id": "D",
+        "text": "261,800"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Geometry and Trigonometry",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 18,
+    "question_text": "What is the length, in millimeters, of AB?",
+    "prompt": "In triangle ABC, angle B is a right angle, and the length of BC is 248 millimeters. If cos(A) = 3/5, what is the length, in millimeters, of AB?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "62"
+      },
+      {
+        "id": "B",
+        "text": "186"
+      },
+      {
+        "id": "C",
+        "text": "248"
+      },
+      {
+        "id": "D",
+        "text": "310"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Geometry and Trigonometry",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 19,
+    "question_text": "Which of the following best approximates the number of pheasants per mile of road in 2015?",
+    "prompt": "In a certain state, the population of pheasants, a type of bird, is estimated each year by counting the number of pheasants observed along certain roads in the state. On average, each year from 2005 to 2015 the number of pheasants counted per mile of road decreased by 3.5% of the number of pheasants per mile of road the previous year. Based on this average, if there were 6.97 pheasants per mile of road in this state in 2005, which of the following best approximates the number of pheasants per mile of road in 2015?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "0.965(6.97)¹⁰"
+      },
+      {
+        "id": "B",
+        "text": "1.035(6.97)¹⁰"
+      },
+      {
+        "id": "C",
+        "text": "6.97(0.035)¹⁰"
+      },
+      {
+        "id": "D",
+        "text": "6.97(0.965)¹⁰"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Problem-Solving and Data Analysis",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 20,
+    "question_text": "What is the density of this cube, in grams per cubic centimeter? Enter decimal form only.",
+    "prompt": "To study fluctuations in leaf water potential, samples of wood were taken from 25 trees and cut in the shape of a cube. The length of the edge of one of these cubes is 2.00 centimeters. If this cube has a mass of 2.72 grams, what is the density of this cube, in grams per cubic centimeter?",
+    "choices": [],
+    "kind": "grid_in",
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "0.34"
+    ],
+    "skill": "Problem-Solving and Data Analysis",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 21,
+    "question_text": "What is the value of a? Enter decimal form only and round to two decimal places.",
+    "prompt": "Table — values of x and y:\n| x | y |\n| -11 | -25 |\n| 9 | 55 |\n\nThe graph of the linear equation representing this relationship passes through the point (1/3, a).",
+    "choices": [],
+    "kind": "grid_in",
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "20.33"
+    ],
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 1,
+    "section": "math",
+    "position": 22,
+    "question_text": "Which system of linear equations has no solution?",
+    "prompt": null,
+    "choices": [
+      {
+        "id": "A",
+        "text": "-2x + 8y = -5\n2x - 8y = 5"
+      },
+      {
+        "id": "B",
+        "text": "2x - 8y = 5\n3x + 9y = 6"
+      },
+      {
+        "id": "C",
+        "text": "2x - 8y = 5\n-6x + 24y = -15"
+      },
+      {
+        "id": "D",
+        "text": "-2x + 8y = 5\n4x - 16y = 10"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 1,
+    "question_text": "What is the value of f(0)?",
+    "prompt": "Graph: y = f(x) in the xy-plane. The graph has a vertical asymptote near x = 1. The left branch crosses the y-axis at (0, 5).",
+    "choices": [
+      {
+        "id": "A",
+        "text": "-5"
+      },
+      {
+        "id": "B",
+        "text": "0"
+      },
+      {
+        "id": "C",
+        "text": "1"
+      },
+      {
+        "id": "D",
+        "text": "5"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Advanced Math",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 2,
+    "question_text": "Which expression is equivalent to (9nr² + 3nr) + (6n²r + 5nr)?",
+    "prompt": null,
+    "choices": [
+      {
+        "id": "A",
+        "text": "15n²r² + 8nr"
+      },
+      {
+        "id": "B",
+        "text": "15n³r³ + 8n²r²"
+      },
+      {
+        "id": "C",
+        "text": "54n³r³ + 15n²r²"
+      },
+      {
+        "id": "D",
+        "text": "9nr² + 6n²r + 8nr"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Advanced Math",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 3,
+    "question_text": "What is the value of 1/n?",
+    "prompt": "If 2a/b = 5.8 and a/(bn) = 23.2, what is the value of 1/n?",
+    "choices": [],
+    "kind": "grid_in",
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "8"
+    ],
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 4,
+    "question_text": "Which equation correctly expresses w in terms of v and x?",
+    "prompt": "v = -w/(161x)\nThe given equation relates the distinct positive numbers v, w, and x.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "w = -161vx"
+      },
+      {
+        "id": "B",
+        "text": "w = -161v/x"
+      },
+      {
+        "id": "C",
+        "text": "w = -x/(161v)"
+      },
+      {
+        "id": "D",
+        "text": "w = v + 161x"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 5,
+    "question_text": "How many people attended all three webinars?",
+    "prompt": "A real estate company offers a series of three webinars. 1,250 people attended the first webinar. 68 of the people who attended the first webinar attended the second webinar, and 32 of the people who attended the first and second webinars attended the third webinar.",
+    "choices": [],
+    "kind": "grid_in",
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "32"
+    ],
+    "skill": "Problem-Solving and Data Analysis",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 6,
+    "question_text": "What is the y-intercept of the graph of y = f(x) + 13?",
+    "prompt": "Graph: y = f(x) is a line passing through (0, 1) with slope 3 (points at (-1, -2), (0, 1), and (1, 4)).",
+    "choices": [
+      {
+        "id": "A",
+        "text": "(0, -12)"
+      },
+      {
+        "id": "B",
+        "text": "(0, 14)"
+      },
+      {
+        "id": "C",
+        "text": "(1, 13)"
+      },
+      {
+        "id": "D",
+        "text": "(1, 14)"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 7,
+    "question_text": "What value of a satisfies f(7) - f(a) = -15?",
+    "prompt": "The function f is defined by f(x) = |x - 6x|.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "-22"
+      },
+      {
+        "id": "B",
+        "text": "3"
+      },
+      {
+        "id": "C",
+        "text": "10"
+      },
+      {
+        "id": "D",
+        "text": "75"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Advanced Math",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 8,
+    "question_text": "What is the value of 15 - 3x?",
+    "prompt": "If -9(15 - 3x) + 5 = -10(15 - 3x) + 21, what is the value of 15 - 3x?",
+    "choices": [],
+    "kind": "grid_in",
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "16"
+    ],
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 9,
+    "question_text": "Which inequality shows the possible values of x?",
+    "prompt": "The minimum value of x is 11 less than 8 times another number n.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "x ≤ 8n - 11"
+      },
+      {
+        "id": "B",
+        "text": "x ≥ 8n - 11"
+      },
+      {
+        "id": "C",
+        "text": "x ≤ 11 - 8n"
+      },
+      {
+        "id": "D",
+        "text": "x ≥ 11 - 8n"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 10,
+    "question_text": "What is the value of c?",
+    "prompt": "Graph: the shaded region represents the solutions to the inequality -18y < c. The region above the horizontal dashed line y = -9 is shaded.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "162"
+      },
+      {
+        "id": "B",
+        "text": "9"
+      },
+      {
+        "id": "C",
+        "text": "-9"
+      },
+      {
+        "id": "D",
+        "text": "-162"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 11,
+    "question_text": "Which system of equations represents this situation?",
+    "prompt": "At a constant temperature, a scuba diver combines two different concentrations of nitrox mix (oxygen-nitrogen gas mixture) to fill a tank to a total pressure of 130 atmospheres (atm), of which 34% is contributed by oxygen. Nitrox mix A contributes x atm of pressure to the tank, of which 22% is contributed by oxygen. Nitrox mix B contributes y atm of pressure to the tank, of which 48% is contributed by oxygen.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "x + y = 130\n0.48x + 0.22y = 0.34(130)"
+      },
+      {
+        "id": "B",
+        "text": "x + y = 130\n0.22x + 0.48y = 0.34(130)"
+      },
+      {
+        "id": "C",
+        "text": "x + y = 0.34(130)\n0.48x + 0.22y = 130"
+      },
+      {
+        "id": "D",
+        "text": "x + y = 0.34(130)\n0.22x + 0.48y = 130"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 12,
+    "question_text": "What is the value of k?",
+    "prompt": "Graph: y = 2ˣ + k passes through (0, -6), (2, -3), and (3, 1). The curve has a horizontal asymptote at y = -7.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "-7"
+      },
+      {
+        "id": "B",
+        "text": "-6"
+      },
+      {
+        "id": "C",
+        "text": "-5"
+      },
+      {
+        "id": "D",
+        "text": "-4"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Advanced Math",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 13,
+    "question_text": "What is the area, in square yards, of this town?",
+    "prompt": "A certain town has an area of 3.99 square miles. What is the area, in square yards, of this town? (1 mile = 1,760 yards)",
+    "choices": [
+      {
+        "id": "A",
+        "text": "441"
+      },
+      {
+        "id": "B",
+        "text": "7,022"
+      },
+      {
+        "id": "C",
+        "text": "776,341"
+      },
+      {
+        "id": "D",
+        "text": "12,359,424"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Problem-Solving and Data Analysis",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 14,
+    "question_text": "What is the value of f(11)?",
+    "prompt": "The function f is defined by f(x) = 4x².",
+    "choices": [
+      {
+        "id": "A",
+        "text": "44"
+      },
+      {
+        "id": "B",
+        "text": "52"
+      },
+      {
+        "id": "C",
+        "text": "88"
+      },
+      {
+        "id": "D",
+        "text": "484"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Advanced Math",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 15,
+    "question_text": "Which equation defines f?",
+    "prompt": "The function f gives the product of a number, x, and a number that is 66 more than x.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "f(x) = x² + x + 66"
+      },
+      {
+        "id": "B",
+        "text": "f(x) = x² + 66"
+      },
+      {
+        "id": "C",
+        "text": "f(x) = x² + 66x"
+      },
+      {
+        "id": "D",
+        "text": "f(x) = x² + 66x + 66"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "C",
+    "correct_grid_answers": null,
+    "skill": "Advanced Math",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 16,
+    "question_text": "What is the smallest possible value of b?",
+    "prompt": "One of the factors of 4x³ + 88x² + 468x is x + b, where b is a positive constant.",
+    "choices": [],
+    "kind": "grid_in",
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "9"
+    ],
+    "skill": "Advanced Math",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 17,
+    "question_text": "Which statement is the best interpretation of the x-intercept of the graph?",
+    "prompt": "Alex engages in up to 3 types of exercise each week for a total of 9 hours while training for a triathlon. Alex swims for the same number of minutes each week. The equation y = 540 - x - 200 represents the situation where Alex bikes for x minutes during a week and runs for any remaining training time y, in minutes. If this equation is graphed in the xy-plane, which statement is the best interpretation of the x-intercept of the graph?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "During a week when Alex swims for 340 minutes, he bikes for 200 minutes."
+      },
+      {
+        "id": "B",
+        "text": "Each week, Alex bikes and runs for a total of 340 minutes."
+      },
+      {
+        "id": "C",
+        "text": "During a week when Alex doesn't bike, he runs for 340 minutes."
+      },
+      {
+        "id": "D",
+        "text": "During a week when Alex doesn't run, he bikes for 340 minutes."
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "D",
+    "correct_grid_answers": null,
+    "skill": "Algebra",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 18,
+    "question_text": "Which of the following could NOT be the sum of the measures of any two of these angles?",
+    "prompt": "Two lines intersect at exactly one point, forming two acute angles and two obtuse angles. The measure of one of these angles is (9x - 190)°.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "(-18x + 380)°"
+      },
+      {
+        "id": "B",
+        "text": "(-18x + 740)°"
+      },
+      {
+        "id": "C",
+        "text": "(18x - 380)°"
+      },
+      {
+        "id": "D",
+        "text": "180°"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "A",
+    "correct_grid_answers": null,
+    "skill": "Geometry and Trigonometry",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 19,
+    "question_text": "What is the value of k? Enter decimal form only.",
+    "prompt": "(4/7)(4x + 7)(x + √(4k + 7))(x - √(4k + 7)) = 0\nIn the given equation, k is a positive constant. The product of the solutions to the equation is 77.",
+    "choices": [],
+    "kind": "grid_in",
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "9.25"
+    ],
+    "skill": "Advanced Math",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 20,
+    "question_text": "Which equation gives the total number of subscribers, n, to the channel d days after the video was posted?",
+    "prompt": "At the time of posting a video, a social media channel had 100 subscribers. Each day for five days after the video was posted, the number of subscribers tripled from the number the previous day.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "n = (100)ᵈ"
+      },
+      {
+        "id": "B",
+        "text": "n = 100(3)ᵈ"
+      },
+      {
+        "id": "C",
+        "text": "n = 100(1/3)ᵈ"
+      },
+      {
+        "id": "D",
+        "text": "n = (100)³ + d"
+      }
+    ],
+    "kind": "multiple_choice",
+    "correct_choice_id": "B",
+    "correct_grid_answers": null,
+    "skill": "Problem-Solving and Data Analysis",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 21,
+    "question_text": "What is the value of n - k?",
+    "prompt": "Table:\n| | Volume (cubic units) |\n| Right circular cylinder A | 112π |\n| Right circular cylinder B | 3,024π |\n\nThe table shows the volume of two similar solids, right circular cylinder A and right circular cylinder B. The radius of right circular cylinder A is 4 units. The surface area of right circular cylinder A is kπ square units, and the surface area of right circular cylinder B is nπ square units, where k and n are constants. The surface area of a right circular cylinder with radius r and height h is 2πr² + 2πrh.",
+    "choices": [],
+    "kind": "grid_in",
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "1200"
+    ],
+    "skill": "Geometry and Trigonometry",
+    "difficulty": "C"
+  },
+  {
+    "module": 2,
+    "section": "math",
+    "position": 22,
+    "question_text": "What is the positive difference between a and b?",
+    "prompt": "Function f is a quadratic function. The graph of y = f(x) in the xy-plane has a vertex at (-8, 1), contains the point (-9, -1), and has a y-intercept at (0, a). The graph of y = 6f(x) has a y-intercept at (0, b).",
+    "choices": [],
+    "kind": "grid_in",
+    "correct_choice_id": null,
+    "correct_grid_answers": [
+      "122"
+    ],
+    "skill": "Advanced Math",
+    "difficulty": "C"
+  }
+]

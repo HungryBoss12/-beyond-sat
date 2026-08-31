@@ -221,6 +221,7 @@ export function stripModuleSuffix(title: string): string {
   return title
     .replace(/\s*[·\-–—]\s*(?:mod(?:ule)?\.?\s*)?[12]\s*$/i, "")
     .replace(/\s*\(\s*mod(?:ule)?\.?\s*[12]\s*\)\s*$/i, "")
+    .replace(/\s+mod(?:ule)?\.?\s*[12]\s*$/i, "")
     .replace(/\s+m[12]\s*$/i, "")
     .trim();
 }

@@ -30,6 +30,7 @@ import {
   LETTER_DIFFICULTIES,
   formatSourceDate,
   moduleTitle,
+  stripModuleSuffix,
   type Section,
   type LetterDifficulty,
 } from "@/lib/sat";
@@ -1046,7 +1047,7 @@ function AdminImport() {
       if (existingTestId && module !== "both") {
         createdSet =
           (await ensureSet(
-            base,
+            moduleTitle(base, module),
             module,
             savedItems.map((x) => x.id),
             existingTestId,
@@ -1072,7 +1073,7 @@ function AdminImport() {
       } else {
         createdSet =
           (await ensureSet(
-            base,
+            moduleTitle(base, module),
             module,
             savedItems.map((x) => x.id),
             existingTestId,
@@ -1080,10 +1081,12 @@ function AdminImport() {
       }
     } else if (existingTestId && savedItems.length > 0) {
       // Always rewrite links when fixing an existing set, even if makeSet checkbox off.
+      const mod = module === 2 ? 2 : 1;
+      const paperBase = stripModuleSuffix(title.trim()) || "Practice set";
       createdSet =
         (await ensureSet(
-          title.trim() || "Practice set",
-          module === 2 ? 2 : 1,
+          moduleTitle(paperBase, mod),
+          mod,
           savedItems.map((x) => x.id),
           existingTestId,
         )) ?? undefined;
@@ -1234,7 +1237,7 @@ function AdminImport() {
       } else {
         createdSet =
           (await createSet(
-            base,
+            moduleTitle(base, module),
             module,
             insertedItems.map((x) => x.id),
           )) ?? undefined;

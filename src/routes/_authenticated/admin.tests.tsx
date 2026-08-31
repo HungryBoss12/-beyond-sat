@@ -5,6 +5,7 @@ import {
   Plus,
   Trash2,
   Edit3,
+  Eye,
   X,
   ChevronUp,
   ChevronDown,
@@ -12,6 +13,7 @@ import {
   Link2,
 } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
+import { AdminTestPreview } from "@/components/admin/AdminTestPreview";
 import {
   QuestionEditModal,
   loadQuestionWithAnswers,
@@ -131,6 +133,9 @@ function AdminTests() {
   const [pairing, setPairing] = useState<Test | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<AdminQuestion | null>(null);
   const [openingQuestion, setOpeningQuestion] = useState(false);
+  const [preview, setPreview] = useState<{ title: string; section: Section; questionIds: string[] } | null>(
+    null,
+  );
 
   async function load() {
     setLoading(true);
@@ -261,6 +266,41 @@ function AdminTests() {
     }
   }
 
+  async function openPreviewForTest(t: Test) {
+    const { data: tq, error } = await supabase
+      .from("test_questions")
+      .select("question_id, position")
+      .eq("test_id", t.id)
+      .order("position");
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    const questionIds = (tq ?? []).map((r) => r.question_id as string);
+    if (questionIds.length === 0) {
+      alert("This test has no questions yet.");
+      return;
+    }
+    setPreview({
+      title: t.title,
+      section: t.section,
+      questionIds,
+    });
+  }
+
+  function openPreviewFromEditor() {
+    if (!editing || !editingQs) return;
+    if (editingQs.length === 0) {
+      alert("Add at least one question before previewing.");
+      return;
+    }
+    setPreview({
+      title: editing.title.trim() || "Untitled test",
+      section: editing.section,
+      questionIds: editingQs,
+    });
+  }
+
   async function save() {
     if (!editing || !editingQs) return;
     if (!editing.title.trim()) {
@@ -359,9 +399,16 @@ function AdminTests() {
               <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
                 Papers (both modules)
               </h2>
-              <div className="space-y-4">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
                 {papers.map((g) => (
-                  <PaperCard key={g.key} group={g} counts={counts} onEdit={openEditor} onRemove={remove} />
+                  <PaperCard
+                    key={g.key}
+                    group={g}
+                    counts={counts}
+                    onEdit={openEditor}
+                    onView={openPreviewForTest}
+                    onRemove={remove}
+                  />
                 ))}
               </div>
             </div>
@@ -372,13 +419,14 @@ function AdminTests() {
               <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
                 Single modules
               </h2>
-              <div className="space-y-4">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
                 {singles.map((g) => (
                   <PaperCard
                     key={g.key}
                     group={g}
                     counts={counts}
                     onEdit={openEditor}
+                    onView={openPreviewForTest}
                     onRemove={remove}
                     onPair={(t) => setPairing(t)}
                     onAddMissing={openAddMissing}
@@ -445,16 +493,28 @@ function AdminTests() {
               <h3 className="text-lg font-bold text-white">
                 {editing.id ? "Edit test" : "New test"}
               </h3>
-              <button
-                onClick={() => {
-                  setEditing(null);
-                  setEditingQs(null);
-                }}
-                className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                {editingQs.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={openPreviewFromEditor}
+                    className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 px-3 py-1.5 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    Preview
+                  </button>
+                ) : null}
+                <button
+                  onClick={() => {
+                    setEditing(null);
+                    setEditingQs(null);
+                  }}
+                  className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
             <div className="space-y-4 overflow-y-auto p-6">
               <Field label="Title">
@@ -670,6 +730,15 @@ function AdminTests() {
         </div>
       )}
 
+      {preview ? (
+        <AdminTestPreview
+          title={preview.title}
+          section={preview.section}
+          questionIds={preview.questionIds}
+          onClose={() => setPreview(null)}
+        />
+      ) : null}
+
       {editingQuestion && (
         <QuestionEditModal
           initial={editingQuestion}
@@ -701,6 +770,7 @@ function PaperCard({
   group,
   counts,
   onEdit,
+  onView,
   onRemove,
   onPair,
   onAddMissing,
@@ -708,98 +778,99 @@ function PaperCard({
   group: PaperGroup;
   counts: Map<string, number>;
   onEdit: (t: Test) => void;
+  onView: (t: Test) => void;
   onRemove: (id: string) => void;
   onPair?: (t: Test) => void;
   onAddMissing?: (t: Test) => void;
 }) {
   const date = formatSourceDate(group.source_month, group.source_year);
   const existing = [...group.mod1, ...group.mod2][0];
+  const mod1 = group.mod1[0];
+  const mod2 = group.mod2[0];
 
   return (
-    <div className="rise-in overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
-      <div className="border-b border-brand-400/30 px-4 py-3">
-        <div className="truncate text-sm font-semibold text-white">{group.base}</div>
-        <div className="mt-1 flex flex-wrap gap-1.5">
-          <span className="rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-            {SECTION_LABEL[group.section]}
-          </span>
-          {date && (
-            <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-              {date}
+    <div className="rise-in flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
+      <div className="flex shrink-0 items-start justify-between gap-2 px-3.5 pt-3.5 pb-1.5">
+        <div className="min-w-0">
+          <div className="line-clamp-2 text-sm font-black uppercase leading-tight tracking-wide text-white">
+            {group.base}
+          </div>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <span className="rounded bg-brand-400/25 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-100">
+              {SECTION_LABEL[group.section]}
             </span>
-          )}
+            {date && (
+              <span className="rounded bg-brand-800/80 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-100">
+                {date}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-brand-400/40 bg-brand-800/60 text-xs font-bold text-white">
+          {mod1 && mod2 ? "✓" : "…"}
         </div>
       </div>
-      {/* Module 1 stacks above Module 2 under this paper only. */}
-      <div className="flex flex-col gap-3 p-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 px-3.5 pb-3.5 pt-1">
         {([1, 2] as const).map((mod) => {
-          const rows = mod === 1 ? group.mod1 : group.mod2;
+          const t = mod === 1 ? mod1 : mod2;
           return (
             <div
               key={mod}
-              className="overflow-hidden rounded-xl border border-brand-400/30 border-l-4 border-l-brand-400 bg-brand-800/50"
+              className="flex min-h-0 flex-1 items-stretch overflow-hidden rounded-xl border border-brand-400/30 bg-brand-800/70"
             >
-              <div className="border-b border-brand-400/20 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200">
-                Module {mod}
-              </div>
-              {rows.length === 0 ? (
-                <div className="space-y-2 px-4 py-3">
-                  <div className="text-xs text-brand-200">No module yet</div>
+              <div className="my-2.5 ml-2 w-1.5 shrink-0 rounded-full bg-brand-400" aria-hidden />
+              {!t ? (
+                <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 px-3 py-2.5">
+                  <p className="text-sm font-bold text-white">Module {mod}</p>
                   {existing && onPair && onAddMissing && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex gap-2">
                       <button
                         onClick={() => onPair(existing)}
-                        className="tap inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
+                        className="tap text-xs font-semibold text-brand-100 hover:text-white hover:underline"
                       >
-                        <Link2 className="h-3.5 w-3.5" />
                         Pair
                       </button>
                       <button
                         onClick={() => onAddMissing(existing)}
-                        className="tap inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
+                        className="tap text-xs font-semibold text-brand-100 hover:text-white hover:underline"
                       >
-                        <Plus className="h-3.5 w-3.5" />
-                        Add Module {mod}
+                        Add
                       </button>
                     </div>
                   )}
                 </div>
               ) : (
-                <ul>
-                  {rows.map((t) => (
-                    <li
-                      key={t.id}
-                      className="flex items-center gap-2 px-4 py-2.5 transition-colors hover:bg-brand-500"
+                <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-white">Module {mod}</p>
+                    <p className="truncate text-xs font-medium text-brand-100">
+                      {counts.get(t.id) ?? 0}Q · {t.difficulty}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      onClick={() => onView(t)}
+                      className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-700 hover:text-white"
+                      aria-label={`View Module ${mod}`}
                     >
-                      <span
-                        className={
-                          "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
-                          difficultyColor(t.difficulty)
-                        }
-                      >
-                        {t.difficulty}
-                      </span>
-                      <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-                        {counts.get(t.id) ?? 0} q
-                      </span>
-                      <div className="flex-1" />
-                      <button
-                        onClick={() => onEdit(t)}
-                        className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
-                        aria-label={`Edit Module ${mod}`}
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => onRemove(t.id)}
-                        className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-900 hover:text-white"
-                        aria-label={`Delete Module ${mod}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => onEdit(t)}
+                      className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-700 hover:text-white"
+                      aria-label={`Edit Module ${mod}`}
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => onRemove(t.id)}
+                      className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-red-600/80 hover:text-white"
+                      aria-label={`Delete Module ${mod}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           );

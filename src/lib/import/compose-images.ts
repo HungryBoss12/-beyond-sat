@@ -1,12 +1,26 @@
+function isBrowserLoadableImage(blob: Blob): boolean {
+  const t = blob.type.toLowerCase();
+  return (
+    t === "image/png" ||
+    t === "image/jpeg" ||
+    t === "image/jpg" ||
+    t === "image/gif" ||
+    t === "image/webp"
+  );
+}
+
 /** Stack multiple embedded source images vertically on a white canvas. */
 export async function composeSourceImages(images: Blob[]): Promise<Blob> {
-  if (images.length === 0) {
-    throw new Error("No images to compose.");
+  const loadable = images.filter(isBrowserLoadableImage);
+  if (loadable.length === 0) {
+    throw new Error(
+      "Embedded images use a format Word often saves as EMF/WMF, which browsers cannot display. Re-insert figures as PNG/JPEG in Word, or add image URLs manually in the editor.",
+    );
   }
-  if (images.length === 1) return images[0];
+  if (loadable.length === 1) return loadable[0];
 
   const loaded = await Promise.all(
-    images.map(
+    loadable.map(
       (blob) =>
         new Promise<{ img: HTMLImageElement; w: number; h: number }>((resolve, reject) => {
           const img = new Image();

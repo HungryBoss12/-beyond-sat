@@ -11,7 +11,6 @@ import {
   BarChart3,
   Gauge,
   CalendarClock,
-  Layers,
 } from "lucide-react";
 import {
   Area,
@@ -39,12 +38,10 @@ import { Panel, PanelGlow, PanelHead, PageHead, EmptyState, Skeleton } from "@/c
 import { Badge, Delta, MeterRow, StatTile, type Tone } from "@/components/ui/metric";
 import { listAttendance, type LessonAttendance } from "@/lib/classes";
 import { format } from "date-fns";
-import { fetchVocabDueSummary } from "@/lib/vocab/client";
-import { VocabDueBanner } from "@/components/vocab/VocabDueBanner";
-import { startVocabReminderPoll } from "@/lib/vocab/reminders";
 import {
   buildMockTrend,
   chartReadyTrend,
+  completedSessionScore,
   countMockTestsTaken,
   latestMockSummary,
   type MockSessionRow,
@@ -103,10 +100,6 @@ function Dashboard() {
   const [staffRole, setStaffRole] = useState<StaffRole | null>(null);
   const [attendance, setAttendance] = useState<LessonAttendance[]>([]);
   const [dailyExists, setDailyExists] = useState(false);
-  const [vocabDue, setVocabDue] = useState(0);
-  const [vocabTopDeckId, setVocabTopDeckId] = useState<string | undefined>();
-  const [vocabTopDeckTitle, setVocabTopDeckTitle] = useState<string | undefined>();
-  const [vocabDueError, setVocabDueError] = useState<string | null>(null);
   const today = format(new Date(), "yyyy-MM-dd");
 
   useEffect(() => {
@@ -137,9 +130,9 @@ function Dashboard() {
             "id,type,score,rw_score,math_score,completed_at,started_at,total_questions,correct_count,metadata",
           )
           .eq("user_id", uid)
-          .eq("type", "mock")
+          .in("type", ["mock", "practice", "daily"])
           .order("started_at", { ascending: false })
-          .limit(20),
+          .limit(30),
         supabase
           .from("attempts")
           .select("is_correct, questions(section,skill)")
@@ -156,26 +149,8 @@ function Dashboard() {
       setStaffRole(role);
       setAttendance(lessonAtt);
       setDailyExists(!!dt);
-      try {
-        const summary = await fetchVocabDueSummary();
-        setVocabDue(summary.totalDue);
-        setVocabTopDeckId(summary.topDeck?.id);
-        setVocabTopDeckTitle(summary.topDeck?.title);
-        setVocabDueError(null);
-      } catch (e) {
-        setVocabDue(0);
-        setVocabDueError(e instanceof Error ? e.message : "Could not load due counts");
-      }
       setLoading(false);
     })();
-    return startVocabReminderPoll(async () => {
-      const summary = await fetchVocabDueSummary();
-      setVocabDue(summary.totalDue);
-      setVocabTopDeckId(summary.topDeck?.id);
-      setVocabTopDeckTitle(summary.topDeck?.title);
-      setVocabDueError(null);
-      return summary.totalDue;
-    }, "Vocab");
   }, [today]);
 
   const mocks = sessions;
@@ -186,17 +161,21 @@ function Dashboard() {
   const testsTakenCount = useMemo(() => countMockTestsTaken(mocks), [mocks]);
 
   const avg = useMemo(() => {
-    const completed = mocks.filter((m) => m.score != null) as (Session & { score: number })[];
-    if (completed.length === 0) return null;
+    const completed = mocks.filter((m) => m.completed_at);
+    const scored = completed
+      .map((s) => completedSessionScore(s))
+      .filter((v): v is number => v != null);
+    if (scored.length === 0) return null;
     const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
-    const rwVals = completed.map((s) => s.rw_score).filter((v): v is number => v != null);
-    const mathVals = completed.map((s) => s.math_score).filter((v): v is number => v != null);
+    const mockRows = completed.filter((s) => s.type === "mock");
+    const rwVals = mockRows.map((s) => s.rw_score).filter((v): v is number => v != null);
+    const mathVals = mockRows.map((s) => s.math_score).filter((v): v is number => v != null);
     return {
-      total: Math.round(mean(completed.map((s) => s.score))),
+      total: Math.round(mean(scored)),
       rw: rwVals.length ? Math.round(mean(rwVals)) : 0,
       math: mathVals.length ? Math.round(mean(mathVals)) : 0,
-      best: Math.max(...completed.map((s) => s.score)),
-      count: completed.length,
+      best: Math.max(...scored),
+      count: scored.length,
     };
   }, [mocks]);
 
@@ -280,12 +259,6 @@ function Dashboard() {
         }
       />
 
-      {vocabDueError ? (
-        <Panel className="border-brand-400/40 bg-brand-800/80 p-4 text-sm text-brand-100">
-          Could not load vocab review counts: {vocabDueError}
-        </Panel>
-      ) : null}
-
       {/* Hero row: headline score + accuracy gauge */}
       <div className="grid gap-5 lg:grid-cols-5">
         <ProgressPanel latest={latest} trend={trend} chartTrend={chartTrend} target={sp?.target_score ?? null} />
@@ -312,8 +285,7 @@ function Dashboard() {
         <AttendanceGrid rows={attendance} />
       </Panel>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <VocabPanel due={vocabDue} streak={sp?.current_streak ?? 0} />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <DailyPanel
           done={dailyDoneToday}
           streak={sp?.current_streak ?? 0}
@@ -324,20 +296,8 @@ function Dashboard() {
           longest={sp?.longest_streak ?? 0}
           daysToExam={daysToExam}
         />
-        <div className="lg:col-span-2">
-          <VocabDueBanner
-            dueCount={vocabDue}
-            deckId={vocabTopDeckId}
-            deckTitle={vocabTopDeckTitle}
-            embedded
-          />
-        </div>
-        {/* One panel, not two. The ranked steps are rule-based and always
-            present; the suggestion above them and the ask box below are the
-            model's read of the same data, so the student can push back on the
-            advice instead of being handed it. */}
         <FocusNextPanel
-          className="lg:col-span-3"
+          className="lg:col-span-2"
           recs={buildRecs(sp, weakest)}
           weakestSkill={weakest?.skill ?? null}
           accuracy={accuracy?.overall ?? null}
@@ -425,7 +385,7 @@ function ProgressPanel({
               className="h-full"
               icon={BarChart3}
               title="No trend yet"
-              body="Take a full-length mock exam and your score history starts charting here."
+              body="Finish a practice set, daily test, or mock exam and your score history starts charting here."
               action={
                 <Link
                   to="/practice"
@@ -761,13 +721,13 @@ function RadarPanel({
 function HistoryPanel({ mocks }: { mocks: Session[] }) {
   return (
     <Panel>
-      <PanelHead label="Mock history" icon={ClipboardList} tone="muted" />
-      {mocks.length === 0 ? (
+      <PanelHead label="Test history" icon={ClipboardList} tone="muted" />
+      {mocks.filter((m) => m.completed_at).length === 0 ? (
         <EmptyState
           className="mt-4"
           icon={ClipboardList}
-          title="No mocks yet"
-          body="A full-length mock is the only thing that produces a real 400–1600 score."
+          title="No completed tests yet"
+          body="Practice sets, daily tests, and mock exams all show up here once you finish them."
           action={
             <Link
               to="/practice"
@@ -779,7 +739,10 @@ function HistoryPanel({ mocks }: { mocks: Session[] }) {
         />
       ) : (
         <ul className="mt-2 divide-y divide-brand-400/30 stagger-fast">
-          {mocks.slice(0, 6).map((m) => (
+          {mocks
+            .filter((m) => m.completed_at)
+            .slice(0, 6)
+            .map((m) => (
             <li
               key={m.id}
               className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-brand-800"
@@ -789,11 +752,13 @@ function HistoryPanel({ mocks }: { mocks: Session[] }) {
                   {m.completed_at ? format(new Date(m.completed_at), "MMM d, yyyy") : "—"}
                 </div>
                 <div className="text-xs text-brand-100">
-                  R&W {m.rw_score ?? "—"} · Math {m.math_score ?? "—"}
+                  {m.type === "mock"
+                    ? `Mock · R&W ${m.rw_score ?? "—"} · Math ${m.math_score ?? "—"}`
+                    : `${m.type === "daily" ? "Daily" : "Practice"} · ${m.correct_count ?? "—"}/${m.total_questions ?? "—"} correct`}
                 </div>
               </div>
               <div className="shrink-0 text-xl font-black tabular-nums text-white">
-                {m.score ?? "—"}
+                {completedSessionScore(m) ?? "—"}
               </div>
             </li>
           ))}
@@ -910,26 +875,4 @@ function buildRecs(
     });
   }
   return recs.slice(0, 3);
-}
-
-function VocabPanel({ due, streak }: { due: number; streak: number }) {
-  return (
-    <Panel className="flex h-full flex-col p-5">
-      <PanelHead label="Vocabulary" icon={Layers} tone="brand" />
-      <p className="mt-3 text-sm text-white/70">
-        Anki-style SRS + Words-in-Context quizzes. {due > 0 ? `${due} cards due now.` : "You're caught up on reviews."}
-      </p>
-      <div className="mt-3 flex items-center gap-2 text-sm text-white/60">
-        <Flame className="h-4 w-4 text-brand-200" />
-        <span className="font-bold tabular-nums text-white">{streak}</span>
-        <span>day streak</span>
-      </div>
-      <Link
-        to="/vocab"
-        className="btn-brand mt-auto inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-brand-700 tap shadow-lg shadow-brand-900/20 hover:bg-brand-50"
-      >
-        Open vocab <ArrowRight className="h-4 w-4" />
-      </Link>
-    </Panel>
-  );
 }

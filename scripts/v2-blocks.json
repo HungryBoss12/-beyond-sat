@@ -1,0 +1,642 @@
+[
+  {
+    "i": 0,
+    "text": "May 2024 Math Version C",
+    "images": 0
+  },
+  {
+    "i": 1,
+    "text": "Module 1",
+    "images": 0
+  },
+  {
+    "i": 2,
+    "text": "1.",
+    "images": 0
+  },
+  {
+    "i": 3,
+    "text": "[FIGURE NEEDED — add an image URL for this question]",
+    "images": 0
+  },
+  {
+    "i": 4,
+    "text": "The table summarizes members of a local organization by age and whether they live north or south of Center St. If a member of the organization is selected at random, what is the probability that the selected member is at least 45 years old?",
+    "images": 0
+  },
+  {
+    "i": 5,
+    "text": "A)  \t\tB)  \t\tC)  \t\tD)",
+    "images": 0
+  },
+  {
+    "i": 6,
+    "text": "2. A number x is at least twice the value of a number y. If the value of y is 65, which inequality represents the possible values of x?",
+    "images": 0
+  },
+  {
+    "i": 7,
+    "text": "A) x ≥ 63 \t\tB) x ≥ 67 \t\tC) x ≥ 130\t \tD) x ≥ 132",
+    "images": 0
+  },
+  {
+    "i": 8,
+    "text": "3.",
+    "images": 0
+  },
+  {
+    "i": 9,
+    "text": "The given equation relates the positive numbers , and . Which equation correctly gives  in terms of  and ?",
+    "images": 0
+  },
+  {
+    "i": 10,
+    "text": "A) \t\t\t\t\tC) \nB) \t\t\t\tD)",
+    "images": 0
+  },
+  {
+    "i": 11,
+    "text": "4.",
+    "images": 0
+  },
+  {
+    "i": 12,
+    "text": "[FIGURE NEEDED — add an image URL for this question]",
+    "images": 0
+  },
+  {
+    "i": 13,
+    "text": "In the right triangle shown, what is the value of a?",
+    "images": 0
+  },
+  {
+    "i": 14,
+    "text": "A) 36 \t\tB) 54 \t\tC) 90 \t\tD) 126",
+    "images": 0
+  },
+  {
+    "i": 15,
+    "text": "5. If 4x − 28 = −12, what is the value of x − 7?",
+    "images": 0
+  },
+  {
+    "i": 16,
+    "text": "A) −25 \t\tB) −12 \t\tC) −4 \t\t\tD) −3",
+    "images": 0
+  },
+  {
+    "i": 17,
+    "text": "6.",
+    "images": 0
+  },
+  {
+    "i": 18,
+    "text": "[FIGURE NEEDED — add an image URL for this question]",
+    "images": 0
+  },
+  {
+    "i": 19,
+    "text": "In the triangle shown, what is the value of sin y°?",
+    "images": 0
+  },
+  {
+    "i": 20,
+    "text": "A)  \t\tB)  \t\tC)  \t\tD)",
+    "images": 0
+  },
+  {
+    "i": 21,
+    "text": "7.",
+    "images": 0
+  },
+  {
+    "i": 22,
+    "text": "[FIGURE NEEDED — add an image URL for this question]",
+    "images": 0
+  },
+  {
+    "i": 23,
+    "text": "A bank account was opened with an initial deposit. Over the next several months, regular deposits were made into this account, and there were no withdrawals made during this time. The graph of the function f shown, where y = f(x), estimates the account balance, in dollars, in this bank account x months since the initial deposit. To the nearest whole dollar, what is the amount of the initial deposit estimated by the graph?",
+    "images": 0
+  },
+  {
+    "i": 24,
+    "text": "8. A line segment that has a length of 118 centimeters (cm) is divided into three parts. One part is 48 cm long. The other two parts have lengths that are equal to each other. What is the length, in cm, of one of the other two parts of equal length?",
+    "images": 0
+  },
+  {
+    "i": 25,
+    "text": "9.",
+    "images": 0
+  },
+  {
+    "i": 26,
+    "text": "[FIGURE NEEDED — add an image URL for this question]",
+    "images": 0
+  },
+  {
+    "i": 27,
+    "text": "Data sets X and Y are summarized in the tables shown, where a, b, and c are positive, consecutive integers and a < b < c. Which statement comparing the means of the data sets is true?",
+    "images": 0
+  },
+  {
+    "i": 28,
+    "text": "A) The mean of data set X is  less than the mean of data set Y.\nB) The mean of data set X is  greater than the mean of data set Y.\nC) The mean of data set Y is 100 times the mean of data set X.\nD) The means of the two data sets are equal.",
+    "images": 0
+  },
+  {
+    "i": 29,
+    "text": "10.                                                                               5x + 5y = 150\n                                                                                         x + y = 2x",
+    "images": 0
+  },
+  {
+    "i": 30,
+    "text": "If the solution to the given system of equations is (x, y), which of the following equations is true?",
+    "images": 0
+  },
+  {
+    "i": 31,
+    "text": "A) 2x = 5 \t\tB) 2x = 30\t\t C) 2x = 145 \t\tD) 2x = 150",
+    "images": 0
+  },
+  {
+    "i": 32,
+    "text": "11.                                                                f(x) = 3(x − 2)(x − 6)(x − 9)",
+    "images": 0
+  },
+  {
+    "i": 33,
+    "text": "If the given function f is graphed in the xy-plane, where y = f(x), what is the x-coordinate of an x-intercept of the graph?",
+    "images": 0
+  },
+  {
+    "i": 34,
+    "text": "12. Scientists collected fallen acorns that each housed a colony of the ant species  and analyzed each colony's structure. For any of these colonies, if the colony has x worker ants, the equation y = 0.67x + 2.6, where 20 ≤ x ≤ 110, gives the predicted number of larvae, y, in the colony. If one of these colonies has 57 worker ants, which of the following is closest to the predicted number of larvae in the colony?",
+    "images": 0
+  },
+  {
+    "i": 35,
+    "text": "A) 186\t\t B) 81 \t\tC) 60\t\t D) 41",
+    "images": 0
+  },
+  {
+    "i": 36,
+    "text": "13.                                                                              9x + 5y = 19\n                                                                                 −9x − 3y = 7",
+    "images": 0
+  },
+  {
+    "i": 37,
+    "text": "The solution to the given system of equations is (x, y). What is the value of 2y?",
+    "images": 0
+  },
+  {
+    "i": 38,
+    "text": "14.                                                                           y = x² + 18x + 8\n                                                                                        y = x + 8",
+    "images": 0
+  },
+  {
+    "i": 39,
+    "text": "The graphs of the equations in the given system intersect at the point (x, y) in the xy-plane. What is a possible value of x?",
+    "images": 0
+  },
+  {
+    "i": 40,
+    "text": "A) 14 \t\tB) 10\t\t \tC) −14\t\t D) −17",
+    "images": 0
+  },
+  {
+    "i": 41,
+    "text": "15. A circle in the xy-plane has its center at (−4, 2) and the point (−8, 5) lies on the circle. Which equation represents this circle?",
+    "images": 0
+  },
+  {
+    "i": 42,
+    "text": "A) (x − 4)² + (y + 2)² = 5\t\t\t\tC) (x − 4)² + (y + 2)² = 25\nB) (x + 4)² + (y − 2)² = 5\t\t\t\tD) (x + 4)² + (y − 2)² = 25",
+    "images": 0
+  },
+  {
+    "i": 43,
+    "text": "16.",
+    "images": 0
+  },
+  {
+    "i": 44,
+    "text": "[FIGURE NEEDED — add an image URL for this question]",
+    "images": 0
+  },
+  {
+    "i": 45,
+    "text": "The graph models the number of online newsletter subscribers at the end of every six-month period, where x is the number of six-month periods since the end of January 1993 and 0 ≤ x ≤ 4. Which statement is the best interpretation of the point (1, 750) in this context?",
+    "images": 0
+  },
+  {
+    "i": 46,
+    "text": "A) The estimated number of online newsletter subscribers at the end of the first six-month period was 750.\nB) The estimated number of online newsletter subscribers increased every six months by 750 subscribers.\nC) The estimated number of online newsletter subscribers at the end of January 1993 was 750.\nD) The estimated number of online newsletter subscribers at the end of the first month was 750.",
+    "images": 0
+  },
+  {
+    "i": 47,
+    "text": "17.",
+    "images": 0
+  },
+  {
+    "i": 48,
+    "text": "[FIGURE NEEDED — add an image URL for this question]",
+    "images": 0
+  },
+  {
+    "i": 49,
+    "text": "The right square pyramid shown has a height of 9 centimeters (cm). The length, in cm, of one edge of the pyramid's base is  times the height of the pyramid. What is the volume, in cm³, of the pyramid?",
+    "images": 0
+  },
+  {
+    "i": 50,
+    "text": "18. In the xy-plane, line p has a slope of  and an x-intercept of (9, 0). What is the y-coordinate of the y-intercept of line p?",
+    "images": 0
+  },
+  {
+    "i": 51,
+    "text": "19. In 2018, approximately 40,000 kilowatts of solar power capacity was newly installed in a certain area in the United States. In 2019, the amount of newly installed solar power capacity in this area increased by 11% from the amount of newly installed solar power capacity in 2018. If the amount of newly installed solar power capacity continues to increase each year by 11% of the previous year's newly installed solar power capacity, which of the following types of functions best describes how the amount of newly installed solar power capacity changes over time?",
+    "images": 0
+  },
+  {
+    "i": 52,
+    "text": "A) Increasing linear\t\t\t\tC) Increasing exponential\nB) Decreasing linear\t\t\t\tD) Decreasing exponential",
+    "images": 0
+  },
+  {
+    "i": 53,
+    "text": "20 An object is launched into the air from ground level. According to a quadratic model, 3.8 seconds after the object is launched, it reaches its maximum height of 231.04 feet above ground level. Which equation represents this model, where f(t) is the object's height, in feet, above ground level t seconds after it was launched?",
+    "images": 0
+  },
+  {
+    "i": 54,
+    "text": "A) f(t) = −16(t − 3.8)² + 231.04\t\t\tC) f(t) = −16(t + 3.8)² + 231.04\nB) f(t) = 16(t + 3.8)² + 231.04\t\t\tD) f(t) = 16(t − 3.8)² + 231.04",
+    "images": 0
+  },
+  {
+    "i": 55,
+    "text": "21.                                                                              7x − 56y = 14",
+    "images": 0
+  },
+  {
+    "i": 56,
+    "text": "One of the two equations in a system of linear equations is given. The system has no solution. Which equation could be the second equation in this system?",
+    "images": 0
+  },
+  {
+    "i": 57,
+    "text": "A) x − 4y = 1 \t\tB) x − 8y = 2 \t\tC) x − 4y = 0 \t\tD) x − 14y = 0",
+    "images": 0
+  },
+  {
+    "i": 58,
+    "text": "22. \t\t\t\t  \t   f(x) =",
+    "images": 0
+  },
+  {
+    "i": 59,
+    "text": "The given function f models the balance of a bank account, in dollars, x years after it is opened. Which statement is the best interpretation of ?",
+    "images": 0
+  },
+  {
+    "i": 60,
+    "text": "A) Every 6 months, the balance increases by about $3.\nB) Every 2 years, the balance increases by about $3.\nC) At the end of every 6-month interval, the balance increases by about 0.3% of the balance at the beginning of the 6-month interval.\nD) At the end of every 2-year interval, the balance increases by about 0.3% of the balance at the beginning of the 2-year interval.",
+    "images": 0
+  },
+  {
+    "i": 61,
+    "text": "Module 2",
+    "images": 0
+  },
+  {
+    "i": 62,
+    "text": "1.",
+    "images": 0
+  },
+  {
+    "i": 63,
+    "text": "[FIGURE NEEDED — add an image URL for this question]",
+    "images": 0
+  },
+  {
+    "i": 64,
+    "text": "Line j is shown in the xy-plane. Line k (not shown) is parallel to line j and passes through the point (0,5). Which equation defines line k?",
+    "images": 0
+  },
+  {
+    "i": 65,
+    "text": "A) y = x + 5 \t\tB) y = x − 5 \t\tC) y = x + 5 \t\tD) y = x − 5",
+    "images": 0
+  },
+  {
+    "i": 66,
+    "text": "2.",
+    "images": 0
+  },
+  {
+    "i": 67,
+    "text": "[FIGURE NEEDED — add an image URL for this question]",
+    "images": 0
+  },
+  {
+    "i": 68,
+    "text": "What is an equation of the graph shown?",
+    "images": 0
+  },
+  {
+    "i": 69,
+    "text": "A) y = x + 12 \t\tB) y = −x + 12 \t\tC) y = 2x + 12\t\t D) y = −2x + 12",
+    "images": 0
+  },
+  {
+    "i": 70,
+    "text": "3.",
+    "images": 0
+  },
+  {
+    "i": 71,
+    "text": "[FIGURE NEEDED — add an image URL for this question]",
+    "images": 0
+  },
+  {
+    "i": 72,
+    "text": "In the figure shown, the length of AB is 66. Which statement provides sufficient information to prove that triangle ABC is isosceles?",
+    "images": 0
+  },
+  {
+    "i": 73,
+    "text": "A) The length of BC is 66.",
+    "images": 0
+  },
+  {
+    "i": 74,
+    "text": "B) The length of AC is 33.",
+    "images": 0
+  },
+  {
+    "i": 75,
+    "text": "C) The measure of angle A is 70°.",
+    "images": 0
+  },
+  {
+    "i": 76,
+    "text": "D) The sum of the measures of angles A, B, and C is 180°.",
+    "images": 0
+  },
+  {
+    "i": 77,
+    "text": "4. If 310% of n is 62, what is the value of n?",
+    "images": 0
+  },
+  {
+    "i": 78,
+    "text": "A) 19,220 \t\tB) 1,922 \t\tC) 500 \t\tD) 20",
+    "images": 0
+  },
+  {
+    "i": 79,
+    "text": "5. For the linear function f, the graph of y = f(x) in the xy-plane has a slope of 0 and passes through the point (0, 25). Which equation defines f?",
+    "images": 0
+  },
+  {
+    "i": 80,
+    "text": "A) f(x) = x + 25 \t\tB) f(x) = 25x \t\tC) f(x) = 0 \t\tD) f(x) = 25",
+    "images": 0
+  },
+  {
+    "i": 81,
+    "text": "6. The amount of money owed on a certain type of loan has two components: the principal balance of the loan and the amount of interest accrued on the loan. For a loan of this type, each payment was $298.00 and there were 60 payments total. Part of each payment was applied to the principal balance of the loan, and the rest was applied to the amount of interest accrued on the loan. The amount of the 1st payment that was applied to the principal balance was $220.93. For each additional payment, the amount that was applied to the principal balance was approximately 0.5% greater than the amount that was applied to the principal balance for the previous payment. Which function best approximates the amount of the xth payment, in dollars, that was applied to the amount of interest accrued, where x ≤ 60?",
+    "images": 0
+  },
+  {
+    "i": 82,
+    "text": "A)",
+    "images": 0
+  },
+  {
+    "i": 83,
+    "text": "B)",
+    "images": 0
+  },
+  {
+    "i": 84,
+    "text": "C)",
+    "images": 0
+  },
+  {
+    "i": 85,
+    "text": "D)",
+    "images": 0
+  },
+  {
+    "i": 86,
+    "text": "7. If a = 4k + 7r and b = 9k − 11r + 5, which expression is equivalent to a − b?",
+    "images": 0
+  },
+  {
+    "i": 87,
+    "text": "A) −5k + 18r + 5 \t     B) −5k + 18r − 5 \t\tC) −5k − 4r − 5 \tD) −5k − 4r + 5",
+    "images": 0
+  },
+  {
+    "i": 88,
+    "text": "8.                                                                    16(x + 4) = 2(x + c) + 14x",
+    "images": 0
+  },
+  {
+    "i": 89,
+    "text": "In the given equation, c is a constant. The equation has infinitely many solutions. What is the value of c?",
+    "images": 0
+  },
+  {
+    "i": 90,
+    "text": "A) 4 \t\tB) 8 \t\tC) 32 \t\tD) 64",
+    "images": 0
+  },
+  {
+    "i": 91,
+    "text": "9. Which quadratic equation has exactly one distinct real solution?",
+    "images": 0
+  },
+  {
+    "i": 92,
+    "text": "A) x² − 18 = 0 \t\tB) x² + 18 = 0 \t\tC) x² − 18x + 72 = 0 \tD) x² − 18x + 81 = 0",
+    "images": 0
+  },
+  {
+    "i": 93,
+    "text": "10.                                                                       + 9",
+    "images": 0
+  },
+  {
+    "i": 94,
+    "text": "What is the y-intercept of the graph of y = p(x) in the xy-plane?",
+    "images": 0
+  },
+  {
+    "i": 95,
+    "text": "A) (0, 18) \t\tB) (0, 27) \t\tC) (0, 11) \t\tD) (0, 9)",
+    "images": 0
+  },
+  {
+    "i": 96,
+    "text": "11.",
+    "images": 0
+  },
+  {
+    "i": 97,
+    "text": "[FIGURE NEEDED — add an image URL for this question]",
+    "images": 0
+  },
+  {
+    "i": 98,
+    "text": "During an experiment, the temperature, in degrees Celsius (°C), of a mixture was recorded to the nearest integer at certain times. The scatterplot shows the recorded temperature y, in °C, of the mixture x hours after the start of the experiment. What was the average rate of change of the recorded temperature of the mixture over time, in °C per hour, from x = 1 to x = 3?",
+    "images": 0
+  },
+  {
+    "i": 99,
+    "text": "12.                                                               Data set A: 24, 34, 44, 54, 64",
+    "images": 0
+  },
+  {
+    "i": 100,
+    "text": "Data set A, which consists of the 5 values shown, has a mean of 44 and a standard deviation of approximately 14.10. Data set B consists of the 5 values from data set A and one additional value, k. For which of the following values of k will the standard deviation of data set B be less than the standard deviation of data set A?",
+    "images": 0
+  },
+  {
+    "i": 101,
+    "text": "A) 14",
+    "images": 0
+  },
+  {
+    "i": 102,
+    "text": "B) 49",
+    "images": 0
+  },
+  {
+    "i": 103,
+    "text": "C) 74",
+    "images": 0
+  },
+  {
+    "i": 104,
+    "text": "D) There is no value of k such that the standard deviation of data set B will be less than the standard deviation of data set A.",
+    "images": 0
+  },
+  {
+    "i": 105,
+    "text": "13. A right square pyramid has a surface area of 75,264 square inches, which includes a base area of 36,864 square inches. What is the slant height, in inches, of this pyramid?",
+    "images": 0
+  },
+  {
+    "i": 106,
+    "text": "14. At a depth of h meters below the surface, the estimated total pressure P₁, in kilopascals (kPa), a diver experienced is given by P₁ = 10h + 101, which is a combination of estimated water pressure and estimated atmospheric pressure. After maintaining a certain depth, the diver descended d additional meters. The estimated total pressure P₂, in kPa, the diver experienced after descending these d additional meters is given by P₂ = 10d + 311. Which of the following is the best interpretation of 311 in this context?",
+    "images": 0
+  },
+  {
+    "i": 107,
+    "text": "A) The estimated total pressure, in kPa, the diver experienced at a depth of d meters",
+    "images": 0
+  },
+  {
+    "i": 108,
+    "text": "B) The estimated increase in the total pressure, in kPa, the diver experienced for each increase in the depth by 1 meter",
+    "images": 0
+  },
+  {
+    "i": 109,
+    "text": "C) The estimated increase in the total pressure, in kPa, the diver experienced for each increase in the depth by d meters",
+    "images": 0
+  },
+  {
+    "i": 110,
+    "text": "D) The estimated total pressure, in kPa, the diver experienced when the diver began to descend d additional meters",
+    "images": 0
+  },
+  {
+    "i": 111,
+    "text": "15. A company developed a plan to set the selling price of a product. The company determined that for a selling price of $150.00, zero products would be sold. For each $2.50 decrease in the selling price, the number of products sold would increase by one. For a revenue of exactly $2,187.50, which of the following could be the number of products sold? (revenue = price × number of products sold)",
+    "images": 0
+  },
+  {
+    "i": 112,
+    "text": "A) 25 \t\tB) 30 \t\tC) 815\t\t D) 2,250",
+    "images": 0
+  },
+  {
+    "i": 113,
+    "text": "16.                                                                    56(x³ + 64)(x⁴ − 81) = 0",
+    "images": 0
+  },
+  {
+    "i": 114,
+    "text": "How many distinct real solutions does the given equation have?",
+    "images": 0
+  },
+  {
+    "i": 115,
+    "text": "A) Exactly two \t\tB) Exactly three \t\tC) Exactly five \t\tD) Exactly seven",
+    "images": 0
+  },
+  {
+    "i": 116,
+    "text": "17. As the size of a firework's shell increases, the height above the ground when the firework bursts increases. For a firework to burst 1,075 feet above the ground, a firework's shell in the shape of a sphere with a volume of 514.23 cubic inches could be used. To the nearest whole number, what is the volume of this firework's shell in cubic centimeters? (1 inch = 2.54 centimeters)",
+    "images": 0
+  },
+  {
+    "i": 117,
+    "text": "18.                                                                           −9x(x + 9) = 90",
+    "images": 0
+  },
+  {
+    "i": 118,
+    "text": "One solution to the given equation can be written as , where  and  are positive integers. What is the value of ?",
+    "images": 0
+  },
+  {
+    "i": 119,
+    "text": "19. Which of the following expressions has a factor of x + 2b, where b is a positive integer constant?",
+    "images": 0
+  },
+  {
+    "i": 120,
+    "text": "A) 3x² + 9x + 18b \t\t\t\tC) 3x² + 30x + 18b",
+    "images": 0
+  },
+  {
+    "i": 121,
+    "text": "B) 3x² + 24x + 18b \t\t\t\tD) 3x² + 39x + 18b",
+    "images": 0
+  },
+  {
+    "i": 122,
+    "text": "20. Right rectangular prism X is similar to right rectangular prism Y. The surface area of right rectangular prism X is 52 square centimeters (cm²), and the surface area of right rectangular prism Y is 3,328 cm². The volume of right rectangular prism X is 10.5 cubic centimeters (cm³). What is the volume, in cm³, of right rectangular prism Y?",
+    "images": 0
+  },
+  {
+    "i": 123,
+    "text": "21. \t\t\t\t\t        38z¹⁸ + bz⁹ + 30",
+    "images": 0
+  },
+  {
+    "i": 124,
+    "text": "In the given expression, b is a positive integer. If qz⁹ + r is a factor of the expression, where q and r are positive integers, what is the greatest possible value of b?",
+    "images": 0
+  },
+  {
+    "i": 125,
+    "text": "22. The cost of renting a piece of equipment is $46n for the first day and $23n for each additional day, where n is a positive integer. Which of the following functions gives the cost C(x), in dollars, of renting this equipment for x days, where x is a positive integer?",
+    "images": 0
+  },
+  {
+    "i": 126,
+    "text": "A) C(x) = 23nx + 23n \t\t\t\t\tC) C(x) = 46nx + 23n",
+    "images": 0
+  },
+  {
+    "i": 127,
+    "text": "B) C(x) = 23nx + 46n \t\t\t\t\tD) C(x) = 46nx − 23n",
+    "images": 0
+  }
+]

@@ -1,5 +1,6 @@
-import { FIGURE_MARKER } from "./docx";
-import type { Section } from "@/lib/sat";
+const FIGURE_MARKER = "[FIGURE NEEDED — add an image URL for this question]";
+
+
 
 /**
  * Turn the ordered text blocks a document reader produces into draft question
@@ -20,72 +21,56 @@ import type { Section } from "@/lib/sat";
  * inserted without passing through the preview table first.
  */
 
-export type SourceBlock = {
-  text: string;
+
+  text;
   /** 1-based PDF page, when the block came from a paged document. */
-  page?: number;
+  page?;
   /** Embedded images from DOCX — temporary until uploaded during import review. */
-  images?: Blob[];
+  images?;
 };
 
-export type Draft = {
+
   /** The number printed in the document. This is what an answer key refers to. */
-  number: number;
-  rec: Record<string, string>;
+  number;
+  rec;
   /** Parse-time notes, merged into the row's warnings by the caller. */
-  warnings: string[];
+  warnings;
   /** 1-based PDF page this question was read from, when known. */
-  sourcePage?: number;
+  sourcePage?;
   /** Embedded DOCX images carried through review — never sent to the database. */
-  sourceImages?: Blob[];
+  sourceImages?;
   /** Staff confirmed the draft against the source page. */
-  reviewed?: boolean;
+  reviewed?;
 };
 
-export type DocumentParse = {
-  drafts: Draft[];
+
+  drafts;
   /** Blocks before the first numbered question — a cover page, usually. */
-  preamble: string[];
+  preamble;
   /** Surfaced above the preview: how the document was read, and what was odd. */
-  notes: string[];
+  notes;
 };
 
-export type ParseDefaults = {
-  section: Section;
-  skill: string;
-  difficulty: string;
-  source_month: string;
-  source_year: string;
-  module?: "1" | "2";
+
+  section;
+  skill;
+  difficulty;
+  source_month;
+  source_year;
+  module?;
 };
 
-export function blankDraft(defaults: ParseDefaults, number: number, sourcePage?: number): Draft {
+export function blankDraft(defaults) {
   return {
     number,
     sourcePage,
-    rec: {
-      section: defaults.section,
-      skill: defaults.skill,
-      difficulty: defaults.difficulty,
-      kind: "multiple_choice",
-      prompt: "",
-      question_text: "",
-      correct: "",
-      explanation: "",
-      source_month: defaults.source_month,
-      source_year: defaults.source_year,
-      module: defaults.module ?? "1",
-      choice_A: "",
-      choice_B: "",
-      choice_C: "",
-      choice_D: "",
-    },
+    rec,
     warnings: [],
   };
 }
 
-export function draftModule(d: Draft): 1 | 2 {
-  return d.rec.module === "2" ? 2 : 1;
+export function draftModule(d) {
+  return d.rec.module === "2" ? 2 ;
 }
 
 /**
@@ -95,15 +80,15 @@ export function draftModule(d: Draft): 1 | 2 {
  * high number back to 1–5 is treated as the start of Module 2. Explicit
  * `rec.module` values already set by staff are left alone.
  */
-export function stampDraftModules(drafts: Draft[], mode: 1 | 2 | "both"): Draft[] {
+export function stampDraftModules(drafts) {
   if (mode !== "both") {
-    return drafts.map((d) => ({ ...d, rec: { ...d.rec, module: String(mode) } }));
+    return drafts.map((d) => ({ ...d, rec }));
   }
   let current: 1 | 2 = 1;
   let prev = 0;
   const stamped = drafts.map((d, i) => {
     if (d.rec.module === "1" || d.rec.module === "2") {
-      current = d.rec.module === "2" ? 2 : 1;
+      current = d.rec.module === "2" ? 2 ;
       prev = d.number;
       return d;
     }
@@ -111,15 +96,15 @@ export function stampDraftModules(drafts: Draft[], mode: 1 | 2 | "both"): Draft[
     if (/\bmodule\s*2\b/i.test(blob)) current = 2;
     if (i > 0 && d.number > 0 && prev >= 8 && d.number < prev && d.number <= 5) current = 2;
     prev = d.number;
-    return { ...d, rec: { ...d.rec, module: String(current) } };
+    return { ...d, rec };
   });
   /* Numbering that never restarts (1…49 in a spreadsheet) still splits at the
      official SAT module size so one file can become two test sets. */
-  const expected = drafts[0]?.rec.section === "math" ? 22 : 27;
+  const expected = drafts[0]?.rec.section === "math" ? 22 ;
   if (stamped.every((d) => draftModule(d) === 1) && stamped.length > expected) {
     return stamped.map((d, i) => ({
       ...d,
-      rec: { ...d.rec, module: i < expected ? "1" : "2" },
+      rec,
     }));
   }
   return stamped;
@@ -133,7 +118,7 @@ const QUESTION_OPENER = /^\s*(?:question\s+)?(\d{1,3})\s*[.)]\s+/i;
 /** A block that is itself one choice: `A) text`, `A. text`, `(A) text`. */
 const CHOICE_OPENER = /^\s*\(?([A-H])\s*[).]\s+/;
 
-function cellsFromMarkdownTable(block: string): string[] {
+function cellsFromMarkdownTable(block) {
   const cells: string[] = [];
   for (const line of block.split("\n")) {
     const trimmed = line.trim();
@@ -152,7 +137,7 @@ function cellsFromMarkdownTable(block: string): string[] {
  * Math papers often lay out A–D inside a Word table. Those become markdown
  * table blocks, which the line-based choice scanner would miss.
  */
-export function extractChoicesFromTableBlock(block: string): { id: string; text: string }[] | null {
+export function extractChoicesFromTableBlock(block)[] | null {
   if (!block.trimStart().startsWith("|")) return null;
   const cells = cellsFromMarkdownTable(block);
   if (cells.length < 2) return null;
@@ -162,11 +147,11 @@ export function extractChoicesFromTableBlock(block: string): { id: string; text:
     if (inline && inline.length >= 2) return inline;
   }
 
-  const choices: { id: string; text: string }[] = [];
+  const choices[] = [];
   for (const cell of cells) {
     const m = cell.match(CHOICE_OPENER);
     if (!m) continue;
-    choices.push({ id: m[1], text: cell.slice(m[0].length).trim() });
+    choices.push({ id(m[0].length).trim() });
   }
   const ordered = choices.every((c, idx) => c.id === String.fromCharCode(65 + idx));
   if (choices.length >= 2 && ordered && choices[0].id === "A" && choices.every((c) => c.text)) {
@@ -187,22 +172,21 @@ export function extractChoicesFromTableBlock(block: string): { id: string; text:
  * a bracketed letter; requiring the sequence means a stray `(b)` mid-sentence
  * can't open a phantom choice.
  */
-export function splitInlineChoices(line: string): { id: string; text: string }[] | null {
-  const marks: { id: string; start: number; textAt: number }[] = [];
+export function splitInlineChoices(line)[] | null {
+  const marks[] = [];
   const re = /(^|[\s\u00A0])\(?([A-H])\s*[).]\s*/g;
-  let m: RegExpExecArray | null;
+  let m;
   while ((m = re.exec(line))) {
     if (m[2].charCodeAt(0) - 65 !== marks.length) continue;
-    marks.push({ id: m[2], start: m.index + m[1].length, textAt: m.index + m[0].length });
+    marks.push({ id+ m[1].length, textAt+ m[0].length });
   }
   if (marks.length < 2) return null;
   if (line.slice(0, marks[0].start).trim() !== "") return null;
 
   const out = marks.map((mark, i) => ({
-    id: mark.id,
-    text: line.slice(mark.textAt, marks[i + 1]?.start ?? line.length).trim(),
+    id(mark.textAt, marks[i + 1]?.start ?? line.length).trim(),
   }));
-  return out.every((c) => c.text) ? out : null;
+  return out.every((c) => c.text) ? out ;
 }
 
 /**
@@ -219,8 +203,7 @@ export function splitInlineChoices(line: string): { id: string; text: string }[]
  * "A " as choice A.
  */
 function locateChoices(
-  blocks: string[],
-): { choices: { id: string; text: string }[]; start: number; end: number } | null {
+  blocks)[]; start; end: number } | null {
   const floor = Math.max(1, blocks.length - 12);
 
   for (let i = blocks.length - 1; i >= floor; i--) {
@@ -232,11 +215,11 @@ function locateChoices(
 
     /* One choice per block. Walked backwards and required to terminate on a real
        `A)` marker, so a passage sentence opening with "A " can't be swept in. */
-    const stack: { id: string; text: string }[] = [];
+    const stack[] = [];
     for (let j = i; j >= 0; j--) {
       const m = blocks[j].match(CHOICE_OPENER);
       if (!m) break;
-      stack.unshift({ id: m[1], text: blocks[j].slice(m[0].length).trim() });
+      stack.unshift({ id(m[0].length).trim() });
       if (m[1] === "A") break;
     }
     const ordered = stack.every((c, idx) => c.id === String.fromCharCode(65 + idx));
@@ -259,7 +242,7 @@ function locateChoices(
  * is reliable in a way that guessing a Math skill from prose is not. Math falls
  * back to the section default the admin picked, which is why the header has one.
  */
-const RW_SKILL_HINTS: [RegExp, string][] = [
+const RW_SKILL_HINTS: Array = [
   [/conform(?:s|ing)? to the conventions of standard english/i, "Standard English Conventions"],
   [/most logical transition/i, "Expression of Ideas"],
   [/uses relevant information from the notes|the student wants to/i, "Expression of Ideas"],
@@ -276,10 +259,7 @@ const RW_SKILL_HINTS: [RegExp, string][] = [
 ];
 
 function inferSkill(
-  stem: string,
-  section: Section,
-  fallback: string,
-): { skill: string; guessed: boolean } {
+  stem) {
   if (section === "reading_writing") {
     for (const [re, skill] of RW_SKILL_HINTS) {
       if (re.test(stem)) return { skill, guessed: true };
@@ -296,29 +276,27 @@ function inferSkill(
  * Group blocks into questions on the numbered openers.
  *
  * The sequence guard — a number is only an opener if it continues the run — is
- * what keeps dated note lines ("1938: Congress handed…") and figures numbered
+ * what keeps dated note lines ("1938…") and figures numbered
  * inside a passage from splitting a question in half. A gap of up to three is
  * tolerated and reported, because a genuinely missing question is more likely
  * than the numbering restarting.
  */
-function asSourceBlocks(blocks: Array<string | SourceBlock>): SourceBlock[] {
-  return blocks.map((b) => (typeof b === "string" ? { text: b } : b));
+function asSourceBlocks(blocks) {
+  return blocks.map((b) => (typeof b === "string" ? { text} ));
 }
 
 export function blocksToDrafts(
-  blocks: Array<string | SourceBlock>,
-  defaults: ParseDefaults,
-): DocumentParse {
+  blocks) {
   const notes: string[] = [];
-  const groups: { number: number; page?: number; blocks: string[]; images: Blob[] }[] = [];
+  const groups[] = [];
   const preamble: string[] = [];
-  let current: { number: number; page?: number; blocks: string[]; images: Blob[] } | null = null;
+  let current | null = null;
 
   for (const block of asSourceBlocks(blocks)) {
     const m = block.text.match(QUESTION_OPENER);
     if (m) {
       const n = Number(m[1]);
-      const expected = current ? current.number + 1 : 1;
+      const expected = current ? current.number + 1 ;
       const opens = current ? n >= expected && n <= expected + 3 : n === 1 || n === expected;
       if (opens) {
         if (current) groups.push(current);
@@ -351,12 +329,12 @@ export function blocksToDrafts(
     return { drafts: [], preamble, notes };
   }
 
-  const drafts = groups.map(({ number, page, blocks: body, images }) => {
+  const drafts = groups.map(({ number, page, blocks}) => {
     const warnings: string[] = [];
     const located = locateChoices(body);
     const choices = located?.choices ?? [];
-    const remaining = located ? body.slice(0, located.start) : body;
-    const trailing = located ? body.slice(located.end + 1) : [];
+    const remaining = located ? body.slice(0, located.start) ;
+    const trailing = located ? body.slice(located.end + 1) ;
 
     /* The stem is the paragraph directly above the choices; everything above
        that is the passage, stimulus or note list. With no choices at all
@@ -386,7 +364,7 @@ export function blocksToDrafts(
       warnings.push(`Skill read from the wording as "${skill}".`);
     }
 
-    const rec: Record<string, string> = {
+    const rec = {
       section: defaults.section,
       skill,
       difficulty: defaults.difficulty,
@@ -405,7 +383,7 @@ export function blocksToDrafts(
 
   const withChoices = drafts.filter((d) => d.rec.kind === "multiple_choice").length;
   notes.push(
-    `Read ${drafts.length} question${drafts.length === 1 ? "" : "s"} — ${withChoices} multiple choice, ${drafts.length - withChoices} without choices.`,
+    `Read ${drafts.length} question${drafts.length === 1 ? "" } — ${withChoices} multiple choice, ${drafts.length - withChoices} without choices.`,
   );
   if (preamble.length) {
     notes.push(

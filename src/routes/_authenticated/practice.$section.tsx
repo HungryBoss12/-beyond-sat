@@ -6,7 +6,6 @@ import {
   Play,
   Loader2,
   CalendarDays,
-  CheckCircle2,
   RotateCcw,
   Layers,
   BookOpenCheck,
@@ -23,8 +22,9 @@ import {
   type Difficulty,
 } from "@/lib/sat";
 import { startPracticeSession, startTestSetSession } from "@/lib/session";
-import { Panel, EmptyState } from "@/components/ui/panel";
-import { ListSkeleton } from "@/components/ui/skeletons";
+import { practiceSetProgressPct } from "@/lib/dashboard-mocks";
+import type { AnswerState } from "@/components/QuestionCard";
+import { Panel, EmptyState, Skeleton } from "@/components/ui/panel";
 import { errorMessage } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/practice/$section")({
@@ -71,6 +71,8 @@ type TestSet = {
   status: "new" | "in_progress" | "done";
   sessionId: string | null;
   score: { correct: number; total: number } | null;
+  /** 0–100 completion from answered drafts or full completion. */
+  progressPct: number;
 };
 
 /** One dated section of the browse list. Papers never share a card. */
@@ -131,7 +133,7 @@ function SectionBrowse() {
 
       const rows = (testsResult.data ?? []) as Omit<
         TestSet,
-        "count" | "status" | "sessionId" | "score"
+        "count" | "status" | "sessionId" | "score" | "progressPct"
       >[];
       const ids = rows.map((r) => r.id);
 
@@ -158,6 +160,21 @@ function SectionBrowse() {
          `started_at` descending, so the first hit for a test id is the current
          one. RLS scopes `test_sessions` to the signed-in student, so this is
          their own progress and nobody else's. */
+      function parseSessionMetadata(raw: unknown): {
+        test_id?: string;
+        draft_answers?: AnswerState[] | null;
+      } | null {
+        if (!raw) return null;
+        if (typeof raw === "string") {
+          try {
+            return JSON.parse(raw) as { test_id?: string; draft_answers?: AnswerState[] | null };
+          } catch {
+            return null;
+          }
+        }
+        return raw as { test_id?: string; draft_answers?: AnswerState[] | null };
+      }
+
       const byTest = new Map<
         string,
         {
@@ -165,36 +182,45 @@ function SectionBrowse() {
           completed_at: string | null;
           correct_count: number | null;
           total_questions: number | null;
+          draft_answers: AnswerState[] | null | undefined;
         }
       >();
       for (const s of (sessionsResult.data ?? []) as {
         id: string;
-        metadata: { test_id?: string } | null;
+        metadata: unknown;
         completed_at: string | null;
         correct_count: number | null;
         total_questions: number | null;
       }[]) {
-        const t = s.metadata?.test_id;
+        const meta = parseSessionMetadata(s.metadata);
+        const t = meta?.test_id;
         if (!t || byTest.has(t)) continue;
         byTest.set(t, {
           id: s.id,
           completed_at: s.completed_at,
           correct_count: s.correct_count,
           total_questions: s.total_questions,
+          draft_answers: meta?.draft_answers,
         });
       }
 
       const built: TestSet[] = rows.map((r) => {
         const s = byTest.get(r.id);
+        const count = counts.get(r.id) ?? 0;
+        const total = s?.total_questions ?? count;
+        const completed = !!s?.completed_at;
         return {
           ...r,
-          count: counts.get(r.id) ?? 0,
-          status: !s ? "new" : s.completed_at ? "done" : "in_progress",
+          count,
+          status: !s ? "new" : completed ? "done" : "in_progress",
           sessionId: s?.id ?? null,
           score:
-            s?.completed_at && s.total_questions
+            completed && s.total_questions
               ? { correct: s.correct_count ?? 0, total: s.total_questions }
               : null,
+          progressPct: s
+            ? practiceSetProgressPct(completed, total, s.draft_answers)
+            : 0,
         };
       });
 
@@ -323,8 +349,7 @@ function SectionBrowse() {
             {SECTION_LABEL[section]}
           </h1>
           <p className="text-sm text-slate-500">
-            Newest papers first (by year, then when they were added). Module 1 and Module 2 stay under
-            their own paper.
+            Newest papers first. Each card shows Module 1 and Module 2 with your progress.
           </p>
         </div>
       </div>
@@ -389,7 +414,11 @@ function SectionBrowse() {
         {/* Dated sets */}
         <div className="space-y-6">
           {loading ? (
-            <ListSkeleton rows={6} />
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="aspect-[4/3] rounded-2xl" />
+              ))}
+            </div>
           ) : groups.length === 0 ? (
             <EmptyState
               title="No practice sets yet"
@@ -406,7 +435,7 @@ function SectionBrowse() {
                     · {g.papers.length} paper{g.papers.length === 1 ? "" : "s"}
                   </span>
                 </h2>
-                <div className="stagger-fast space-y-3">
+                <div className="stagger-fast grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
                   {g.papers.map((paper) => (
                     <PaperCard
                       key={paper.key}
@@ -428,6 +457,65 @@ function SectionBrowse() {
   );
 }
 
+function moduleProgress(set: TestSet | undefined): number {
+  return set?.progressPct ?? 0;
+}
+
+function ProgressRing({ value }: { value: number }) {
+  const r = 15;
+  const size = 44;
+  const c = 2 * Math.PI * r;
+  const offset = c - (value / 100) * c;
+  return (
+    <div
+      className="relative shrink-0"
+      style={{ width: size, height: size }}
+      aria-label={`${value}% complete`}
+    >
+      <svg
+        className="-rotate-90"
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        aria-hidden
+      >
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          className="text-brand-400/30"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          className="text-brand-300 transition-[stroke-dashoffset] duration-300"
+        />
+      </svg>
+      <span className="absolute inset-0 grid place-items-center text-[11px] font-bold tabular-nums leading-none text-white">
+        {value}%
+      </span>
+    </div>
+  );
+}
+
+function primaryModuleSet(rows: TestSet[]): TestSet | undefined {
+  return (
+    rows.find((s) => s.status === "in_progress") ??
+    rows.find((s) => s.status === "done") ??
+    rows[0]
+  );
+}
+
 function PaperCard({
   paper,
   starting,
@@ -439,105 +527,119 @@ function PaperCard({
   onOpen: (set: TestSet) => void;
   onReview: (sessionId: string) => void;
 }) {
-  const mod1 = paper.modules.filter((s) => s.module === 1);
-  const mod2 = paper.modules.filter((s) => s.module === 2);
+  const mod1 = primaryModuleSet(paper.modules.filter((s) => s.module === 1));
+  const mod2 = primaryModuleSet(paper.modules.filter((s) => s.module === 2));
+  const progress = Math.round((moduleProgress(mod1) + moduleProgress(mod2)) / 2);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
-      <div className="border-b border-brand-400/30 px-4 py-3">
-        <h3 className="text-sm font-bold text-white">{paper.title}</h3>
+    <div className="flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
+      <div className="flex shrink-0 items-start justify-between gap-2 px-3.5 pt-3.5 pb-1.5">
+        <h3 className="line-clamp-2 text-sm font-black uppercase leading-tight tracking-wide text-white">
+          {paper.title}
+        </h3>
+        <ProgressRing value={progress} />
       </div>
-      {/* Modules stack in one column so Module 1 sits above Module 2. */}
-      <div className="flex flex-col gap-3 p-3">
-        {([1, 2] as const).map((mod) => {
-          const rows = mod === 1 ? mod1 : mod2;
-          return (
-            <div
-              key={mod}
-              className="overflow-hidden rounded-xl border border-brand-400/30 border-l-4 border-l-brand-400 bg-brand-800/50"
-            >
-              <div className="border-b border-brand-400/20 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200">
-                Module {mod}
-              </div>
-              {rows.length === 0 ? (
-                <div className="px-4 py-3 text-xs text-brand-200">Not available</div>
-              ) : (
-                <ul>
-                  {rows.map((set) => {
-                    const busy = starting === set.id;
-                    const disabled = starting != null && starting !== set.id;
-                    const label =
-                      set.status === "done"
-                        ? "Retake"
-                        : set.status === "in_progress"
-                          ? "Resume"
-                          : "Start";
-                    const Icon = set.status === "done" ? RotateCcw : Play;
-                    return (
-                      <li
-                        key={set.id}
-                        className="flex flex-col gap-3 px-4 py-3 transition-colors hover:bg-brand-500/40"
-                      >
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {set.status === "done" && (
-                            <CheckCircle2
-                              className="h-3.5 w-3.5 text-brand-200"
-                              aria-label="Completed"
-                            />
-                          )}
-                          {set.status === "in_progress" && (
-                            <span className="text-[11px] font-semibold text-brand-100">
-                              In progress
-                            </span>
-                          )}
-                          <span className="rounded bg-brand-900/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-                            {set.count} question{set.count === 1 ? "" : "s"}
-                          </span>
-                          <span className="rounded bg-brand-900/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-                            Difficulty{" "}
-                            <span className="text-white">{difficultyLabel(set.difficulty)}</span>
-                          </span>
-                          {set.score && (
-                            <span className="text-[11px] font-semibold text-brand-100">
-                              Last:{" "}
-                              <span className="tabular-nums text-white">
-                                {set.score.correct}/{set.score.total}
-                              </span>
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-2 sm:flex-row">
-                          {set.status === "done" && set.sessionId && (
-                            <button
-                              onClick={() => onReview(set.sessionId!)}
-                              disabled={busy || disabled}
-                              className="tap inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-900/70 px-3 py-2.5 text-sm font-bold text-white hover:bg-brand-400 disabled:opacity-40"
-                            >
-                              <BookOpenCheck className="h-4 w-4" />
-                              Review
-                            </button>
-                          )}
-                          <button
-                            onClick={() => onOpen(set)}
-                            disabled={busy || disabled}
-                            className="btn-brand inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-400 px-3 py-2.5 text-sm font-bold text-white disabled:opacity-40"
-                          >
-                            {busy ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Icon className="h-4 w-4" />
-                            )}
-                            {label}
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          );
-        })}
+      <div className="flex min-h-0 flex-1 flex-col gap-2 px-3.5 pb-3.5 pt-1">
+        {([1, 2] as const).map((mod) => (
+          <ModuleRow
+            key={mod}
+            mod={mod}
+            set={mod === 1 ? mod1 : mod2}
+            starting={starting}
+            onOpen={onOpen}
+            onReview={onReview}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ModuleRow({
+  mod,
+  set,
+  starting,
+  onOpen,
+  onReview,
+}: {
+  mod: 1 | 2;
+  set: TestSet | undefined;
+  starting: string | null;
+  onOpen: (set: TestSet) => void;
+  onReview: (sessionId: string) => void;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 items-stretch overflow-hidden rounded-xl border border-brand-400/30 bg-brand-800/70">
+      <div className="my-2.5 ml-2 w-1.5 shrink-0 rounded-full bg-brand-400" aria-hidden />
+      {!set ? (
+        <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">
+          <p className="text-sm font-bold text-white">Module {mod}</p>
+          <span className="ml-auto text-xs text-brand-200">—</span>
+        </div>
+      ) : (
+        <ModuleRowBody set={set} mod={mod} starting={starting} onOpen={onOpen} onReview={onReview} />
+      )}
+    </div>
+  );
+}
+
+function ModuleRowBody({
+  set,
+  mod,
+  starting,
+  onOpen,
+  onReview,
+}: {
+  set: TestSet;
+  mod: 1 | 2;
+  starting: string | null;
+  onOpen: (set: TestSet) => void;
+  onReview: (sessionId: string) => void;
+}) {
+  const busy = starting === set.id;
+  const disabled = starting != null && starting !== set.id;
+  const label =
+    set.status === "done" ? "Retake" : set.status === "in_progress" ? "Resume" : "Start";
+  const Icon = set.status === "done" ? RotateCcw : Play;
+
+  const pct = set.progressPct;
+
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2.5">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-sm font-bold text-white">Module {mod}</p>
+          {pct > 0 && (
+            <span className="shrink-0 rounded-full bg-brand-400/25 px-2 py-0.5 text-xs font-bold tabular-nums text-brand-100">
+              {pct}%
+            </span>
+          )}
+        </div>
+        <p className="truncate text-xs font-medium text-brand-100">
+          {set.count}Q · {difficultyLabel(set.difficulty)}
+          {set.status === "in_progress" ? " · In progress" : ""}
+          {set.score ? ` · ${set.score.correct}/${set.score.total}` : ""}
+        </p>
+      </div>
+      <div className="flex shrink-0 flex-col gap-1.5">
+        {set.status === "done" && set.sessionId && (
+          <button
+            onClick={() => onReview(set.sessionId!)}
+            disabled={busy || disabled}
+            className="tap inline-flex items-center justify-center gap-1.5 rounded-full border border-brand-400/50 bg-brand-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-500 disabled:opacity-40"
+          >
+            <BookOpenCheck className="h-3.5 w-3.5" />
+            Review
+          </button>
+        )}
+        <button
+          onClick={() => onOpen(set)}
+          disabled={busy || disabled}
+          className="btn-brand inline-flex items-center justify-center gap-1.5 rounded-full bg-brand-400 px-3.5 py-1.5 text-xs font-bold text-white shadow-brand disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
+          {label}
+        </button>
       </div>
     </div>
   );

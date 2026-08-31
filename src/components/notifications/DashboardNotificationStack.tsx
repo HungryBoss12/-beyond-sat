@@ -89,7 +89,11 @@ function TransitionToInbox({
   const bodyHeight = stage === "body" ? "auto" : 0;
   const titleScale = stage === "fly" ? 0.92 : 1;
   const shellHeight =
-    stage === "body" ? transition.from.height : stage === "title" ? transition.from.height * 0.42 : flyHeight;
+    stage === "body"
+      ? transition.from.height
+      : stage === "title"
+        ? transition.from.height * 0.42
+        : flyHeight;
 
   return createPortal(
     <motion.div
@@ -128,24 +132,34 @@ function TransitionToInbox({
             animate={{ scale: titleScale, opacity: stage === "fly" ? 0.85 : 1 }}
             transition={{ duration: 0.28, ease: SLIDE_EASE }}
           >
-            <div className="dashboard-notif-card__title truncate">{transition.notification.title}</div>
+            <div className="dashboard-notif-card__title truncate">
+              {transition.notification.title}
+            </div>
             <motion.div
               animate={{ opacity: bodyOpacity, height: bodyHeight }}
               transition={{ duration: 0.28, ease: SLIDE_EASE }}
               className="overflow-hidden"
             >
               {transition.notification.body ? (
-                <p className="dashboard-notif-card__body line-clamp-2">{transition.notification.body}</p>
+                <p className="dashboard-notif-card__body line-clamp-2">
+                  {transition.notification.body}
+                </p>
               ) : null}
             </motion.div>
           </motion.div>
-          <motion.div animate={{ opacity: stage === "body" ? 1 : 0 }} transition={{ duration: 0.2 }}>
+          <motion.div
+            animate={{ opacity: stage === "body" ? 1 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
             <X className="h-5 w-5 text-brand-100" />
           </motion.div>
         </div>
       </div>
       <div className="dashboard-notif-card__track">
-        <div className="dashboard-notif-card__bar" style={{ width: `${transition.progress * 100}%` }} />
+        <div
+          className="dashboard-notif-card__bar"
+          style={{ width: `${transition.progress * 100}%` }}
+        />
       </div>
     </motion.div>,
     document.body,
@@ -180,9 +194,7 @@ function NotificationCard({
     <motion.div
       ref={cardRef}
       layout
-      initial={
-        reduceMotion ? false : { opacity: 0, x: "105%", scale: firstWitness ? 0.94 : 0.97 }
-      }
+      initial={reduceMotion ? false : { opacity: 0, x: "105%", scale: firstWitness ? 0.94 : 0.97 }}
       animate={{
         opacity: isFront ? 1 : Math.max(0.55, 0.9 - depth * 0.08),
         x: depth * STACK_OFFSET_X,

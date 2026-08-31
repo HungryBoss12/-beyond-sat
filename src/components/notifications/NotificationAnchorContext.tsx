@@ -60,7 +60,9 @@ export function NotificationAnchorProvider({ children }: { children: ReactNode }
   );
 
   return (
-    <NotificationAnchorContext.Provider value={value}>{children}</NotificationAnchorContext.Provider>
+    <NotificationAnchorContext.Provider value={value}>
+      {children}
+    </NotificationAnchorContext.Provider>
   );
 }
 

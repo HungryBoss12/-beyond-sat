@@ -44,7 +44,12 @@ export function AnkiDeckCounts({
 
 export function AnkiDeckCountLegend({ className }: { className?: string }) {
   return (
-    <div className={cn("flex items-center justify-end gap-3 text-xs font-semibold text-brand-100", className)}>
+    <div
+      className={cn(
+        "flex items-center justify-end gap-3 text-xs font-semibold text-brand-100",
+        className,
+      )}
+    >
       <span className="inline-flex items-center gap-1.5">
         <span className="h-2 w-2 rounded-sm bg-[#2563eb]" aria-hidden />
         New

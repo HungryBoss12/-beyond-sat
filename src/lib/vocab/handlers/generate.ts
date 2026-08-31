@@ -38,9 +38,6 @@ export async function handleVocabGenerate(request: Request, env: unknown): Promi
     return jsonResponse({ items });
   } catch (e) {
     console.error("[vocab/generate]", e);
-    return jsonResponse(
-      { error: e instanceof Error ? e.message : "Generation failed" },
-      502,
-    );
+    return jsonResponse({ error: e instanceof Error ? e.message : "Generation failed" }, 502);
   }
 }

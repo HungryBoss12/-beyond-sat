@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import {
-  ArrowLeft,
-  Bookmark,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Loader2,
-} from "lucide-react";
+import { ArrowLeft, Bookmark, ChevronLeft, ChevronRight, Clock, Loader2 } from "lucide-react";
 import { submitVocabQuiz } from "@/lib/vocab/client";
 import { recordQuizHomeworkCompletion } from "@/lib/vocab/homework";
 import type { VocabQuiz, VocabQuizQuestion } from "@/lib/vocab/types";
@@ -131,7 +124,9 @@ export function VocabQuizPlayer({ quiz, questions }: Props) {
                 key={qu.id}
                 className={cn(
                   "rounded-xl border p-4",
-                  r?.correct ? "border-brand-300/40 bg-brand-400/15" : "border-brand-400/30 bg-brand-800/60",
+                  r?.correct
+                    ? "border-brand-300/40 bg-brand-400/15"
+                    : "border-brand-400/30 bg-brand-800/60",
                 )}
               >
                 <div className="text-sm font-bold text-white/60">Question {i + 1}</div>
@@ -280,7 +275,10 @@ export function VocabQuizPlayer({ quiz, questions }: Props) {
                 return n;
               })
             }
-            className={cn("tap rounded-lg p-2", flagged.has(q.id) ? "text-brand-200" : "text-white/50")}
+            className={cn(
+              "tap rounded-lg p-2",
+              flagged.has(q.id) ? "text-brand-200" : "text-white/50",
+            )}
           >
             <Bookmark className={cn("h-5 w-5", flagged.has(q.id) && "fill-current")} />
           </button>

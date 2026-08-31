@@ -18,11 +18,7 @@ export function VocabStreakWidget({ compact }: { compact?: boolean }) {
       if (!uid) return;
 
       const [{ data: sp }, days] = await Promise.all([
-        supabase
-          .from("student_profiles")
-          .select("current_streak")
-          .eq("user_id", uid)
-          .maybeSingle(),
+        supabase.from("student_profiles").select("current_streak").eq("user_id", uid).maybeSingle(),
         fetchVocabActivityLast7(),
       ]);
 

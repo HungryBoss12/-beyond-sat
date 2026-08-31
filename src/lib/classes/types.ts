@@ -3,11 +3,7 @@ export type ClassSubject = "math" | "ebrw";
 export type ChatThreadKind = "subject_group" | "class_group" | "direct";
 
 export type HomeworkSubmissionStatus =
-  | "pending"
-  | "submitted"
-  | "reviewed"
-  | "accepted"
-  | "needs_revision";
+  "pending" | "submitted" | "reviewed" | "accepted" | "needs_revision";
 
 export type ClassRow = {
   id: string;
@@ -119,7 +115,9 @@ export const SUBJECT_LABEL: Record<ClassSubject, string> = {
   ebrw: "EBRW",
 };
 
-export function displayName(p: Pick<ChatProfile, "username" | "full_name" | "first_name" | "email">) {
+export function displayName(
+  p: Pick<ChatProfile, "username" | "full_name" | "first_name" | "email">,
+) {
   return (
     p.username ||
     p.full_name ||

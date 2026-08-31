@@ -70,7 +70,9 @@ export function AdminFieldLabel({
     <label className="block text-sm font-semibold text-brand-100">
       {label}
       {children}
-      {hint ? <span className="mt-1 block text-xs font-normal text-brand-200/70">{hint}</span> : null}
+      {hint ? (
+        <span className="mt-1 block text-xs font-normal text-brand-200/70">{hint}</span>
+      ) : null}
     </label>
   );
 }

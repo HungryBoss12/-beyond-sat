@@ -64,7 +64,9 @@ export function formatHelp(linked: boolean): string {
     "/help — this message",
   ];
   if (!linked) {
-    lines.unshift("Link your admin account first: generate a code in Admin → Settings, then /link CODE");
+    lines.unshift(
+      "Link your admin account first: generate a code in Admin → Settings, then /link CODE",
+    );
   }
   return lines.join("\n");
 }
@@ -83,7 +85,10 @@ export function formatStart(linked: boolean): string {
 }
 
 export function formatUsersList(
-  rows: Pick<AdminUserSummaryRow, "full_name" | "email" | "id" | "tests_total" | "current_streak">[],
+  rows: Pick<
+    AdminUserSummaryRow,
+    "full_name" | "email" | "id" | "tests_total" | "current_streak"
+  >[],
 ): string {
   if (rows.length === 0) return "No users found.";
   return rows

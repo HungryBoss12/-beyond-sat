@@ -167,7 +167,9 @@ function AdminSettings() {
         title="Beyond AI models"
         description={
           <>
-            Each task routes to its own model. Chat, quick, and reasoning use OpenRouter; vision uses the Gemini API directly. Leave a field empty to use the built-in default. Browse OpenRouter IDs at{" "}
+            Each task routes to its own model. Chat, quick, and reasoning use OpenRouter; vision
+            uses the Gemini API directly. Leave a field empty to use the built-in default. Browse
+            OpenRouter IDs at{" "}
             <a
               href="https://openrouter.ai/models"
               target="_blank"
@@ -389,7 +391,9 @@ function AdminSettings() {
               <div className="text-[10px] font-bold uppercase tracking-wider text-brand-200">
                 Link code (expires in 10 min)
               </div>
-              <code className="mt-2 block text-2xl font-black tracking-widest text-white">{tgCode}</code>
+              <code className="mt-2 block text-2xl font-black tracking-widest text-white">
+                {tgCode}
+              </code>
               <p className="mt-2 text-xs text-brand-100">
                 Message @mgs_uz_bot: <code className="text-white">/link {tgCode}</code>
               </p>

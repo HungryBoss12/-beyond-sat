@@ -1,12 +1,7 @@
 import { unzipSync } from "fflate";
 import { buildDeckTreeFromAnki, deckPathFromAnkiName } from "./deck-tree";
 import { decompressAnki21b } from "./anki-zstd";
-import {
-  firstLine,
-  guessPartOfSpeech,
-  parseSynonymsField,
-  stripAnkiHtml,
-} from "./anki-html";
+import { firstLine, guessPartOfSpeech, parseSynonymsField, stripAnkiHtml } from "./anki-html";
 import type { AnkiDeckNode, GeneratedVocabItem } from "./types";
 
 type SqlJs = typeof import("sql.js");
@@ -37,9 +32,9 @@ const COLLECTION_PRIORITY = ["collection.anki21", "collection.anki21b", "collect
 
 async function getSql(): Promise<SqlJs> {
   if (!sqlReady) {
-    const initSqlJs = (await import("sql.js/dist/sql-wasm.js")).default as (
-      config?: { locateFile?: (file: string) => string },
-    ) => Promise<SqlJs>;
+    const initSqlJs = (await import("sql.js/dist/sql-wasm.js")).default as (config?: {
+      locateFile?: (file: string) => string;
+    }) => Promise<SqlJs>;
     sqlReady = await initSqlJs({
       locateFile: () => "/sql-wasm.wasm",
     });
@@ -53,7 +48,9 @@ function findCollectionDb(files: Record<string, Uint8Array>): { name: string; da
   }
   const match = Object.keys(files).find((k) => /collection\.anki/i.test(k));
   if (match) return { name: match, data: files[match] };
-  throw new Error("No Anki collection database found in this file. Is it a valid .apkg or .colpkg?");
+  throw new Error(
+    "No Anki collection database found in this file. Is it a valid .apkg or .colpkg?",
+  );
 }
 
 async function openCollectionDb(
@@ -313,7 +310,7 @@ export async function parseApkgFile(file: File): Promise<ApkgParseResult> {
   } catch {
     throw new Error(
       "This deck uses Anki's modern compressed format but could not be read. " +
-        "Try re-exporting with \"Support older Anki versions (legacy)\" checked, or update the site.",
+        'Try re-exporting with "Support older Anki versions (legacy)" checked, or update the site.',
     );
   }
 
@@ -355,7 +352,9 @@ export async function parseApkgFile(file: File): Promise<ApkgParseResult> {
     }
 
     if (skipped > 0) {
-      warnings.push(`${skipped} duplicate, empty, or placeholder note${skipped === 1 ? "" : "s"} skipped.`);
+      warnings.push(
+        `${skipped} duplicate, empty, or placeholder note${skipped === 1 ? "" : "s"} skipped.`,
+      );
     }
 
     return {

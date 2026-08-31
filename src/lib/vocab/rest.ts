@@ -60,9 +60,8 @@ export async function requireUser(
   | { ok: true; user: { id: string; email: string | null }; token: string; config: SupabaseConfig }
   | { ok: false; response: Response }
 > {
-  const { readBearerToken, readSupabaseConfig, verifySupabaseUser } = await import(
-    "@/lib/server-env"
-  );
+  const { readBearerToken, readSupabaseConfig, verifySupabaseUser } =
+    await import("@/lib/server-env");
   const config = readSupabaseConfig(env);
   if (!config) {
     return { ok: false, response: jsonResponse({ error: "Server is not configured" }, 500) };

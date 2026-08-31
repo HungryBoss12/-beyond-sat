@@ -1,21 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Plus,
-  Trash2,
-  Edit3,
-  X,
-  ChevronUp,
-  ChevronDown,
-  AlertCircle,
-  Link2,
-} from "lucide-react";
+import { Plus, Trash2, Edit3, X, ChevronUp, ChevronDown, AlertCircle, Link2 } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
-import {
-  QuestionEditModal,
-  loadQuestionWithAnswers,
-} from "@/components/admin/question-edit-modal";
+import { QuestionEditModal, loadQuestionWithAnswers } from "@/components/admin/question-edit-modal";
 import type { AdminChoice, AdminQuestion } from "@/lib/admin/question";
 import {
   SECTION_LABEL,
@@ -135,11 +123,7 @@ function AdminTests() {
   async function load() {
     setLoading(true);
     const [{ data }, { data: links }] = await Promise.all([
-      supabase
-        .from("tests")
-        .select("*")
-        .order("module")
-        .order("created_at", { ascending: false }),
+      supabase.from("tests").select("*").order("module").order("created_at", { ascending: false }),
       supabase.from("test_questions").select("test_id"),
     ]);
     setItems((data ?? []) as Test[]);
@@ -214,8 +198,14 @@ function AdminTests() {
     const mod2 = source.module === 2 ? source : partner;
     const base = stripModuleSuffix(mod1.title);
     const [{ error: e1 }, { error: e2 }] = await Promise.all([
-      supabase.from("tests").update({ title: moduleTitle(base, 1) }).eq("id", mod1.id),
-      supabase.from("tests").update({ title: moduleTitle(base, 2) }).eq("id", mod2.id),
+      supabase
+        .from("tests")
+        .update({ title: moduleTitle(base, 1) })
+        .eq("id", mod1.id),
+      supabase
+        .from("tests")
+        .update({ title: moduleTitle(base, 2) })
+        .eq("id", mod2.id),
     ]);
     if (e1 || e2) {
       alert(e1?.message ?? e2?.message ?? "Could not pair tests.");
@@ -361,7 +351,13 @@ function AdminTests() {
               </h2>
               <div className="space-y-4">
                 {papers.map((g) => (
-                  <PaperCard key={g.key} group={g} counts={counts} onEdit={openEditor} onRemove={remove} />
+                  <PaperCard
+                    key={g.key}
+                    group={g}
+                    counts={counts}
+                    onEdit={openEditor}
+                    onRemove={remove}
+                  />
                 ))}
               </div>
             </div>

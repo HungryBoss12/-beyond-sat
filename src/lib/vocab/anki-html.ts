@@ -1,17 +1,19 @@
 /** Strip Anki HTML field content to plain text. */
+const ANKI_FIELD_SEP = "\u001f";
+
 export function stripAnkiHtml(raw: string): string {
-  if (!raw.includes("<")) return raw.replace(/\u001f/g, " ").trim();
+  if (!raw.includes("<")) return raw.replaceAll(ANKI_FIELD_SEP, " ").trim();
 
   if (typeof DOMParser !== "undefined") {
     const doc = new DOMParser().parseFromString(raw, "text/html");
     const text = doc.body.textContent ?? "";
-    return text.replace(/\u001f/g, " ").replace(/\s+/g, " ").trim();
+    return text.replaceAll(ANKI_FIELD_SEP, " ").replace(/\s+/g, " ").trim();
   }
 
   return raw
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
-    .replace(/\u001f/g, " ")
+    .replaceAll(ANKI_FIELD_SEP, " ")
     .replace(/\s+/g, " ")
     .trim();
 }

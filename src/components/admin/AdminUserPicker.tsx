@@ -35,16 +35,12 @@ export function AdminUserPicker({
 
   const selectedLabels = useMemo(
     () =>
-      selectedIds
-        .map((id) => users.find((u) => u.id === id)?.label)
-        .filter(Boolean) as string[],
+      selectedIds.map((id) => users.find((u) => u.id === id)?.label).filter(Boolean) as string[],
     [selectedIds, users],
   );
 
   function toggle(id: string) {
-    onChange(
-      selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id],
-    );
+    onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
   }
 
   return (

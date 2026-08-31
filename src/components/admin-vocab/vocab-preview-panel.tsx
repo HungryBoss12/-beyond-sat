@@ -111,13 +111,7 @@ export function VocabPreviewPanel({
   );
 }
 
-export function ExampleDeckButton({
-  loading,
-  onClick,
-}: {
-  loading: boolean;
-  onClick: () => void;
-}) {
+export function ExampleDeckButton({ loading, onClick }: { loading: boolean; onClick: () => void }) {
   return (
     <button
       type="button"

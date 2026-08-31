@@ -1,11 +1,4 @@
-import {
-  createEmptyCard,
-  fsrs,
-  Rating,
-  State,
-  type Card,
-  type Grade,
-} from "ts-fsrs";
+import { createEmptyCard, fsrs, Rating, State, type Card, type Grade } from "ts-fsrs";
 import type { ReviewRating, UserCardState } from "./types";
 
 const scheduler = fsrs();

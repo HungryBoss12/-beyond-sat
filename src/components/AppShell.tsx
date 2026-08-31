@@ -141,9 +141,33 @@ function NavGlyph({
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <rect className="nav-bar" x="7" y="13" width="2.4" height="6" rx="0.5" fill="currentColor" />
-        <rect className="nav-bar" x="11.3" y="9" width="2.4" height="10" rx="0.5" fill="currentColor" />
-        <rect className="nav-bar" x="15.6" y="6.5" width="2.4" height="12.5" rx="0.5" fill="currentColor" />
+        <rect
+          className="nav-bar"
+          x="7"
+          y="13"
+          width="2.4"
+          height="6"
+          rx="0.5"
+          fill="currentColor"
+        />
+        <rect
+          className="nav-bar"
+          x="11.3"
+          y="9"
+          width="2.4"
+          height="10"
+          rx="0.5"
+          fill="currentColor"
+        />
+        <rect
+          className="nav-bar"
+          x="15.6"
+          y="6.5"
+          width="2.4"
+          height="12.5"
+          rx="0.5"
+          fill="currentColor"
+        />
       </svg>
     );
   }
@@ -249,14 +273,24 @@ function NavGlyph({
             opacity="0.42"
           />
         </g>
-        <g className="nav-vocab-srs" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+        <g
+          className="nav-vocab-srs"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path
             className="nav-vocab-srs-arc"
             d="M16.8 16.1a3.15 3.15 0 1 0-2.45-3.05"
             strokeWidth="1.35"
             fill="none"
           />
-          <path className="nav-vocab-srs-tip" d="M14.1 12.4l-.15 1.85 1.65-.55" strokeWidth="1.2" fill="none" />
+          <path
+            className="nav-vocab-srs-tip"
+            d="M14.1 12.4l-.15 1.85 1.65-.55"
+            strokeWidth="1.2"
+            fill="none"
+          />
         </g>
       </svg>
     );
@@ -390,7 +424,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
     closeDrawer();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   useEffect(() => {
@@ -435,7 +468,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               (active ? "text-white" : "text-brand-100 nudge hover:text-white")
             }
           >
-            <NavGlyph icon={"icon" in n ? n.icon : undefined} kind={n.kind} className={opts.iconSize} />
+            <NavGlyph
+              icon={"icon" in n ? n.icon : undefined}
+              kind={n.kind}
+              className={opts.iconSize}
+            />
             {n.label}
           </RevealLink>
         );
@@ -460,218 +497,225 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <NotificationAnchorProvider>
-    <div className="min-h-screen bg-white text-brand-900">
-      <aside
-        className={
-          "fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-brand-400/30 bg-brand-600 lg:flex " +
-          "transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
-          (navOpen ? "translate-x-0" : "pointer-events-none -translate-x-full")
-        }
-      >
-        <div className="flex h-16 items-center border-b border-brand-400/30 px-6">
-          <Link to="/dashboard" className="group flex min-w-0 items-center gap-2.5">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-400 shadow-brand transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
-              <BrandMark />
-            </span>
-            <span className="truncate text-lg font-black tracking-tight text-white">
-              Beyond<span className="text-brand-200">SAT</span>
-            </span>
-          </Link>
-        </div>
-        <nav ref={rail.parentRef} className="relative flex-1 space-y-1 p-4">
-          {rail.box.ready && (
-            <span
-              aria-hidden
-              className="nav-rail-pill pointer-events-none absolute rounded-xl bg-brand-400 shadow-brand"
-              style={{
-                top: rail.box.top,
-                left: rail.box.left,
-                width: rail.box.width,
-                height: rail.box.height,
-              }}
-            />
-          )}
-          {navLinks({ iconSize: "h-[18px] w-[18px]" })}
-        </nav>
-        <div className="border-t border-brand-400/30 p-4">
-          <div className="flex items-center gap-2.5 rounded-xl bg-brand-800 px-3 py-2.5 ring-1 ring-brand-400/40">
-            <Flame className="h-5 w-5 fill-brand-200 text-brand-200" />
-            <div>
-              <div className="text-lg font-black leading-none text-white tabular-nums">{streak}</div>
-              <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-100">
-                day streak
+      <div className="min-h-screen bg-white text-brand-900">
+        <aside
+          className={
+            "fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-brand-400/30 bg-brand-600 lg:flex " +
+            "transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
+            (navOpen ? "translate-x-0" : "pointer-events-none -translate-x-full")
+          }
+        >
+          <div className="flex h-16 items-center border-b border-brand-400/30 px-6">
+            <Link to="/dashboard" className="group flex min-w-0 items-center gap-2.5">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-400 shadow-brand transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
+                <BrandMark />
+              </span>
+              <span className="truncate text-lg font-black tracking-tight text-white">
+                Beyond<span className="text-brand-200">SAT</span>
+              </span>
+            </Link>
+          </div>
+          <nav ref={rail.parentRef} className="relative flex-1 space-y-1 p-4">
+            {rail.box.ready && (
+              <span
+                aria-hidden
+                className="nav-rail-pill pointer-events-none absolute rounded-xl bg-brand-400 shadow-brand"
+                style={{
+                  top: rail.box.top,
+                  left: rail.box.left,
+                  width: rail.box.width,
+                  height: rail.box.height,
+                }}
+              />
+            )}
+            {navLinks({ iconSize: "h-[18px] w-[18px]" })}
+          </nav>
+          <div className="border-t border-brand-400/30 p-4">
+            <div className="flex items-center gap-2.5 rounded-xl bg-brand-800 px-3 py-2.5 ring-1 ring-brand-400/40">
+              <Flame className="h-5 w-5 fill-brand-200 text-brand-200" />
+              <div>
+                <div className="text-lg font-black leading-none text-white tabular-nums">
+                  {streak}
+                </div>
+                <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-100">
+                  day streak
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      <header
-        className={
-          "sticky top-0 z-20 border-b border-brand-400/30 bg-brand-600/95 backdrop-blur-md " + shellShift
-        }
-      >
-        <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={openDrawer}
-              className="tap grid h-9 w-9 place-items-center rounded-lg border border-brand-400/50 text-white transition-colors duration-200 hover:bg-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 lg:hidden"
-              aria-label="Open menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => persistNavOpen(!navOpen)}
-              className="tap hidden h-9 w-9 place-items-center rounded-lg border border-brand-400/50 text-white transition-colors duration-200 hover:bg-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 lg:grid"
-              aria-label={navOpen ? "Close menu" : "Open menu"}
-              aria-expanded={navOpen}
-            >
-              {navOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
-            </button>
-            <span className="text-lg font-black tracking-tight text-white lg:hidden">
-              Beyond<span className="text-brand-200">SAT</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            {pathname === "/dashboard" ? <NotificationBell /> : null}
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-brand-400/50 bg-brand-800 px-3 py-1.5 transition-transform duration-200 hover:scale-105">
-              <Flame className="h-4 w-4 fill-brand-200 text-brand-200" />
-              <span className="text-sm font-bold tabular-nums text-white">{streak}</span>
-              <span className="hidden text-xs font-semibold text-brand-100 sm:inline">
-                day{streak === 1 ? "" : "s"}
-              </span>
-            </div>
-            <div ref={menuRef} className="relative">
-              <button
-                onClick={() => setMenuOpen((v) => !v)}
-                className="btn-ghost inline-flex items-center gap-2 rounded-full border border-brand-400/50 bg-brand-800 py-1 pl-1 pr-2"
-              >
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-400 text-xs font-bold text-white">
-                  {initials}
-                </span>
-                <span className="hidden max-w-[120px] truncate text-sm font-semibold text-white sm:inline">
-                  {name}
-                </span>
-                <ChevronDown
-                  className={
-                    "h-4 w-4 text-brand-100 transition-transform duration-300 " +
-                    (menuOpen ? "rotate-180" : "")
-                  }
-                />
-              </button>
-              {menuOpen && (
-                <div className="rise-in absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-brand-400/40 bg-brand-600 py-1 shadow-float">
-                  <div className="border-b border-brand-400/30 px-4 py-2.5">
-                    <div className="truncate text-sm font-semibold text-white">{name}</div>
-                    <div className="truncate text-xs text-brand-100">{email}</div>
-                  </div>
-                  <Link
-                    to="/profile"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-white transition-colors hover:bg-brand-400"
-                  >
-                    <User className="h-4 w-4" /> Profile
-                  </Link>
-                  <button
-                    onClick={signOut}
-                    className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-brand-100 transition-colors hover:bg-brand-800 hover:text-white"
-                  >
-                    <LogOut className="h-4 w-4" /> Sign out
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {drawerMounted && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div
-            className={
-              "absolute inset-0 bg-brand-900/60 backdrop-blur-sm transition-opacity duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
-              (drawerOpen ? "opacity-100" : "opacity-0")
-            }
-            onClick={closeDrawer}
-          />
-          <aside
-            className={
-              "absolute inset-y-0 left-0 flex w-72 flex-col bg-brand-600 shadow-float transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
-              (drawerOpen ? "translate-x-0" : "-translate-x-full")
-            }
-          >
-            <div className="flex h-16 items-center justify-between border-b border-brand-400/30 px-4">
-              <span className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand-400 shadow-brand">
-                  <BrandMark />
-                </span>
-                <span className="text-lg font-black tracking-tight text-white">
-                  Beyond<span className="text-brand-200">SAT</span>
-                </span>
-              </span>
+        <header
+          className={
+            "sticky top-0 z-20 border-b border-brand-400/30 bg-brand-600/95 backdrop-blur-md " +
+            shellShift
+          }
+        >
+          <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={closeDrawer}
-                className="tap grid h-9 w-9 place-items-center rounded-lg text-brand-100 hover:bg-brand-800"
-                aria-label="Close menu"
+                onClick={openDrawer}
+                className="tap grid h-9 w-9 place-items-center rounded-lg border border-brand-400/50 text-white transition-colors duration-200 hover:bg-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 lg:hidden"
+                aria-label="Open menu"
               >
-                <X className="h-5 w-5" />
+                <Menu className="h-5 w-5" />
               </button>
-            </div>
-            <nav className="flex-1 space-y-1 p-3">
-              {navLinks({ onNavigate: closeDrawer, iconSize: "h-5 w-5" })}
-            </nav>
-          </aside>
-        </div>
-      )}
-
-      <main className={"pb-20 lg:pb-0 " + shellShift}>
-        <div key={pathname} className="route-enter mx-auto max-w-7xl px-4 py-6 sm:px-6 md:py-10">
-          {children}
-        </div>
-      </main>
-
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-400/30 bg-brand-600/95 backdrop-blur-md lg:hidden">
-        <div className="relative grid grid-cols-7">
-          <span
-            aria-hidden
-            className="nav-tab-pill pointer-events-none absolute top-1.5 left-0 flex w-[calc(100%/7)] justify-center"
-            style={{
-              transform: `translateX(${Math.max(0, mobileIdx) * 100}%)`,
-              opacity: mobileIdx < 0 ? 0 : 1,
-            }}
-          >
-            <span className="h-7 w-12 rounded-full bg-brand-400" />
-          </span>
-          {NAV.map((n) => {
-            const active = n.to === currentNav;
-            return (
-              <Link
-                key={n.to}
-                to={n.to}
-                {...navPlayHandlers()}
-                className={
-                  "group relative z-10 flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 text-[10px] font-semibold transition-colors duration-200 " +
-                  (active ? "text-white" : "text-brand-100 hover:text-white")
-                }
+              <button
+                type="button"
+                onClick={() => persistNavOpen(!navOpen)}
+                className="tap hidden h-9 w-9 place-items-center rounded-lg border border-brand-400/50 text-white transition-colors duration-200 hover:bg-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 lg:grid"
+                aria-label={navOpen ? "Close menu" : "Open menu"}
+                aria-expanded={navOpen}
               >
-                <NavGlyph
-                  icon={"icon" in n ? n.icon : undefined}
-                  kind={n.kind}
+                {navOpen ? (
+                  <PanelLeftClose className="h-5 w-5" />
+                ) : (
+                  <PanelLeftOpen className="h-5 w-5" />
+                )}
+              </button>
+              <span className="text-lg font-black tracking-tight text-white lg:hidden">
+                Beyond<span className="text-brand-200">SAT</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              {pathname === "/dashboard" ? <NotificationBell /> : null}
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-brand-400/50 bg-brand-800 px-3 py-1.5 transition-transform duration-200 hover:scale-105">
+                <Flame className="h-4 w-4 fill-brand-200 text-brand-200" />
+                <span className="text-sm font-bold tabular-nums text-white">{streak}</span>
+                <span className="hidden text-xs font-semibold text-brand-100 sm:inline">
+                  day{streak === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div ref={menuRef} className="relative">
+                <button
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="btn-ghost inline-flex items-center gap-2 rounded-full border border-brand-400/50 bg-brand-800 py-1 pl-1 pr-2"
+                >
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-400 text-xs font-bold text-white">
+                    {initials}
+                  </span>
+                  <span className="hidden max-w-[120px] truncate text-sm font-semibold text-white sm:inline">
+                    {name}
+                  </span>
+                  <ChevronDown
+                    className={
+                      "h-4 w-4 text-brand-100 transition-transform duration-300 " +
+                      (menuOpen ? "rotate-180" : "")
+                    }
+                  />
+                </button>
+                {menuOpen && (
+                  <div className="rise-in absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-brand-400/40 bg-brand-600 py-1 shadow-float">
+                    <div className="border-b border-brand-400/30 px-4 py-2.5">
+                      <div className="truncate text-sm font-semibold text-white">{name}</div>
+                      <div className="truncate text-xs text-brand-100">{email}</div>
+                    </div>
+                    <Link
+                      to="/profile"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-white transition-colors hover:bg-brand-400"
+                    >
+                      <User className="h-4 w-4" /> Profile
+                    </Link>
+                    <button
+                      onClick={signOut}
+                      className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-brand-100 transition-colors hover:bg-brand-800 hover:text-white"
+                    >
+                      <LogOut className="h-4 w-4" /> Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {drawerMounted && (
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <div
+              className={
+                "absolute inset-0 bg-brand-900/60 backdrop-blur-sm transition-opacity duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
+                (drawerOpen ? "opacity-100" : "opacity-0")
+              }
+              onClick={closeDrawer}
+            />
+            <aside
+              className={
+                "absolute inset-y-0 left-0 flex w-72 flex-col bg-brand-600 shadow-float transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
+                (drawerOpen ? "translate-x-0" : "-translate-x-full")
+              }
+            >
+              <div className="flex h-16 items-center justify-between border-b border-brand-400/30 px-4">
+                <span className="flex items-center gap-2.5">
+                  <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand-400 shadow-brand">
+                    <BrandMark />
+                  </span>
+                  <span className="text-lg font-black tracking-tight text-white">
+                    Beyond<span className="text-brand-200">SAT</span>
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={closeDrawer}
+                  className="tap grid h-9 w-9 place-items-center rounded-lg text-brand-100 hover:bg-brand-800"
+                  aria-label="Close menu"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <nav className="flex-1 space-y-1 p-3">
+                {navLinks({ onNavigate: closeDrawer, iconSize: "h-5 w-5" })}
+              </nav>
+            </aside>
+          </div>
+        )}
+
+        <main className={"pb-20 lg:pb-0 " + shellShift}>
+          <div key={pathname} className="route-enter mx-auto max-w-7xl px-4 py-6 sm:px-6 md:py-10">
+            {children}
+          </div>
+        </main>
+
+        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-400/30 bg-brand-600/95 backdrop-blur-md lg:hidden">
+          <div className="relative grid grid-cols-7">
+            <span
+              aria-hidden
+              className="nav-tab-pill pointer-events-none absolute top-1.5 left-0 flex w-[calc(100%/7)] justify-center"
+              style={{
+                transform: `translateX(${Math.max(0, mobileIdx) * 100}%)`,
+                opacity: mobileIdx < 0 ? 0 : 1,
+              }}
+            >
+              <span className="h-7 w-12 rounded-full bg-brand-400" />
+            </span>
+            {NAV.map((n) => {
+              const active = n.to === currentNav;
+              return (
+                <Link
+                  key={n.to}
+                  to={n.to}
+                  {...navPlayHandlers()}
                   className={
-                    "relative mb-0.5 h-5 w-5 transition-transform duration-300 " +
-                    (active ? "scale-110" : "")
+                    "group relative z-10 flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 text-[10px] font-semibold transition-colors duration-200 " +
+                    (active ? "text-white" : "text-brand-100 hover:text-white")
                   }
-                />
-                <span className="w-full truncate text-center leading-tight">{n.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
-    </div>
+                >
+                  <NavGlyph
+                    icon={"icon" in n ? n.icon : undefined}
+                    kind={n.kind}
+                    className={
+                      "relative mb-0.5 h-5 w-5 transition-transform duration-300 " +
+                      (active ? "scale-110" : "")
+                    }
+                  />
+                  <span className="w-full truncate text-center leading-tight">{n.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
     </NotificationAnchorProvider>
   );
 }

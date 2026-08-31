@@ -31,7 +31,12 @@ function GlowButton({
     );
   }
   return (
-    <button ref={ref} type="button" onClick={onClick} className={`vocab-reveal-surface tap ${className}`}>
+    <button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      className={`vocab-reveal-surface tap ${className}`}
+    >
       {children}
     </button>
   );
@@ -85,7 +90,10 @@ export function VocabSessionResults({ summary, streak, onStudyMore }: Props) {
         <GlowButton to="/vocab/decks" className="vocab-outline-btn-secondary w-full text-center">
           Back to decks
         </GlowButton>
-        <GlowButton to="/vocab/tests" className="vocab-outline-btn-secondary w-full text-center text-white/80">
+        <GlowButton
+          to="/vocab/tests"
+          className="vocab-outline-btn-secondary w-full text-center text-white/80"
+        >
           Take a practice test
         </GlowButton>
       </footer>

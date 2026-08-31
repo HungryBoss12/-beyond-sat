@@ -22,7 +22,8 @@ function NotFoundContent() {
           Good luck finding that!
         </h1>
         <p className="mt-5 max-w-lg text-base text-slate-500">
-          Even Beyond AI couldn&apos;t find this page. Looks like it got omitted from the test booklet.
+          Even Beyond AI couldn&apos;t find this page. Looks like it got omitted from the test
+          booklet.
         </p>
 
         <div className="mt-7 flex flex-wrap gap-3">

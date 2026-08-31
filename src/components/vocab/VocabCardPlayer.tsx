@@ -201,10 +201,13 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
 
       peelLockRef.current = true;
       setPressedRating(rating);
-      window.setTimeout(() => {
-        peelLockRef.current = false;
-        setPressedRating(null);
-      }, reduceMotion ? 50 : 320);
+      window.setTimeout(
+        () => {
+          peelLockRef.current = false;
+          setPressedRating(null);
+        },
+        reduceMotion ? 50 : 320,
+      );
 
       sessionRef.current.reviewed += 1;
       sessionRef.current.ratings[rating] += 1;
@@ -272,11 +275,7 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
             {error}
           </div>
         ) : null}
-        <VocabSessionResults
-          summary={summary}
-          streak={streak}
-          onStudyMore={() => void load()}
-        />
+        <VocabSessionResults summary={summary} streak={streak} onStudyMore={() => void load()} />
       </>
     );
   }
@@ -328,7 +327,11 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
         >
           <p className="text-brand-100">{error}</p>
           <div className="flex flex-wrap justify-center gap-3">
-            <button type="button" onClick={() => void load()} className="btn-brand tap rounded-xl px-4 py-2">
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="btn-brand tap rounded-xl px-4 py-2"
+            >
               Retry
             </button>
             <Link
@@ -352,10 +355,7 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
         animate="animate"
       >
         <p className="text-lg">No cards due right now. Great work!</p>
-        <Link
-          to="/vocab/decks"
-          className="btn-brand tap rounded-xl px-4 py-2 text-sm font-bold"
-        >
+        <Link to="/vocab/decks" className="btn-brand tap rounded-xl px-4 py-2 text-sm font-bold">
           Back to decks
         </Link>
       </motion.div>
@@ -369,7 +369,9 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
     <div className="vocab-surface relative isolate flex min-h-[100dvh] flex-col bg-[#0b0761]">
       <AmbientGlow />
       {error ? (
-        <div className="bg-brand-800 px-4 py-2 text-center text-sm text-white ring-1 ring-brand-400/40">{error}</div>
+        <div className="bg-brand-800 px-4 py-2 text-center text-sm text-white ring-1 ring-brand-400/40">
+          {error}
+        </div>
       ) : null}
       <header className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <Link

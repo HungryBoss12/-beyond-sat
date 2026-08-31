@@ -25,6 +25,7 @@ import { startPracticeSession, startTestSetSession } from "@/lib/session";
 import { practiceSetProgressPct } from "@/lib/dashboard-mocks";
 import type { AnswerState } from "@/components/QuestionCard";
 import { Panel, EmptyState, Skeleton } from "@/components/ui/panel";
+import { RevealCard } from "@/components/ui/reveal-card";
 import { errorMessage } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/practice/$section")({
@@ -532,7 +533,7 @@ function PaperCard({
   const progress = Math.round((moduleProgress(mod1) + moduleProgress(mod2)) / 2);
 
   return (
-    <div className="flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
+    <RevealCard className="flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel lift">
       <div className="flex shrink-0 items-start justify-between gap-2 px-3.5 pt-3.5 pb-1.5">
         <h3 className="line-clamp-2 text-sm font-black uppercase leading-tight tracking-wide text-white">
           {paper.title}
@@ -551,7 +552,7 @@ function PaperCard({
           />
         ))}
       </div>
-    </div>
+    </RevealCard>
   );
 }
 
@@ -569,7 +570,7 @@ function ModuleRow({
   onReview: (sessionId: string) => void;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 items-stretch overflow-hidden rounded-xl border border-brand-400/30 bg-brand-800/70">
+    <RevealCard className="flex min-h-0 flex-1 items-stretch overflow-hidden rounded-xl border border-brand-400/30 bg-brand-800/70">
       <div className="my-2.5 ml-2 w-1.5 shrink-0 rounded-full bg-brand-400" aria-hidden />
       {!set ? (
         <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">
@@ -579,7 +580,7 @@ function ModuleRow({
       ) : (
         <ModuleRowBody set={set} mod={mod} starting={starting} onOpen={onOpen} onReview={onReview} />
       )}
-    </div>
+    </RevealCard>
   );
 }
 

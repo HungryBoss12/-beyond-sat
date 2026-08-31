@@ -13,6 +13,7 @@ import {
   Link2,
 } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
+import { RevealCard } from "@/components/ui/reveal-card";
 import { AdminTestPreview } from "@/components/admin/AdminTestPreview";
 import {
   QuestionEditModal,
@@ -789,7 +790,7 @@ function PaperCard({
   const mod2 = group.mod2[0];
 
   return (
-    <div className="rise-in flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
+    <RevealCard className="rise-in flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel lift">
       <div className="flex shrink-0 items-start justify-between gap-2 px-3.5 pt-3.5 pb-1.5">
         <div className="min-w-0">
           <div className="line-clamp-2 text-sm font-black uppercase leading-tight tracking-wide text-white">
@@ -814,7 +815,7 @@ function PaperCard({
         {([1, 2] as const).map((mod) => {
           const t = mod === 1 ? mod1 : mod2;
           return (
-            <div
+            <RevealCard
               key={mod}
               className="flex min-h-0 flex-1 items-stretch overflow-hidden rounded-xl border border-brand-400/30 bg-brand-800/70"
             >
@@ -872,11 +873,11 @@ function PaperCard({
                   </div>
                 </div>
               )}
-            </div>
+            </RevealCard>
           );
         })}
       </div>
-    </div>
+    </RevealCard>
   );
 }
 

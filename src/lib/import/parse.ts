@@ -148,6 +148,18 @@ function cellsFromMarkdownTable(block: string): string[] {
   return cells;
 }
 
+/** Word tables often become several markdown blocks (header row, separator, data row). */
+function joinAdjacentTableBlocks(blocks: string[], start: number): { text: string; end: number } {
+  const parts: string[] = [];
+  let end = start;
+  for (let i = start; i < blocks.length; i++) {
+    if (!blocks[i].trimStart().startsWith("|")) break;
+    parts.push(blocks[i]);
+    end = i;
+  }
+  return { text: parts.join("\n"), end };
+}
+
 /**
  * Math papers often lay out A–D inside a Word table. Those become markdown
  * table blocks, which the line-based choice scanner would miss.
@@ -224,6 +236,12 @@ function locateChoices(
   const floor = Math.max(1, blocks.length - 12);
 
   for (let i = blocks.length - 1; i >= floor; i--) {
+    if (blocks[i].trimStart().startsWith("|")) {
+      const table = joinAdjacentTableBlocks(blocks, i);
+      const tableChoices = extractChoicesFromTableBlock(table.text);
+      if (tableChoices) return { choices: tableChoices, start: i, end: table.end };
+    }
+
     const tableChoices = extractChoicesFromTableBlock(blocks[i]);
     if (tableChoices) return { choices: tableChoices, start: i, end: i };
 

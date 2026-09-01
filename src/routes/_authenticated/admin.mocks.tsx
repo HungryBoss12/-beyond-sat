@@ -12,6 +12,8 @@ import {
 } from "@/lib/sat";
 import {
   buildFullPapers,
+  collectUsedTestIds,
+  filterPapersForMockPicker,
   DEFAULT_MOCK_TIMINGS,
   groupByPaperDate,
   saveMockExam,
@@ -66,6 +68,7 @@ function AdminMocks() {
     reading_writing: null,
     math: null,
   });
+  const [usedTestIds, setUsedTestIds] = useState<Set<string>>(() => new Set());
 
   async function load() {
     const { data } = await supabase
@@ -81,13 +84,16 @@ function AdminMocks() {
   async function openEditor(m?: Mock) {
     const target = m ?? empty();
     setEditing(target);
-    const [{ data: tests }, { data: linked }] = await Promise.all([
+    const [{ data: tests }, { data: linked }, { data: allSections }] = await Promise.all([
       supabase.from("tests").select("*").order("title").order("module"),
       target.id
         ? supabase.from("mock_exam_sections").select("test_id").eq("mock_exam_id", target.id)
         : Promise.resolve({ data: [] as { test_id: string | null }[] }),
+      supabase.from("mock_exam_sections").select("mock_exam_id, test_id"),
     ]);
     const nextPapers = buildFullPapers((tests ?? []) as Test[]);
+    const consumed = collectUsedTestIds(allSections ?? [], target.id || null);
+    setUsedTestIds(consumed);
     const linkedIds = new Set(
       ((linked ?? []) as { test_id: string | null }[])
         .map((row) => row.test_id)
@@ -110,6 +116,7 @@ function AdminMocks() {
             linkedIds.has(paper.module2.id),
         )?.key ?? null,
     });
+    setPapers(nextPapers);
   }
 
   async function save() {
@@ -256,7 +263,11 @@ function AdminMocks() {
                     <PaperPicker
                       key={section}
                       section={section}
-                      papers={papers.filter((paper) => paper.section === section)}
+                      papers={filterPapersForMockPicker(
+                        papers.filter((paper) => paper.section === section),
+                        usedTestIds,
+                        [selectedPapers[section]],
+                      )}
                       selectedKey={selectedPapers[section]}
                       onChange={(key) =>
                         setSelectedPapers((current) => ({ ...current, [section]: key }))
@@ -343,7 +354,7 @@ function PaperPicker({
 }) {
   const dateGroups = useMemo(
     () =>
-      groupByPaperDate(papers, (p) => formatSourceDate(p.source_month, p.source_year) ?? "Undated"),
+      groupByPaperDate(papers),
     [papers],
   );
   const selected = papers.find((paper) => paper.key === selectedKey);

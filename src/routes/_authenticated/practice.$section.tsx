@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Layers,
   BookOpenCheck,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -98,6 +99,73 @@ type PaperGroup = {
  */
 const DIFF_ORDER = ["easy", "medium", "hard", "C", "B", "D", "A", "S"];
 
+/** Stable pseudo-random order so cards do not jump on re-render. */
+function shuffleStable<T>(items: T[], seed: string, keyFn: (item: T) => string): T[] {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  return [...items].sort((a, b) => {
+    const ka = keyFn(a);
+    const kb = keyFn(b);
+    let ha = h;
+    let hb = h;
+    for (let i = 0; i < ka.length; i++) ha = (ha * 31 + ka.charCodeAt(i)) | 0;
+    for (let i = 0; i < kb.length; i++) hb = (hb * 31 + kb.charCodeAt(i)) | 0;
+    return ha - hb;
+  });
+}
+
+function buildPaperGroups(sets: TestSet[], section: Section): PaperGroup[] {
+  const map = new Map<string, PaperGroup>();
+  for (const s of sets) {
+    const pKey = paperKey(s.title, section);
+    let paper = map.get(pKey);
+    if (!paper) {
+      paper = { key: pKey, title: stripModuleSuffix(s.title), modules: [] };
+      map.set(pKey, paper);
+    }
+    paper.modules.push(s);
+  }
+  for (const paper of map.values()) {
+    paper.modules.sort((a, b) => a.module - b.module || a.title.localeCompare(b.title));
+  }
+  return [...map.values()];
+}
+
+function paperDateKey(paper: PaperGroup): string {
+  const sample = paper.modules[0];
+  if (!sample) return "0000-00";
+  const resolved = resolvePaperSourceDate(sample.title, sample.source_month, sample.source_year);
+  return resolved ? paperDateSortKey(resolved.year, resolved.month) : "0000-00";
+}
+
+function paperDateLabel(paper: PaperGroup): string {
+  const sample = paper.modules[0];
+  if (!sample) return "Undated";
+  return resolvePaperSourceDate(sample.title, sample.source_month, sample.source_year)?.label ?? "Undated";
+}
+
+function groupPapersByDate(papers: PaperGroup[]): DateGroup[] {
+  const byDate = new Map<string, DateGroup>();
+  for (const paper of papers) {
+    const dateKey = paperDateKey(paper);
+    const dateLabel = paperDateLabel(paper);
+    let date = byDate.get(dateKey);
+    if (!date) {
+      date = { key: dateKey, label: dateLabel, papers: [] };
+      byDate.set(dateKey, date);
+    }
+    date.papers.push(paper);
+  }
+  for (const date of byDate.values()) {
+    date.papers.sort((a, b) => a.title.localeCompare(b.title));
+  }
+  return [...byDate.values()].sort((a, b) => {
+    if (a.key === "0000-00") return 1;
+    if (b.key === "0000-00") return -1;
+    return a.key < b.key ? 1 : a.key > b.key ? -1 : 0;
+  });
+}
+
 function SectionBrowse() {
   const { section } = Route.useParams() as { section: Section };
   const navigate = useNavigate();
@@ -108,9 +176,20 @@ function SectionBrowse() {
 
   const [diffFilter, setDiffFilter] = useState<Difficulty | "all">("all");
   const [diffCounts, setDiffCounts] = useState<Record<string, number>>({});
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState<string>("all");
+  const [paperDiffFilter, setPaperDiffFilter] = useState<Difficulty | "all">("all");
+  const [groupByDate, setGroupByDate] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
+    setFiltersOpen(false);
+    setDateFilter("all");
+    setPaperDiffFilter("all");
+    setGroupByDate(false);
+    setDiffFilter("all");
+  }, [section]);
+
+  useEffect(() => {
     (async () => {
       setLoading(true);
 
@@ -240,54 +319,50 @@ function SectionBrowse() {
     };
   }, [section]);
 
-  /* Date → paper → modules. Newest year/month first; within a date, newest
-     `created_at` first. Titles without source fields still get a date when the
-     name carries a year/month (e.g. "2025 June E"). Truly undated land last. */
-  const groups = useMemo<DateGroup[]>(() => {
-    const byDate = new Map<string, DateGroup>();
-    for (const s of sets) {
-      const resolved = resolvePaperSourceDate(s.title, s.source_month, s.source_year);
-      const dateKey = resolved ? paperDateSortKey(resolved.year, resolved.month) : "0000-00";
-      const dateLabel = resolved?.label ?? "Unsorted";
-      let date = byDate.get(dateKey);
-      if (!date) {
-        date = { key: dateKey, label: dateLabel, papers: [] };
-        byDate.set(dateKey, date);
-      }
+  const allPapers = useMemo(() => buildPaperGroups(sets, section), [sets, section]);
 
-      const pKey = paperKey(s.title, section);
-      let paper = date.papers.find((p) => p.key === pKey);
-      if (!paper) {
-        paper = { key: pKey, title: stripModuleSuffix(s.title), modules: [] };
-        date.papers.push(paper);
-      }
-      paper.modules.push(s);
+  const dateOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const paper of allPapers) {
+      const key = paperDateKey(paper);
+      if (!seen.has(key)) seen.set(key, paperDateLabel(paper));
     }
+    return [...seen.entries()]
+      .filter(([key]) => key !== "0000-00")
+      .sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0))
+      .map(([key, label]) => ({ key, label }));
+  }, [allPapers]);
 
-    function newestAdded(paper: PaperGroup): number {
-      let max = 0;
-      for (const m of paper.modules) {
-        const t = Date.parse(m.created_at);
-        if (!Number.isNaN(t) && t > max) max = t;
-      }
-      return max;
-    }
+  const hasActiveFilters =
+    groupByDate || dateFilter !== "all" || paperDiffFilter !== "all";
 
-    for (const date of byDate.values()) {
-      for (const paper of date.papers) {
-        paper.modules.sort((a, b) => a.module - b.module || a.title.localeCompare(b.title));
-      }
-      date.papers.sort(
-        (a, b) => newestAdded(b) - newestAdded(a) || a.title.localeCompare(b.title),
+  const filteredPapers = useMemo(() => {
+    let papers = allPapers;
+    if (paperDiffFilter !== "all") {
+      papers = papers.filter((paper) =>
+        paper.modules.some((m) => m.difficulty === paperDiffFilter),
       );
     }
+    if (dateFilter !== "all") {
+      papers = papers.filter((paper) => paperDateKey(paper) === dateFilter);
+    }
+    return papers;
+  }, [allPapers, paperDiffFilter, dateFilter]);
 
-    return [...byDate.values()].sort((a, b) => {
-      if (a.key === "0000-00") return 1;
-      if (b.key === "0000-00") return -1;
-      return a.key < b.key ? 1 : a.key > b.key ? -1 : 0;
-    });
-  }, [sets, section]);
+  const flatPapers = useMemo(
+    () =>
+      hasActiveFilters
+        ? filteredPapers
+        : shuffleStable(allPapers, section, (p) => p.key),
+    [allPapers, filteredPapers, hasActiveFilters, section],
+  );
+
+  const groupedPapers = useMemo(
+    () => (hasActiveFilters && groupByDate ? groupPapersByDate(filteredPapers) : []),
+    [filteredPapers, hasActiveFilters, groupByDate],
+  );
+
+  const showGrouped = hasActiveFilters && groupByDate;
 
   const difficulties = useMemo(
     () =>
@@ -334,125 +409,283 @@ function SectionBrowse() {
 
   const totalQuestions = Object.values(diffCounts).reduce((a, b) => a + b, 0);
 
+  function clearFilters() {
+    setDateFilter("all");
+    setPaperDiffFilter("all");
+    setGroupByDate(false);
+    setDiffFilter("all");
+  }
+
   return (
     <div className="space-y-5">
-      <div className="rise-in flex items-center gap-3">
-        <button
-          onClick={() => navigate({ to: "/practice" })}
-          className="tap inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white shadow-panel hover:bg-brand-400"
-          aria-label="Back"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <div>
-          {/* Sits on the white page background, so this heading stays dark. */}
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
-            {SECTION_LABEL[section]}
-          </h1>
-          <p className="text-sm text-slate-500">
-            Newest papers first. Each card shows Module 1 and Module 2 with your progress.
-          </p>
+      <div className="rise-in flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            onClick={() => navigate({ to: "/practice" })}
+            className="tap inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white shadow-panel hover:bg-brand-400"
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
+              {SECTION_LABEL[section]}
+            </h1>
+            <p className="text-sm text-slate-500">
+              {hasActiveFilters
+                ? "Filtered view. Clear filters to shuffle papers in three columns."
+                : "Browse all papers in three columns. Open filters to sort by date or difficulty."}
+            </p>
+          </div>
+        </div>
+
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((open) => !open)}
+            className={
+              "tap inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold shadow-panel " +
+              (hasActiveFilters
+                ? "border-brand-400 bg-brand-400 text-white"
+                : "border-brand-400/40 bg-brand-600 text-white hover:bg-brand-400")
+            }
+            aria-expanded={filtersOpen}
+            aria-controls="practice-filters-panel"
+          >
+            <Filter className="h-4 w-4" />
+            Filters
+            {hasActiveFilters && (
+              <span className="rounded-full bg-white/25 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
+                on
+              </span>
+            )}
+          </button>
+
+          {filtersOpen && (
+            <>
+              <button
+                type="button"
+                className="fixed inset-0 z-40 cursor-default bg-transparent"
+                aria-label="Close filters"
+                onClick={() => setFiltersOpen(false)}
+              />
+              <Panel
+                as="section"
+                id="practice-filters-panel"
+                className="absolute right-0 z-50 mt-2 w-[min(100vw-2rem,22rem)] shadow-float"
+              >
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-100">
+                    <Filter className="h-4 w-4" /> Filters
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFiltersOpen(false)}
+                    className="tap grid h-7 w-7 place-items-center rounded-md text-brand-100 hover:bg-brand-800 hover:text-white"
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <div className="mb-2 text-xs font-bold text-white">Paper date</div>
+                    <select
+                      value={dateFilter}
+                      onChange={(e) => setDateFilter(e.target.value)}
+                      className="w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
+                    >
+                      <option value="all">All dates</option>
+                      {dateOptions.map((opt) => (
+                        <option key={opt.key} value={opt.key}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-white">
+                    <input
+                      type="checkbox"
+                      checked={groupByDate}
+                      onChange={(e) => setGroupByDate(e.target.checked)}
+                      className="h-4 w-4 accent-brand-200 [color-scheme:dark]"
+                    />
+                    Group papers by date
+                  </label>
+
+                  <div>
+                    <div className="mb-2 text-xs font-bold text-white">Paper difficulty</div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setPaperDiffFilter("all")}
+                        className={
+                          "tap rounded-md px-2 py-1.5 text-xs font-semibold " +
+                          (paperDiffFilter === "all"
+                            ? "bg-brand-400 text-white shadow-brand"
+                            : "bg-brand-800 text-brand-100 hover:bg-brand-400 hover:text-white")
+                        }
+                      >
+                        All
+                      </button>
+                      {difficulties.map((d) => (
+                        <button
+                          key={`paper-${d}`}
+                          type="button"
+                          onClick={() => setPaperDiffFilter(d)}
+                          className={
+                            "tap rounded-md px-2 py-1.5 text-xs font-semibold " +
+                            (paperDiffFilter === d
+                              ? "bg-brand-400 text-white shadow-brand"
+                              : "bg-brand-800 text-brand-100 hover:bg-brand-400 hover:text-white")
+                          }
+                        >
+                          {difficultyLabel(d)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-brand-400/30 pt-4">
+                    <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-100">
+                      <Layers className="h-4 w-4" /> Mixed practice
+                    </div>
+                    <p className="mb-3 text-[11px] leading-relaxed text-brand-200">
+                      20 questions drawn from every paper, newest first.
+                    </p>
+                    <div className="mb-3">
+                      <div className="mb-2 text-xs font-bold text-white">Mixed difficulty</div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setDiffFilter("all")}
+                          className={
+                            "tap rounded-md px-2 py-1.5 text-xs font-semibold " +
+                            (diffFilter === "all"
+                              ? "bg-brand-400 text-white shadow-brand"
+                              : "bg-brand-800 text-brand-100 hover:bg-brand-400 hover:text-white")
+                          }
+                        >
+                          All
+                        </button>
+                        {difficulties.map((d) => (
+                          <button
+                            key={`mixed-${d}`}
+                            type="button"
+                            onClick={() => setDiffFilter(d)}
+                            className={
+                              "tap rounded-md px-2 py-1.5 text-xs font-semibold " +
+                              (diffFilter === d
+                                ? "bg-brand-400 text-white shadow-brand"
+                                : "bg-brand-800 text-brand-100 hover:bg-brand-400 hover:text-white")
+                            }
+                          >
+                            {difficultyLabel(d)}
+                            <span className="ml-1 tabular-nums text-brand-200">{diffCounts[d]}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={startMixed}
+                      disabled={totalQuestions === 0 || starting != null}
+                      className="btn-brand inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+                    >
+                      {starting === "mixed" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Layers className="h-4 w-4" />
+                      )}
+                      Start mixed practice
+                    </button>
+                  </div>
+
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="tap w-full rounded-lg border border-brand-400/50 px-3 py-2 text-xs font-bold text-brand-100 hover:bg-brand-800 hover:text-white"
+                    >
+                      Clear all filters
+                    </button>
+                  )}
+                </div>
+              </Panel>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[280px_1fr]">
-        <Panel as="section" className="h-fit">
-          <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-100">
-            <Filter className="h-4 w-4" /> Mixed practice
+      <div>
+        {loading ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="aspect-[4/3] rounded-2xl" />
+            ))}
           </div>
-          <p className="mb-3 text-[11px] leading-relaxed text-brand-200">
-            20 questions drawn from every paper, newest first.
-          </p>
-
-          <div className="space-y-4">
-            <div>
-              <div className="mb-2 text-xs font-bold text-white">Difficulty</div>
-              <div className="grid grid-cols-3 gap-1.5">
-                <button
-                  onClick={() => setDiffFilter("all")}
-                  className={
-                    "tap rounded-md px-2 py-1.5 text-xs font-semibold " +
-                    (diffFilter === "all"
-                      ? "bg-brand-400 text-white shadow-brand"
-                      : "bg-brand-800 text-brand-100 hover:bg-brand-400 hover:text-white")
-                  }
-                >
-                  All
-                </button>
-                {difficulties.map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => setDiffFilter(d)}
-                    className={
-                      "tap rounded-md px-2 py-1.5 text-xs font-semibold " +
-                      (diffFilter === d
-                        ? "bg-brand-400 text-white shadow-brand"
-                        : "bg-brand-800 text-brand-100 hover:bg-brand-400 hover:text-white")
-                    }
-                  >
-                    {difficultyLabel(d)}
-                    <span className="ml-1 tabular-nums text-brand-200">{diffCounts[d]}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={startMixed}
-              disabled={totalQuestions === 0 || starting != null}
-              className="btn-brand inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
-            >
-              {starting === "mixed" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Layers className="h-4 w-4" />
-              )}
-              Start mixed practice
-            </button>
-          </div>
-        </Panel>
-
-        {/* Dated sets */}
-        <div className="space-y-6">
-          {loading ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="aspect-[4/3] rounded-2xl" />
-              ))}
-            </div>
-          ) : groups.length === 0 ? (
+        ) : allPapers.length === 0 ? (
+          <EmptyState
+            title="No practice sets yet"
+            body="Admins haven't published a paper for this section yet."
+            className="py-14"
+          />
+        ) : showGrouped ? (
+          groupedPapers.length === 0 ? (
             <EmptyState
-              title="No practice sets yet"
-              body="Admins haven't published a paper for this section. Mixed practice on the left still works if there are questions in the bank."
+              title="No papers match"
+              body="Try clearing or changing your filters."
               className="py-14"
             />
           ) : (
-            groups.map((g) => (
-              <section key={g.key}>
-                <h2 className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  {g.label}
-                  <span className="tabular-nums text-slate-400">
-                    · {g.papers.length} paper{g.papers.length === 1 ? "" : "s"}
-                  </span>
-                </h2>
-                <div className="stagger-fast grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
-                  {g.papers.map((paper) => (
-                    <PaperCard
-                      key={paper.key}
-                      paper={paper}
-                      starting={starting}
-                      onOpen={openSet}
-                      onReview={(sessionId) =>
-                        navigate({ to: `/analysis/session/${sessionId}` })
-                      }
-                    />
-                  ))}
-                </div>
-              </section>
-            ))
-          )}
-        </div>
+            <div className="space-y-6">
+              {groupedPapers.map((g) => (
+                <section key={g.key}>
+                  <h2 className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    {g.label}
+                    <span className="tabular-nums text-slate-400">
+                      · {g.papers.length} paper{g.papers.length === 1 ? "" : "s"}
+                    </span>
+                  </h2>
+                  <div className="stagger-fast grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {g.papers.map((paper) => (
+                      <PaperCard
+                        key={paper.key}
+                        paper={paper}
+                        starting={starting}
+                        onOpen={openSet}
+                        onReview={(sessionId) =>
+                          navigate({ to: `/analysis/session/${sessionId}` })
+                        }
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )
+        ) : flatPapers.length === 0 ? (
+          <EmptyState
+            title="No papers match"
+            body="Try clearing or changing your filters."
+            className="py-14"
+          />
+        ) : (
+          <div className="stagger-fast grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {flatPapers.map((paper) => (
+              <PaperCard
+                key={paper.key}
+                paper={paper}
+                starting={starting}
+                onOpen={openSet}
+                onReview={(sessionId) => navigate({ to: `/analysis/session/${sessionId}` })}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

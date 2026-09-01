@@ -168,13 +168,11 @@ function AdminTests() {
   const { papers, singles } = useMemo(() => groupTests(items), [items]);
 
   const paperDateGroups = useMemo(
-    () =>
-      groupByPaperDate(papers, (g) => formatSourceDate(g.source_month, g.source_year) ?? "Undated"),
+    () => groupByPaperDate(papers.map((g) => ({ ...g, title: g.base }))),
     [papers],
   );
   const singleDateGroups = useMemo(
-    () =>
-      groupByPaperDate(singles, (g) => formatSourceDate(g.source_month, g.source_year) ?? "Undated"),
+    () => groupByPaperDate(singles.map((g) => ({ ...g, title: g.base }))),
     [singles],
   );
 

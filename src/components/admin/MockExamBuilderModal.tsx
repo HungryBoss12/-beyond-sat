@@ -5,11 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   SECTION_LABEL,
   difficultyColor,
-  formatSourceDate,
   type Section,
 } from "@/lib/sat";
 import {
   buildFullPapers,
+  collectUsedTestIds,
+  filterPapersForMockPicker,
   DEFAULT_MOCK_TIMINGS,
   groupByPaperDate,
   matchPaperForSection,
@@ -54,25 +55,32 @@ export function MockExamBuilderModal({
     setSavedId(null);
     setLoading(true);
     (async () => {
-      const { data } = await supabase.from("tests").select("*").order("title").order("module");
+      const [{ data }, { data: sectionLinks }] = await Promise.all([
+        supabase.from("tests").select("*").order("title").order("module"),
+        supabase.from("mock_exam_sections").select("mock_exam_id, test_id"),
+      ]);
       const nextPapers = buildFullPapers((data ?? []) as MockExamTest[]);
-      setPapers(nextPapers);
+      const usedTestIds = collectUsedTestIds(sectionLinks ?? []);
 
       let rwKey = initialRwKey ?? null;
       let mathKey = initialMathKey ?? null;
-      const rwPaper = rwKey ? nextPapers.find((p) => p.key === rwKey) : null;
+      let available = filterPapersForMockPicker(nextPapers, usedTestIds, [rwKey, mathKey]);
+
+      const rwPaper = rwKey ? available.find((p) => p.key === rwKey) : null;
       if (rwPaper && !mathKey) {
-        const matched = matchPaperForSection(rwPaper, nextPapers, "math");
+        const matched = matchPaperForSection(rwPaper, available, "math");
         mathKey = matched?.key ?? null;
       }
-      const mathPaper = mathKey ? nextPapers.find((p) => p.key === mathKey) : null;
+      const mathPaper = mathKey ? available.find((p) => p.key === mathKey) : null;
       if (mathPaper && !rwKey) {
-        const matched = matchPaperForSection(mathPaper, nextPapers, "reading_writing");
+        const matched = matchPaperForSection(mathPaper, available, "reading_writing");
         rwKey = matched?.key ?? null;
       }
 
-      const rw = rwKey ? nextPapers.find((p) => p.key === rwKey) : null;
-      const math = mathKey ? nextPapers.find((p) => p.key === mathKey) : null;
+      available = filterPapersForMockPicker(nextPapers, usedTestIds, [rwKey, mathKey]);
+      const rw = rwKey ? available.find((p) => p.key === rwKey) : null;
+      const math = mathKey ? available.find((p) => p.key === mathKey) : null;
+      setPapers(available);
       setSelected({ reading_writing: rwKey, math: mathKey });
       setTitle(rw && math ? suggestMockTitle(rw, math) : "");
       setDescription("");
@@ -89,16 +97,8 @@ export function MockExamBuilderModal({
     [papers],
   );
   const mathOptions = useMemo(() => papers.filter((p) => p.section === "math"), [papers]);
-  const rwDateGroups = useMemo(
-    () =>
-      groupByPaperDate(rwOptions, (p) => formatSourceDate(p.source_month, p.source_year) ?? "Undated"),
-    [rwOptions],
-  );
-  const mathDateGroups = useMemo(
-    () =>
-      groupByPaperDate(mathOptions, (p) => formatSourceDate(p.source_month, p.source_year) ?? "Undated"),
-    [mathOptions],
-  );
+  const rwDateGroups = useMemo(() => groupByPaperDate(rwOptions), [rwOptions]);
+  const mathDateGroups = useMemo(() => groupByPaperDate(mathOptions), [mathOptions]);
 
   function pickSection(section: Section, key: string | null) {
     setSelected((current) => {

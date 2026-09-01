@@ -3,6 +3,8 @@ import {
   SECTION_LABEL,
   formatSourceDate,
   paperKey,
+  paperDateSortKey,
+  resolvePaperSourceDate,
   stripModuleSuffix,
   type Section,
   type LetterDifficulty,
@@ -49,35 +51,55 @@ export const DEFAULT_MOCK_TIMINGS: Omit<MockExamPayload, "title" | "description"
   math_module1_threshold: 12,
 };
 
-type PaperSortable = {
-  source_month: number | null;
-  source_year: number | null;
-  section: Section;
-  title?: string;
-};
-
 const SECTION_RANK: Record<Section, number> = {
   reading_writing: 0,
   math: 1,
 };
 
-/** Newest date first, then EBRW before Math, then title. */
+type PaperSortable = {
+  source_month: number | null;
+  source_year: number | null;
+  section: Section;
+  /** Paper title — used to parse dates when source fields are incomplete. */
+  title?: string;
+};
+
+const UNDATED_SORT_KEY = "0000-00";
+
+function resolvedPaperSortMeta(item: PaperSortable): {
+  sortKey: string;
+  label: string;
+  year: number;
+  month: number;
+} {
+  const resolved = item.title
+    ? resolvePaperSourceDate(item.title, item.source_month, item.source_year)
+    : null;
+  if (!resolved) {
+    return { sortKey: UNDATED_SORT_KEY, label: "Undated", year: 0, month: 0 };
+  }
+  return {
+    sortKey: paperDateSortKey(resolved.year, resolved.month),
+    label: resolved.label,
+    year: resolved.year,
+    month: resolved.month,
+  };
+}
+
+/** Newest date first, then EBRW before Math, then title. Undated always last. */
 export function compareBySourceDateAndSection(a: PaperSortable, b: PaperSortable): number {
-  const ay = a.source_year ?? 0;
-  const by = b.source_year ?? 0;
-  if (ay !== by) return by - ay;
-  const am = a.source_month ?? 0;
-  const bm = b.source_month ?? 0;
-  if (am !== bm) return bm - am;
+  const ra = resolvedPaperSortMeta(a);
+  const rb = resolvedPaperSortMeta(b);
+
+  if (ra.sortKey === UNDATED_SORT_KEY && rb.sortKey !== UNDATED_SORT_KEY) return 1;
+  if (rb.sortKey === UNDATED_SORT_KEY && ra.sortKey !== UNDATED_SORT_KEY) return -1;
+  if (ra.sortKey !== rb.sortKey) {
+    return ra.sortKey < rb.sortKey ? 1 : -1;
+  }
+
   const sectionDelta = SECTION_RANK[a.section] - SECTION_RANK[b.section];
   if (sectionDelta !== 0) return sectionDelta;
   return (a.title ?? "").localeCompare(b.title ?? "");
-}
-
-export function paperDateSortKey(month: number | null, year: number | null): string {
-  if (!year) return "0000-00";
-  const m = month != null && month >= 1 && month <= 12 ? month : 0;
-  return `${year}-${String(m).padStart(2, "0")}`;
 }
 
 export type DatedPaperGroup<T> = {
@@ -86,28 +108,24 @@ export type DatedPaperGroup<T> = {
   items: T[];
 };
 
-/** Bucket papers by source date; items inside each bucket follow date+section order. */
-export function groupByPaperDate<T extends PaperSortable>(
-  items: T[],
-  labelFor: (item: T) => string,
-): DatedPaperGroup<T>[] {
+/** Bucket papers by resolved date; items inside each bucket follow date+section order. */
+export function groupByPaperDate<T extends PaperSortable>(items: T[]): DatedPaperGroup<T>[] {
   const sorted = [...items].sort(compareBySourceDateAndSection);
   const buckets = new Map<string, DatedPaperGroup<T>>();
 
   for (const item of sorted) {
-    const key = paperDateSortKey(item.source_month, item.source_year);
-    const label = key === "0000-00" ? "Undated" : labelFor(item);
-    let bucket = buckets.get(key);
+    const { sortKey, label } = resolvedPaperSortMeta(item);
+    let bucket = buckets.get(sortKey);
     if (!bucket) {
-      bucket = { key, label, items: [] };
-      buckets.set(key, bucket);
+      bucket = { key: sortKey, label, items: [] };
+      buckets.set(sortKey, bucket);
     }
     bucket.items.push(item);
   }
 
   return [...buckets.values()].sort((a, b) => {
-    if (a.key === "0000-00") return 1;
-    if (b.key === "0000-00") return -1;
+    if (a.key === UNDATED_SORT_KEY) return 1;
+    if (b.key === UNDATED_SORT_KEY) return -1;
     return a.key < b.key ? 1 : a.key > b.key ? -1 : 0;
   });
 }
@@ -171,7 +189,7 @@ export function suggestMockTitle(rw: FullPaper, math: FullPaper): string {
   return `${rw.title} + ${math.title}`;
 }
 
-/** Prefer a Math paper with the same source date as the chosen R&W paper. */
+/** Prefer a Math paper with the same resolved date as the chosen R&W paper. */
 export function matchPaperForSection(
   anchor: FullPaper,
   candidates: FullPaper[],
@@ -180,19 +198,51 @@ export function matchPaperForSection(
   const pool = candidates.filter((p) => p.section === section);
   if (pool.length === 0) return null;
 
-  const byDate = pool.find(
-    (p) =>
-      anchor.source_month != null &&
-      anchor.source_year != null &&
-      p.source_month === anchor.source_month &&
-      p.source_year === anchor.source_year,
-  );
+  const anchorKey = resolvedPaperSortMeta(anchor).sortKey;
+
+  const byDate = pool.find((p) => {
+    const key = resolvedPaperSortMeta(p).sortKey;
+    return anchorKey !== UNDATED_SORT_KEY && key === anchorKey;
+  });
   if (byDate) return byDate;
 
   const byTitle = pool.find((p) => p.title === anchor.title);
   if (byTitle) return byTitle;
 
   return pool[0] ?? null;
+}
+
+export type MockExamSectionLink = {
+  mock_exam_id: string;
+  test_id: string | null;
+};
+
+/** Test IDs already assigned to other mock exams (optionally keep one mock's links). */
+export function collectUsedTestIds(
+  sections: MockExamSectionLink[],
+  excludeMockExamId?: string | null,
+): Set<string> {
+  const ids = new Set<string>();
+  for (const row of sections) {
+    if (!row.test_id) continue;
+    if (excludeMockExamId && row.mock_exam_id === excludeMockExamId) continue;
+    ids.add(row.test_id);
+  }
+  return ids;
+}
+
+/** Hide papers whose modules are linked to another mock; keep current selections visible. */
+export function filterPapersForMockPicker(
+  papers: FullPaper[],
+  usedTestIds: Set<string>,
+  selectedKeys: Iterable<string | null | undefined> = [],
+): FullPaper[] {
+  const keep = new Set([...selectedKeys].filter((k): k is string => Boolean(k)));
+  return papers.filter(
+    (paper) =>
+      keep.has(paper.key) ||
+      (!usedTestIds.has(paper.module1.id) && !usedTestIds.has(paper.module2.id)),
+  );
 }
 
 export function paperFromGroup(

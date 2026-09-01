@@ -11,10 +11,12 @@ import {
   ChevronDown,
   AlertCircle,
   Link2,
+  ClipboardList,
 } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { RevealCard } from "@/components/ui/reveal-card";
 import { AdminTestPreview } from "@/components/admin/AdminTestPreview";
+import { MockExamBuilderModal } from "@/components/admin/MockExamBuilderModal";
 import {
   QuestionEditModal,
   loadQuestionWithAnswers,
@@ -32,6 +34,7 @@ import {
   type Section,
   type LetterDifficulty,
 } from "@/lib/sat";
+import { paperFromGroup } from "@/lib/mock-exams";
 
 type Test = {
   id: string;
@@ -137,6 +140,10 @@ function AdminTests() {
   const [preview, setPreview] = useState<{ title: string; section: Section; questionIds: string[] } | null>(
     null,
   );
+  const [mockBuilder, setMockBuilder] = useState<{
+    rwKey?: string | null;
+    mathKey?: string | null;
+  } | null>(null);
 
   async function load() {
     setLoading(true);
@@ -374,15 +381,23 @@ function AdminTests() {
     <div>
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-slate-500">
-          Group questions into tests. Papers with both modules appear as one card. Tests are used by
-          daily tests and mock exams.
+          Group questions into tests. Combine a complete EBRW paper with a Math paper to build full
+          mock exams.
         </p>
-        <button
-          onClick={() => openEditor()}
-          className="btn-brand inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
-        >
-          <Plus className="h-4 w-4" /> New test
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={() => setMockBuilder({})}
+            className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-panel hover:bg-brand-500"
+          >
+            <ClipboardList className="h-4 w-4" /> Create mock exam
+          </button>
+          <button
+            onClick={() => openEditor()}
+            className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
+          >
+            <Plus className="h-4 w-4" /> New test
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -409,6 +424,13 @@ function AdminTests() {
                     onEdit={openEditor}
                     onView={openPreviewForTest}
                     onRemove={remove}
+                    onCreateMock={(paperKey) =>
+                      setMockBuilder(
+                        g.section === "reading_writing"
+                          ? { rwKey: paperKey }
+                          : { mathKey: paperKey },
+                      )
+                    }
                   />
                 ))}
               </div>
@@ -437,6 +459,15 @@ function AdminTests() {
             </div>
           )}
         </div>
+      )}
+
+      {mockBuilder && (
+        <MockExamBuilderModal
+          open
+          onClose={() => setMockBuilder(null)}
+          initialRwKey={mockBuilder.rwKey}
+          initialMathKey={mockBuilder.mathKey}
+        />
       )}
 
       {pairing && (
@@ -775,6 +806,7 @@ function PaperCard({
   onRemove,
   onPair,
   onAddMissing,
+  onCreateMock,
 }: {
   group: PaperGroup;
   counts: Map<string, number>;
@@ -783,11 +815,14 @@ function PaperCard({
   onRemove: (id: string) => void;
   onPair?: (t: Test) => void;
   onAddMissing?: (t: Test) => void;
+  onCreateMock?: (paperKey: string) => void;
 }) {
   const date = formatSourceDate(group.source_month, group.source_year);
   const existing = [...group.mod1, ...group.mod2][0];
   const mod1 = group.mod1[0];
   const mod2 = group.mod2[0];
+  const fullPaper = paperFromGroup(group);
+  const isComplete = Boolean(mod1 && mod2);
 
   return (
     <RevealCard className="rise-in flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel lift">
@@ -808,10 +843,10 @@ function PaperCard({
           </div>
         </div>
         <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-brand-400/40 bg-brand-800/60 text-xs font-bold text-white">
-          {mod1 && mod2 ? "✓" : "…"}
+          {isComplete ? "✓" : "…"}
         </div>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-2 px-3.5 pb-3.5 pt-1">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 px-3.5 pt-1">
         {([1, 2] as const).map((mod) => {
           const t = mod === 1 ? mod1 : mod2;
           return (
@@ -877,6 +912,17 @@ function PaperCard({
           );
         })}
       </div>
+      {isComplete && onCreateMock && fullPaper && (
+        <div className="shrink-0 px-3.5 pb-3.5">
+          <button
+            onClick={() => onCreateMock(fullPaper.key)}
+            className="tap inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-brand-400/40 bg-brand-800/80 px-2 py-2 text-xs font-bold text-brand-100 hover:bg-brand-700 hover:text-white"
+          >
+            <ClipboardList className="h-3.5 w-3.5" />
+            Use in full mock
+          </button>
+        </div>
+      )}
     </RevealCard>
   );
 }

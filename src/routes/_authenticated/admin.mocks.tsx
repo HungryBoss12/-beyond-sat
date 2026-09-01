@@ -7,11 +7,15 @@ import {
   SECTION_LABEL,
   difficultyColor,
   formatSourceDate,
-  paperKey,
-  stripModuleSuffix,
   type Section,
   type LetterDifficulty,
 } from "@/lib/sat";
+import {
+  buildFullPapers,
+  DEFAULT_MOCK_TIMINGS,
+  saveMockExam,
+  type FullPaper,
+} from "@/lib/mock-exams";
 
 type Mock = {
   id: string;
@@ -36,14 +40,6 @@ type Test = {
   source_year: number | null;
 };
 
-type FullPaper = {
-  key: string;
-  title: string;
-  section: Section;
-  module1: Test;
-  module2: Test;
-};
-
 export const Route = createFileRoute("/_authenticated/admin/mocks")({
   component: AdminMocks,
 });
@@ -57,49 +53,9 @@ const empty = (): Mock => ({
   id: "",
   title: "",
   description: "",
-  rw_module1_time_seconds: 1920,
-  rw_module2_time_seconds: 1920,
-  math_module1_time_seconds: 2100,
-  math_module2_time_seconds: 2100,
-  rw_module1_threshold: 15,
-  math_module1_threshold: 12,
+  ...DEFAULT_MOCK_TIMINGS,
   published: false,
 });
-
-function buildFullPapers(tests: Test[]): FullPaper[] {
-  const groups = new Map<
-    string,
-    { title: string; section: Section; module1: Test[]; module2: Test[] }
-  >();
-
-  for (const test of tests) {
-    const key = paperKey(test.title, test.section);
-    const group = groups.get(key) ?? {
-      title: stripModuleSuffix(test.title),
-      section: test.section,
-      module1: [],
-      module2: [],
-    };
-    group[test.module === 1 ? "module1" : "module2"].push(test);
-    groups.set(key, group);
-  }
-
-  const papers: FullPaper[] = [];
-  for (const [groupKey, group] of groups) {
-    for (const module1 of group.module1) {
-      for (const module2 of group.module2) {
-        papers.push({
-          key: `${groupKey}:${module1.id}:${module2.id}`,
-          title: group.title,
-          section: group.section,
-          module1,
-          module2,
-        });
-      }
-    }
-  }
-  return papers.sort((a, b) => a.title.localeCompare(b.title));
-}
 
 function AdminMocks() {
   const [items, setItems] = useState<Mock[] | null>(null);
@@ -157,39 +113,14 @@ function AdminMocks() {
 
   async function save() {
     if (!editing) return;
-    if (!editing.title.trim()) return alert("Please enter a mock exam title.");
     const rwPaper = papers.find((paper) => paper.key === selectedPapers.reading_writing);
     const mathPaper = papers.find((paper) => paper.key === selectedPapers.math);
     if (!rwPaper || !mathPaper) {
       return alert("Choose one complete Reading & Writing paper and one complete Math paper.");
     }
     const { id, ...payload } = editing;
-    let mockId = editing.id;
-    if (mockId) {
-      const { error } = await supabase.from("mock_exams").update(payload).eq("id", mockId);
-      if (error) return alert(error.message);
-    } else {
-      const { data: u } = await supabase.auth.getUser();
-      const { data, error } = await supabase
-        .from("mock_exams")
-        .insert({ ...payload, created_by: u.user?.id })
-        .select("id")
-        .single();
-      if (error) return alert(error.message);
-      mockId = data.id as string;
-    }
-    await supabase.from("mock_exam_sections").delete().eq("mock_exam_id", mockId);
-    const rows = [rwPaper, mathPaper].flatMap((paper, sectionIndex) =>
-      ([1, 2] as const).map((module) => ({
-        mock_exam_id: mockId,
-        module,
-        section_index: sectionIndex + 1,
-        section_name: SECTION_LABEL[paper.section],
-        test_id: module === 1 ? paper.module1.id : paper.module2.id,
-      })),
-    );
-    const { error: sectionsError } = await supabase.from("mock_exam_sections").insert(rows);
-    if (sectionsError) return alert(sectionsError.message);
+    const result = await saveMockExam(rwPaper, mathPaper, payload, id || undefined);
+    if (result.error) return alert(result.error);
     setEditing(null);
     load();
   }

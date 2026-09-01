@@ -34,7 +34,7 @@ import {
   type Section,
   type LetterDifficulty,
 } from "@/lib/sat";
-import { paperFromGroup } from "@/lib/mock-exams";
+import { paperFromGroup, compareBySourceDateAndSection, groupByPaperDate } from "@/lib/mock-exams";
 
 type Test = {
   id: string;
@@ -84,12 +84,10 @@ const empty = (): Test => ({
 });
 
 function sortGroups(a: PaperGroup, b: PaperGroup): number {
-  const ay = a.source_year ?? 0;
-  const by = b.source_year ?? 0;
-  if (ay !== by) return by - ay;
-  const am = a.source_month ?? 0;
-  const bm = b.source_month ?? 0;
-  return bm - am;
+  return compareBySourceDateAndSection(
+    { source_month: a.source_month, source_year: a.source_year, section: a.section, title: a.base },
+    { source_month: b.source_month, source_year: b.source_year, section: b.section, title: b.base },
+  );
 }
 
 function groupTests(items: Test[]): { papers: PaperGroup[]; singles: PaperGroup[] } {
@@ -168,6 +166,17 @@ function AdminTests() {
   }, []);
 
   const { papers, singles } = useMemo(() => groupTests(items), [items]);
+
+  const paperDateGroups = useMemo(
+    () =>
+      groupByPaperDate(papers, (g) => formatSourceDate(g.source_month, g.source_year) ?? "Undated"),
+    [papers],
+  );
+  const singleDateGroups = useMemo(
+    () =>
+      groupByPaperDate(singles, (g) => formatSourceDate(g.source_month, g.source_year) ?? "Undated"),
+    [singles],
+  );
 
   const pairCandidates = useMemo(() => {
     if (!pairing) return [];
@@ -411,51 +420,71 @@ function AdminTests() {
       ) : (
         <div className="mt-6 space-y-8">
           {papers.length > 0 && (
-            <div>
-              <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+            <div className="space-y-6">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Papers (both modules)
               </h2>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
-                {papers.map((g) => (
-                  <PaperCard
-                    key={g.key}
-                    group={g}
-                    counts={counts}
-                    onEdit={openEditor}
-                    onView={openPreviewForTest}
-                    onRemove={remove}
-                    onCreateMock={(paperKey) =>
-                      setMockBuilder(
-                        g.section === "reading_writing"
-                          ? { rwKey: paperKey }
-                          : { mathKey: paperKey },
-                      )
-                    }
-                  />
-                ))}
-              </div>
+              {paperDateGroups.map((dateGroup) => (
+                <section key={dateGroup.key}>
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                    {dateGroup.label}
+                    <span className="ml-1.5 tabular-nums font-semibold normal-case text-slate-400">
+                      · {dateGroup.items.length} paper{dateGroup.items.length === 1 ? "" : "s"}
+                    </span>
+                  </h3>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
+                    {dateGroup.items.map((g) => (
+                      <PaperCard
+                        key={g.key}
+                        group={g}
+                        counts={counts}
+                        onEdit={openEditor}
+                        onView={openPreviewForTest}
+                        onRemove={remove}
+                        onCreateMock={(paperKey) =>
+                          setMockBuilder(
+                            g.section === "reading_writing"
+                              ? { rwKey: paperKey }
+                              : { mathKey: paperKey },
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
             </div>
           )}
 
           {singles.length > 0 && (
-            <div>
-              <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+            <div className="space-y-6">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Single modules
               </h2>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
-                {singles.map((g) => (
-                  <PaperCard
-                    key={g.key}
-                    group={g}
-                    counts={counts}
-                    onEdit={openEditor}
-                    onView={openPreviewForTest}
-                    onRemove={remove}
-                    onPair={(t) => setPairing(t)}
-                    onAddMissing={openAddMissing}
-                  />
-                ))}
-              </div>
+              {singleDateGroups.map((dateGroup) => (
+                <section key={dateGroup.key}>
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                    {dateGroup.label}
+                    <span className="ml-1.5 tabular-nums font-semibold normal-case text-slate-400">
+                      · {dateGroup.items.length} paper{dateGroup.items.length === 1 ? "" : "s"}
+                    </span>
+                  </h3>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
+                    {dateGroup.items.map((g) => (
+                      <PaperCard
+                        key={g.key}
+                        group={g}
+                        counts={counts}
+                        onEdit={openEditor}
+                        onView={openPreviewForTest}
+                        onRemove={remove}
+                        onPair={(t) => setPairing(t)}
+                        onAddMissing={openAddMissing}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
             </div>
           )}
         </div>

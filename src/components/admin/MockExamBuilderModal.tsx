@@ -11,6 +11,7 @@ import {
 import {
   buildFullPapers,
   DEFAULT_MOCK_TIMINGS,
+  groupByPaperDate,
   matchPaperForSection,
   saveMockExam,
   suggestMockTitle,
@@ -88,6 +89,16 @@ export function MockExamBuilderModal({
     [papers],
   );
   const mathOptions = useMemo(() => papers.filter((p) => p.section === "math"), [papers]);
+  const rwDateGroups = useMemo(
+    () =>
+      groupByPaperDate(rwOptions, (p) => formatSourceDate(p.source_month, p.source_year) ?? "Undated"),
+    [rwOptions],
+  );
+  const mathDateGroups = useMemo(
+    () =>
+      groupByPaperDate(mathOptions, (p) => formatSourceDate(p.source_month, p.source_year) ?? "Undated"),
+    [mathOptions],
+  );
 
   function pickSection(section: Section, key: string | null) {
     setSelected((current) => {
@@ -194,13 +205,13 @@ export function MockExamBuilderModal({
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
                       <PaperPicker
                         section="reading_writing"
-                        papers={rwOptions}
+                        dateGroups={rwDateGroups}
                         selectedKey={selected.reading_writing}
                         onChange={(key) => pickSection("reading_writing", key)}
                       />
                       <PaperPicker
                         section="math"
-                        papers={mathOptions}
+                        dateGroups={mathDateGroups}
                         selectedKey={selected.math}
                         onChange={(key) => pickSection("math", key)}
                       />
@@ -268,15 +279,16 @@ export function MockExamBuilderModal({
 
 function PaperPicker({
   section,
-  papers,
+  dateGroups,
   selectedKey,
   onChange,
 }: {
   section: Section;
-  papers: FullPaper[];
+  dateGroups: ReturnType<typeof groupByPaperDate<FullPaper>>;
   selectedKey: string | null;
   onChange: (key: string | null) => void;
 }) {
+  const papers = dateGroups.flatMap((g) => g.items);
   const selected = papers.find((paper) => paper.key === selectedKey);
 
   return (
@@ -291,13 +303,14 @@ function PaperPicker({
           className={CONTROL_CLASS}
         >
           <option value="">— Choose a full paper —</option>
-          {papers.map((paper) => (
-            <option key={paper.key} value={paper.key}>
-              {paper.title}
-              {formatSourceDate(paper.source_month, paper.source_year)
-                ? ` (${formatSourceDate(paper.source_month, paper.source_year)})`
-                : ""}
-            </option>
+          {dateGroups.map((dateGroup) => (
+            <optgroup key={dateGroup.key} label={dateGroup.label}>
+              {dateGroup.items.map((paper) => (
+                <option key={paper.key} value={paper.key}>
+                  {paper.title}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </label>

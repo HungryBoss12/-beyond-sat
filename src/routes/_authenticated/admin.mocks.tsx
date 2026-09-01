@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Trash2, Edit3, X, Eye, EyeOff, Layers } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
@@ -13,6 +13,7 @@ import {
 import {
   buildFullPapers,
   DEFAULT_MOCK_TIMINGS,
+  groupByPaperDate,
   saveMockExam,
   type FullPaper,
 } from "@/lib/mock-exams";
@@ -340,6 +341,11 @@ function PaperPicker({
   selectedKey: string | null;
   onChange: (key: string | null) => void;
 }) {
+  const dateGroups = useMemo(
+    () =>
+      groupByPaperDate(papers, (p) => formatSourceDate(p.source_month, p.source_year) ?? "Undated"),
+    [papers],
+  );
   const selected = papers.find((paper) => paper.key === selectedKey);
 
   return (
@@ -354,10 +360,14 @@ function PaperPicker({
           className={CONTROL_CLASS}
         >
           <option value="">— Choose a full paper —</option>
-          {papers.map((paper) => (
-            <option key={paper.key} value={paper.key}>
-              {paper.title}
-            </option>
+          {dateGroups.map((dateGroup) => (
+            <optgroup key={dateGroup.key} label={dateGroup.label}>
+              {dateGroup.items.map((paper) => (
+                <option key={paper.key} value={paper.key}>
+                  {paper.title}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </label>

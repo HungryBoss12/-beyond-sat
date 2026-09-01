@@ -49,6 +49,69 @@ export const DEFAULT_MOCK_TIMINGS: Omit<MockExamPayload, "title" | "description"
   math_module1_threshold: 12,
 };
 
+type PaperSortable = {
+  source_month: number | null;
+  source_year: number | null;
+  section: Section;
+  title?: string;
+};
+
+const SECTION_RANK: Record<Section, number> = {
+  reading_writing: 0,
+  math: 1,
+};
+
+/** Newest date first, then EBRW before Math, then title. */
+export function compareBySourceDateAndSection(a: PaperSortable, b: PaperSortable): number {
+  const ay = a.source_year ?? 0;
+  const by = b.source_year ?? 0;
+  if (ay !== by) return by - ay;
+  const am = a.source_month ?? 0;
+  const bm = b.source_month ?? 0;
+  if (am !== bm) return bm - am;
+  const sectionDelta = SECTION_RANK[a.section] - SECTION_RANK[b.section];
+  if (sectionDelta !== 0) return sectionDelta;
+  return (a.title ?? "").localeCompare(b.title ?? "");
+}
+
+export function paperDateSortKey(month: number | null, year: number | null): string {
+  if (!year) return "0000-00";
+  const m = month != null && month >= 1 && month <= 12 ? month : 0;
+  return `${year}-${String(m).padStart(2, "0")}`;
+}
+
+export type DatedPaperGroup<T> = {
+  key: string;
+  label: string;
+  items: T[];
+};
+
+/** Bucket papers by source date; items inside each bucket follow date+section order. */
+export function groupByPaperDate<T extends PaperSortable>(
+  items: T[],
+  labelFor: (item: T) => string,
+): DatedPaperGroup<T>[] {
+  const sorted = [...items].sort(compareBySourceDateAndSection);
+  const buckets = new Map<string, DatedPaperGroup<T>>();
+
+  for (const item of sorted) {
+    const key = paperDateSortKey(item.source_month, item.source_year);
+    const label = key === "0000-00" ? "Undated" : labelFor(item);
+    let bucket = buckets.get(key);
+    if (!bucket) {
+      bucket = { key, label, items: [] };
+      buckets.set(key, bucket);
+    }
+    bucket.items.push(item);
+  }
+
+  return [...buckets.values()].sort((a, b) => {
+    if (a.key === "0000-00") return 1;
+    if (b.key === "0000-00") return -1;
+    return a.key < b.key ? 1 : a.key > b.key ? -1 : 0;
+  });
+}
+
 /** One complete paper per title — first Mod1 + first Mod2 when multiples exist. */
 export function buildFullPapers(tests: MockExamTest[]): FullPaper[] {
   const groups = new Map<
@@ -92,15 +155,7 @@ export function buildFullPapers(tests: MockExamTest[]): FullPaper[] {
       source_year: group.source_year,
     });
   }
-  return papers.sort((a, b) => {
-    const ay = a.source_year ?? 0;
-    const by = b.source_year ?? 0;
-    if (ay !== by) return by - ay;
-    const am = a.source_month ?? 0;
-    const bm = b.source_month ?? 0;
-    if (am !== bm) return bm - am;
-    return a.title.localeCompare(b.title);
-  });
+  return papers.sort(compareBySourceDateAndSection);
 }
 
 export function suggestMockTitle(rw: FullPaper, math: FullPaper): string {

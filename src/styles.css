@@ -233,6 +233,15 @@
     letter-spacing: -0.02em;
   }
 
+  /* Tailwind v4 preflight no longer styles <u>; MathText emits these for
+     College Board–style source emphasis in stems, passages, and choices. */
+  u,
+  .math-text u {
+    text-decoration: underline;
+    text-decoration-thickness: from-font;
+    text-underline-offset: 0.15em;
+  }
+
   .vocab-surface {
     color: #fff;
   }
@@ -2133,7 +2142,10 @@
   .slide-from-right,
   .zoom-in-soft,
   .zoom-in-hold,
-  .unblur-in {
+  .unblur-in,
+  .rise-in,
+  .stagger > *,
+  .stagger-fast > * {
     animation: none !important;
     opacity: 1 !important;
     filter: none !important;

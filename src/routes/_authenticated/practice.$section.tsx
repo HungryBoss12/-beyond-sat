@@ -166,12 +166,83 @@ function groupPapersByDate(papers: PaperGroup[]): DateGroup[] {
   });
 }
 
+function parseSessionMetadata(raw: unknown): {
+  test_id?: string;
+  draft_answers?: AnswerState[] | null;
+} | null {
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) as { test_id?: string; draft_answers?: AnswerState[] | null };
+    } catch {
+      return null;
+    }
+  }
+  return raw as { test_id?: string; draft_answers?: AnswerState[] | null };
+}
+
+/** PostgREST `.in()` lists get long; chunk so a big bank never 400s the page. */
+async function fetchQuestionCounts(testIds: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (!testIds.length) return counts;
+
+  const chunkSize = 40;
+  for (let i = 0; i < testIds.length; i += chunkSize) {
+    const chunk = testIds.slice(i, i + chunkSize);
+    const { data, error } = await supabase
+      .from("test_questions")
+      .select("test_id")
+      .in("test_id", chunk);
+    if (error) throw error;
+    for (const row of (data ?? []) as { test_id: string }[]) {
+      counts.set(row.test_id, (counts.get(row.test_id) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
+function mergeSets(
+  rows: Omit<TestSet, "count" | "status" | "sessionId" | "score" | "progressPct">[],
+  counts: Map<string, number>,
+  byTest: Map<
+    string,
+    {
+      id: string;
+      completed_at: string | null;
+      correct_count: number | null;
+      total_questions: number | null;
+      draft_answers: AnswerState[] | null | undefined;
+    }
+  >,
+): TestSet[] {
+  return rows
+    .map((r) => {
+      const s = byTest.get(r.id);
+      const count = counts.get(r.id) ?? 0;
+      const total = s?.total_questions ?? count;
+      const completed = !!s?.completed_at;
+      return {
+        ...r,
+        count,
+        status: !s ? "new" : completed ? "done" : "in_progress",
+        sessionId: s?.id ?? null,
+        score:
+          completed && s?.total_questions
+            ? { correct: s.correct_count ?? 0, total: s.total_questions }
+            : null,
+        progressPct: s ? practiceSetProgressPct(completed, total, s.draft_answers) : 0,
+      } as TestSet;
+    })
+    .filter((s) => s.count > 0);
+}
+
 function SectionBrowse() {
   const { section } = Route.useParams() as { section: Section };
   const navigate = useNavigate();
 
   const [sets, setSets] = useState<TestSet[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [starting, setStarting] = useState<string | null>(null);
 
   const [diffFilter, setDiffFilter] = useState<Difficulty | "all">("all");
@@ -190,130 +261,90 @@ function SectionBrowse() {
   }, [section]);
 
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       setLoading(true);
+      setLoadError(null);
+      setSets([]);
 
-      const [testsResult, countsResult] = await Promise.all([
-        /* `published` is deliberately not filtered here. The read policy in
-           PRACTICE_SETS.sql already hides unpublished sets from students, and
-           naming the column client-side would 400 the whole page on any project
-           where that migration hasn't been applied yet. */
-        supabase
+      try {
+        const testsResult = await supabase
           .from("tests")
           .select("id,title,module,difficulty,source_month,source_year,created_at")
           .eq("section", section)
           .order("source_year", { ascending: false, nullsFirst: false })
           .order("source_month", { ascending: false, nullsFirst: false })
-          .order("created_at", { ascending: false }),
-        /* Tallies for the mixed-practice panel. Difficulty only — deliberately
-           not `question_text`. Past 5,000 questions the counts become a floor
-           rather than a total; they label filter buttons, so that is acceptable. */
-        supabase.from("questions").select("difficulty").eq("section", section).limit(5000),
-      ]);
+          .order("created_at", { ascending: false });
 
-      const rows = (testsResult.data ?? []) as Omit<
-        TestSet,
-        "count" | "status" | "sessionId" | "score" | "progressPct"
-      >[];
-      const ids = rows.map((r) => r.id);
+        if (testsResult.error) throw testsResult.error;
 
-      /* Question counts and the student's sessions in two queries rather than one
-         per card: a page of 30 sets would otherwise be 60 round trips. */
-      const [linksResult, sessionsResult] = await Promise.all([
-        ids.length
-          ? supabase.from("test_questions").select("test_id,question_id").in("test_id", ids)
-          : Promise.resolve({ data: [] as { test_id: string; question_id: string }[] }),
-        supabase
-          .from("test_sessions")
-          .select("id,metadata,completed_at,correct_count,total_questions,started_at")
-          .eq("type", "practice")
-          .order("started_at", { ascending: false })
-          .limit(300),
-      ]);
+        const rows = (testsResult.data ?? []) as Omit<
+          TestSet,
+          "count" | "status" | "sessionId" | "score" | "progressPct"
+        >[];
+        const ids = rows.map((r) => r.id);
+        const counts = await fetchQuestionCounts(ids);
 
-      const counts = new Map<string, number>();
-      for (const l of (linksResult.data ?? []) as { test_id: string }[]) {
-        counts.set(l.test_id, (counts.get(l.test_id) ?? 0) + 1);
-      }
+        if (cancelled) return;
+        setSets(mergeSets(rows, counts, new Map()));
+        setLoading(false);
 
-      /* Newest session per set wins — the list is already sorted by
-         `started_at` descending, so the first hit for a test id is the current
-         one. RLS scopes `test_sessions` to the signed-in student, so this is
-         their own progress and nobody else's. */
-      function parseSessionMetadata(raw: unknown): {
-        test_id?: string;
-        draft_answers?: AnswerState[] | null;
-      } | null {
-        if (!raw) return null;
-        if (typeof raw === "string") {
-          try {
-            return JSON.parse(raw) as { test_id?: string; draft_answers?: AnswerState[] | null };
-          } catch {
-            return null;
+        const [sessionsResult, countsResult] = await Promise.all([
+          supabase
+            .from("test_sessions")
+            .select("id,metadata,completed_at,correct_count,total_questions,started_at")
+            .eq("type", "practice")
+            .order("started_at", { ascending: false })
+            .limit(300),
+          supabase.from("questions").select("difficulty").eq("section", section).limit(5000),
+        ]);
+
+        const byTest = new Map<
+          string,
+          {
+            id: string;
+            completed_at: string | null;
+            correct_count: number | null;
+            total_questions: number | null;
+            draft_answers: AnswerState[] | null | undefined;
           }
-        }
-        return raw as { test_id?: string; draft_answers?: AnswerState[] | null };
-      }
-
-      const byTest = new Map<
-        string,
-        {
+        >();
+        for (const s of (sessionsResult.data ?? []) as {
           id: string;
+          metadata: unknown;
           completed_at: string | null;
           correct_count: number | null;
           total_questions: number | null;
-          draft_answers: AnswerState[] | null | undefined;
+        }[]) {
+          const meta = parseSessionMetadata(s.metadata);
+          const t = meta?.test_id;
+          if (!t || byTest.has(t)) continue;
+          byTest.set(t, {
+            id: s.id,
+            completed_at: s.completed_at,
+            correct_count: s.correct_count,
+            total_questions: s.total_questions,
+            draft_answers: meta?.draft_answers,
+          });
         }
-      >();
-      for (const s of (sessionsResult.data ?? []) as {
-        id: string;
-        metadata: unknown;
-        completed_at: string | null;
-        correct_count: number | null;
-        total_questions: number | null;
-      }[]) {
-        const meta = parseSessionMetadata(s.metadata);
-        const t = meta?.test_id;
-        if (!t || byTest.has(t)) continue;
-        byTest.set(t, {
-          id: s.id,
-          completed_at: s.completed_at,
-          correct_count: s.correct_count,
-          total_questions: s.total_questions,
-          draft_answers: meta?.draft_answers,
-        });
+
+        const diffTally: Record<string, number> = {};
+        for (const row of (countsResult.data as { difficulty: string }[]) ?? []) {
+          diffTally[row.difficulty] = (diffTally[row.difficulty] ?? 0) + 1;
+        }
+
+        if (cancelled) return;
+        setSets(mergeSets(rows, counts, byTest));
+        setDiffCounts(diffTally);
+      } catch (e: unknown) {
+        if (cancelled) return;
+        setLoadError(errorMessage(e, "Could not load practice papers."));
+        setSets([]);
+        setLoading(false);
       }
-
-      const built: TestSet[] = rows.map((r) => {
-        const s = byTest.get(r.id);
-        const count = counts.get(r.id) ?? 0;
-        const total = s?.total_questions ?? count;
-        const completed = !!s?.completed_at;
-        return {
-          ...r,
-          count,
-          status: !s ? "new" : completed ? "done" : "in_progress",
-          sessionId: s?.id ?? null,
-          score:
-            completed && s.total_questions
-              ? { correct: s.correct_count ?? 0, total: s.total_questions }
-              : null,
-          progressPct: s
-            ? practiceSetProgressPct(completed, total, s.draft_answers)
-            : 0,
-        };
-      });
-
-      const diffTally: Record<string, number> = {};
-      for (const row of (countsResult.data as { difficulty: string }[]) ?? []) {
-        diffTally[row.difficulty] = (diffTally[row.difficulty] ?? 0) + 1;
-      }
-
-      if (cancelled) return;
-      setSets(built.filter((s) => s.count > 0));
-      setDiffCounts(diffTally);
-      setLoading(false);
     })();
+
     return () => {
       cancelled = true;
     };
@@ -620,7 +651,13 @@ function SectionBrowse() {
       </div>
 
       <div>
-        {loading ? (
+        {loadError ? (
+          <EmptyState
+            title="Could not load papers"
+            body={loadError}
+            className="py-14"
+          />
+        ) : loading ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="aspect-[4/3] rounded-2xl" />
@@ -803,7 +840,7 @@ function ModuleRow({
   onReview: (sessionId: string) => void;
 }) {
   return (
-    <RevealCard className="flex min-h-0 flex-1 items-stretch overflow-hidden rounded-xl border border-brand-400/30 bg-brand-800/70">
+    <div className="relative flex min-h-0 flex-1 items-stretch overflow-hidden rounded-xl border border-brand-400/30 bg-brand-800/70">
       <div className="my-2.5 ml-2 w-1.5 shrink-0 rounded-full bg-brand-400" aria-hidden />
       {!set ? (
         <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">
@@ -813,7 +850,7 @@ function ModuleRow({
       ) : (
         <ModuleRowBody set={set} mod={mod} starting={starting} onOpen={onOpen} onReview={onReview} />
       )}
-    </RevealCard>
+    </div>
   );
 }
 

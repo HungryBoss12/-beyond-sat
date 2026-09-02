@@ -15,7 +15,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { ChatTurn } from "@/components/ai/ChatTurn";
+import { scrollNearBottom, scrollToBottom, scrollWindowToTop } from "@/lib/smooth-scroll";
 import { messageText, useBeyondAi, type ChatMessage } from "@/lib/ai/client";
 import { ACCEPTED_IMAGE_TYPES, imageFromFiles, prepareAttachment } from "@/lib/ai/attachment";
 import {
@@ -137,7 +137,7 @@ function BeyondAiPage() {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < 140) el.scrollTop = el.scrollHeight;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 140) scrollNearBottom(el, 140);
   }, [messages]);
 
   async function openConversation(conversation: Conversation) {

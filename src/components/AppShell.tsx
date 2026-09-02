@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
-import { RevealLink } from "@/components/ui/reveal-card";
+import { scrollWindowToTop } from "@/lib/smooth-scroll";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { NotificationAnchorProvider } from "@/components/notifications/NotificationAnchorContext";
 
@@ -308,6 +308,7 @@ function BrandMark({ className }: { className?: string }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const historyAction = useRouterState({ select: (s) => s.historyAction });
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [streak, setStreak] = useState<number>(0);
@@ -392,6 +393,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     closeDrawer();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
+
+  useEffect(() => {
+    if (historyAction === "POP") return;
+    scrollWindowToTop();
+  }, [pathname, historyAction]);
 
   useEffect(() => {
     return () => {

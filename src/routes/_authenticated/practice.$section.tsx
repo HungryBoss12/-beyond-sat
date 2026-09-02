@@ -1,5 +1,5 @@
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import {
   ArrowLeft,
   Filter,
@@ -9,7 +9,13 @@ import {
   RotateCcw,
   Layers,
   BookOpenCheck,
-  X,
+  ArrowDownWideNarrow,
+  ArrowUpWideNarrow,
+  Shuffle,
+  CheckCircle2,
+  Circle,
+  CircleDot,
+  ChevronDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -27,7 +33,7 @@ import { practiceSetProgressPct } from "@/lib/dashboard-mocks";
 import type { AnswerState } from "@/components/QuestionCard";
 import { Panel, EmptyState, Skeleton } from "@/components/ui/panel";
 import { RevealCard } from "@/components/ui/reveal-card";
-import { errorMessage } from "@/lib/utils";
+import { errorMessage, cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/practice/$section")({
   parseParams: (p) => {
@@ -99,6 +105,10 @@ type PaperGroup = {
  */
 const DIFF_ORDER = ["easy", "medium", "hard", "C", "B", "D", "A", "S"];
 
+type SortOrder = "shuffle" | "newest" | "oldest";
+type StatusFilter = "all" | "new" | "in_progress" | "done";
+type PaperStatus = "new" | "in_progress" | "done";
+
 /** Stable pseudo-random order so cards do not jump on re-render. */
 function shuffleStable<T>(items: T[], seed: string, keyFn: (item: T) => string): T[] {
   let h = 0;
@@ -163,6 +173,26 @@ function groupPapersByDate(papers: PaperGroup[]): DateGroup[] {
     if (a.key === "0000-00") return 1;
     if (b.key === "0000-00") return -1;
     return a.key < b.key ? 1 : a.key > b.key ? -1 : 0;
+  });
+}
+
+function paperStatus(paper: PaperGroup): PaperStatus {
+  const mods = paper.modules;
+  if (!mods.length) return "new";
+  if (mods.every((m) => m.status === "done")) return "done";
+  if (mods.some((m) => m.status === "in_progress" || m.status === "done")) return "in_progress";
+  return "new";
+}
+
+function sortPapers(papers: PaperGroup[], sortOrder: SortOrder, seed: string): PaperGroup[] {
+  if (sortOrder === "shuffle") return shuffleStable(papers, seed, (p) => p.key);
+  return [...papers].sort((a, b) => {
+    const ka = paperDateKey(a);
+    const kb = paperDateKey(b);
+    if (ka === "0000-00" && kb !== "0000-00") return 1;
+    if (kb === "0000-00" && ka !== "0000-00") return -1;
+    if (ka === kb) return a.title.localeCompare(b.title);
+    return sortOrder === "newest" ? (ka < kb ? 1 : -1) : ka < kb ? -1 : 1;
   });
 }
 
@@ -250,12 +280,16 @@ function SectionBrowse() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [paperDiffFilter, setPaperDiffFilter] = useState<Difficulty | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("shuffle");
   const [groupByDate, setGroupByDate] = useState(false);
 
   useEffect(() => {
     setFiltersOpen(false);
     setDateFilter("all");
     setPaperDiffFilter("all");
+    setStatusFilter("all");
+    setSortOrder("shuffle");
     setGroupByDate(false);
     setDiffFilter("all");
   }, [section]);
@@ -365,7 +399,11 @@ function SectionBrowse() {
   }, [allPapers]);
 
   const hasActiveFilters =
-    groupByDate || dateFilter !== "all" || paperDiffFilter !== "all";
+    sortOrder !== "shuffle" ||
+    statusFilter !== "all" ||
+    groupByDate ||
+    dateFilter !== "all" ||
+    paperDiffFilter !== "all";
 
   const filteredPapers = useMemo(() => {
     let papers = allPapers;
@@ -377,23 +415,20 @@ function SectionBrowse() {
     if (dateFilter !== "all") {
       papers = papers.filter((paper) => paperDateKey(paper) === dateFilter);
     }
-    return papers;
-  }, [allPapers, paperDiffFilter, dateFilter]);
+    if (statusFilter !== "all") {
+      papers = papers.filter((paper) => paperStatus(paper) === statusFilter);
+    }
+    return sortPapers(papers, sortOrder, section);
+  }, [allPapers, paperDiffFilter, dateFilter, statusFilter, sortOrder, section]);
 
-  const flatPapers = useMemo(
-    () =>
-      hasActiveFilters
-        ? filteredPapers
-        : shuffleStable(allPapers, section, (p) => p.key),
-    [allPapers, filteredPapers, hasActiveFilters, section],
-  );
+  const flatPapers = useMemo(() => filteredPapers, [filteredPapers]);
 
   const groupedPapers = useMemo(
-    () => (hasActiveFilters && groupByDate ? groupPapersByDate(filteredPapers) : []),
-    [filteredPapers, hasActiveFilters, groupByDate],
+    () => (groupByDate ? groupPapersByDate(filteredPapers) : []),
+    [filteredPapers, groupByDate],
   );
 
-  const showGrouped = hasActiveFilters && groupByDate;
+  const showGrouped = groupByDate;
 
   const difficulties = useMemo(
     () =>
@@ -443,6 +478,8 @@ function SectionBrowse() {
   function clearFilters() {
     setDateFilter("all");
     setPaperDiffFilter("all");
+    setStatusFilter("all");
+    setSortOrder("shuffle");
     setGroupByDate(false);
     setDiffFilter("all");
   }
@@ -464,189 +501,194 @@ function SectionBrowse() {
             </h1>
             <p className="text-sm text-slate-500">
               {hasActiveFilters
-                ? "Filtered view. Clear filters to shuffle papers in three columns."
-                : "Browse all papers in three columns. Open filters to sort by date or difficulty."}
+                ? "Filtered view — adjust or clear filters below."
+                : "Browse all papers in three columns. Open filters to sort by date or progress."}
             </p>
           </div>
         </div>
 
-        <div className="relative shrink-0">
-          <button
-            type="button"
-            onClick={() => setFiltersOpen((open) => !open)}
-            className={
-              "tap inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold shadow-panel " +
-              (hasActiveFilters
-                ? "border-brand-400 bg-brand-400 text-white"
-                : "border-brand-400/40 bg-brand-600 text-white hover:bg-brand-400")
-            }
-            aria-expanded={filtersOpen}
-            aria-controls="practice-filters-panel"
-          >
-            <Filter className="h-4 w-4" />
-            Filters
-            {hasActiveFilters && (
-              <span className="rounded-full bg-white/25 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
-                on
-              </span>
-            )}
-          </button>
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((open) => !open)}
+          className={cn(
+            "tap inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold shadow-panel transition-colors",
+            hasActiveFilters || filtersOpen
+              ? "border-brand-400 bg-brand-400 text-white"
+              : "border-brand-400/40 bg-brand-600 text-white hover:bg-brand-400",
+          )}
+          aria-expanded={filtersOpen}
+          aria-controls="practice-filters-panel"
+        >
+          <Filter className="h-4 w-4" />
+          Filters
+          <ChevronDown
+            className={cn("h-4 w-4 transition-transform duration-300", filtersOpen && "rotate-180")}
+          />
+          {hasActiveFilters && (
+            <span className="rounded-full bg-white/25 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
+              on
+            </span>
+          )}
+        </button>
+      </div>
 
-          {filtersOpen && (
-            <>
-              <button
-                type="button"
-                className="fixed inset-0 z-40 cursor-default bg-transparent"
-                aria-label="Close filters"
-                onClick={() => setFiltersOpen(false)}
-              />
-              <Panel
-                as="section"
-                id="practice-filters-panel"
-                className="absolute right-0 z-50 mt-2 w-[min(100vw-2rem,22rem)] shadow-float"
-              >
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-100">
-                    <Filter className="h-4 w-4" /> Filters
-                  </div>
+      <div
+        className={cn("practice-filters-drawer", filtersOpen && "practice-filters-drawer-open")}
+        aria-hidden={!filtersOpen}
+      >
+        <div className="practice-filters-drawer-inner">
+          <Panel as="section" id="practice-filters-panel" className="!p-4 shadow-float">
+            <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+              <FilterGroup label="Sort">
+                <FilterChip
+                  active={sortOrder === "shuffle"}
+                  onClick={() => setSortOrder("shuffle")}
+                  icon={Shuffle}
+                >
+                  Shuffled
+                </FilterChip>
+                <FilterChip
+                  active={sortOrder === "newest"}
+                  onClick={() => setSortOrder("newest")}
+                  icon={ArrowDownWideNarrow}
+                >
+                  Newest
+                </FilterChip>
+                <FilterChip
+                  active={sortOrder === "oldest"}
+                  onClick={() => setSortOrder("oldest")}
+                  icon={ArrowUpWideNarrow}
+                >
+                  Oldest
+                </FilterChip>
+              </FilterGroup>
+
+              <FilterGroup label="Progress">
+                <FilterChip active={statusFilter === "all"} onClick={() => setStatusFilter("all")}>
+                  All
+                </FilterChip>
+                <FilterChip
+                  active={statusFilter === "new"}
+                  onClick={() => setStatusFilter("new")}
+                  icon={Circle}
+                >
+                  Not started
+                </FilterChip>
+                <FilterChip
+                  active={statusFilter === "in_progress"}
+                  onClick={() => setStatusFilter("in_progress")}
+                  icon={CircleDot}
+                >
+                  In progress
+                </FilterChip>
+                <FilterChip
+                  active={statusFilter === "done"}
+                  onClick={() => setStatusFilter("done")}
+                  icon={CheckCircle2}
+                >
+                  Completed
+                </FilterChip>
+              </FilterGroup>
+
+              <FilterGroup label="Difficulty">
+                <FilterChip
+                  active={paperDiffFilter === "all"}
+                  onClick={() => setPaperDiffFilter("all")}
+                >
+                  All
+                </FilterChip>
+                {difficulties.map((d) => (
+                  <FilterChip
+                    key={`paper-${d}`}
+                    active={paperDiffFilter === d}
+                    onClick={() => setPaperDiffFilter(d)}
+                  >
+                    {difficultyLabel(d)}
+                  </FilterChip>
+                ))}
+              </FilterGroup>
+
+              <FilterGroup label="Group">
+                <FilterChip active={groupByDate} onClick={() => setGroupByDate((v) => !v)}>
+                  By date
+                </FilterChip>
+              </FilterGroup>
+
+              {hasActiveFilters && (
+                <div className="flex items-end self-stretch pb-0.5">
                   <button
                     type="button"
-                    onClick={() => setFiltersOpen(false)}
-                    className="tap grid h-7 w-7 place-items-center rounded-md text-brand-100 hover:bg-brand-800 hover:text-white"
-                    aria-label="Close"
+                    onClick={clearFilters}
+                    className="tap rounded-lg border border-brand-400/50 px-3 py-1.5 text-xs font-bold text-brand-100 hover:bg-brand-800 hover:text-white"
                   >
-                    <X className="h-4 w-4" />
+                    Clear all
                   </button>
                 </div>
+              )}
+            </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <div className="mb-2 text-xs font-bold text-white">Paper date</div>
-                    <select
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value)}
-                      className="w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
-                    >
-                      <option value="all">All dates</option>
-                      {dateOptions.map((opt) => (
-                        <option key={opt.key} value={opt.key}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-white">
-                    <input
-                      type="checkbox"
-                      checked={groupByDate}
-                      onChange={(e) => setGroupByDate(e.target.checked)}
-                      className="h-4 w-4 accent-brand-200 [color-scheme:dark]"
-                    />
-                    Group papers by date
-                  </label>
-
-                  <div>
-                    <div className="mb-2 text-xs font-bold text-white">Paper difficulty</div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setPaperDiffFilter("all")}
-                        className={
-                          "tap rounded-md px-2 py-1.5 text-xs font-semibold " +
-                          (paperDiffFilter === "all"
-                            ? "bg-brand-400 text-white shadow-brand"
-                            : "bg-brand-800 text-brand-100 hover:bg-brand-400 hover:text-white")
-                        }
-                      >
-                        All
-                      </button>
-                      {difficulties.map((d) => (
-                        <button
-                          key={`paper-${d}`}
-                          type="button"
-                          onClick={() => setPaperDiffFilter(d)}
-                          className={
-                            "tap rounded-md px-2 py-1.5 text-xs font-semibold " +
-                            (paperDiffFilter === d
-                              ? "bg-brand-400 text-white shadow-brand"
-                              : "bg-brand-800 text-brand-100 hover:bg-brand-400 hover:text-white")
-                          }
-                        >
-                          {difficultyLabel(d)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="border-t border-brand-400/30 pt-4">
-                    <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-100">
-                      <Layers className="h-4 w-4" /> Mixed practice
-                    </div>
-                    <p className="mb-3 text-[11px] leading-relaxed text-brand-200">
-                      20 questions drawn from every paper, newest first.
-                    </p>
-                    <div className="mb-3">
-                      <div className="mb-2 text-xs font-bold text-white">Mixed difficulty</div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setDiffFilter("all")}
-                          className={
-                            "tap rounded-md px-2 py-1.5 text-xs font-semibold " +
-                            (diffFilter === "all"
-                              ? "bg-brand-400 text-white shadow-brand"
-                              : "bg-brand-800 text-brand-100 hover:bg-brand-400 hover:text-white")
-                          }
-                        >
-                          All
-                        </button>
-                        {difficulties.map((d) => (
-                          <button
-                            key={`mixed-${d}`}
-                            type="button"
-                            onClick={() => setDiffFilter(d)}
-                            className={
-                              "tap rounded-md px-2 py-1.5 text-xs font-semibold " +
-                              (diffFilter === d
-                                ? "bg-brand-400 text-white shadow-brand"
-                                : "bg-brand-800 text-brand-100 hover:bg-brand-400 hover:text-white")
-                            }
-                          >
-                            {difficultyLabel(d)}
-                            <span className="ml-1 tabular-nums text-brand-200">{diffCounts[d]}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={startMixed}
-                      disabled={totalQuestions === 0 || starting != null}
-                      className="btn-brand inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
-                    >
-                      {starting === "mixed" ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Layers className="h-4 w-4" />
-                      )}
-                      Start mixed practice
-                    </button>
-                  </div>
-
-                  {hasActiveFilters && (
-                    <button
-                      type="button"
-                      onClick={clearFilters}
-                      className="tap w-full rounded-lg border border-brand-400/50 px-3 py-2 text-xs font-bold text-brand-100 hover:bg-brand-800 hover:text-white"
-                    >
-                      Clear all filters
-                    </button>
-                  )}
+            {dateOptions.length > 0 && (
+              <div className="mt-4 border-t border-brand-400/30 pt-4">
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                  Paper date
                 </div>
-              </Panel>
-            </>
-          )}
+                <div className="scroll-area flex gap-2 overflow-x-auto pb-1">
+                  <FilterChip
+                    active={dateFilter === "all"}
+                    onClick={() => setDateFilter("all")}
+                    compact
+                  >
+                    All dates
+                  </FilterChip>
+                  {dateOptions.map((opt) => (
+                    <FilterChip
+                      key={opt.key}
+                      active={dateFilter === opt.key}
+                      onClick={() => setDateFilter(opt.key)}
+                      compact
+                    >
+                      {opt.label}
+                    </FilterChip>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-brand-400/30 pt-4">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-100">
+                <Layers className="h-4 w-4" /> Mixed practice
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <FilterChip active={diffFilter === "all"} onClick={() => setDiffFilter("all")} compact>
+                  All levels
+                </FilterChip>
+                {difficulties.map((d) => (
+                  <FilterChip
+                    key={`mixed-${d}`}
+                    active={diffFilter === d}
+                    onClick={() => setDiffFilter(d)}
+                    compact
+                  >
+                    {difficultyLabel(d)}
+                    <span className="ml-1 tabular-nums opacity-70">{diffCounts[d]}</span>
+                  </FilterChip>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={startMixed}
+                disabled={totalQuestions === 0 || starting != null}
+                className="btn-brand ml-auto inline-flex items-center justify-center gap-2 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+              >
+                {starting === "mixed" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Layers className="h-4 w-4" />
+                )}
+                Start mixed
+              </button>
+            </div>
+          </Panel>
         </div>
       </div>
 
@@ -725,6 +767,46 @@ function SectionBrowse() {
         )}
       </div>
     </div>
+  );
+}
+
+function FilterGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-brand-100">{label}</div>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
+
+function FilterChip({
+  active,
+  onClick,
+  children,
+  icon: Icon,
+  compact,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  icon?: ComponentType<{ className?: string }>;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "tap inline-flex shrink-0 items-center gap-1.5 rounded-full border font-semibold transition-colors",
+        compact ? "px-2.5 py-1 text-[11px]" : "px-3 py-1.5 text-xs",
+        active
+          ? "border-brand-300 bg-brand-400 text-white shadow-brand"
+          : "border-brand-400/40 bg-brand-800 text-brand-100 hover:border-brand-300 hover:bg-brand-700 hover:text-white",
+      )}
+    >
+      {Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
+      {children}
+    </button>
   );
 }
 

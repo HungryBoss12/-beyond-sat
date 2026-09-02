@@ -19,6 +19,7 @@ import { getStaffRole } from "@/lib/admin";
 import { AmbientGlow, RevealCard } from "@/components/ui/reveal-card";
 import { usePointerGlow } from "@/hooks/usePointerGlow";
 import { cn } from "@/lib/utils";
+import { scrollToBottom } from "@/lib/smooth-scroll";
 import {
   displayName,
   getChatProfile,
@@ -251,7 +252,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
 
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el) scrollToBottom(el);
   }, [messages]);
 
   useEffect(() => {

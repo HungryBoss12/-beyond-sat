@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { MathText } from "@/components/MathText";
 import { ChatTurn } from "@/components/ai/ChatTurn";
 import { Panel, PanelHead } from "@/components/ui/panel";
+import { scrollNearBottom } from "@/lib/smooth-scroll";
 import { askOnce, useBeyondAi } from "@/lib/ai/client";
 
 /**
@@ -96,7 +97,7 @@ export function FocusNextPanel({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) el.scrollTop = el.scrollHeight;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) scrollNearBottom(el, 120);
   }, [messages]);
 
   function submit(text: string) {

@@ -197,18 +197,18 @@
 @layer base {
   * {
     border-color: var(--color-border);
-    scrollbar-width: none;
+    scroll-behavior: smooth;
   }
-  *::-webkit-scrollbar {
-    display: none;
-  }
+
   html {
     scroll-behavior: smooth;
+    scroll-padding-top: 1.5rem;
     scrollbar-width: none;
   }
   html::-webkit-scrollbar {
     display: none;
   }
+
   html,
   body {
     background: var(--color-background);
@@ -216,10 +216,82 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  body {
     scrollbar-width: none;
+    overscroll-behavior-y: none;
   }
   body::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Nested scroll regions: momentum, no scroll chaining, subtle scrollbar. */
+  :is(
+    [class*="overflow-y-auto"],
+    [class*="overflow-x-auto"],
+    [class*="overflow-auto"],
+    [class*="overflow-y-scroll"],
+    [class*="overflow-x-scroll"],
+    [class*="overflow-scroll"],
+    .scroll-area
+  ) {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(83 82 145 / 0.42) transparent;
+  }
+
+  :is(
+      [class*="overflow-y-auto"],
+      [class*="overflow-x-auto"],
+      [class*="overflow-auto"],
+      [class*="overflow-y-scroll"],
+      [class*="overflow-x-scroll"],
+      [class*="overflow-scroll"],
+      .scroll-area
+    )::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+    display: block;
+  }
+
+  :is(
+      [class*="overflow-y-auto"],
+      [class*="overflow-x-auto"],
+      [class*="overflow-auto"],
+      [class*="overflow-y-scroll"],
+      [class*="overflow-x-scroll"],
+      [class*="overflow-scroll"],
+      .scroll-area
+    )::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  :is(
+      [class*="overflow-y-auto"],
+      [class*="overflow-x-auto"],
+      [class*="overflow-auto"],
+      [class*="overflow-y-scroll"],
+      [class*="overflow-x-scroll"],
+      [class*="overflow-scroll"],
+      .scroll-area
+    )::-webkit-scrollbar-thumb {
+    background: rgb(83 82 145 / 0.42);
+    border-radius: 9999px;
+  }
+
+  :is(
+      [class*="overflow-y-auto"],
+      [class*="overflow-x-auto"],
+      [class*="overflow-auto"],
+      [class*="overflow-y-scroll"],
+      [class*="overflow-x-scroll"],
+      [class*="overflow-scroll"],
+      .scroll-area
+    )::-webkit-scrollbar-thumb:hover {
+    background: rgb(83 82 145 / 0.62);
   }
   h1,
   h2,
@@ -731,6 +803,40 @@
   & > *:nth-child(n + 11) {
     animation-delay: 300ms;
   }
+}
+
+/* Practice browse — horizontal filter drawer slides open below the header. */
+@utility practice-filters-drawer {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    grid-template-rows 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease,
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+@utility practice-filters-drawer-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+@utility practice-filters-drawer-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Explicit smooth scroll surface — same behavior as overflow-auto panels. */
+@utility scroll-area {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(83 82 145 / 0.42) transparent;
 }
 
 /* Landing-page entrances, applied by `<Reveal from="…">` on arrival. 0.7s
@@ -2145,11 +2251,17 @@
   .unblur-in,
   .rise-in,
   .stagger > *,
-  .stagger-fast > * {
+  .stagger-fast > *,
+  .practice-filters-drawer {
     animation: none !important;
     opacity: 1 !important;
     filter: none !important;
     transform: none !important;
+    pointer-events: auto !important;
+  }
+
+  .practice-filters-drawer:not(.practice-filters-drawer-open) {
+    display: none !important;
   }
 
   /* useScrollProgress never writes --p under reduced motion, so these already

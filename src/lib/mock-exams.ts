@@ -39,6 +39,7 @@ export type MockExamPayload = {
   math_module2_time_seconds: number;
   rw_module1_threshold: number;
   math_module1_threshold: number;
+  section_break_seconds: number;
   published: boolean;
 };
 
@@ -49,6 +50,7 @@ export const DEFAULT_MOCK_TIMINGS: Omit<MockExamPayload, "title" | "description"
   math_module2_time_seconds: 2100,
   rw_module1_threshold: 15,
   math_module1_threshold: 12,
+  section_break_seconds: 1200,
 };
 
 const SECTION_RANK: Record<Section, number> = {

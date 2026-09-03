@@ -54,15 +54,17 @@ function MockList() {
         let questionCount = 0;
         // Prefer sections-based count (newer format); fall back to legacy per-question rows.
         if (testIds.length > 0) {
+          /* `test_questions` has no `id` column — PK is (test_id, question_id).
+             Selecting `id` fails the query and every mock showed "0 questions". */
           const { data: tq } = await supabase
             .from("test_questions")
-            .select("id")
+            .select("question_id")
             .in("test_id", testIds);
           questionCount = (tq ?? []).length;
         } else {
           const { data: meq } = await supabase
             .from("mock_exam_questions")
-            .select("id")
+            .select("question_id")
             .eq("mock_exam_id", m.id);
           questionCount = (meq ?? []).length;
         }

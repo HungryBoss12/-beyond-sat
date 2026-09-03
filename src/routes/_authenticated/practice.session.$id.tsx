@@ -50,6 +50,14 @@ function SessionRunner() {
   const [type, setType] = useState<TestType>("practice");
   const [userId, setUserId] = useState<string>("");
   const [duration, setDuration] = useState<number>(0);
+  const [mockSchedule, setMockSchedule] = useState<
+    | {
+        rwSeconds: number;
+        mathSeconds: number;
+        breakSeconds: number;
+      }
+    | undefined
+  >();
   const [initialAnswers, setInitialAnswers] = useState<AnswerState[] | undefined>();
   const [sessionMeta, setSessionMeta] = useState<SessionMeta>({});
 
@@ -85,18 +93,26 @@ function SessionRunner() {
         setLoading(false);
         return;
       }
-      const { data: qs, error: qErr } = await supabase
-        .from("questions")
-        .select(
-          "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,time_limit_seconds",
-        )
-        .in("id", ids);
-      if (qErr) {
-        setErr(qErr.message);
-        setLoading(false);
-        return;
+      /* Chunk `.in("id", …)` — a full mock is ~98 UUIDs and a single GET can
+         truncate or fail under URL length limits, which looked like an empty exam. */
+      const qs: QuestionRow[] = [];
+      const chunkSize = 40;
+      for (let i = 0; i < ids.length; i += chunkSize) {
+        const chunk = ids.slice(i, i + chunkSize);
+        const { data, error: qErr } = await supabase
+          .from("questions")
+          .select(
+            "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,time_limit_seconds",
+          )
+          .in("id", chunk);
+        if (qErr) {
+          setErr(qErr.message);
+          setLoading(false);
+          return;
+        }
+        qs.push(...((data ?? []) as QuestionRow[]));
       }
-      const byId = new Map((qs ?? []).map((q) => [q.id, q]));
+      const byId = new Map(qs.map((q) => [q.id, q]));
       const ordered = ids.map((qid) => byId.get(qid)).filter(Boolean) as QuestionRow[];
       /* `ids` being non-empty doesn't guarantee any rows came back — questions
          can be deleted after a session is created, and the reorder above drops
@@ -114,20 +130,42 @@ function SessionRunner() {
          Untimed — summing per-question time_limit_seconds produced absurd clocks
          (e.g. ~2 minutes for a 20-question mixed set). */
       if (sess.type === "mock" && sess.mock_exam_id) {
-        const { data: mx } = await supabase
+        let mx: {
+          rw_module1_time_seconds: number | null;
+          rw_module2_time_seconds: number | null;
+          math_module1_time_seconds: number | null;
+          math_module2_time_seconds: number | null;
+          section_break_seconds?: number | null;
+        } | null = null;
+        const withBreak = await supabase
           .from("mock_exams")
           .select(
-            "rw_module1_time_seconds,rw_module2_time_seconds,math_module1_time_seconds,math_module2_time_seconds",
+            "rw_module1_time_seconds,rw_module2_time_seconds,math_module1_time_seconds,math_module2_time_seconds,section_break_seconds",
           )
           .eq("id", sess.mock_exam_id)
           .maybeSingle();
+        if (withBreak.error) {
+          const fallback = await supabase
+            .from("mock_exams")
+            .select(
+              "rw_module1_time_seconds,rw_module2_time_seconds,math_module1_time_seconds,math_module2_time_seconds",
+            )
+            .eq("id", sess.mock_exam_id)
+            .maybeSingle();
+          mx = fallback.data;
+        } else {
+          mx = withBreak.data;
+        }
         if (mx) {
-          setDuration(
-            (mx.rw_module1_time_seconds ?? 0) +
-              (mx.rw_module2_time_seconds ?? 0) +
-              (mx.math_module1_time_seconds ?? 0) +
-              (mx.math_module2_time_seconds ?? 0),
-          );
+          const rw =
+            (mx.rw_module1_time_seconds ?? 0) + (mx.rw_module2_time_seconds ?? 0);
+          const math =
+            (mx.math_module1_time_seconds ?? 0) + (mx.math_module2_time_seconds ?? 0);
+          const breakSeconds =
+            typeof mx.section_break_seconds === "number" ? mx.section_break_seconds : 1200;
+          setMockSchedule({ rwSeconds: rw, mathSeconds: math, breakSeconds });
+          /* Total remaining clock for resume fallback / non-sectioned display. */
+          setDuration(rw + math);
         }
       }
 
@@ -197,6 +235,7 @@ function SessionRunner() {
       userId={userId}
       questions={questions}
       durationSeconds={duration}
+      mockSchedule={mockSchedule}
       initialAnswers={initialAnswers}
       sessionMetadata={sessionMeta}
       onExit={() => navigate({ to: "/practice" })}

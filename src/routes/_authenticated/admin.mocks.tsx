@@ -30,6 +30,7 @@ type Mock = {
   math_module2_time_seconds: number;
   rw_module1_threshold: number;
   math_module1_threshold: number;
+  section_break_seconds: number;
   published: boolean;
 };
 
@@ -82,7 +83,14 @@ function AdminMocks() {
   }, []);
 
   async function openEditor(m?: Mock) {
-    const target = m ?? empty();
+    const target = m
+      ? {
+          ...DEFAULT_MOCK_TIMINGS,
+          ...m,
+          section_break_seconds:
+            m.section_break_seconds ?? DEFAULT_MOCK_TIMINGS.section_break_seconds,
+        }
+      : empty();
     setEditing(target);
     const [{ data: tests }, { data: linked }, { data: allSections }] = await Promise.all([
       supabase.from("tests").select("*").order("title").order("module"),
@@ -304,6 +312,17 @@ function AdminMocks() {
                     <NumInput
                       v={editing.math_module2_time_seconds}
                       set={(v) => setEditing({ ...editing, math_module2_time_seconds: v })}
+                    />
+                  </Row>
+                  <Row label="Break between R&W and Math (minutes)">
+                    <NumInput
+                      v={Math.round((editing.section_break_seconds ?? 1200) / 60)}
+                      set={(v) =>
+                        setEditing({
+                          ...editing,
+                          section_break_seconds: Math.max(0, Math.floor(v)) * 60,
+                        })
+                      }
                     />
                   </Row>
                 </div>

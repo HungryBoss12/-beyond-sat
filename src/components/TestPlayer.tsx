@@ -29,8 +29,14 @@ type Props = {
   type: TestType;
   userId: string;
   questions: QuestionRow[];
-  /** Total exam time in seconds; when 0, no timer. */
+  /** Total exam time in seconds; when 0, no timer. Used when mockSchedule is absent. */
   durationSeconds?: number;
+  /** Full-mock section clocks + break between R&W and Math. */
+  mockSchedule?: {
+    rwSeconds: number;
+    mathSeconds: number;
+    breakSeconds: number;
+  };
   /** Hydrated from test_sessions.metadata.draft_answers on Resume. */
   initialAnswers?: AnswerState[];
   /** Current session metadata (question_ids, etc.) — drafts are merged into this. */
@@ -38,11 +44,31 @@ type Props = {
   onExit?: () => void;
 };
 
+type MockPhase = "rw" | "break" | "math";
+
 function fmt(sec: number) {
   const s = Math.max(0, Math.floor(sec));
-  const m = Math.floor(s / 60);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
   const ss = s % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+  }
   return `${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+}
+
+function readMockPhase(meta: Record<string, unknown> | undefined): MockPhase | null {
+  const p = meta?.mock_phase;
+  if (p === "rw" || p === "break" || p === "math") return p;
+  return null;
+}
+
+function indicesForSection(questions: QuestionRow[], section: "reading_writing" | "math") {
+  const out: number[] = [];
+  questions.forEach((q, i) => {
+    if (q.section === section) out.push(i);
+  });
+  return out;
 }
 
 type Result = {
@@ -61,12 +87,44 @@ export function TestPlayer({
   userId,
   questions,
   durationSeconds = 0,
+  mockSchedule,
   initialAnswers,
   sessionMetadata,
   onExit,
 }: Props) {
   const navigate = useNavigate();
-  const [idx, setIdx] = useState(0);
+  const rwIndices = useMemo(
+    () => indicesForSection(questions, "reading_writing"),
+    [questions],
+  );
+  const mathIndices = useMemo(() => indicesForSection(questions, "math"), [questions]);
+  const useSections =
+    type === "mock" && Boolean(mockSchedule) && rwIndices.length > 0 && mathIndices.length > 0;
+
+  const [phase, setPhase] = useState<MockPhase>(() => {
+    if (!(type === "mock" && mockSchedule)) return "rw";
+    const rw = indicesForSection(questions, "reading_writing");
+    const math = indicesForSection(questions, "math");
+    if (rw.length === 0 || math.length === 0) return "rw";
+    return readMockPhase(sessionMetadata) ?? "rw";
+  });
+
+  const [idx, setIdx] = useState(() => {
+    if (!(type === "mock" && mockSchedule)) return 0;
+    const rw = indicesForSection(questions, "reading_writing");
+    const math = indicesForSection(questions, "math");
+    if (rw.length === 0 || math.length === 0) return 0;
+    const p = readMockPhase(sessionMetadata) ?? "rw";
+    const savedIdx = sessionMetadata?.mock_idx;
+    if (p === "math") {
+      if (typeof savedIdx === "number" && math.includes(savedIdx)) return savedIdx;
+      return math[0] ?? 0;
+    }
+    if (p === "break") return rw[rw.length - 1] ?? 0;
+    if (typeof savedIdx === "number" && rw.includes(savedIdx)) return savedIdx;
+    return rw[0] ?? 0;
+  });
+
   const [answers, setAnswers] = useState<AnswerState[]>(() =>
     initialAnswers && initialAnswers.length === questions.length
       ? initialAnswers
@@ -75,7 +133,21 @@ export function TestPlayer({
   const [showReview, setShowReview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number>(durationSeconds);
+  const [timeLeft, setTimeLeft] = useState<number>(() => {
+    if (!(type === "mock" && mockSchedule)) return durationSeconds;
+    const rw = indicesForSection(questions, "reading_writing");
+    const math = indicesForSection(questions, "math");
+    if (rw.length === 0 || math.length === 0) return durationSeconds;
+    const p = readMockPhase(sessionMetadata) ?? "rw";
+    const saved =
+      typeof sessionMetadata?.mock_time_left === "number"
+        ? (sessionMetadata.mock_time_left as number)
+        : null;
+    if (saved != null && saved >= 0) return saved;
+    if (p === "break") return mockSchedule.breakSeconds;
+    if (p === "math") return mockSchedule.mathSeconds;
+    return mockSchedule.rwSeconds;
+  });
   /* Bluebook chrome state. Directions and the notes panel are disclosures in
      the header; the clock has a Hide control because a visible countdown is a
      documented source of test anxiety and the real app lets you turn it off. */
@@ -89,10 +161,16 @@ export function TestPlayer({
   const timePerQ = useRef<number[]>(questions.map(() => 0));
   const metaRef = useRef<Record<string, unknown>>(sessionMetadata ?? {});
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const phaseRef = useRef(phase);
+  const submitRef = useRef<() => Promise<void>>(async () => {});
 
   useEffect(() => {
     metaRef.current = sessionMetadata ?? {};
   }, [sessionMetadata]);
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
 
   /* The footer carries the candidate's name, as Bluebook's does. Fetched here
      rather than threaded down from the route because both callers would
@@ -126,6 +204,22 @@ export function TestPlayer({
     };
   }, []);
 
+  function persistMockProgress(patch: {
+    phase?: MockPhase;
+    timeLeft?: number;
+    idx?: number;
+  }) {
+    if (!useSections) return;
+    const next = {
+      ...metaRef.current,
+      ...(patch.phase != null ? { mock_phase: patch.phase } : {}),
+      ...(patch.timeLeft != null ? { mock_time_left: patch.timeLeft } : {}),
+      ...(patch.idx != null ? { mock_idx: patch.idx } : {}),
+    };
+    metaRef.current = next;
+    void supabase.from("test_sessions").update({ metadata: next }).eq("id", sessionId);
+  }
+
   function scheduleDraftSave(next: AnswerState[]) {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
@@ -145,23 +239,76 @@ export function TestPlayer({
     }, 400);
   }
 
+  function enterMath() {
+    if (!mockSchedule) return;
+    const first = mathIndices[0] ?? 0;
+    setPhase("math");
+    setTimeLeft(mockSchedule.mathSeconds);
+    setIdx(first);
+    setShowReview(false);
+    questionStartRef.current = Date.now();
+    persistMockProgress({
+      phase: "math",
+      timeLeft: mockSchedule.mathSeconds,
+      idx: first,
+    });
+  }
+
+  function enterBreakOrMath() {
+    if (!mockSchedule) return;
+    setShowReview(false);
+    if (mockSchedule.breakSeconds > 0) {
+      setPhase("break");
+      setTimeLeft(mockSchedule.breakSeconds);
+      persistMockProgress({
+        phase: "break",
+        timeLeft: mockSchedule.breakSeconds,
+      });
+    } else {
+      enterMath();
+    }
+  }
+
+  const showClock = useSections
+    ? phase === "break"
+      ? (mockSchedule?.breakSeconds ?? 0) > 0
+      : phase === "rw"
+        ? (mockSchedule?.rwSeconds ?? 0) > 0
+        : (mockSchedule?.mathSeconds ?? 0) > 0
+    : durationSeconds > 0;
+
   useEffect(() => {
-    if (!durationSeconds) return;
+    if (!showClock) return;
     const t = setInterval(() => {
       setTimeLeft((v) => {
         const next = v - 1;
         if (next <= 0) {
           clearInterval(t);
-          // auto submit
-          void submit();
+          const p = phaseRef.current;
+          if (useSections) {
+            if (p === "rw") {
+              queueMicrotask(() => enterBreakOrMath());
+              return 0;
+            }
+            if (p === "break") {
+              queueMicrotask(() => enterMath());
+              return 0;
+            }
+            void submitRef.current();
+            return 0;
+          }
+          void submitRef.current();
           return 0;
+        }
+        if (useSections && next % 20 === 0) {
+          persistMockProgress({ timeLeft: next, phase: phaseRef.current });
         }
         return next;
       });
     }, 1000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [durationSeconds]);
+  }, [showClock, phase, useSections]);
 
   function updateAnswer(i: number, a: AnswerState) {
     setAnswers((prev) => {
@@ -183,17 +330,26 @@ export function TestPlayer({
       );
       if (!ok) return;
     }
+    if (useSections) {
+      persistMockProgress({ phase, timeLeft, idx });
+    }
     if (onExit) onExit();
     else navigate({ to: "/practice" });
   }
 
   function goto(i: number) {
+    if (useSections) {
+      if (phase === "break") return;
+      if (phase === "rw" && !rwIndices.includes(i)) return;
+      if (phase === "math" && !mathIndices.includes(i)) return;
+    }
     // record time for current question
     const elapsed = Math.round((Date.now() - questionStartRef.current) / 1000);
     timePerQ.current[idx] = (timePerQ.current[idx] ?? 0) + elapsed;
     questionStartRef.current = Date.now();
     setIdx(i);
     setShowReview(false);
+    if (useSections) persistMockProgress({ idx: i, phase, timeLeft });
   }
 
   async function submit() {
@@ -286,6 +442,7 @@ export function TestPlayer({
     });
     setSubmitting(false);
   }
+  submitRef.current = submit;
 
   /* Clamped rather than indexed straight: `idx` can outrun the array if the
      question list ever shrinks, and an out-of-range read here reaches
@@ -330,11 +487,30 @@ export function TestPlayer({
     );
   }
 
-  const sectionLabel = q.section === "math" ? "Math" : "Reading and Writing";
+  const sectionLabel =
+    phase === "break"
+      ? "Break"
+      : q.section === "math"
+        ? "Math"
+        : "Reading and Writing";
   const moduleLabel =
     type === "mock"
       ? `Mock · ${sectionLabel}`
       : `${type === "daily" ? "Daily Test" : "Practice"}: ${sectionLabel}`;
+
+  const activeIndices = useSections
+    ? phase === "math"
+      ? mathIndices
+      : rwIndices
+    : questions.map((_, i) => i);
+  const localPos = activeIndices.indexOf(idx);
+  const isFirstInSection = localPos <= 0;
+  const isLastInSection = localPos >= activeIndices.length - 1;
+  const displayTotal = useSections ? activeIndices.length : questions.length;
+  const displayNum = useSections ? Math.max(1, localPos + 1) : idx + 1;
+  const sectionAnsweredCount = useSections
+    ? activeIndices.filter((i) => answered[i]).length
+    : answeredCount;
 
   /* Sized with dvh rather than `fixed inset-0` so the runner can't be collapsed
      by an animated/transformed ancestor turning into its containing block, and
@@ -361,22 +537,24 @@ export function TestPlayer({
               </button>
               <span className="truncate text-[15px] font-bold text-test-ink">{moduleLabel}</span>
             </div>
-            <button
-              onClick={() => setShowDirections((v) => !v)}
-              aria-expanded={showDirections}
-              className="tap mt-0.5 inline-flex items-center gap-1 rounded pl-9 pr-1 text-[13px] text-test-ink hover:underline"
-            >
-              Directions
-              {showDirections ? (
-                <ChevronUp className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" />
-              )}
-            </button>
+            {phase !== "break" && (
+              <button
+                onClick={() => setShowDirections((v) => !v)}
+                aria-expanded={showDirections}
+                className="tap mt-0.5 inline-flex items-center gap-1 rounded pl-9 pr-1 text-[13px] text-test-ink hover:underline"
+              >
+                Directions
+                {showDirections ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </button>
+            )}
           </div>
 
           <div className="flex flex-col items-center">
-            {durationSeconds > 0 ? (
+            {showClock ? (
               <>
                 {/* The digits keep their box when hidden — a collapsing clock
                     shifts the whole header every time you toggle it. */}
@@ -403,6 +581,7 @@ export function TestPlayer({
           </div>
 
           <div className="flex items-start justify-end gap-1">
+            {phase !== "break" && (
             <button
               onClick={() => setShowNotes((v) => !v)}
               aria-pressed={showNotes}
@@ -414,6 +593,7 @@ export function TestPlayer({
               <NotebookPen className="h-5 w-5" />
               <span className="mt-0.5 hidden sm:inline">Notes</span>
             </button>
+            )}
             {/* Bluebook's ⋮ is a menu, not a shortcut, and the two things a
                 student reaches for from it are the review page and the exit. */}
             <div className="relative">
@@ -440,6 +620,7 @@ export function TestPlayer({
                     className="fixed inset-0 z-30 cursor-default"
                   />
                   <div className="pop-in absolute right-0 top-full z-40 mt-1 w-56 overflow-hidden rounded-lg border border-test-line bg-white py-1 text-left shadow-float">
+                    {phase !== "break" && (
                     <button
                       onClick={() => {
                         setShowMore(false);
@@ -449,6 +630,8 @@ export function TestPlayer({
                     >
                       Go to Review Page
                     </button>
+                    )}
+                    {phase !== "break" && (
                     <button
                       onClick={() => {
                         setShowMore(false);
@@ -458,6 +641,7 @@ export function TestPlayer({
                     >
                       {showDirections ? "Hide" : "Show"} directions
                     </button>
+                    )}
                     <div className="my-1 border-t border-test-line" />
                     <button
                       onClick={() => {
@@ -475,7 +659,7 @@ export function TestPlayer({
           </div>
         </div>
 
-        {showDirections && (
+        {showDirections && phase !== "break" && (
           <div className="rise-in max-h-[40vh] overflow-y-auto border-t border-test-line bg-white px-4 py-4 text-[15px] leading-relaxed text-test-ink sm:px-6">
             {q.section === "math" ? (
               <>
@@ -529,23 +713,54 @@ export function TestPlayer({
           doesn't give — the header names the section, not the test. */}
       <div className="shrink-0 bg-test-banner px-4 py-1 text-center sm:px-6">
         <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-white">
-          {type === "mock" ? "Mock Exam" : type === "daily" ? "Daily Test" : "Practice Test"}
+          {phase === "break"
+            ? "Section Break"
+            : type === "mock"
+              ? "Mock Exam"
+              : type === "daily"
+                ? "Daily Test"
+                : "Practice Test"}
           <span className="hidden sm:inline"> · BeyondSAT</span>
         </span>
       </div>
 
       {/* body — min-h-0 is what lets the panes scroll instead of stretching the
           column and pushing the footer off-screen. */}
-      {showReview ? (
+      {phase === "break" ? (
+        <BreakScreen
+          timeLeft={timeLeft}
+          onEndEarly={() => enterMath()}
+        />
+      ) : showReview ? (
         <div className="min-h-0 flex-1 overflow-y-auto bg-test-chrome px-4 py-8 sm:px-6">
           <ReviewPanel
             questions={questions}
             answered={answered}
             marked={marked}
             current={idx}
-            moduleLabel={moduleLabel}
+            moduleLabel={
+              useSections
+                ? phase === "math"
+                  ? "Math"
+                  : "Reading and Writing"
+                : moduleLabel
+            }
+            rwIndices={useSections ? rwIndices : undefined}
+            mathIndices={useSections ? mathIndices : undefined}
+            allowedIndices={useSections ? activeIndices : undefined}
             onGoto={(i) => goto(i)}
-            onSubmit={submit}
+            onSubmit={
+              useSections && phase === "rw"
+                ? () => enterBreakOrMath()
+                : submit
+            }
+            submitLabel={
+              useSections && phase === "rw"
+                ? mockSchedule && mockSchedule.breakSeconds > 0
+                  ? "Start break"
+                  : "Continue to Math"
+                : "Submit"
+            }
             submitting={submitting}
           />
         </div>
@@ -561,50 +776,187 @@ export function TestPlayer({
       )}
 
       {/* bottom bar with centered question navigator popover */}
-      <BottomBar
-        idx={idx}
-        total={questions.length}
-        answered={answered}
-        marked={marked}
-        answeredCount={answeredCount}
-        showReview={showReview}
-        studentName={studentName}
-        onPrev={() => goto(Math.max(0, idx - 1))}
-        onNext={() => (idx < questions.length - 1 ? goto(idx + 1) : setShowReview(true))}
-        onGoto={(i) => goto(i)}
-        isLast={idx === questions.length - 1}
-      />
-      {q?.section === "math" && <DesmosCalculator />}
+      {phase !== "break" && (
+        <BottomBar
+          displayNum={displayNum}
+          displayTotal={displayTotal}
+          idx={idx}
+          answered={answered}
+          marked={marked}
+          answeredCount={sectionAnsweredCount}
+          showReview={showReview}
+          studentName={studentName}
+          rwIndices={useSections ? rwIndices : undefined}
+          mathIndices={useSections ? mathIndices : undefined}
+          lockedIndices={
+            useSections
+              ? phase === "rw"
+                ? mathIndices
+                : rwIndices
+              : undefined
+          }
+          onPrev={() => {
+            if (useSections) {
+              const pos = activeIndices.indexOf(idx);
+              if (pos > 0) goto(activeIndices[pos - 1]!);
+            } else {
+              goto(Math.max(0, idx - 1));
+            }
+          }}
+          onNext={() => {
+            if (useSections) {
+              const pos = activeIndices.indexOf(idx);
+              if (pos >= 0 && pos < activeIndices.length - 1) {
+                goto(activeIndices[pos + 1]!);
+              } else {
+                setShowReview(true);
+              }
+            } else if (idx < questions.length - 1) {
+              goto(idx + 1);
+            } else {
+              setShowReview(true);
+            }
+          }}
+          onGoto={(i) => goto(i)}
+          isFirst={isFirstInSection}
+          isLast={isLastInSection}
+        />
+      )}
+      {phase !== "break" && q?.section === "math" && <DesmosCalculator />}
+    </div>
+  );
+}
+
+function BreakScreen({
+  timeLeft,
+  onEndEarly,
+}: {
+  timeLeft: number;
+  onEndEarly: () => void;
+}) {
+  return (
+    <div className="rise-in flex min-h-0 flex-1 flex-col items-center justify-center bg-test-chrome px-6 text-center">
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-test-muted">Section break</p>
+      <h2 className="mt-3 text-3xl font-black tracking-tight text-test-ink">
+        Reading and Writing complete
+      </h2>
+      <p className="mt-3 max-w-md text-[15px] leading-relaxed text-test-ink">
+        Take a break before Math. Time remaining counts down automatically — you can end early when
+        you are ready.
+      </p>
+      <div className="mt-8 text-5xl font-bold tabular-nums text-test-ink">{fmt(timeLeft)}</div>
+      <button
+        onClick={onEndEarly}
+        className="btn-test mt-8 rounded-full bg-test-accent px-8 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep"
+      >
+        End break · Start Math
+      </button>
+    </div>
+  );
+}
+
+function QuestionSectionGrid({
+  title,
+  indices,
+  answered,
+  marked,
+  current,
+  locked,
+  onGoto,
+  onPicked,
+}: {
+  title: string;
+  indices: number[];
+  answered: boolean[];
+  marked: boolean[];
+  current: number;
+  locked?: boolean;
+  onGoto: (i: number) => void;
+  onPicked?: () => void;
+}) {
+  if (indices.length === 0) return null;
+  return (
+    <div className={locked ? "opacity-50" : ""}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-test-muted">{title}</h3>
+        {locked && <span className="text-[11px] font-semibold text-test-muted">Locked</span>}
+      </div>
+      <div className="grid grid-cols-8 gap-2 stagger-fast sm:grid-cols-10">
+        {indices.map((i, local) => {
+          const a = answered[i];
+          const m = marked[i];
+          const cur = i === current;
+          return (
+            <button
+              key={i}
+              disabled={locked}
+              onClick={() => {
+                if (locked) return;
+                onGoto(i);
+                onPicked?.();
+              }}
+              className={
+                "tap relative h-9 rounded-sm text-sm font-semibold tabular-nums disabled:cursor-not-allowed " +
+                (cur ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "") +
+                (a
+                  ? "bg-test-dark text-white "
+                  : "border border-dashed border-test-ink text-test-ink hover:bg-test-well ")
+              }
+            >
+              {local + 1}
+              {m && (
+                <Bookmark className="absolute -right-1 -top-1.5 h-3.5 w-3.5 fill-test-accent text-test-accent" />
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 function BottomBar({
+  displayNum,
+  displayTotal,
   idx,
-  total,
   answered,
   marked,
   answeredCount,
   showReview,
   studentName,
+  rwIndices,
+  mathIndices,
+  lockedIndices,
   onPrev,
   onNext,
   onGoto,
+  isFirst,
   isLast,
 }: {
+  displayNum: number;
+  displayTotal: number;
   idx: number;
-  total: number;
   answered: boolean[];
   marked: boolean[];
   answeredCount: number;
   showReview: boolean;
   studentName: string;
+  rwIndices?: number[];
+  mathIndices?: number[];
+  lockedIndices?: number[];
   onPrev: () => void;
   onNext: () => void;
   onGoto: (i: number) => void;
+  isFirst: boolean;
   isLast: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const split = Boolean(rwIndices && mathIndices);
+  const locked = new Set(lockedIndices ?? []);
+  const totalShown = split
+    ? (rwIndices?.length ?? 0) + (mathIndices?.length ?? 0)
+    : displayTotal;
+
   return (
     /* Bluebook's footer: candidate name at the left, the question navigator as
        a dark pill dead centre, Back and Next at the right. Same light grey as
@@ -620,17 +972,14 @@ function BottomBar({
           aria-expanded={open}
           className="tap inline-flex items-center gap-2 rounded-md bg-test-dark px-4 py-1.5 text-sm font-semibold tabular-nums text-white hover:bg-test-accent-deep"
         >
-          Question {idx + 1} of {total}
+          Question {displayNum} of {displayTotal}
           {open ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
         </button>
         {open && (
-          <div className="rise-in absolute bottom-full mb-3 w-[min(92vw,540px)] rounded-lg border border-test-line bg-white p-4 shadow-float">
+          <div className="rise-in absolute bottom-full mb-3 max-h-[70vh] w-[min(92vw,540px)] overflow-y-auto rounded-lg border border-test-line bg-white p-4 shadow-float">
             <div className="border-b border-test-line pb-3 text-center text-sm font-bold text-test-ink">
               Jump to question
             </div>
-            {/* The legend is not decoration: an unanswered question is a dashed
-                outline and an answered one is filled, and without the key that
-                distinction is guessable rather than readable. */}
             <div className="flex flex-wrap items-center justify-center gap-4 py-3 text-xs text-test-ink">
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-3.5 w-3.5 rounded-sm border border-dashed border-test-ink" />
@@ -645,37 +994,62 @@ function BottomBar({
                 For review
               </span>
               <span className="tabular-nums text-test-muted">
-                {answeredCount}/{total}
+                {answeredCount}/{displayTotal}
               </span>
             </div>
-            <div className="grid grid-cols-8 gap-2 stagger-fast sm:grid-cols-10">
-              {Array.from({ length: total }).map((_, i) => {
-                const a = answered[i];
-                const m = marked[i];
-                const cur = i === idx;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      onGoto(i);
-                      setOpen(false);
-                    }}
-                    className={
-                      "tap relative h-9 rounded-sm text-sm font-semibold tabular-nums " +
-                      (cur ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "") +
-                      (a
-                        ? "bg-test-dark text-white "
-                        : "border border-dashed border-test-ink text-test-ink hover:bg-test-well ")
-                    }
-                  >
-                    {i + 1}
-                    {m && (
-                      <Bookmark className="absolute -right-1 -top-1.5 h-3.5 w-3.5 fill-test-accent text-test-accent" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            {split ? (
+              <div className="space-y-5">
+                <QuestionSectionGrid
+                  title="Reading and Writing"
+                  indices={rwIndices!}
+                  answered={answered}
+                  marked={marked}
+                  current={idx}
+                  locked={rwIndices!.some((i) => locked.has(i))}
+                  onGoto={onGoto}
+                  onPicked={() => setOpen(false)}
+                />
+                <QuestionSectionGrid
+                  title="Math"
+                  indices={mathIndices!}
+                  answered={answered}
+                  marked={marked}
+                  current={idx}
+                  locked={mathIndices!.some((i) => locked.has(i))}
+                  onGoto={onGoto}
+                  onPicked={() => setOpen(false)}
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-8 gap-2 stagger-fast sm:grid-cols-10">
+                {Array.from({ length: totalShown }).map((_, i) => {
+                  const a = answered[i];
+                  const m = marked[i];
+                  const cur = i === idx;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        onGoto(i);
+                        setOpen(false);
+                      }}
+                      className={
+                        "tap relative h-9 rounded-sm text-sm font-semibold tabular-nums " +
+                        (cur ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "") +
+                        (a
+                          ? "bg-test-dark text-white "
+                          : "border border-dashed border-test-ink text-test-ink hover:bg-test-well ")
+                      }
+                    >
+                      {i + 1}
+                      {m && (
+                        <Bookmark className="absolute -right-1 -top-1.5 h-3.5 w-3.5 fill-test-accent text-test-accent" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -683,7 +1057,7 @@ function BottomBar({
       <div className="flex flex-1 items-center justify-end gap-2">
         <button
           onClick={onPrev}
-          disabled={idx === 0 || showReview}
+          disabled={isFirst || showReview}
           className="tap group inline-flex items-center gap-1.5 rounded-full border border-test-accent bg-white px-5 py-2 text-sm font-bold text-test-accent hover:bg-test-tint disabled:pointer-events-none disabled:opacity-40"
         >
           <ChevronLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
@@ -707,8 +1081,12 @@ function ReviewPanel({
   marked,
   current,
   moduleLabel,
+  rwIndices,
+  mathIndices,
+  allowedIndices,
   onGoto,
   onSubmit,
+  submitLabel = "Submit",
   submitting,
 }: {
   questions: QuestionRow[];
@@ -716,11 +1094,20 @@ function ReviewPanel({
   marked: boolean[];
   current: number;
   moduleLabel: string;
+  rwIndices?: number[];
+  mathIndices?: number[];
+  allowedIndices?: number[];
   onGoto: (i: number) => void;
   onSubmit: () => void;
+  submitLabel?: string;
   submitting: boolean;
 }) {
-  const unanswered = answered.filter((x) => !x).length;
+  const allowed = allowedIndices ? new Set(allowedIndices) : null;
+  const unanswered = (allowedIndices ?? questions.map((_, i) => i)).filter(
+    (i) => !answered[i],
+  ).length;
+  const split = Boolean(rwIndices && mathIndices);
+
   return (
     /* Bluebook's Review Page: a centred column on the grey field, headed by the
        module name, with the same grid and legend as the footer navigator. */
@@ -729,7 +1116,8 @@ function ReviewPanel({
         <h2 className="text-3xl font-bold tracking-tight text-test-ink">Check Your Work</h2>
         <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-test-ink">
           On test day, you won't be able to move on to the next module until time expires. For these
-          practice questions, you can click <strong>Submit</strong> when you're ready to move on.
+          practice questions, you can click <strong>{submitLabel}</strong> when you're ready to move
+          on.
         </p>
       </div>
 
@@ -751,31 +1139,54 @@ function ReviewPanel({
             For review
           </span>
         </div>
-        <div className="grid grid-cols-6 gap-2.5 stagger-fast sm:grid-cols-8 md:grid-cols-10">
-          {questions.map((_, i) => {
-            const a = answered[i];
-            const m = marked[i];
-            const cur = i === current;
-            return (
-              <button
-                key={i}
-                onClick={() => onGoto(i)}
-                className={
-                  "tap relative aspect-square rounded-sm text-sm font-semibold tabular-nums " +
-                  (cur ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "") +
-                  (a
-                    ? "bg-test-dark text-white "
-                    : "border border-dashed border-test-ink text-test-ink hover:bg-test-well ")
-                }
-              >
-                {i + 1}
-                {m && (
-                  <Bookmark className="absolute -right-1 -top-1.5 h-3.5 w-3.5 fill-test-accent text-test-accent" />
-                )}
-              </button>
-            );
-          })}
-        </div>
+        {split ? (
+          <div className="space-y-5">
+            <QuestionSectionGrid
+              title="Reading and Writing"
+              indices={rwIndices!}
+              answered={answered}
+              marked={marked}
+              current={current}
+              locked={allowed ? rwIndices!.some((i) => !allowed.has(i)) : false}
+              onGoto={onGoto}
+            />
+            <QuestionSectionGrid
+              title="Math"
+              indices={mathIndices!}
+              answered={answered}
+              marked={marked}
+              current={current}
+              locked={allowed ? mathIndices!.some((i) => !allowed.has(i)) : false}
+              onGoto={onGoto}
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-6 gap-2.5 stagger-fast sm:grid-cols-8 md:grid-cols-10">
+            {questions.map((_, i) => {
+              const a = answered[i];
+              const m = marked[i];
+              const cur = i === current;
+              return (
+                <button
+                  key={i}
+                  onClick={() => onGoto(i)}
+                  className={
+                    "tap relative aspect-square rounded-sm text-sm font-semibold tabular-nums " +
+                    (cur ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "") +
+                    (a
+                      ? "bg-test-dark text-white "
+                      : "border border-dashed border-test-ink text-test-ink hover:bg-test-well ")
+                  }
+                >
+                  {i + 1}
+                  {m && (
+                    <Bookmark className="absolute -right-1 -top-1.5 h-3.5 w-3.5 fill-test-accent text-test-accent" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="mt-6 flex flex-col items-center gap-3">
@@ -790,7 +1201,7 @@ function ReviewPanel({
           className="btn-test inline-flex items-center gap-2 rounded-full bg-test-accent px-8 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep disabled:pointer-events-none disabled:opacity-60"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Submit
+          {submitLabel}
         </button>
       </div>
     </div>

@@ -336,6 +336,7 @@ export type Database = {
           rw_module1_threshold: number;
           rw_module1_time_seconds: number;
           rw_module2_time_seconds: number;
+          section_break_seconds: number;
           title: string;
           updated_at: string;
         };
@@ -351,6 +352,7 @@ export type Database = {
           rw_module1_threshold?: number;
           rw_module1_time_seconds?: number;
           rw_module2_time_seconds?: number;
+          section_break_seconds?: number;
           title: string;
           updated_at?: string;
         };
@@ -366,6 +368,7 @@ export type Database = {
           rw_module1_threshold?: number;
           rw_module1_time_seconds?: number;
           rw_module2_time_seconds?: number;
+          section_break_seconds?: number;
           title?: string;
           updated_at?: string;
         };

@@ -44,6 +44,7 @@ type Test = {
   difficulty: LetterDifficulty;
   source_month: number | null;
   source_year: number | null;
+  published: boolean;
 };
 
 type QRow = {
@@ -81,6 +82,7 @@ const empty = (): Test => ({
   difficulty: "C",
   source_month: null,
   source_year: new Date().getFullYear(),
+  published: false,
 });
 
 function sortGroups(a: PaperGroup, b: PaperGroup): number {
@@ -153,7 +155,12 @@ function AdminTests() {
         .order("created_at", { ascending: false }),
       supabase.from("test_questions").select("test_id"),
     ]);
-    setItems((data ?? []) as Test[]);
+    setItems(
+      ((data ?? []) as Test[]).map((t) => ({
+        ...t,
+        published: t.published !== false,
+      })),
+    );
     const tally = new Map<string, number>();
     for (const l of (links ?? []) as { test_id: string }[]) {
       tally.set(l.test_id, (tally.get(l.test_id) ?? 0) + 1);
@@ -333,6 +340,7 @@ function AdminTests() {
       difficulty: editing.difficulty,
       source_month: editing.source_month,
       source_year: editing.source_year,
+      published: editing.published,
     };
     let testId = editing.id;
     if (testId) {
@@ -342,7 +350,7 @@ function AdminTests() {
       const { data: u } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from("tests")
-        .insert({ ...payload, created_by: u.user?.id })
+        .insert({ ...payload, created_by: u.user?.id, published: editing.published })
         .select("id")
         .single();
       if (error) return alert(error.message);
@@ -664,6 +672,20 @@ function AdminTests() {
                 </Field>
               </div>
 
+              <Field label="Visibility">
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-brand-400/40 bg-brand-800 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={editing.published}
+                    onChange={(e) => setEditing({ ...editing, published: e.target.checked })}
+                    className="h-4 w-4 rounded border-brand-400"
+                  />
+                  <span className="text-sm text-white">
+                    {editing.published ? "Published — visible on Practice" : "Draft — hidden from Practice"}
+                  </span>
+                </label>
+              </Field>
+
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider text-brand-100">
@@ -850,6 +872,9 @@ function PaperCard({
   const mod2 = group.mod2[0];
   const fullPaper = paperFromGroup(group);
   const isComplete = Boolean(mod1 && mod2);
+  const allModules = [...group.mod1, ...group.mod2];
+  const anyDraft = allModules.some((t) => !t.published);
+  const allPublished = allModules.length > 0 && allModules.every((t) => t.published);
 
   return (
     <RevealCard className="rise-in flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel lift">
@@ -867,6 +892,18 @@ function PaperCard({
                 {date}
               </span>
             )}
+            <span
+              className={
+                "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide " +
+                (allPublished
+                  ? "bg-emerald-700/40 text-emerald-100"
+                  : anyDraft
+                    ? "bg-amber-700/40 text-amber-100"
+                    : "bg-brand-800/80 text-brand-100")
+              }
+            >
+              {allPublished ? "Published" : anyDraft ? "Draft" : "—"}
+            </span>
           </div>
         </div>
         <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-brand-400/40 bg-brand-800/60 text-xs font-bold text-white">
@@ -908,6 +945,7 @@ function PaperCard({
                     <p className="truncate text-sm font-bold text-white">Module {mod}</p>
                     <p className="truncate text-xs font-medium text-brand-100">
                       {counts.get(t.id) ?? 0}Q · {t.difficulty}
+                      {!t.published ? " · Draft" : ""}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">

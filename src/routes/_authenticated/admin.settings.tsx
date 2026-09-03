@@ -3,8 +3,12 @@ import { useEffect, useState } from "react";
 import { Loader2, Save, Calculator, Sparkles, Wrench, KeyRound, MessageCircle } from "lucide-react";
 import {
   createTelegramLinkCode,
+  fetchTelegramAdmins,
   fetchTelegramLinkStatus,
+  revokeTelegramAdmin,
+  setAdminBanned,
   unlinkTelegram,
+  type TelegramAdminRow,
   type TelegramLinkStatus,
 } from "@/lib/admin/users";
 import type { Json } from "@/integrations/supabase/types";
@@ -64,9 +68,38 @@ function AdminSettings() {
   const [savingCard, setSavingCard] = useState<string | null>(null);
   const [savedCard, setSavedCard] = useState<string | null>(null);
   const [tgStatus, setTgStatus] = useState<TelegramLinkStatus | null>(null);
+  const [tgAdmins, setTgAdmins] = useState<TelegramAdminRow[]>([]);
   const [tgCode, setTgCode] = useState<string | null>(null);
   const [tgBusy, setTgBusy] = useState(false);
   const [tgErr, setTgErr] = useState<string | null>(null);
+  const [tgWebhook, setTgWebhook] = useState<string | null>(null);
+
+  async function refreshTelegramAdmins() {
+    try {
+      const rows = await fetchTelegramAdmins();
+      setTgAdmins(rows);
+    } catch {
+      setTgAdmins([]);
+    }
+  }
+
+  async function syncTelegramWebhook() {
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) return;
+      const res = await fetch("/api/telegram/ensure-webhook", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = (await res.json()) as { action?: string; webhookUrl?: string; detail?: string };
+      if (body.webhookUrl) {
+        setTgWebhook(`${body.action ?? "synced"} · ${body.webhookUrl}`);
+      }
+    } catch {
+      /* non-blocking */
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -85,6 +118,8 @@ function AdminSettings() {
       try {
         const status = await fetchTelegramLinkStatus();
         setTgStatus(status);
+        await refreshTelegramAdmins();
+        void syncTelegramWebhook();
       } catch {
         setTgStatus(null);
       }
@@ -397,6 +432,101 @@ function AdminSettings() {
           )}
 
           {tgErr && <p className="text-xs font-semibold text-red-200">{tgErr}</p>}
+          {tgWebhook && <p className="text-xs text-brand-200">{tgWebhook}</p>}
+
+          {tgAdmins.length > 0 && (
+            <div className="overflow-hidden rounded-xl border border-brand-400/40">
+              <div className="border-b border-brand-400/30 bg-brand-800 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200">
+                Linked admin chats
+              </div>
+              <ul className="divide-y divide-brand-400/20">
+                {tgAdmins.map((row) => (
+                  <li key={row.user_id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-bold text-white">
+                        {row.full_name || row.email || row.user_id.slice(0, 8)}
+                        {row.is_self ? " (you)" : ""}
+                      </div>
+                      <div className="text-xs text-brand-100">
+                        {row.email ?? "—"} · chat {row.chat_id}
+                        {row.banned ? " · banned" : ""}
+                      </div>
+                    </div>
+                    {!row.is_self && (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={tgBusy}
+                          onClick={async () => {
+                            if (!confirm(`Revoke Telegram access for ${row.email ?? "this admin"}?`))
+                              return;
+                            setTgBusy(true);
+                            setTgErr(null);
+                            try {
+                              await revokeTelegramAdmin(row.user_id);
+                              await refreshTelegramAdmins();
+                            } catch (e) {
+                              setTgErr(e instanceof Error ? e.message : "Could not revoke access");
+                            } finally {
+                              setTgBusy(false);
+                            }
+                          }}
+                          className="rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-brand-400/40 hover:bg-brand-900 disabled:opacity-60"
+                        >
+                          Revoke bot
+                        </button>
+                        {row.banned ? (
+                          <button
+                            type="button"
+                            disabled={tgBusy}
+                            onClick={async () => {
+                              setTgBusy(true);
+                              setTgErr(null);
+                              try {
+                                await setAdminBanned(row.user_id, false);
+                                await refreshTelegramAdmins();
+                              } catch (e) {
+                                setTgErr(e instanceof Error ? e.message : "Could not unban");
+                              } finally {
+                                setTgBusy(false);
+                              }
+                            }}
+                            className="rounded-lg bg-emerald-700/80 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                          >
+                            Allow
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={tgBusy}
+                            onClick={async () => {
+                              const reason = prompt("Ban reason (optional):") ?? "";
+                              if (!confirm(`Ban ${row.email ?? "this admin"}? They lose site and bot access.`))
+                                return;
+                              setTgBusy(true);
+                              setTgErr(null);
+                              try {
+                                await setAdminBanned(row.user_id, true, reason || null);
+                                await revokeTelegramAdmin(row.user_id);
+                                await refreshTelegramAdmins();
+                              } catch (e) {
+                                setTgErr(e instanceof Error ? e.message : "Could not ban");
+                              } finally {
+                                setTgBusy(false);
+                              }
+                            }}
+                            className="rounded-lg bg-red-800/80 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-800 disabled:opacity-60"
+                          >
+                            Ban
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-2">
             <button
@@ -431,6 +561,7 @@ function AdminSettings() {
                     await unlinkTelegram();
                     setTgStatus({ linked: false, chat_id: null });
                     setTgCode(null);
+                    await refreshTelegramAdmins();
                   } catch (e) {
                     setTgErr(e instanceof Error ? e.message : "Could not unlink");
                   } finally {

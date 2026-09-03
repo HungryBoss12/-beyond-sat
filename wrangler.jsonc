@@ -1,7 +1,6 @@
 {
   // Cloudflare Workers config for the TanStack Start (SSR) app.
-  // The build is produced by nitro's cloudflare target (bundled inside
-  // @lovable.dev/vite-tanstack-config) and lands in `.output/`.
+  // The build is produced by Nitro's cloudflare target and lands in `.output/`.
   //   - server entry -> .output/server/index.mjs
   //   - static assets -> .output/public
   "$schema": "node_modules/wrangler/config-schema.json",
@@ -23,5 +22,10 @@
   "vars": {
     "SUPABASE_URL": "https://qlzvngegsemrzmyxwykl.supabase.co",
     "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsenZuZ2Vnc2VtcnpteXh3eWtsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjY3OTMsImV4cCI6MjA5OTg0Mjc5M30.Sf8sS6xglwog8DrsKfKQnpngxdCpjvyW32Lwbax_V_8",
+    "WORKER_PUBLIC_URL": "https://beyond-sat-v0.javazbek80.workers.dev",
+  },
+  // Re-register the Telegram webhook hourly so it stays pointed at this Worker.
+  "triggers": {
+    "crons": ["0 * * * *"],
   },
 }

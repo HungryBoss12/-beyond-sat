@@ -11,7 +11,9 @@ import { handleVocabAdminCard, handleVocabAdminDeck } from "./lib/vocab/handlers
 import { handleVocabGenerate } from "./lib/vocab/handlers/generate";
 import { handleVocabQuizSubmit } from "./lib/vocab/handlers/quiz-submit";
 import { handleVocabReview, handleVocabSession } from "./lib/vocab/handlers/session";
+import { handleEnsureTelegramWebhook } from "./lib/telegram/ensure-webhook-handler";
 import { handleTelegramWebhook } from "./lib/telegram/webhook";
+import { ensureTelegramWebhook } from "./lib/telegram/webhook-setup";
 import { checkMaintenance } from "./lib/maintenance";
 import { maintenanceResponse } from "./lib/maintenance-page";
 
@@ -30,6 +32,7 @@ type ServerEntry = {
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
+let webhookEnsureStarted = false;
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
@@ -78,7 +81,35 @@ function isH3SwallowedErrorBody(body: string): boolean {
  * round trip to every chat token.
  */
 export default {
+  async scheduled(_event: unknown, env: unknown, ctx: { waitUntil: (p: Promise<unknown>) => void }) {
+    ctx.waitUntil(
+      ensureTelegramWebhook(env).then((result) => {
+        if (!result.ok && result.action !== "skipped") {
+          console.error("[telegram] scheduled webhook ensure failed", result);
+        } else {
+          console.log("[telegram] scheduled webhook ensure", result.action);
+        }
+      }),
+    );
+  },
+
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const waitUntil =
+      ctx && typeof ctx === "object" && "waitUntil" in ctx
+        ? (ctx as { waitUntil: (p: Promise<unknown>) => void }).waitUntil
+        : undefined;
+
+    if (!webhookEnsureStarted && waitUntil) {
+      webhookEnsureStarted = true;
+      waitUntil(
+        ensureTelegramWebhook(env, request.url).then((result) => {
+          if (result.action === "registered" || result.action === "updated") {
+            console.log("[telegram] auto webhook ensure", result.action, result.webhookUrl);
+          }
+        }),
+      );
+    }
+
     try {
       const url = new URL(request.url);
 
@@ -130,6 +161,10 @@ export default {
 
       if (url.pathname === "/api/telegram/webhook") {
         return await handleTelegramWebhook(request, env);
+      }
+
+      if (url.pathname === "/api/telegram/ensure-webhook") {
+        return await handleEnsureTelegramWebhook(request, env);
       }
 
       const maintenance = await checkMaintenance(request, env, Date.now());

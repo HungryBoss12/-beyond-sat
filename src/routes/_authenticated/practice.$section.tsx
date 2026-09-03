@@ -307,6 +307,7 @@ function SectionBrowse() {
           .from("tests")
           .select("id,title,module,difficulty,source_month,source_year,created_at")
           .eq("section", section)
+          .eq("published", true)
           .order("source_year", { ascending: false, nullsFirst: false })
           .order("source_month", { ascending: false, nullsFirst: false })
           .order("created_at", { ascending: false });

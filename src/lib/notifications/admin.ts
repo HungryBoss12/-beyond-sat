@@ -14,6 +14,8 @@ export type StaffNotificationRow = {
   id: string;
   title: string;
   body: string | null;
+  link_url: string | null;
+  image_url: string | null;
   created_at: string;
   expires_at: string;
   overlay_display_seconds: number;

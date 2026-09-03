@@ -18,6 +18,7 @@ import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 import { scrollWindowToTop } from "@/lib/smooth-scroll";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { NotificationAnchorProvider } from "@/components/notifications/NotificationAnchorContext";
+import { RevealLink } from "@/components/ui/reveal-card";
 
 /**
  * Seven items fit the mobile tab bar at `grid-cols-7` with truncated labels.

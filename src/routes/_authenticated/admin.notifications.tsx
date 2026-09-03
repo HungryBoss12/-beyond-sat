@@ -1,14 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Bell, Loader2, Send } from "lucide-react";
+import { Bell, Loader2, Pencil, Send, Trash2, X } from "lucide-react";
 import { PageHead, Panel } from "@/components/ui/panel";
 import { AdminAudiencePicker } from "@/components/admin/AdminAudiencePicker";
 import { AdminFieldLabel, adminInputCls } from "@/components/admin/AdminSelect";
 import { listActiveClasses } from "@/lib/classes/api";
 import { signedUrl } from "@/lib/classes/api";
 import { uploadHomeworkFile } from "@/lib/classes/uploads";
-import { createNotification, listStaffNotifications } from "@/lib/notifications/client";
+import {
+  createNotification,
+  deleteNotification,
+  listStaffNotifications,
+  updateNotification,
+} from "@/lib/notifications/client";
 import { validateNotificationAudience, type StaffNotificationRow } from "@/lib/notifications/admin";
 import type { NotificationAudience } from "@/lib/notifications/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +32,7 @@ function AdminNotificationsPage() {
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [profiles, setProfiles] = useState<{ id: string; full_name: string | null }[]>([]);
 
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
@@ -72,6 +78,30 @@ function AdminNotificationsPage() {
     [profiles],
   );
 
+  function resetForm() {
+    setEditingId(null);
+    setTitle("");
+    setBody("");
+    setLinkUrl("");
+    setImageUrl(null);
+    setAudienceType("all");
+    setClassId("");
+    setSelectedUsers([]);
+    setDisplaySeconds(30);
+  }
+
+  function startEdit(n: StaffNotificationRow) {
+    setEditingId(n.id);
+    setTitle(n.title);
+    setBody(n.body ?? "");
+    setLinkUrl(n.link_url ?? "");
+    setImageUrl(n.image_url);
+    setDisplaySeconds(n.overlay_display_seconds);
+    setAudienceType(n.audience_type);
+    setSent(null);
+    setError(null);
+  }
+
   async function onImage(file: File) {
     const uploaded = await uploadHomeworkFile(file, file.name, "notifications");
     const url = await signedUrl("homework-uploads", uploaded.storage_path, file.name);
@@ -83,6 +113,30 @@ function AdminNotificationsPage() {
       setError("Enter a notification title.");
       return;
     }
+
+    if (editingId) {
+      setBusy(true);
+      setError(null);
+      setSent(null);
+      try {
+        await updateNotification(editingId, {
+          title,
+          body,
+          linkUrl: linkUrl || null,
+          imageUrl: imageUrl,
+          displaySeconds,
+        });
+        resetForm();
+        setSent("Notification updated.");
+        await load();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not update notification");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     const audienceErr = validateNotificationAudience(audienceType, classId, selectedUsers);
     if (audienceErr) {
       setError(audienceErr);
@@ -103,14 +157,27 @@ function AdminNotificationsPage() {
         userIds: audienceType === "users" ? selectedUsers : undefined,
         displaySeconds,
       });
-      setTitle("");
-      setBody("");
-      setLinkUrl("");
-      setImageUrl(null);
+      resetForm();
       setSent("Notification sent — it will appear on student dashboards.");
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not send notification");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete(n: StaffNotificationRow) {
+    if (!confirm(`Delete notification “${n.title}”? This removes it for all recipients.`)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteNotification(n.id);
+      if (editingId === n.id) resetForm();
+      setSent("Notification deleted.");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not delete notification");
     } finally {
       setBusy(false);
     }
@@ -142,7 +209,21 @@ function AdminNotificationsPage() {
                 <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-400 text-white">
                   <Bell className="h-4 w-4" />
                 </span>
-                <h2 className="text-lg font-black text-white">Send notification</h2>
+                <h2 className="text-lg font-black text-white">
+                  {editingId ? "Edit notification" : "Send notification"}
+                </h2>
+                {editingId ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetForm();
+                      setSent(null);
+                    }}
+                    className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
+                  >
+                    <X className="h-3.5 w-3.5" /> Cancel
+                  </button>
+                ) : null}
               </div>
 
               <AdminFieldLabel label="Title">
@@ -164,16 +245,22 @@ function AdminNotificationsPage() {
                   className={adminInputCls}
                 />
               </AdminFieldLabel>
-              <AdminAudiencePicker
-                audienceType={audienceType}
-                onAudienceTypeChange={setAudienceType}
-                classId={classId}
-                onClassIdChange={setClassId}
-                classes={classOptions}
-                users={userOptions}
-                selectedUserIds={selectedUsers}
-                onSelectedUserIdsChange={setSelectedUsers}
-              />
+              {!editingId ? (
+                <AdminAudiencePicker
+                  audienceType={audienceType}
+                  onAudienceTypeChange={setAudienceType}
+                  classId={classId}
+                  onClassIdChange={setClassId}
+                  classes={classOptions}
+                  users={userOptions}
+                  selectedUserIds={selectedUsers}
+                  onSelectedUserIdsChange={setSelectedUsers}
+                />
+              ) : (
+                <p className="text-xs text-brand-200">
+                  Audience stays as originally sent ({audienceType}).
+                </p>
+              )}
               <AdminFieldLabel
                 label="On-screen duration (seconds)"
                 hint="How long the card stays on the dashboard before moving to the bell inbox"
@@ -198,7 +285,16 @@ function AdminNotificationsPage() {
                 />
               </AdminFieldLabel>
               {imageUrl ? (
-                <img src={imageUrl} alt="" className="h-16 w-16 rounded-xl object-cover" />
+                <div className="flex items-center gap-3">
+                  <img src={imageUrl} alt="" className="h-16 w-16 rounded-xl object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setImageUrl(null)}
+                    className="text-xs font-semibold text-brand-100 underline hover:text-white"
+                  >
+                    Remove image
+                  </button>
+                </div>
               ) : null}
               <button
                 type="button"
@@ -206,7 +302,15 @@ function AdminNotificationsPage() {
                 onClick={() => void handleSend()}
                 className="btn-brand inline-flex items-center gap-2 rounded-xl bg-grad-brand px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
               >
-                <Send className="h-4 w-4" /> Send notification
+                {editingId ? (
+                  <>
+                    <Pencil className="h-4 w-4" /> Save changes
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" /> Send notification
+                  </>
+                )}
               </button>
             </Panel>
 
@@ -219,12 +323,35 @@ function AdminNotificationsPage() {
                   {recent.map((n) => (
                     <li
                       key={n.id}
-                      className="rounded-xl border border-brand-400/30 bg-brand-900/40 px-3 py-2.5"
+                      className={
+                        "rounded-xl border px-3 py-2.5 " +
+                        (editingId === n.id
+                          ? "border-brand-300/60 bg-brand-800/70"
+                          : "border-brand-400/30 bg-brand-900/40")
+                      }
                     >
                       <div className="truncate text-sm font-bold text-white">{n.title}</div>
                       <div className="mt-1 text-[11px] text-brand-100">
-                        {format(new Date(n.created_at), "MMM d, yyyy · h:mm a")} · {n.overlay_display_seconds}s
-                        on-screen · {n.audience_type}
+                        {format(new Date(n.created_at), "MMM d, yyyy · h:mm a")} ·{" "}
+                        {n.overlay_display_seconds}s on-screen · {n.audience_type}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => startEdit(n)}
+                          className="inline-flex items-center gap-1 rounded-lg bg-brand-800 px-2.5 py-1 text-[11px] font-semibold text-white ring-1 ring-brand-400/40 hover:bg-brand-900 disabled:opacity-50"
+                        >
+                          <Pencil className="h-3 w-3" /> Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void handleDelete(n)}
+                          className="inline-flex items-center gap-1 rounded-lg bg-red-900/50 px-2.5 py-1 text-[11px] font-semibold text-red-100 ring-1 ring-red-400/30 hover:bg-red-900/80 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3 w-3" /> Delete
+                        </button>
                       </div>
                     </li>
                   ))}

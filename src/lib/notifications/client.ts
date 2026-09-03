@@ -152,12 +152,46 @@ export async function createNotification(input: CreateNotificationInput): Promis
 export async function listStaffNotifications(limit = 25): Promise<StaffNotificationRow[]> {
   const { data, error } = await supabase
     .from("user_notifications")
-    .select("id,title,body,created_at,expires_at,overlay_display_seconds,audience_type")
+    .select(
+      "id,title,body,link_url,image_url,created_at,expires_at,overlay_display_seconds,audience_type",
+    )
     .order("created_at", { ascending: false })
     .limit(limit);
 
   if (error) throw new Error(error.message);
   return (data ?? []) as StaffNotificationRow[];
+}
+
+export type UpdateNotificationInput = {
+  title: string;
+  body?: string | null;
+  linkUrl?: string | null;
+  imageUrl?: string | null;
+  displaySeconds?: number;
+};
+
+export async function updateNotification(
+  id: string,
+  input: UpdateNotificationInput,
+): Promise<void> {
+  const overlaySeconds = Math.max(1, input.displaySeconds ?? 30);
+  const { error } = await supabase
+    .from("user_notifications")
+    .update({
+      title: input.title.trim(),
+      body: input.body?.trim() || null,
+      link_url: input.linkUrl || null,
+      image_url: input.imageUrl || null,
+      overlay_display_seconds: overlaySeconds,
+    })
+    .eq("id", id);
+
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteNotification(id: string): Promise<void> {
+  const { error } = await supabase.from("user_notifications").delete().eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 export function notificationRemainingMs(notification: UserNotification, now = Date.now()): number {

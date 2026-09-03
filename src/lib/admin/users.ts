@@ -66,6 +66,16 @@ export type TelegramLinkStatus = {
   chat_id: number | null;
 };
 
+export type TelegramAdminRow = {
+  user_id: string;
+  email: string | null;
+  full_name: string | null;
+  chat_id: number;
+  banned: boolean;
+  banned_reason: string | null;
+  is_self: boolean;
+};
+
 function missingRpc(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
   if (error.code && ["42883", "42703", "42P01", "PGRST202"].includes(error.code)) return true;
@@ -141,5 +151,32 @@ export async function createTelegramLinkCode(): Promise<string> {
 
 export async function unlinkTelegram(): Promise<void> {
   const { error } = await supabase.rpc("admin_unlink_telegram");
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchTelegramAdmins(): Promise<TelegramAdminRow[]> {
+  const { data, error } = await supabase.rpc("admin_list_telegram_admins");
+  if (error) {
+    if (missingRpc(error)) return [];
+    throw new Error(error.message);
+  }
+  return (data ?? []) as TelegramAdminRow[];
+}
+
+export async function revokeTelegramAdmin(userId: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_revoke_telegram_admin", { p_user_id: userId });
+  if (error) throw new Error(error.message);
+}
+
+export async function setAdminBanned(
+  userId: string,
+  banned: boolean,
+  reason?: string | null,
+): Promise<void> {
+  const { error } = await supabase.rpc("admin_set_banned", {
+    p_user_id: userId,
+    p_banned: banned,
+    p_reason: reason ?? null,
+  });
   if (error) throw new Error(error.message);
 }

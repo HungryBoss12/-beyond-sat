@@ -714,6 +714,7 @@ export type Database = {
           difficulty: Database["public"]["Enums"]["sat_difficulty"];
           id: string;
           module: number;
+          published: boolean;
           section: Database["public"]["Enums"]["sat_section"];
           source_month: number | null;
           source_year: number | null;
@@ -727,6 +728,7 @@ export type Database = {
           difficulty?: Database["public"]["Enums"]["sat_difficulty"];
           id?: string;
           module: number;
+          published?: boolean;
           section: Database["public"]["Enums"]["sat_section"];
           source_month?: number | null;
           source_year?: number | null;
@@ -740,6 +742,7 @@ export type Database = {
           difficulty?: Database["public"]["Enums"]["sat_difficulty"];
           id?: string;
           module?: number;
+          published?: boolean;
           section?: Database["public"]["Enums"]["sat_section"];
           source_month?: number | null;
           source_year?: number | null;
@@ -1029,6 +1032,19 @@ export type Database = {
         Returns: Json;
       };
       admin_create_telegram_link_code: { Args: never; Returns: string };
+      admin_list_telegram_admins: {
+        Args: never;
+        Returns: {
+          user_id: string;
+          email: string | null;
+          full_name: string | null;
+          chat_id: number;
+          banned: boolean;
+          banned_reason: string | null;
+          is_self: boolean;
+        }[];
+      };
+      admin_revoke_telegram_admin: { Args: { p_user_id: string }; Returns: undefined };
       admin_set_banned: {
         Args: { p_user_id: string; p_banned: boolean; p_reason?: string | null };
         Returns: undefined;

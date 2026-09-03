@@ -50,7 +50,17 @@ look up users and apply bans without a logged-in admin session.
    npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
    ```
 
-3. Deploy, then register the webhook (replace placeholders):
+3. Deploy — the Worker auto-registers the Telegram webhook on first request and
+   re-checks hourly via cron. You can also sync manually from **Admin → Settings**
+   (Telegram card) or run:
+
+   ```bash
+   node scripts/setup-telegram-webhook.mjs
+   ```
+
+   (requires `TELEGRAM_WEBHOOK_SECRET` in `.dev.vars` or env)
+
+   Manual registration if needed:
 
    ```bash
    curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
@@ -60,6 +70,8 @@ look up users and apply bans without a logged-in admin session.
 
 4. In the app: **Admin → Settings → Telegram admin access** → generate a link code,
    then message the bot: `/link AB12CD`.
+
+   Other linked admins appear in the same card — you can **Revoke bot**, **Ban**, or **Allow** them.
 
 Commands: `/users`, `/user email`, `/tests email`, `/ban email`, `/unban email`, `/help`.
 

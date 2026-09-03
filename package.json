@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "cf:preview": "vite build && wrangler dev",
-    "deploy": "vite build && wrangler deploy",
+    "deploy": "vite build && wrangler deploy && node scripts/setup-telegram-webhook.mjs",
     "cf-typegen": "wrangler types",
     "secret": "wrangler secret put",
     "lint": "eslint .",
@@ -89,7 +89,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "2.7.7",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

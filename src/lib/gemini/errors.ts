@@ -1,5 +1,10 @@
 export type GeminiErrorCode =
-  "INVALID_IMAGE" | "MISSING_API_KEY" | "RATE_LIMIT" | "API_ERROR" | "EMPTY_RESPONSE";
+  | "INVALID_IMAGE"
+  | "MISSING_API_KEY"
+  | "RATE_LIMIT"
+  | "API_ERROR"
+  | "EMPTY_RESPONSE"
+  | "TIMEOUT";
 
 export class GeminiError extends Error {
   readonly code: GeminiErrorCode;

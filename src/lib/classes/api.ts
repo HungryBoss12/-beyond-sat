@@ -606,14 +606,12 @@ export async function amIMutedInThread(threadId: string): Promise<boolean> {
   return Boolean(data);
 }
 
+/** Signed URL for in-app display (images, previews). Do not force download. */
 export async function signedUrl(
   bucket: "chat-uploads" | "homework-uploads",
   path: string,
-  fileName?: string,
 ): Promise<string> {
-  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600, {
-    download: fileName ?? true,
-  });
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
   if (error) throw error;
   return data.signedUrl;
 }
@@ -624,9 +622,12 @@ export async function downloadStorageFile(
   path: string,
   fileName: string,
 ): Promise<void> {
-  const url = await signedUrl(bucket, path, fileName);
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600, {
+    download: fileName,
+  });
+  if (error) throw error;
   const a = document.createElement("a");
-  a.href = url;
+  a.href = data.signedUrl;
   a.download = fileName;
   a.rel = "noopener";
   document.body.appendChild(a);

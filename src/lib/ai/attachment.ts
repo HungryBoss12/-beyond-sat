@@ -14,6 +14,8 @@
  * a whole page at an angle.
  */
 
+import { loadHtmlImage } from "@/lib/load-image";
+
 const MAX_EDGE = 1600;
 const QUALITY = 0.85;
 /** Roughly 1.5 MB of source bytes; anything above this is downscaled regardless. */
@@ -35,22 +37,6 @@ export function imageFromFiles(files: FileList | File[] | null | undefined): Fil
   return null;
 }
 
-function loadImage(file: Blob): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(img);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("That file didn't open as an image."));
-    };
-    img.src = url;
-  });
-}
-
 /**
  * Reads a file to a data URL as-is. Used for a small PNG, where re-encoding to
  * JPEG would only make a screenshot of text blurrier.
@@ -69,7 +55,7 @@ export async function prepareAttachment(file: File): Promise<string> {
     throw new Error("Attach a PNG, JPEG or WebP image.");
   }
 
-  const img = await loadImage(file);
+  const img = await loadHtmlImage(file);
   const longEdge = Math.max(img.naturalWidth, img.naturalHeight);
 
   /* Already small and already light: keep the original bytes. A screenshot of a

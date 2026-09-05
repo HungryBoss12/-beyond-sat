@@ -125,7 +125,8 @@ export async function streamChat({
       const trimmed = line.trim();
       if (!trimmed.startsWith("data:")) continue;
       const payload = trimmed.slice(5).trim();
-      if (!payload || payload === "[DONE]") continue;
+      if (!payload) continue;
+      if (payload === "[DONE]") return;
       const delta = readDelta(payload);
       if (delta) onToken(delta);
     }

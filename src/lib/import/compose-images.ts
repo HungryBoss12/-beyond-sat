@@ -1,3 +1,5 @@
+import { loadHtmlImage } from "@/lib/load-image";
+
 function isBrowserLoadableImage(blob: Blob): boolean {
   const t = blob.type.toLowerCase();
   return (
@@ -20,22 +22,10 @@ export async function composeSourceImages(images: Blob[]): Promise<Blob> {
   if (loadable.length === 1) return loadable[0];
 
   const loaded = await Promise.all(
-    loadable.map(
-      (blob) =>
-        new Promise<{ img: HTMLImageElement; w: number; h: number }>((resolve, reject) => {
-          const img = new Image();
-          const url = URL.createObjectURL(blob);
-          img.onload = () => {
-            URL.revokeObjectURL(url);
-            resolve({ img, w: img.naturalWidth, h: img.naturalHeight });
-          };
-          img.onerror = () => {
-            URL.revokeObjectURL(url);
-            reject(new Error("Could not load an embedded image."));
-          };
-          img.src = url;
-        }),
-    ),
+    loadable.map(async (blob) => {
+      const img = await loadHtmlImage(blob);
+      return { img, w: img.naturalWidth, h: img.naturalHeight };
+    }),
   );
 
   const gap = 16;

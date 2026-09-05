@@ -26,6 +26,7 @@ export const Route = createFileRoute("/_authenticated/admin/notifications")({
 function AdminNotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
   const [recent, setRecent] = useState<StaffNotificationRow[]>([]);
@@ -103,9 +104,19 @@ function AdminNotificationsPage() {
   }
 
   async function onImage(file: File) {
-    const uploaded = await uploadHomeworkFile(file, file.name, "notifications");
-    const url = await signedUrl("homework-uploads", uploaded.storage_path, file.name);
-    setImageUrl(url);
+    setUploadingImage(true);
+    setError(null);
+    try {
+      const uploaded = await uploadHomeworkFile(file, file.name, "notifications");
+      /* Display URL — never force Content-Disposition: attachment or the browser
+         keeps retrying a "download" instead of painting the preview. */
+      const url = await signedUrl("homework-uploads", uploaded.storage_path);
+      setImageUrl(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Image upload failed.");
+    } finally {
+      setUploadingImage(false);
+    }
   }
 
   async function handleSend() {
@@ -278,12 +289,19 @@ function AdminNotificationsPage() {
                   type="file"
                   accept="image/*"
                   className="mt-1 block text-sm text-brand-100"
+                  disabled={busy || uploadingImage}
                   onChange={(e) => {
                     const f = e.target.files?.[0];
+                    e.target.value = "";
                     if (f) void onImage(f);
                   }}
                 />
               </AdminFieldLabel>
+              {uploadingImage ? (
+                <p className="inline-flex items-center gap-2 text-xs text-brand-100">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Uploading image…
+                </p>
+              ) : null}
               {imageUrl ? (
                 <div className="flex items-center gap-3">
                   <img src={imageUrl} alt="" className="h-16 w-16 rounded-xl object-cover" />

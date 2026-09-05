@@ -72,14 +72,29 @@ async function describeOneImage(
   parts.push({ inlineData: await inlineImageFromUrl(imageUrl) });
 
   try {
-    const response = await ai.models.generateContent({
-      model: model.trim() || GEMINI_CHAT_VISION_MODEL,
-      contents: [{ role: "user", parts }],
-      config: {
-        temperature: 0.2,
-        maxOutputTokens: RECOGNITION_MAX_TOKENS,
-      },
-    });
+    const response = await Promise.race([
+      ai.models.generateContent({
+        model: model.trim() || GEMINI_CHAT_VISION_MODEL,
+        contents: [{ role: "user", parts }],
+        config: {
+          temperature: 0.2,
+          maxOutputTokens: RECOGNITION_MAX_TOKENS,
+        },
+      }),
+      new Promise<never>((_, reject) => {
+        setTimeout(
+          () =>
+            reject(
+              new GeminiError(
+                "TIMEOUT",
+                "Reading the attached image timed out. Try a clearer crop or smaller file.",
+                504,
+              ),
+            ),
+          55_000,
+        );
+      }),
+    ]);
     const text = response.text?.trim();
     if (!text) throw new GeminiError("EMPTY_RESPONSE", "Gemini returned no image description.", 502);
     return text;

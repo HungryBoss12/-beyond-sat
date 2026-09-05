@@ -1,3 +1,5 @@
+import { loadHtmlImage } from "@/lib/load-image";
+
 export type FigureKind = "table" | "graph" | "diagram" | "number_line" | "figure";
 
 export type FigureBox = {
@@ -170,13 +172,7 @@ export async function cropPageToBlob(
   box: FigureBox,
   pad?: number | { x: number; y: number },
 ): Promise<Blob> {
-  const img = new Image();
-  const loaded = new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = () => reject(new Error("Could not load the page image to crop."));
-  });
-  img.src = dataUrl;
-  await loaded;
+  const img = await loadHtmlImage(dataUrl);
 
   const pads =
     typeof pad === "number"

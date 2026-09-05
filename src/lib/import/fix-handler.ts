@@ -1,6 +1,12 @@
 import { fixBrokenQuestionWithGemini, type FixStage } from "@/lib/gemini/fix-question";
 import { GeminiError } from "@/lib/gemini/errors";
-import { readBearerToken, readEnv, readSupabaseConfig, verifySupabaseUser } from "@/lib/server-env";
+import {
+  readBearerToken,
+  readEnv,
+  readSupabaseConfig,
+  verifyStaffUser,
+  verifySupabaseUser,
+} from "@/lib/server-env";
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -43,6 +49,9 @@ export async function handleImportFix(request: Request, env: unknown): Promise<R
   const user = await verifySupabaseUser(config, token);
   if (!user) {
     return json({ error: "Your session has expired. Sign in again." }, 401);
+  }
+  if (!(await verifyStaffUser(config, token))) {
+    return json({ error: "Staff access is required to fix questions." }, 403);
   }
 
   let payload: FixRequest;

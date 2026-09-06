@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { applyResolvedImageUrls } from "@/lib/storage-url";
 import {
   QuestionCard,
   emptyAnswer,
@@ -82,7 +83,7 @@ function SessionReview() {
         .map((a) => (a.question_id ? byId.get(a.question_id) : undefined))
         .filter(Boolean) as QuestionFull[];
 
-      setQuestions(ordered);
+      setQuestions(await applyResolvedImageUrls(ordered));
       setAttempts((att ?? []) as AttemptRow[]);
       setLoading(false);
     })();

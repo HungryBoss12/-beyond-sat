@@ -218,14 +218,28 @@ export function splitInlineChoices(line: string): { id: string; text: string }[]
  * 12 blocks so it can't reach back into the passage and read a sentence starting
  * "A " as choice A.
  */
+function isMarkdownTableLine(block: string): boolean {
+  return block.trimStart().startsWith("|");
+}
+
 function locateChoices(
   blocks: string[],
 ): { choices: { id: string; text: string }[]; start: number; end: number } | null {
   const floor = Math.max(1, blocks.length - 12);
 
   for (let i = blocks.length - 1; i >= floor; i--) {
-    const tableChoices = extractChoicesFromTableBlock(blocks[i]);
-    if (tableChoices) return { choices: tableChoices, start: i, end: i };
+    /* A Word/PDF table often arrives as one markdown row per block. Join
+       consecutive `| … |` lines so A–D split across rows are still found. */
+    if (isMarkdownTableLine(blocks[i])) {
+      let start = i;
+      let end = i;
+      while (start > 0 && isMarkdownTableLine(blocks[start - 1])) start--;
+      while (end + 1 < blocks.length && isMarkdownTableLine(blocks[end + 1])) end++;
+      const tableChoices = extractChoicesFromTableBlock(blocks.slice(start, end + 1).join("\n"));
+      if (tableChoices) return { choices: tableChoices, start, end };
+      i = start;
+      continue;
+    }
 
     const inline = splitInlineChoices(blocks[i]);
     if (inline) return { choices: inline, start: i, end: i };

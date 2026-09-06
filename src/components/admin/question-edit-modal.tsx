@@ -20,6 +20,7 @@ import {
 } from "@/lib/admin/question-ai";
 import { uploadQuestionImage } from "@/lib/import/upload-question-image";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveDisplayUrl, toPersistableImageRef } from "@/lib/storage-url";
 import {
   LETTER_DIFFICULTIES,
   MATH_SKILLS,
@@ -83,13 +84,33 @@ export function QuestionEditModal({
 
   const skills = editing.section === "reading_writing" ? RW_SKILLS : MATH_SKILLS;
   const busy = saving || uploading || aiBusy != null;
+  const [imageSrc, setImageSrc] = useState<string | null>(editing.image_url);
+
+  useEffect(() => {
+    let live = true;
+    const raw = editing.image_url;
+    if (!raw) {
+      setImageSrc(null);
+      return;
+    }
+    if (/^data:/i.test(raw)) {
+      setImageSrc(raw);
+      return;
+    }
+    void resolveDisplayUrl(raw).then((url) => {
+      if (live) setImageSrc(url);
+    });
+    return () => {
+      live = false;
+    };
+  }, [editing.image_url]);
 
   async function uploadImage(file: File) {
     setUploading(true);
     setAiError(null);
     try {
-      const url = await uploadQuestionImage(file);
-      setEditing((q) => ({ ...q, image_url: url }));
+      const path = await uploadQuestionImage(file);
+      setEditing((q) => ({ ...q, image_url: path }));
     } catch (err) {
       setAiError((err as Error)?.message ?? "That image could not be uploaded.");
     } finally {
@@ -178,7 +199,7 @@ export function QuestionEditModal({
         correct_choice_id: editing.kind === "multiple_choice" ? editing.correct_choice_id : null,
         correct_grid_answers: editing.kind === "grid_in" ? editing.correct_grid_answers : null,
         explanation: editing.explanation || null,
-        image_url: editing.image_url,
+        image_url: toPersistableImageRef(editing.image_url),
         source_month: editing.source_month,
         source_year: editing.source_year,
         time_limit_seconds: editing.time_limit_seconds,
@@ -377,9 +398,9 @@ export function QuestionEditModal({
 
           <Field label="Image (optional)">
             <div className="flex items-center gap-3">
-              {editing.image_url ? (
+              {imageSrc ? (
                 <img
-                  src={editing.image_url}
+                  src={imageSrc}
                   alt=""
                   className="h-16 w-16 rounded-lg border border-brand-400/50 object-cover"
                 />
@@ -396,6 +417,7 @@ export function QuestionEditModal({
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
+                    e.target.value = "";
                     if (f) void uploadImage(f);
                   }}
                 />
@@ -424,6 +446,9 @@ export function QuestionEditModal({
                 )}
               </div>
             </div>
+            {aiError && (
+              <p className="mt-1.5 text-[11px] font-semibold text-amber-100">{aiError}</p>
+            )}
           </Field>
 
           <Field label="Passage / prompt (optional)">

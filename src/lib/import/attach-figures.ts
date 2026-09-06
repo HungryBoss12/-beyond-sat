@@ -259,6 +259,8 @@ export async function attachFiguresToDrafts(
         if (t.reason === "required") {
           failed++;
           notes.push(`Q${t.draft.number}: no figure was found on page ${page}.`);
+        } else {
+          notes.push(`Q${t.draft.number}: no figure found on page ${page} — skipped.`);
         }
         continue;
       }
@@ -319,7 +321,11 @@ export async function attachFiguresToDrafts(
           );
         } else if (t.reason === "required") {
           failed++;
-          notes.push(`Q${t.draft.number}: ${(err as Error)?.message ?? "upload failed"}.`);
+          notes.push(`Q${t.draft.number}: figure attach failed — ${(err as Error)?.message ?? "upload failed"}.`);
+        } else {
+          notes.push(
+            `Q${t.draft.number}: figure skipped — ${(err as Error)?.message ?? "upload failed"}.`,
+          );
         }
       }
     }

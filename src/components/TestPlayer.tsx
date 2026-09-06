@@ -132,6 +132,7 @@ export function TestPlayer({
   );
   const [showReview, setShowReview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(() => {
     if (!(type === "mock" && mockSchedule)) return durationSeconds;
@@ -160,12 +161,16 @@ export function TestPlayer({
   const questionStartRef = useRef<number>(Date.now());
   const timePerQ = useRef<number[]>(questions.map(() => 0));
   const metaRef = useRef<Record<string, unknown>>(sessionMetadata ?? {});
+  const metadataWriteChainRef = useRef(Promise.resolve());
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const phaseRef = useRef(phase);
+  const submittingRef = useRef(false);
   const submitRef = useRef<() => Promise<void>>(async () => {});
 
   useEffect(() => {
-    metaRef.current = sessionMetadata ?? {};
+    if (Object.keys(metaRef.current).length === 0 && sessionMetadata) {
+      metaRef.current = sessionMetadata;
+    }
   }, [sessionMetadata]);
 
   useEffect(() => {
@@ -204,38 +209,41 @@ export function TestPlayer({
     };
   }, []);
 
+  /** Merge into metaRef sync, then serialize DB writes so mock progress and drafts cannot clobber each other. */
+  function patchSessionMetadata(patch: Record<string, unknown>) {
+    if (submittingRef.current) return Promise.resolve();
+    metaRef.current = { ...metaRef.current, ...patch };
+    metadataWriteChainRef.current = metadataWriteChainRef.current
+      .then(async () => {
+        if (submittingRef.current) return;
+        const snapshot = { ...metaRef.current };
+        const { error } = await supabase
+          .from("test_sessions")
+          .update({ metadata: snapshot })
+          .eq("id", sessionId);
+        if (error) console.error("[session metadata]", error);
+      })
+      .catch((e) => console.error("[session metadata]", e));
+    return metadataWriteChainRef.current;
+  }
+
   function persistMockProgress(patch: {
     phase?: MockPhase;
     timeLeft?: number;
     idx?: number;
   }) {
     if (!useSections) return;
-    const next = {
-      ...metaRef.current,
+    void patchSessionMetadata({
       ...(patch.phase != null ? { mock_phase: patch.phase } : {}),
       ...(patch.timeLeft != null ? { mock_time_left: patch.timeLeft } : {}),
       ...(patch.idx != null ? { mock_idx: patch.idx } : {}),
-    };
-    metaRef.current = next;
-    void supabase.from("test_sessions").update({ metadata: next }).eq("id", sessionId);
+    });
   }
 
   function scheduleDraftSave(next: AnswerState[]) {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      void supabase
-        .from("test_sessions")
-        .update({
-          metadata: {
-            ...metaRef.current,
-            draft_answers: next,
-          },
-        })
-        .eq("id", sessionId)
-        .then(({ error }) => {
-          if (error) console.error("[draft_answers]", error);
-          else metaRef.current = { ...metaRef.current, draft_answers: next };
-        });
+      void patchSessionMetadata({ draft_answers: next });
     }, 400);
   }
 
@@ -355,92 +363,122 @@ export function TestPlayer({
   async function submit() {
     if (submitting || result) return;
     setSubmitting(true);
-    // finalize current question time
-    const elapsed = Math.round((Date.now() - questionStartRef.current) / 1000);
-    timePerQ.current[idx] = (timePerQ.current[idx] ?? 0) + elapsed;
+    submittingRef.current = true;
+    setSubmitError(null);
+    try {
+      const elapsed = Math.round((Date.now() - questionStartRef.current) / 1000);
+      timePerQ.current[idx] = (timePerQ.current[idx] ?? 0) + elapsed;
 
-    let correct = 0;
-    let rwC = 0,
-      rwT = 0,
-      mC = 0,
-      mT = 0;
-    const currentAnswers = answersRef.current;
-    const attempts = await Promise.all(
-      questions.map(async (q, i) => {
-        const a = currentAnswers[i];
-        let isCorrect: boolean | null = null;
-        const hasAnswer = q.kind === "grid_in" ? !!a.gridAnswer.trim() : !!a.selectedChoiceId;
-        if (hasAnswer) {
-          const { data } = await supabase.rpc("grade_answer", {
-            p_question_id: q.id,
-            p_choice_id: a.selectedChoiceId ?? "",
-            p_grid_answer: a.gridAnswer || "",
-          });
-          isCorrect = (data as boolean | null) ?? null;
-        }
-        if (isCorrect) correct += 1;
-        if (q.section === "reading_writing") {
-          rwT += 1;
-          if (isCorrect) rwC += 1;
-        } else {
-          mT += 1;
-          if (isCorrect) mC += 1;
-        }
-        return {
-          user_id: userId,
-          session_id: sessionId,
-          question_id: q.id,
-          test_type: type,
-          selected_choice_id: a.selectedChoiceId,
-          grid_answer: a.gridAnswer || null,
-          is_correct: isCorrect,
-          marked_for_review: a.markedForReview,
-          eliminated_choice_ids: a.eliminated,
-          time_spent_seconds: timePerQ.current[i] ?? 0,
-        };
-      }),
-    );
-
-    const { error: aErr } = await supabase.from("attempts").insert(attempts);
-    if (aErr) console.error(aErr);
-
-    const scaled =
-      type === "mock"
-        ? {
-            rw: scaledScore(rwC, rwT, "reading_writing"),
-            math: scaledScore(mC, mT, "math"),
-            total: scaledScore(rwC, rwT, "reading_writing") + scaledScore(mC, mT, "math"),
+      let correct = 0;
+      let rwC = 0,
+        rwT = 0,
+        mC = 0,
+        mT = 0;
+      const currentAnswers = answersRef.current;
+      const gradeFailures: string[] = [];
+      const attempts = await Promise.all(
+        questions.map(async (q, i) => {
+          const a = currentAnswers[i];
+          let isCorrect: boolean | null = null;
+          const hasAnswer = q.kind === "grid_in" ? !!a.gridAnswer.trim() : !!a.selectedChoiceId;
+          if (hasAnswer) {
+            const { data, error: gradeErr } = await supabase.rpc("grade_answer", {
+              p_question_id: q.id,
+              p_choice_id: a.selectedChoiceId ?? "",
+              p_grid_answer: a.gridAnswer || "",
+            });
+            if (gradeErr) {
+              gradeFailures.push(gradeErr.message || `Question ${i + 1} could not be graded`);
+            } else {
+              isCorrect = (data as boolean | null) ?? null;
+            }
           }
-        : null;
+          if (isCorrect) correct += 1;
+          if (q.section === "reading_writing") {
+            rwT += 1;
+            if (isCorrect) rwC += 1;
+          } else {
+            mT += 1;
+            if (isCorrect) mC += 1;
+          }
+          return {
+            user_id: userId,
+            session_id: sessionId,
+            question_id: q.id,
+            test_type: type,
+            selected_choice_id: a.selectedChoiceId,
+            grid_answer: a.gridAnswer || null,
+            is_correct: isCorrect,
+            marked_for_review: a.markedForReview,
+            eliminated_choice_ids: a.eliminated,
+            time_spent_seconds: timePerQ.current[i] ?? 0,
+          };
+        }),
+      );
 
-    await supabase
-      .from("test_sessions")
-      .update({
-        completed_at: new Date().toISOString(),
-        correct_count: correct,
-        total_questions: questions.length,
-        rw_score: scaled?.rw ?? null,
-        math_score: scaled?.math ?? null,
-        score: scaled?.total ?? correct,
-        metadata: {
-          ...metaRef.current,
-          draft_answers: null,
-        },
-      })
-      .eq("id", sessionId);
+      if (gradeFailures.length > 0) {
+        throw new Error(
+          `Could not grade ${gradeFailures.length} question${gradeFailures.length === 1 ? "" : "s"}. Your session is still saved — try Submit again.`,
+        );
+      }
 
-    if (type === "daily") await bumpDailyStreak(userId);
+      const { error: aErr } = await supabase.from("attempts").insert(attempts);
+      if (aErr) {
+        throw new Error(
+          aErr.message || "Could not save your answers. Your session is still saved — try Submit again.",
+        );
+      }
 
-    setResult({
-      correct,
-      total: questions.length,
-      rwCorrect: rwC,
-      rwTotal: rwT,
-      mathCorrect: mC,
-      mathTotal: mT,
-      scaled,
-    });
-    setSubmitting(false);
+      const scaled =
+        type === "mock"
+          ? {
+              rw: scaledScore(rwC, rwT, "reading_writing"),
+              math: scaledScore(mC, mT, "math"),
+              total: scaledScore(rwC, rwT, "reading_writing") + scaledScore(mC, mT, "math"),
+            }
+          : null;
+
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      await metadataWriteChainRef.current.catch(() => {});
+      metaRef.current = { ...metaRef.current, draft_answers: null };
+      const { error: completeErr } = await supabase
+        .from("test_sessions")
+        .update({
+          completed_at: new Date().toISOString(),
+          correct_count: correct,
+          total_questions: questions.length,
+          rw_score: scaled?.rw ?? null,
+          math_score: scaled?.math ?? null,
+          score: scaled?.total ?? correct,
+          metadata: { ...metaRef.current },
+        })
+        .eq("id", sessionId);
+      if (completeErr) {
+        throw new Error(
+          completeErr.message || "Could not finish the session. Try Submit again.",
+        );
+      }
+
+      if (type === "daily") await bumpDailyStreak(userId);
+
+      setResult({
+        correct,
+        total: questions.length,
+        rwCorrect: rwC,
+        rwTotal: rwT,
+        mathCorrect: mC,
+        mathTotal: mT,
+        scaled,
+      });
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Submit failed. Try again.");
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
   }
   submitRef.current = submit;
 
@@ -762,6 +800,7 @@ export function TestPlayer({
                 : "Submit"
             }
             submitting={submitting}
+            submitError={submitError}
           />
         </div>
       ) : (
@@ -1088,6 +1127,7 @@ function ReviewPanel({
   onSubmit,
   submitLabel = "Submit",
   submitting,
+  submitError,
 }: {
   questions: QuestionRow[];
   answered: boolean[];
@@ -1101,6 +1141,7 @@ function ReviewPanel({
   onSubmit: () => void;
   submitLabel?: string;
   submitting: boolean;
+  submitError?: string | null;
 }) {
   const allowed = allowedIndices ? new Set(allowedIndices) : null;
   const unanswered = (allowedIndices ?? questions.map((_, i) => i)).filter(
@@ -1195,6 +1236,11 @@ function ReviewPanel({
             ? `${unanswered} unanswered. Click any number to jump back.`
             : "All questions answered."}
         </p>
+        {submitError ? (
+          <p className="max-w-md text-center text-sm font-medium text-red-600" role="alert">
+            {submitError}
+          </p>
+        ) : null}
         <button
           onClick={onSubmit}
           disabled={submitting}

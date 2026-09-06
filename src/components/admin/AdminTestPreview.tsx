@@ -7,6 +7,7 @@ import {
   type QuestionRow,
 } from "@/components/QuestionCard";
 import { SECTION_LABEL } from "@/lib/sat";
+import { applyResolvedImageUrls } from "@/lib/storage-url";
 
 type QuestionFull = QuestionRow & {
   correct_choice_id: string | null;
@@ -52,7 +53,9 @@ export async function loadTestPreviewQuestions(questionIds: string[]): Promise<Q
     }),
   );
 
-  return questionIds.map((id) => byId.get(id)).filter(Boolean) as QuestionFull[];
+  return applyResolvedImageUrls(
+    questionIds.map((id) => byId.get(id)).filter(Boolean) as QuestionFull[],
+  );
 }
 
 export function AdminTestPreview({ title, section, questionIds, onClose }: Props) {

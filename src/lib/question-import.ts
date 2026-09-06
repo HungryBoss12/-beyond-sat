@@ -77,6 +77,12 @@ function normValue(s: string): string {
     .replace(/[^a-z0-9]+/g, "");
 }
 
+function isValidImageRef(value: string): boolean {
+  if (/^https?:\/\//i.test(value) || /^data:/i.test(value)) return true;
+  if (/\/storage\/v1\/object\//i.test(value)) return true;
+  return /^[\w./-]+\.(png|jpe?g|gif|webp)$/i.test(value);
+}
+
 /** Canonical field name for a header cell, or null if unrecognised. */
 function canonicalField(header: string): string | null {
   const k = normKey(header);
@@ -650,8 +656,8 @@ export function validateRecord(
   }
 
   const image_url = get("image_url") || null;
-  if (image_url && !/^https?:\/\//i.test(image_url)) {
-    warnings.push("Image URL doesn't start with http(s) — it may not load.");
+  if (image_url && !isValidImageRef(image_url)) {
+    warnings.push("Image isn't a web URL, data URL, or storage path — it may not load.");
   }
 
   const figureErr = figureDependencyError(rec, opts);

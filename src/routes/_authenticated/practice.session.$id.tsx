@@ -8,6 +8,7 @@ import {
   type QuestionRow,
 } from "@/components/QuestionCard";
 import type { TestType } from "@/lib/session";
+import { applyResolvedImageUrls } from "@/lib/storage-url";
 
 export const Route = createFileRoute("/_authenticated/practice/session/$id")({
   component: SessionRunner,
@@ -124,7 +125,7 @@ function SessionRunner() {
         setLoading(false);
         return;
       }
-      setQuestions(ordered);
+      setQuestions(await applyResolvedImageUrls(ordered));
 
       /* Only mocks get a session clock (module timings). Practice/daily stay
          Untimed — summing per-question time_limit_seconds produced absurd clocks

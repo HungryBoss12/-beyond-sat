@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ImageIcon, Loader2, Trash2, Upload } from "lucide-react";
 import { MathText } from "@/components/MathText";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/lib/sat";
 import type { Draft } from "@/lib/import/parse";
 import { uploadQuestionImage } from "@/lib/import/upload-question-image";
+import { resolveDisplayUrl } from "@/lib/storage-url";
 import { CONTROL_CLASS } from "./types";
 import { Field } from "./field";
 
@@ -54,6 +55,25 @@ export function DraftEditor({
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [imageSrc, setImageSrc] = useState(imageUrl);
+
+  useEffect(() => {
+    let live = true;
+    if (!imageUrl) {
+      setImageSrc("");
+      return;
+    }
+    if (/^data:/i.test(imageUrl)) {
+      setImageSrc(imageUrl);
+      return;
+    }
+    void resolveDisplayUrl(imageUrl).then((url) => {
+      if (live) setImageSrc(url ?? imageUrl);
+    });
+    return () => {
+      live = false;
+    };
+  }, [imageUrl]);
 
   function setField(key: string, value: string) {
     onChange({ rec: patchRec(rec, { [key]: value }) });
@@ -167,7 +187,7 @@ export function DraftEditor({
         <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-brand-100">Figure</p>
         {imageUrl ? (
           <div className="mb-2 overflow-hidden rounded-lg border border-brand-400/40 bg-white">
-            <img src={imageUrl} alt="Question figure" className="max-h-48 w-full object-contain" />
+            <img src={imageSrc || imageUrl} alt="Question figure" className="max-h-48 w-full object-contain" />
           </div>
         ) : (
           <div className="mb-2 flex items-center gap-2 rounded-lg border border-dashed border-brand-400/50 bg-brand-900/40 px-3 py-2 text-xs text-brand-100">

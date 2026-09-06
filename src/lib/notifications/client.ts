@@ -1,4 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
+import {
+  HOMEWORK_UPLOADS_BUCKET,
+  applyResolvedImageUrls,
+  toPersistableImageRef,
+} from "@/lib/storage-url";
 import type { CreateNotificationInput, UserNotification } from "./types";
 import type { StaffNotificationRow } from "./admin";
 
@@ -56,10 +61,11 @@ export async function fetchMyNotifications(): Promise<UserNotification[]> {
 
   if (error) throw new Error(error.message);
   const now = Date.now();
-  return ((data ?? []) as RecipientRow[])
+  const rows = ((data ?? []) as RecipientRow[])
     .map(mapRow)
     .filter((n) => new Date(n.expires_at).getTime() > now)
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return applyResolvedImageUrls(rows, HOMEWORK_UPLOADS_BUCKET);
 }
 
 export async function fetchDashboardNotifications(): Promise<UserNotification[]> {
@@ -122,7 +128,7 @@ export async function createNotification(input: CreateNotificationInput): Promis
     .insert({
       title: input.title.trim(),
       body: input.body?.trim() || null,
-      image_url: input.imageUrl || null,
+      image_url: toPersistableImageRef(input.imageUrl, HOMEWORK_UPLOADS_BUCKET) || null,
       link_url: input.linkUrl || null,
       link_label: input.linkLabel || null,
       source_type: input.sourceType ?? "admin",
@@ -159,7 +165,7 @@ export async function listStaffNotifications(limit = 25): Promise<StaffNotificat
     .limit(limit);
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as StaffNotificationRow[];
+  return applyResolvedImageUrls((data ?? []) as StaffNotificationRow[], HOMEWORK_UPLOADS_BUCKET);
 }
 
 export type UpdateNotificationInput = {
@@ -181,7 +187,7 @@ export async function updateNotification(
       title: input.title.trim(),
       body: input.body?.trim() || null,
       link_url: input.linkUrl || null,
-      image_url: input.imageUrl || null,
+      image_url: toPersistableImageRef(input.imageUrl, HOMEWORK_UPLOADS_BUCKET) || null,
       overlay_display_seconds: overlaySeconds,
     })
     .eq("id", id);

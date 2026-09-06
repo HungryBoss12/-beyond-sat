@@ -81,6 +81,8 @@ import {
   type MathPracticeDiag,
   type OrphanMathGroup,
 } from "@/lib/import/load-existing";
+import { uploadQuestionImage } from "@/lib/import/upload-question-image";
+import { toPersistableImageRef } from "@/lib/storage-url";
 
 export const Route = createFileRoute("/_authenticated/admin/import")({
   component: AdminImport,
@@ -88,6 +90,52 @@ export const Route = createFileRoute("/_authenticated/admin/import")({
 });
 
 type ModuleChoice = 1 | 2 | "both";
+
+const WRITE_TIMEOUT_MS = 20_000;
+
+function withWriteTimeout<T>(work: PromiseLike<T>, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([
+    Promise.resolve(work).finally(() => {
+      if (timer) clearTimeout(timer);
+    }),
+    new Promise<T>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`${label} timed out after 20s`)),
+        WRITE_TIMEOUT_MS,
+      );
+    }),
+  ]);
+}
+
+async function persistQuestionImage(
+  url: string | null | undefined,
+  rowLabel: string,
+): Promise<{ path: string | null; error?: string; skipped?: string }> {
+  const value = (url ?? "").trim();
+  if (!value) return { path: null };
+  if (/^data:/i.test(value)) {
+    try {
+      const res = await fetch(value);
+      const blob = await res.blob();
+      const path = await uploadQuestionImage(blob, `import-${rowLabel}.png`);
+      return { path };
+    } catch (err) {
+      return {
+        path: null,
+        error: `${rowLabel}: figure upload failed (${(err as Error).message}).`,
+      };
+    }
+  }
+  const path = toPersistableImageRef(value);
+  if (!path) {
+    return {
+      path: null,
+      skipped: `${rowLabel}: figure was skipped (not a storage path or URL).`,
+    };
+  }
+  return { path };
+}
 
 function AdminImport() {
   const [step, setStep] = useState<ImportWizardStep>("setup");
@@ -941,16 +989,26 @@ function AdminImport() {
     setResult(null);
     setProgress({ done: 0, total: tagged.length });
 
-    const { data: u } = await supabase.auth.getUser();
-    const uid = u.user?.id ?? null;
-
     let updated = 0;
     let failed = 0;
     const errors: string[] = [];
     const savedItems: { id: string; module: 1 | 2 }[] = [];
 
+    try {
+    const { data: sessionWrap } = await supabase.auth.getSession();
+    const uid = sessionWrap.session?.user?.id ?? null;
+
     for (const t of tagged) {
       const q = t.row.question!;
+      const rowLabel = `Row ${t.row.index}`;
+      const img = await persistQuestionImage(q.image_url, rowLabel);
+      if (img.error) {
+        failed++;
+        if (errors.length < 10) errors.push(img.error);
+        setProgress((p) => ({ ...p, done: p.done + 1 }));
+        continue;
+      }
+      if (img.skipped) errors.push(img.skipped);
       const payload = {
         section: q.section,
         skill: q.skill,
@@ -962,7 +1020,7 @@ function AdminImport() {
         correct_choice_id: q.kind === "multiple_choice" ? q.correct_choice_id : null,
         correct_grid_answers: q.kind === "grid_in" ? q.correct_grid_answers : null,
         explanation: q.explanation,
-        image_url: q.image_url,
+        image_url: img.path,
         source_month: q.source_month ?? month ?? null,
         source_year: q.source_year ?? year ?? null,
       };
@@ -970,19 +1028,29 @@ function AdminImport() {
       if (!t.existingId) {
         failed++;
         if (errors.length < 10) {
-          errors.push(`Row ${t.row.index}: missing bank id — cannot update.`);
+          errors.push(`${rowLabel}: missing bank id — cannot update.`);
         }
         setProgress((p) => ({ ...p, done: p.done + 1 }));
         continue;
       }
 
-      const { error } = await supabase.from("questions").update(payload).eq("id", t.existingId);
-      if (error) {
+      try {
+        const { error } = await withWriteTimeout(
+          supabase.from("questions").update(payload).eq("id", t.existingId),
+          `${rowLabel} update`,
+        );
+        if (error) {
+          failed++;
+          if (errors.length < 10) errors.push(`${rowLabel}: ${error.message}`);
+        } else {
+          updated++;
+          savedItems.push({ id: t.existingId, module: t.module });
+        }
+      } catch (err) {
         failed++;
-        if (errors.length < 10) errors.push(`Row ${t.row.index}: ${error.message}`);
-      } else {
-        updated++;
-        savedItems.push({ id: t.existingId, module: t.module });
+        if (errors.length < 10) {
+          errors.push(`${rowLabel}: ${(err as Error).message}`);
+        }
       }
       setProgress((p) => ({ ...p, done: p.done + 1 }));
     }
@@ -1026,8 +1094,14 @@ function AdminImport() {
         if (ue) {
           errors.push(`Could not update set metadata: ${ue.message}`);
         }
-        await supabase.from("test_questions").delete().eq("test_id", tid);
       }
+
+      const { data: existingLinks } = await supabase
+        .from("test_questions")
+        .select("test_id,question_id,position")
+        .eq("test_id", tid);
+      const snapshot = existingLinks ?? [];
+      await supabase.from("test_questions").delete().eq("test_id", tid);
 
       const links = ids.map((question_id, i) => ({
         test_id: tid!,
@@ -1036,7 +1110,18 @@ function AdminImport() {
       }));
       const { error: le } = await supabase.from("test_questions").insert(links);
       if (le) {
-        errors.push(`"${label}" links failed: ${le.message}.`);
+        if (snapshot.length > 0) {
+          const { error: restoreErr } = await supabase.from("test_questions").insert(snapshot);
+          if (restoreErr) {
+            errors.push(
+              `"${label}" links failed and the previous list could not be restored: ${restoreErr.message}.`,
+            );
+          } else {
+            errors.push(`"${label}" links failed: ${le.message}. Previous questions were restored.`);
+          }
+        } else {
+          errors.push(`"${label}" links failed: ${le.message}.`);
+        }
         return null;
       }
       return label;
@@ -1092,7 +1177,6 @@ function AdminImport() {
         )) ?? undefined;
     }
 
-    setImporting(false);
     setResult({
       inserted: updated,
       failed,
@@ -1106,6 +1190,17 @@ function AdminImport() {
       setStep("setup");
       setMode("upload");
       setSkipDuplicates(true);
+    }
+    } catch (err) {
+      errors.push((err as Error)?.message ?? "Save failed.");
+      setResult({
+        inserted: updated,
+        failed: failed + Math.max(0, tagged.length - updated - failed),
+        errors,
+        kind: "update",
+      });
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -1131,48 +1226,91 @@ function AdminImport() {
     setResult(null);
     setProgress({ done: 0, total: tagged.length });
 
-    const { data: u } = await supabase.auth.getUser();
-    const uid = u.user?.id ?? null;
-
     let inserted = 0;
     let failed = 0;
     const errors: string[] = [];
     const insertedItems: { id: string; module: 1 | 2 }[] = [];
 
-    const payloadFor = (r: (typeof tagged)[number]["row"]) => ({
-      ...r.question!,
-      source_month: r.question!.source_month ?? month ?? null,
-      source_year: r.question!.source_year ?? year ?? null,
-      created_by: uid,
-    });
+    try {
+    const { data: sessionWrap } = await supabase.auth.getSession();
+    const uid = sessionWrap.session?.user?.id ?? null;
 
-    for (let i = 0; i < tagged.length; i += CHUNK) {
-      const slice = tagged.slice(i, i + CHUNK);
-      const { data, error } = await supabase
-        .from("questions")
-        .insert(slice.map((t) => payloadFor(t.row)))
-        .select("id");
-      if (error) {
-        for (const t of slice) {
-          const { data: one, error: e2 } = await supabase
+    const ready: {
+      row: (typeof tagged)[number]["row"];
+      module: 1 | 2;
+      payload: NonNullable<(typeof tagged)[number]["row"]["question"]> & {
+        created_by: string | null;
+      };
+    }[] = [];
+    for (const t of tagged) {
+      const rowLabel = `Row ${t.row.index}`;
+      const img = await persistQuestionImage(t.row.question!.image_url, rowLabel);
+      if (img.error) {
+        failed++;
+        if (errors.length < 10) errors.push(img.error);
+        setProgress((p) => ({ ...p, done: p.done + 1 }));
+        continue;
+      }
+      if (img.skipped) errors.push(img.skipped);
+      ready.push({
+        row: t.row,
+        module: t.module,
+        payload: {
+          ...t.row.question!,
+          image_url: img.path,
+          source_month: t.row.question!.source_month ?? month ?? null,
+          source_year: t.row.question!.source_year ?? year ?? null,
+          created_by: uid,
+        },
+      });
+    }
+
+    for (let i = 0; i < ready.length; i += CHUNK) {
+      const slice = ready.slice(i, i + CHUNK);
+      try {
+        const { data, error } = await withWriteTimeout(
+          supabase
             .from("questions")
-            .insert(payloadFor(t.row))
-            .select("id")
-            .single();
-          if (e2) {
-            failed++;
-            if (errors.length < 10) errors.push(`Row ${t.row.index}: ${e2.message}`);
-          } else {
-            inserted++;
-            if (one?.id) insertedItems.push({ id: one.id as string, module: t.module });
+            .insert(slice.map((t) => t.payload))
+            .select("id"),
+          `Insert ${slice.length} questions`,
+        );
+        if (error) {
+          for (const t of slice) {
+            try {
+              const { data: one, error: e2 } = await withWriteTimeout(
+                supabase.from("questions").insert(t.payload).select("id").single(),
+                `Row ${t.row.index} insert`,
+              );
+              if (e2) {
+                failed++;
+                if (errors.length < 10) errors.push(`Row ${t.row.index}: ${e2.message}`);
+              } else {
+                inserted++;
+                if (one?.id) insertedItems.push({ id: one.id as string, module: t.module });
+              }
+            } catch (err) {
+              failed++;
+              if (errors.length < 10) {
+                errors.push(`Row ${t.row.index}: ${(err as Error).message}`);
+              }
+            }
+            setProgress((p) => ({ ...p, done: p.done + 1 }));
           }
-          setProgress((p) => ({ ...p, done: p.done + 1 }));
+        } else {
+          inserted += slice.length;
+          const ids = (data ?? []) as { id: string }[];
+          for (let j = 0; j < ids.length; j++) {
+            insertedItems.push({ id: ids[j].id, module: slice[j]?.module ?? 1 });
+          }
+          setProgress((p) => ({ ...p, done: p.done + slice.length }));
         }
-      } else {
-        inserted += slice.length;
-        const ids = (data ?? []) as { id: string }[];
-        for (let j = 0; j < ids.length; j++) {
-          insertedItems.push({ id: ids[j].id, module: slice[j]?.module ?? 1 });
+      } catch (err) {
+        failed += slice.length;
+        if (errors.length < 10) {
+          errors.push(
+            `Rows ${slice[0]?.row.index}–${slice[slice.length - 1]?.row.index}: ${(err as Error).message}`,
+          );
         }
         setProgress((p) => ({ ...p, done: p.done + slice.length }));
       }
@@ -1244,7 +1382,6 @@ function AdminImport() {
       }
     }
 
-    setImporting(false);
     setResult({ inserted, failed, errors, setTitle: createdSet });
     if (failed === 0 && errors.length === 0) {
       setText("");
@@ -1253,6 +1390,16 @@ function AdminImport() {
       clearExtracted();
       setFileName("");
       setStep("setup");
+    }
+    } catch (err) {
+      errors.push((err as Error)?.message ?? "Import failed.");
+      setResult({
+        inserted,
+        failed: failed + Math.max(0, tagged.length - inserted - failed),
+        errors,
+      });
+    } finally {
+      setImporting(false);
     }
   }
 

@@ -6,8 +6,12 @@ import { PageHead, Panel } from "@/components/ui/panel";
 import { AdminAudiencePicker } from "@/components/admin/AdminAudiencePicker";
 import { AdminFieldLabel, adminInputCls } from "@/components/admin/AdminSelect";
 import { listActiveClasses } from "@/lib/classes/api";
-import { signedUrl } from "@/lib/classes/api";
 import { uploadHomeworkFile } from "@/lib/classes/uploads";
+import {
+  HOMEWORK_UPLOADS_BUCKET,
+  resolveDisplayUrl,
+  toPersistableImageRef,
+} from "@/lib/storage-url";
 import {
   createNotification,
   deleteNotification,
@@ -38,6 +42,7 @@ function AdminNotificationsPage() {
   const [body, setBody] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [audienceType, setAudienceType] = useState<NotificationAudience>("all");
   const [classId, setClassId] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -66,6 +71,20 @@ function AdminNotificationsPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    let live = true;
+    if (!imageUrl) {
+      setImagePreview(null);
+      return;
+    }
+    void resolveDisplayUrl(imageUrl, HOMEWORK_UPLOADS_BUCKET).then((url) => {
+      if (live) setImagePreview(url);
+    });
+    return () => {
+      live = false;
+    };
+  }, [imageUrl]);
+
   const classOptions = useMemo(
     () => classes.map((c) => ({ value: c.id, label: c.name })),
     [classes],
@@ -85,6 +104,7 @@ function AdminNotificationsPage() {
     setBody("");
     setLinkUrl("");
     setImageUrl(null);
+    setImagePreview(null);
     setAudienceType("all");
     setClassId("");
     setSelectedUsers([]);
@@ -96,7 +116,7 @@ function AdminNotificationsPage() {
     setTitle(n.title);
     setBody(n.body ?? "");
     setLinkUrl(n.link_url ?? "");
-    setImageUrl(n.image_url);
+    setImageUrl(toPersistableImageRef(n.image_url, HOMEWORK_UPLOADS_BUCKET) ?? n.image_url);
     setDisplaySeconds(n.overlay_display_seconds);
     setAudienceType(n.audience_type);
     setSent(null);
@@ -108,10 +128,10 @@ function AdminNotificationsPage() {
     setError(null);
     try {
       const uploaded = await uploadHomeworkFile(file, file.name, "notifications");
-      /* Display URL — never force Content-Disposition: attachment or the browser
-         keeps retrying a "download" instead of painting the preview. */
-      const url = await signedUrl("homework-uploads", uploaded.storage_path);
-      setImageUrl(url);
+      setImageUrl(
+        toPersistableImageRef(uploaded.storage_path, HOMEWORK_UPLOADS_BUCKET) ??
+          `${HOMEWORK_UPLOADS_BUCKET}/${uploaded.storage_path}`,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Image upload failed.");
     } finally {
@@ -134,7 +154,7 @@ function AdminNotificationsPage() {
           title,
           body,
           linkUrl: linkUrl || null,
-          imageUrl: imageUrl,
+          imageUrl: toPersistableImageRef(imageUrl, HOMEWORK_UPLOADS_BUCKET),
           displaySeconds,
         });
         resetForm();
@@ -160,7 +180,7 @@ function AdminNotificationsPage() {
       await createNotification({
         title,
         body,
-        imageUrl: imageUrl ?? undefined,
+        imageUrl: toPersistableImageRef(imageUrl, HOMEWORK_UPLOADS_BUCKET) ?? undefined,
         linkUrl: linkUrl || undefined,
         linkLabel: "Open",
         audienceType,
@@ -304,10 +324,13 @@ function AdminNotificationsPage() {
               ) : null}
               {imageUrl ? (
                 <div className="flex items-center gap-3">
-                  <img src={imageUrl} alt="" className="h-16 w-16 rounded-xl object-cover" />
+                  <img src={imagePreview ?? imageUrl} alt="" className="h-16 w-16 rounded-xl object-cover" />
                   <button
                     type="button"
-                    onClick={() => setImageUrl(null)}
+                    onClick={() => {
+                      setImageUrl(null);
+                      setImagePreview(null);
+                    }}
                     className="text-xs font-semibold text-brand-100 underline hover:text-white"
                   >
                     Remove image

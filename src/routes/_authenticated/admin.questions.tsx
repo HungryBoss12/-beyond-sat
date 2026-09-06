@@ -18,6 +18,7 @@ import {
   type AdminChoice,
   type AdminQuestion,
 } from "@/lib/admin/question";
+import { applyResolvedImageUrls } from "@/lib/storage-url";
 
 export const Route = createFileRoute("/_authenticated/admin/questions")({
   component: AdminQuestions,
@@ -40,16 +41,15 @@ function AdminQuestions() {
       .limit(300);
     if (filter !== "all") q = q.eq("section", filter);
     const { data } = await q;
-    setItems(
-      (data ?? []).map((r) => ({
-        ...r,
-        choices: (r.choices ?? []) as AdminChoice[],
-        correct_choice_id: null,
-        correct_grid_answers: [],
-        explanation: null,
-        time_limit_seconds: r.time_limit_seconds ?? null,
-      })),
-    );
+    const mapped = (data ?? []).map((r) => ({
+      ...r,
+      choices: (r.choices ?? []) as AdminChoice[],
+      correct_choice_id: null,
+      correct_grid_answers: [],
+      explanation: null,
+      time_limit_seconds: r.time_limit_seconds ?? null,
+    }));
+    setItems(await applyResolvedImageUrls(mapped));
     setLoading(false);
   }, [filter]);
 

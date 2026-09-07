@@ -48,8 +48,13 @@ function extractJsonArray(text: string): unknown[] | null {
 
 function asText(value: unknown): string {
   if (value == null) return "";
-  if (Array.isArray(value)) return value.map((v) => String(v)).join(", ");
-  if (typeof value === "object") return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return value.map(asText).filter(Boolean).join(" ");
+  if (typeof value === "object") {
+    const rec = value as Record<string, unknown>;
+    return asText(rec.text ?? rec.question_text ?? rec.stem ?? rec.content ?? "");
+  }
   return String(value);
 }
 

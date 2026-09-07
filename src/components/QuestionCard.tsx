@@ -82,7 +82,11 @@ export function QuestionCard({
   onCloseNotes?: () => void;
 }) {
   const choices = useMemo(() => (Array.isArray(q.choices) ? q.choices : []), [q.choices]);
-  const hasPassage = !!(q.prompt || q.image_url);
+  const stemText = (q.question_text ?? "").trim();
+  const passageText = (q.prompt ?? "").trim();
+  const questionStem = stemText || passageText;
+  const leftPassage = stemText ? passageText : "";
+  const hasPassage = !!(leftPassage || q.image_url);
 
   /* Bluebook hides the cross-out controls until the student turns them on, and
      the setting then persists for the rest of the sitting. This component
@@ -197,8 +201,8 @@ export function QuestionCard({
 
   // Render passage with highlight underlines
   const renderedPassage = useMemo(() => {
-    if (!q.prompt) return null;
-    const text = q.prompt;
+    if (!leftPassage) return null;
+    const text = leftPassage;
     // For visual highlight, wrap each highlight substring (first occurrence)
     // Build a list of ranges
     type R = { start: number; end: number; hid: string; note: string };
@@ -233,7 +237,7 @@ export function QuestionCard({
     });
     if (cursor < text.length) parts.push(<MathText key="t-end">{text.slice(cursor)}</MathText>);
     return parts;
-  }, [q.prompt, answer.highlights]);
+  }, [leftPassage, answer.highlights]);
 
   return (
     /* Full bleed, no card. Bluebook has no panel and no page margin: the
@@ -319,6 +323,7 @@ export function QuestionCard({
           >
             <QuestionBody
               q={q}
+              stem={questionStem}
               index={index}
               choices={choices}
               answer={answer}
@@ -337,6 +342,7 @@ export function QuestionCard({
           <div className="mx-auto w-full max-w-3xl">
             <QuestionBody
               q={q}
+              stem={questionStem}
               index={index}
               choices={choices}
               answer={answer}
@@ -429,6 +435,7 @@ function CrossOutIcon({ className }: { className?: string }) {
 
 function QuestionBody({
   q,
+  stem,
   index,
   choices,
   answer,
@@ -439,6 +446,7 @@ function QuestionBody({
   onToggleCrossOut,
 }: {
   q: QuestionRow;
+  stem: string;
   index: number;
   choices: Choice[];
   answer: AnswerState;
@@ -512,7 +520,7 @@ function QuestionBody({
         block
         className="whitespace-pre-wrap pt-5 text-[18px] font-medium leading-[1.7] text-test-ink md:text-[19px]"
       >
-        {q.question_text}
+        {stem}
       </MathText>
 
       {q.kind === "grid_in" ? (

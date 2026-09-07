@@ -37,6 +37,33 @@ describe("blocksToDrafts math", () => {
     expect(out.drafts[0].rec.kind).toBe("multiple_choice");
     expect(out.drafts[0].rec.choice_A).toBe("3");
     expect(out.drafts[0].rec.choice_D).toBe("6");
+    expect(out.drafts[0].rec.question_text).toBe("What is 2 + 2?");
+  });
+
+  it("keeps the stem when it shares a line with A–D", () => {
+    const out = blocksToDrafts(
+      ["1. What is 2 + 2? A) 3  B) 4  C) 5  D) 6"],
+      defaults,
+    );
+    expect(out.drafts[0].rec.question_text).toBe("What is 2 + 2?");
+    expect(out.drafts[0].rec.choice_A).toBe("3");
+    expect(out.drafts[0].rec.choice_D).toBe("6");
+  });
+
+  it("keeps the stem when it sits in a Word table with the choices", () => {
+    const out = blocksToDrafts(
+      [
+        "1. ",
+        "| What is 2 + 2? | A) 3 |",
+        "| --- | --- |",
+        "| B) 4 | C) 5 |",
+        "| D) 6 | |",
+      ],
+      defaults,
+    );
+    expect(out.drafts[0].rec.question_text).toBe("What is 2 + 2?");
+    expect(out.drafts[0].rec.choice_A).toBe("3");
+    expect(out.drafts[0].rec.choice_D).toBe("6");
   });
 
   it("does not treat missing choices as multiple choice", () => {

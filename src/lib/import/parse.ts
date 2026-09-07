@@ -153,26 +153,52 @@ function cellsFromMarkdownTable(block: string): string[] {
  * table blocks, which the line-based choice scanner would miss.
  */
 export function extractChoicesFromTableBlock(block: string): { id: string; text: string }[] | null {
+  return extractTableChoiceRun(block)?.choices ?? null;
+}
+
+function extractTableChoiceRun(
+  block: string,
+): { choices: { id: string; text: string }[]; leftover: string } | null {
   if (!block.trimStart().startsWith("|")) return null;
   const cells = cellsFromMarkdownTable(block);
   if (cells.length < 2) return null;
 
+  const leftoverParts: string[] = [];
+  let choices: { id: string; text: string }[] | null = null;
+
   for (const cell of cells) {
-    const inline = splitInlineChoices(cell);
-    if (inline && inline.length >= 2) return inline;
+    const withStem = splitInlineChoicesAllowingStem(cell);
+    if (withStem && withStem.choices.length >= 2) {
+      choices = withStem.choices;
+      if (withStem.stem) leftoverParts.push(withStem.stem);
+      continue;
+    }
+    const m = cell.match(CHOICE_OPENER);
+    if (m) continue;
+    const cleaned = cell.replace(/^\d{1,3}\s*[.)]\s+/, "").trim();
+    if (cleaned) leftoverParts.push(cleaned);
   }
 
-  const choices: { id: string; text: string }[] = [];
-  for (const cell of cells) {
-    const m = cell.match(CHOICE_OPENER);
-    if (!m) continue;
-    choices.push({ id: m[1], text: cell.slice(m[0].length).trim() });
+  if (!choices) {
+    const collected: { id: string; text: string }[] = [];
+    for (const cell of cells) {
+      const m = cell.match(CHOICE_OPENER);
+      if (!m) continue;
+      collected.push({ id: m[1], text: cell.slice(m[0].length).trim() });
+    }
+    const ordered = collected.every((c, idx) => c.id === String.fromCharCode(65 + idx));
+    if (
+      collected.length >= 2 &&
+      ordered &&
+      collected[0].id === "A" &&
+      collected.every((c) => c.text)
+    ) {
+      choices = collected;
+    }
   }
-  const ordered = choices.every((c, idx) => c.id === String.fromCharCode(65 + idx));
-  if (choices.length >= 2 && ordered && choices[0].id === "A" && choices.every((c) => c.text)) {
-    return choices;
-  }
-  return null;
+
+  if (!choices) return null;
+  return { choices, leftover: leftoverParts.join(" ").trim() };
 }
 
 // ---------------------------------------------------------------------------
@@ -188,6 +214,15 @@ export function extractChoicesFromTableBlock(block: string): { id: string; text:
  * can't open a phantom choice.
  */
 export function splitInlineChoices(line: string): { id: string; text: string }[] | null {
+  const parsed = splitInlineChoicesAllowingStem(line);
+  if (!parsed || parsed.stem) return null;
+  return parsed.choices;
+}
+
+/** Like splitInlineChoices, but keeps any stem sitting in front of `A)`. */
+function splitInlineChoicesAllowingStem(
+  line: string,
+): { stem: string; choices: { id: string; text: string }[] } | null {
   const marks: { id: string; start: number; textAt: number }[] = [];
   const re = /(^|[\s\u00A0])\(?([A-H])\s*[).]\s*/g;
   let m: RegExpExecArray | null;
@@ -196,13 +231,14 @@ export function splitInlineChoices(line: string): { id: string; text: string }[]
     marks.push({ id: m[2], start: m.index + m[1].length, textAt: m.index + m[0].length });
   }
   if (marks.length < 2) return null;
-  if (line.slice(0, marks[0].start).trim() !== "") return null;
 
-  const out = marks.map((mark, i) => ({
+  const choices = marks.map((mark, i) => ({
     id: mark.id,
     text: line.slice(mark.textAt, marks[i + 1]?.start ?? line.length).trim(),
   }));
-  return out.every((c) => c.text) ? out : null;
+  if (!choices.every((c) => c.text)) return null;
+  const stem = line.slice(0, marks[0].start).trim();
+  return { stem, choices };
 }
 
 /**
@@ -222,10 +258,13 @@ function isMarkdownTableLine(block: string): boolean {
   return block.trimStart().startsWith("|");
 }
 
-function locateChoices(
-  blocks: string[],
-): { choices: { id: string; text: string }[]; start: number; end: number } | null {
-  const floor = Math.max(1, blocks.length - 12);
+function locateChoices(blocks: string[]): {
+  choices: { id: string; text: string }[];
+  start: number;
+  end: number;
+  leadingStem: string;
+} | null {
+  const floor = Math.max(0, blocks.length - 12);
 
   for (let i = blocks.length - 1; i >= floor; i--) {
     /* A Word/PDF table often arrives as one markdown row per block. Join
@@ -235,14 +274,16 @@ function locateChoices(
       let end = i;
       while (start > 0 && isMarkdownTableLine(blocks[start - 1])) start--;
       while (end + 1 < blocks.length && isMarkdownTableLine(blocks[end + 1])) end++;
-      const tableChoices = extractChoicesFromTableBlock(blocks.slice(start, end + 1).join("\n"));
-      if (tableChoices) return { choices: tableChoices, start, end };
+      const table = extractTableChoiceRun(blocks.slice(start, end + 1).join("\n"));
+      if (table) return { choices: table.choices, start, end, leadingStem: table.leftover };
       i = start;
       continue;
     }
 
-    const inline = splitInlineChoices(blocks[i]);
-    if (inline) return { choices: inline, start: i, end: i };
+    const withStem = splitInlineChoicesAllowingStem(blocks[i]);
+    if (withStem) {
+      return { choices: withStem.choices, start: i, end: i, leadingStem: withStem.stem };
+    }
 
     /* One choice per block. Walked backwards and required to terminate on a real
        `A)` marker, so a passage sentence opening with "A " can't be swept in. */
@@ -255,7 +296,7 @@ function locateChoices(
     }
     const ordered = stack.every((c, idx) => c.id === String.fromCharCode(65 + idx));
     if (stack.length >= 2 && ordered && stack[0].id === "A" && stack.every((c) => c.text)) {
-      return { choices: stack, start: i - stack.length + 1, end: i };
+      return { choices: stack, start: i - stack.length + 1, end: i, leadingStem: "" };
     }
   }
   return null;
@@ -373,10 +414,16 @@ export function blocksToDrafts(
     const trailing = located ? body.slice(located.end + 1) : [];
 
     /* The stem is the paragraph directly above the choices; everything above
-       that is the passage, stimulus or note list. With no choices at all
-       (grid-in) the last paragraph is the stem. */
-    const stem = remaining[remaining.length - 1] ?? "";
-    const prompt = remaining.slice(0, -1).join("\n\n");
+       that is the passage, stimulus or note list. When the stem shares a block
+       with A–D (one PDF line, or a Word table cell), peel it off that block
+       instead of dropping it. */
+    let stem = remaining[remaining.length - 1] ?? "";
+    let prompt = remaining.slice(0, -1).join("\n\n");
+    const peeled = located?.leadingStem?.trim() ?? "";
+    if (peeled) {
+      prompt = remaining.join("\n\n");
+      stem = peeled;
+    }
 
     if (!stem) warnings.push("No question text could be read for this question.");
     if (choices.length === 0) {

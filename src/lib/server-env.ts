@@ -66,6 +66,12 @@ export async function verifySupabaseUser(
   }
 }
 
+/** True when the bearer token belongs to a staff user (`bs_is_staff` RPC). */
+export async function verifyStaffUser(config: SupabaseConfig, token: string): Promise<boolean> {
+  const result = await callRpc<boolean>(config, "bs_is_staff", token);
+  return result === true;
+}
+
 /**
  * Calls a Postgres function through PostgREST.
  *

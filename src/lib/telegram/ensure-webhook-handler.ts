@@ -16,7 +16,7 @@ async function isAdminRequest(request: Request, env: unknown): Promise<boolean> 
   if (!token) return false;
   const user = await verifySupabaseUser(config, token);
   if (!user) return false;
-  const isAdmin = await callRpc<boolean>(config, token, "bs_is_admin", {});
+  const isAdmin = await callRpc<boolean>(config, "bs_is_admin", token);
   return isAdmin === true;
 }
 

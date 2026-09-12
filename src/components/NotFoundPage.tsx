@@ -1,23 +1,36 @@
 import { Link } from "@tanstack/react-router";
 import { Mail } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { AmbientGlow } from "@/components/ui/reveal-card";
 import { BeyondCore } from "@/components/landing/BeyondCore";
 import { SatPracticeWidget } from "@/components/not-found/SatPracticeWidget";
+import { TetrisEgg } from "@/components/not-found/TetrisEgg";
 
 type NotFoundPageProps = {
   layout?: "full" | "content";
 };
 
 function NotFoundContent() {
+  const [pillClicks, setPillClicks] = useState(0);
+  const [tetrisOpen, setTetrisOpen] = useState(false);
+
   return (
     <main className="mx-auto grid w-full max-w-7xl flex-1 items-center gap-10 px-4 py-12 sm:px-6 md:py-16 lg:grid-cols-2 lg:gap-14 lg:py-20">
+      {tetrisOpen && <TetrisEgg onClose={() => setTetrisOpen(false)} />}
       <div className="rise-in order-2 lg:order-1">
-        <p className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-25 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-600">
+        <button
+          type="button"
+          onClick={() => {
+            const next = pillClicks + 1;
+            setPillClicks(next >= 5 ? 0 : next);
+            if (next >= 5) setTetrisOpen(true);
+          }}
+          className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-25 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-600"
+        >
           Error 404
-        </p>
+        </button>
         <h1 className="mt-4 text-4xl font-bold leading-[1.08] tracking-tight text-slate-900 sm:text-5xl">
           Good luck finding that!
         </h1>

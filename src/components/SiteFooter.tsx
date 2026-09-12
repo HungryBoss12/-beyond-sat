@@ -1,4 +1,5 @@
-import { Twitter, Instagram, Youtube, Sparkles } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Home, Instagram, Send, Sparkles } from "lucide-react";
 
 export function SiteFooter() {
   return (
@@ -19,26 +20,30 @@ export function SiteFooter() {
             Free to use — no subscription, no paywall
           </p>
           <div className="mt-5 flex gap-3">
-            <a
-              href="#"
-              aria-label="Twitter"
+            <Link
+              to="/"
+              aria-label="BeyondSAT home"
               className="tap grid h-9 w-9 place-items-center rounded-full bg-brand-800 text-white transition hover:bg-brand-400"
             >
-              <Twitter className="h-4 w-4" />
-            </a>
+              <Home className="h-4 w-4" />
+            </Link>
             <a
-              href="#"
+              href="https://www.instagram.com/beyond_sat_uz/"
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label="Instagram"
               className="tap grid h-9 w-9 place-items-center rounded-full bg-brand-800 text-white transition hover:bg-brand-400"
             >
               <Instagram className="h-4 w-4" />
             </a>
             <a
-              href="#"
-              aria-label="YouTube"
+              href="https://t.me/Beyond_SAT"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Telegram"
               className="tap grid h-9 w-9 place-items-center rounded-full bg-brand-800 text-white transition hover:bg-brand-400"
             >
-              <Youtube className="h-4 w-4" />
+              <Send className="h-4 w-4" />
             </a>
           </div>
         </div>

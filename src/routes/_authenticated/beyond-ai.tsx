@@ -15,6 +15,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { ChatTurn } from "@/components/ai/ChatTurn";
+import { WelcomeEmblem } from "@/components/ai/WelcomeEmblem";
 import { scrollNearBottom, scrollToBottom, scrollWindowToTop } from "@/lib/smooth-scroll";
 import { messageText, useBeyondAi, type ChatMessage } from "@/lib/ai/client";
 import { ACCEPTED_IMAGE_TYPES, imageFromFiles, prepareAttachment } from "@/lib/ai/attachment";
@@ -353,22 +355,22 @@ function BeyondAiPage() {
       )}
 
       {/* Chat pane */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-brand-400/30 px-3 sm:px-5">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white text-slate-900">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-brand-400/20 px-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
               aria-label="Open chat list"
-              className="tap grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-brand-400/50 text-white hover:bg-brand-400 md:hidden"
+              className="tap grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-brand-400/40 text-brand-600 hover:bg-brand-25 md:hidden"
             >
               <PanelLeftOpen className="h-5 w-5" />
             </button>
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-bold text-white sm:text-base">
+              <h1 className="truncate text-sm font-bold text-slate-900 sm:text-base">
                 {active?.title ?? "New chat"}
               </h1>
-              <p className="hidden text-[11px] text-white/80 sm:block">
+              <p className="hidden text-[11px] text-slate-500 sm:block">
                 Your personal Digital SAT coach
               </p>
             </div>
@@ -394,12 +396,12 @@ function BeyondAiPage() {
             )}
 
             {error && (
-              <p className="rounded-xl bg-brand-800 px-3 py-2.5 text-xs font-semibold ring-1 ring-brand-400/50">
+              <p className="rounded-xl bg-brand-25 px-3 py-2.5 text-xs font-semibold text-brand-700 ring-1 ring-brand-400/40">
                 {error}
               </p>
             )}
             {saveError && (
-              <p className="rounded-xl bg-brand-800/60 px-3 py-2.5 text-xs font-semibold text-brand-100 ring-1 ring-brand-400/30">
+              <p className="rounded-xl bg-brand-25 px-3 py-2.5 text-xs font-semibold text-slate-600 ring-1 ring-brand-400/30">
                 {saveError}
               </p>
             )}
@@ -407,10 +409,10 @@ function BeyondAiPage() {
         </div>
 
         {/* Composer */}
-        <div className="shrink-0 border-t border-brand-400/30 px-3 py-3 sm:px-5">
+        <div className="shrink-0 border-t border-brand-400/20 px-3 py-3 sm:px-5">
           <div className="mx-auto max-w-3xl">
             {attachment && (
-              <div className="mb-2 inline-flex items-start gap-2 rounded-xl bg-brand-800 p-2 ring-1 ring-brand-400/40">
+              <div className="mb-2 inline-flex items-start gap-2 rounded-xl bg-brand-25 p-2 ring-1 ring-brand-400/30">
                 <img
                   src={attachment}
                   alt="Attachment preview"
@@ -420,14 +422,14 @@ function BeyondAiPage() {
                   type="button"
                   onClick={() => setAttachment(null)}
                   aria-label="Remove image"
-                  className="tap grid h-7 w-7 place-items-center rounded-lg text-brand-100 hover:bg-brand-700 hover:text-white"
+                  className="tap grid h-7 w-7 place-items-center rounded-lg text-slate-500 hover:bg-white hover:text-brand-600"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             )}
             {attachError && (
-              <p className="mb-2 text-xs font-semibold text-brand-100">{attachError}</p>
+              <p className="mb-2 text-xs font-semibold text-slate-600">{attachError}</p>
             )}
 
             <form
@@ -454,7 +456,7 @@ function BeyondAiPage() {
                 onClick={() => fileRef.current?.click()}
                 disabled={preparing}
                 aria-label="Attach an image"
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-800 text-white ring-1 ring-brand-400/50 transition hover:bg-brand-700 disabled:opacity-60"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-25 text-brand-600 ring-1 ring-brand-400/40 transition hover:bg-brand-50 disabled:opacity-60"
               >
                 <ImagePlus className="h-4 w-4" />
               </button>
@@ -485,7 +487,7 @@ function BeyondAiPage() {
                 }}
                 rows={1}
                 placeholder={preparing ? "Preparing image…" : "Ask anything about the SAT…"}
-                className="max-h-40 min-h-[2.75rem] flex-1 resize-y rounded-xl border border-brand-400/50 bg-brand-800 px-3 py-2.5 text-sm text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
+                className="max-h-40 min-h-[2.75rem] flex-1 resize-y rounded-xl border border-brand-400/40 bg-brand-25 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:outline-none"
               />
 
               {streaming ? (
@@ -493,7 +495,7 @@ function BeyondAiPage() {
                   type="button"
                   onClick={stop}
                   aria-label="Stop generating"
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-800 text-white ring-1 ring-brand-400/50 transition hover:bg-brand-700"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-25 text-brand-600 ring-1 ring-brand-400/40 transition hover:bg-brand-50"
                 >
                   <Square className="h-4 w-4" />
                 </button>
@@ -508,7 +510,7 @@ function BeyondAiPage() {
                 </button>
               )}
             </form>
-            <p className="mt-2 text-center text-[11px] text-white/80">
+            <p className="mt-2 text-center text-[11px] text-slate-500">
               Beyond AI can make mistakes — check anything that decides an answer.
             </p>
           </div>
@@ -547,14 +549,12 @@ function Welcome({
 }) {
   return (
     <div className="rise-in py-8 text-center">
-      <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand-400 shadow-brand">
-        <Sparkles className="h-7 w-7 text-white" />
-      </span>
-      <h2 className="mt-4 text-xl font-black tracking-tight text-white sm:text-2xl">
+      <WelcomeEmblem />
+      <h2 className="mt-4 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
         What are we working on?
       </h2>
       {showTip && (
-        <p className="mx-auto mt-2 max-w-md text-sm text-white/80">
+        <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
           Ask about a question you missed, a concept that isn't sticking, or what to study next.
           Attach a photo of a question — any model you pick will read it and answer. Answers come back
           with full working, and maths is properly typeset.
@@ -567,7 +567,7 @@ function Welcome({
             type="button"
             onClick={() => onPick(prompt)}
             disabled={disabled}
-            className="rounded-full bg-brand-800 px-3.5 py-2 text-xs font-semibold text-brand-100 ring-1 ring-brand-400/40 transition hover:bg-brand-700 hover:text-white disabled:opacity-60"
+            className="rounded-full bg-brand-25 px-3.5 py-2 text-xs font-semibold text-brand-600 ring-1 ring-brand-400/30 transition hover:bg-brand-400 hover:text-white disabled:opacity-60"
           >
             {prompt}
           </button>

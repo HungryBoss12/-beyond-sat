@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { AuthOrDivider, GoogleAuthButton } from "@/components/GoogleAuthButton";
 import { supabase } from "@/integrations/supabase/client";
 import { appUrl } from "@/lib/app-url";
+import { rememberCurrentSession } from "@/lib/auth/account-switcher";
 
 export const Route = createFileRoute("/signup")({
   component: SignUp,
@@ -114,6 +115,7 @@ function SignUp() {
     }
     // Email confirmation disabled in Supabase → session is issued immediately.
     if (data.session) {
+      await rememberCurrentSession();
       navigate({ to: "/dashboard", replace: true });
       return;
     }
@@ -141,6 +143,7 @@ function SignUp() {
       setOtpError(error.message);
       return;
     }
+    await rememberCurrentSession();
     navigate({ to: "/dashboard", replace: true });
   }
 

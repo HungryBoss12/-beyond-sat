@@ -172,18 +172,49 @@ export async function searchUsersByUsername(q: string, limit = 20): Promise<Chat
   return (data ?? []) as ChatProfile[];
 }
 
-/** Staff search by username or email (includes users who haven't finished Classes setup). */
+const ADMIN_PROFILE_COLS =
+  "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,email";
+
+function sanitizeSearchNeedle(q: string): string {
+  return q
+    .trim()
+    .replace(/^@/, "")
+    .replace(/[%(),]/g, "")
+    .slice(0, 80);
+}
+
+/** Staff search by name, username, or email (includes users who haven't finished Classes setup). */
 export async function searchUsersForAdmin(q: string, limit = 20): Promise<ChatProfile[]> {
-  const raw = q.trim().replace(/^@/, "");
-  if (raw.length < 2) return [];
-  const needle = raw.replace(/%/g, "").replace(/,/g, "");
+  const needle = sanitizeSearchNeedle(q);
+  if (needle.length < 2) return [];
   const { data, error } = await db
     .from("profiles")
-    .select(
-      "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,email",
+    .select(ADMIN_PROFILE_COLS)
+    .or(
+      [
+        `username.ilike.${needle}%`,
+        `email.ilike.%${needle}%`,
+        `full_name.ilike.%${needle}%`,
+        `first_name.ilike.${needle}%`,
+        `last_name.ilike.${needle}%`,
+      ].join(","),
     )
-    .or(`username.ilike.${needle}%,email.ilike.%${needle}%`)
     .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as ChatProfile[];
+}
+
+/** Staff browse: students not already in this class. */
+export async function listUsersForAdmin(opts?: {
+  excludeClassId?: string;
+  limit?: number;
+}): Promise<ChatProfile[]> {
+  const limit = opts?.limit ?? 80;
+  let query = db.from("profiles").select(ADMIN_PROFILE_COLS).order("full_name").limit(limit);
+  if (opts?.excludeClassId) {
+    query = query.or(`class_id.is.null,class_id.neq.${opts.excludeClassId}`);
+  }
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as ChatProfile[];
 }

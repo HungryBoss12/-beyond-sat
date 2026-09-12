@@ -4,6 +4,12 @@ import { Loader2 } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
+import { rememberCurrentSession } from "@/lib/auth/account-switcher";
+
+function safeNext(raw: string | null): "/dashboard" | "/profile" {
+  if (raw === "/profile") return "/profile";
+  return "/dashboard";
+}
 
 export const Route = createFileRoute("/auth/callback")({
   ssr: false,
@@ -49,8 +55,10 @@ function AuthCallback() {
     (async () => {
       try {
         await establishSession();
+        await rememberCurrentSession();
         if (cancelled) return;
-        navigate({ to: "/dashboard", replace: true });
+        const next = safeNext(new URL(window.location.href).searchParams.get("next"));
+        navigate({ to: next, replace: true });
       } catch (err) {
         if (!cancelled) setError((err as Error)?.message ?? "Sign-in failed.");
       }

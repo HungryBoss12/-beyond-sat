@@ -11,6 +11,8 @@ import { handleVocabAdminCard, handleVocabAdminDeck } from "./lib/vocab/handlers
 import { handleVocabGenerate } from "./lib/vocab/handlers/generate";
 import { handleVocabQuizSubmit } from "./lib/vocab/handlers/quiz-submit";
 import { handleVocabReview, handleVocabSession } from "./lib/vocab/handlers/session";
+import { handleAdminCreateUser } from "./lib/auth/create-user-handler";
+import { handleUsernameLogin } from "./lib/auth/username-login-handler";
 import { handleEnsureTelegramWebhook } from "./lib/telegram/ensure-webhook-handler";
 import { handleTelegramWebhook } from "./lib/telegram/webhook";
 import { ensureTelegramWebhook } from "./lib/telegram/webhook-setup";
@@ -157,6 +159,14 @@ export default {
       const cardAdmin = url.pathname.match(/^\/api\/vocab\/admin\/cards\/([^/]+)$/);
       if (cardAdmin) {
         return await handleVocabAdminCard(request, env, decodeURIComponent(cardAdmin[1]));
+      }
+
+      if (url.pathname === "/api/admin/create-user") {
+        return await handleAdminCreateUser(request, env);
+      }
+
+      if (url.pathname === "/api/auth/username-login") {
+        return await handleUsernameLogin(request, env);
       }
 
       if (url.pathname === "/api/telegram/webhook") {

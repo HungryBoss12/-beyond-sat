@@ -47,6 +47,7 @@ function Onboarding() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [alreadyInClass, setAlreadyInClass] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,12 +84,18 @@ function Onboarding() {
         getChatProfile(user.id).catch(() => null),
       ]);
 
-      if (prof?.intro_completed && chat?.chat_setup_completed && chat.class_id) {
+      if (prof?.intro_completed && (chat?.chat_setup_completed || chat?.class_id)) {
         navigate({ to: "/dashboard", replace: true });
         return;
       }
 
+      if (chat?.class_id) setAlreadyInClass(true);
+
       if (prof?.intro_completed || sp?.intro_completed_at) {
+        if (chat?.class_id) {
+          navigate({ to: "/dashboard", replace: true });
+          return;
+        }
         setStep("class");
       }
 
@@ -202,6 +209,10 @@ function Onboarding() {
       }
     }
     setSaving(false);
+    if (alreadyInClass) {
+      navigate({ to: "/dashboard", replace: true });
+      return;
+    }
     setStep("class");
   }
 
@@ -250,8 +261,10 @@ function Onboarding() {
           Set your SAT goals
         </h1>
         <p className="mt-2 text-sm text-brand-100">
-          Pick your exam date and set separate targets for English and Math. Next you&apos;ll join
-          your class group for Classes chat and homework.
+          Pick your exam date and set separate targets for English and Math.
+          {alreadyInClass
+            ? " You are already in a class group — you can finish chat setup later from Profile."
+            : " Next you'll join your class group for Classes chat and homework."}
         </p>
 
         <div className="mt-6 grid grid-cols-2 gap-3">
@@ -365,7 +378,7 @@ function Onboarding() {
           className="btn-brand mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-400 py-3.5 font-bold text-white disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Continue — join your class
+          {alreadyInClass ? "Continue to BeyondSAT" : "Continue — join your class"}
         </button>
       </div>
     </div>

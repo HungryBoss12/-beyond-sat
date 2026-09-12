@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, Loader2, Users } from "lucide-react";
 import {
+  getChatProfile,
   isValidUsername,
   listActiveClasses,
   normalizeUsername,
+  resolveAvatarUrl,
   saveChatSetup,
   uploadAvatar,
   type ClassRow,
@@ -15,6 +17,7 @@ const CONTROL =
 /**
  * Shared class + chat profile setup used by onboarding (new users) and profile
  * (existing users who registered before Classes shipped).
+ * Prefills username / class when an admin already enrolled the student.
  */
 export function ClassChatSetupForm({
   onDone,
@@ -31,6 +34,7 @@ export function ClassChatSetupForm({
   const [telegram, setTelegram] = useState("");
   const [avatarPath, setAvatarPath] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [classLocked, setClassLocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -46,9 +50,23 @@ export function ClassChatSetupForm({
   useEffect(() => {
     void (async () => {
       try {
-        const rows = await listActiveClasses();
+        const [rows, profile] = await Promise.all([listActiveClasses(), getChatProfile()]);
         setClasses(rows);
-        if (rows.length === 1) setClassId(rows[0].id);
+
+        if (profile?.username) setUsername(profile.username);
+        if (profile?.telegram_username) setTelegram(profile.telegram_username);
+        if (profile?.avatar_url) {
+          setAvatarPath(profile.avatar_url);
+          const url = await resolveAvatarUrl(profile.avatar_url);
+          if (url) setAvatarPreview(url);
+        }
+
+        if (profile?.class_id) {
+          setClassId(profile.class_id);
+          setClassLocked(true);
+        } else if (rows.length === 1) {
+          setClassId(rows[0].id);
+        }
       } catch (e) {
         setErr((e as Error)?.message ?? "Could not load classes.");
       } finally {
@@ -174,6 +192,13 @@ export function ClassChatSetupForm({
         {classes.length === 0 ? (
           <p className="rounded-xl border border-brand-400/40 bg-brand-800 px-4 py-3 text-sm text-brand-100">
             No classes yet. Ask an admin to create one, then refresh.
+          </p>
+        ) : classLocked ? (
+          <p className="rounded-xl border border-brand-400/40 bg-brand-800 px-4 py-3 text-sm font-semibold text-white">
+            {classes.find((c) => c.id === classId)?.name ?? "Your assigned group"}
+            <span className="mt-0.5 block text-xs font-normal text-brand-100">
+              Assigned by your teacher — contact them to switch groups.
+            </span>
           </p>
         ) : (
           <select

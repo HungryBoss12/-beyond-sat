@@ -433,6 +433,7 @@ export type Database = {
           intro_completed: boolean;
           last_name: string | null;
           last_seen_at: string | null;
+          must_change_credentials: boolean;
           school: string | null;
           telegram_admin_chat_id: number | null;
           telegram_username: string | null;
@@ -455,6 +456,7 @@ export type Database = {
           intro_completed?: boolean;
           last_name?: string | null;
           last_seen_at?: string | null;
+          must_change_credentials?: boolean;
           school?: string | null;
           telegram_admin_chat_id?: number | null;
           telegram_username?: string | null;
@@ -477,6 +479,7 @@ export type Database = {
           intro_completed?: boolean;
           last_name?: string | null;
           last_seen_at?: string | null;
+          must_change_credentials?: boolean;
           school?: string | null;
           telegram_admin_chat_id?: number | null;
           telegram_username?: string | null;

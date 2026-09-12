@@ -1,7 +1,9 @@
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { usePresenceHeartbeat } from "@/lib/presence";
+import { subscribeAccountRefresh } from "@/lib/auth/account-switcher";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -10,20 +12,27 @@ export const Route = createFileRoute("/_authenticated")({
     if (!data.user) throw redirect({ to: "/signin" });
     const uid = data.user.id;
     const onOnboarding = location.pathname.startsWith("/onboarding");
-    /* `banned` is fetched separately rather than folded into the
-       intro_completed select. If the ban migration hasn't been applied yet that
-       request errors and returns no row — combined, that would read as "no
-       profile" and bounce every user into onboarding. Split, a missing column
-       just means "not banned". */
-    const [{ data: prof }, { data: ban }] = await Promise.all([
-      onOnboarding
+    const onFirstLogin = location.pathname.startsWith("/first-login");
+    /* `banned` and `must_change_credentials` are fetched separately rather than
+       folded into the intro_completed select. If those migrations haven't been
+       applied yet the request errors and returns no row — combined, that would
+       read as "no profile" and bounce every user into onboarding. Split, a
+       missing column just means "not banned" / "no forced password change". */
+    const [{ data: prof }, { data: ban }, { data: cred }] = await Promise.all([
+      onOnboarding || onFirstLogin
         ? Promise.resolve({ data: null })
         : supabase.from("profiles").select("intro_completed").eq("id", uid).maybeSingle(),
       supabase.from("profiles").select("banned").eq("id", uid).maybeSingle(),
+      supabase.from("profiles").select("must_change_credentials").eq("id", uid).maybeSingle(),
     ]);
     if (ban?.banned) throw redirect({ to: "/banned" });
+    if (cred?.must_change_credentials && !onFirstLogin) {
+      throw redirect({ to: "/first-login" });
+    }
     // If the profile row hasn't been created yet by the trigger, or intro isn't finished, send to onboarding.
-    if (!onOnboarding && (!prof || !prof.intro_completed)) throw redirect({ to: "/onboarding" });
+    if (!onOnboarding && !onFirstLogin && (!prof || !prof.intro_completed)) {
+      throw redirect({ to: "/onboarding" });
+    }
     return { user: data.user };
   },
   component: Layout,
@@ -35,6 +44,7 @@ function Layout() {
      than in AppShell so presence keeps ticking on the full-screen routes below,
      which render outside the shell. */
   usePresenceHeartbeat();
+  useEffect(() => subscribeAccountRefresh(), []);
   /* A live test session is a full-screen runner (Bluebook-style): its own top
      bar, timer and question navigator replace the app chrome. Rendering it
      inside AppShell stacked the app header above it and put the mobile tab bar
@@ -47,6 +57,7 @@ function Layout() {
      header. It carries its own back link to /dashboard. */
   const bare =
     pathname.startsWith("/onboarding") ||
+    pathname.startsWith("/first-login") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/beyond-ai") ||
     pathname.startsWith("/classes") ||

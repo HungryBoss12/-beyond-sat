@@ -21,6 +21,7 @@ import { Route as AuthenticatedClassesRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedFirstLoginRouteImport } from './routes/_authenticated/first-login'
 import { Route as AuthenticatedPracticeRouteImport } from './routes/_authenticated/practice'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedVocabRouteImport } from './routes/_authenticated/vocab'
@@ -115,6 +116,11 @@ const AuthenticatedNewsRoute = AuthenticatedNewsRouteImport.update({
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFirstLoginRoute = AuthenticatedFirstLoginRouteImport.update({
+  id: '/first-login',
+  path: '/first-login',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPracticeRoute = AuthenticatedPracticeRouteImport.update({
@@ -330,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/news': typeof AuthenticatedNewsRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/first-login': typeof AuthenticatedFirstLoginRoute
   '/practice': typeof AuthenticatedPracticeRouteWithChildren
   '/profile': typeof AuthenticatedProfileRoute
   '/vocab': typeof AuthenticatedVocabRouteWithChildren
@@ -378,6 +385,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/news': typeof AuthenticatedNewsRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/first-login': typeof AuthenticatedFirstLoginRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/admin/classes': typeof AuthenticatedAdminClassesRoute
@@ -426,6 +434,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/news': typeof AuthenticatedNewsRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/first-login': typeof AuthenticatedFirstLoginRoute
   '/_authenticated/practice': typeof AuthenticatedPracticeRouteWithChildren
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/vocab': typeof AuthenticatedVocabRouteWithChildren
@@ -477,6 +486,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/news'
     | '/onboarding'
+    | '/first-login'
     | '/practice'
     | '/profile'
     | '/vocab'
@@ -525,6 +535,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/news'
     | '/onboarding'
+    | '/first-login'
     | '/profile'
     | '/auth/callback'
     | '/admin/classes'
@@ -572,6 +583,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/news'
     | '/_authenticated/onboarding'
+    | '/_authenticated/first-login'
     | '/_authenticated/practice'
     | '/_authenticated/profile'
     | '/_authenticated/vocab'
@@ -703,6 +715,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/first-login': {
+      id: '/_authenticated/first-login'
+      path: '/first-login'
+      fullPath: '/first-login'
+      preLoaderRoute: typeof AuthenticatedFirstLoginRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/practice': {
@@ -1131,6 +1150,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRouteWithChildren
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedFirstLoginRoute: typeof AuthenticatedFirstLoginRoute
   AuthenticatedPracticeRoute: typeof AuthenticatedPracticeRouteWithChildren
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedVocabRoute: typeof AuthenticatedVocabRouteWithChildren
@@ -1144,6 +1164,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedNewsRoute: AuthenticatedNewsRouteWithChildren,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedFirstLoginRoute: AuthenticatedFirstLoginRoute,
   AuthenticatedPracticeRoute: AuthenticatedPracticeRouteWithChildren,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedVocabRoute: AuthenticatedVocabRouteWithChildren,

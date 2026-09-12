@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Check,
+  Copy,
+  Eye,
+  EyeOff,
   Loader2,
   MessageSquare,
   Pencil,
@@ -33,6 +36,7 @@ import {
   listMutes,
   listSubmissionsForAssignment,
   listThreadMessages,
+  listUsersForAdmin,
   markAttendance,
   muteUser,
   removeClassMember,
@@ -52,6 +56,8 @@ import {
   type HomeworkSubmission,
   type HomeworkSubmissionStatus,
 } from "@/lib/classes";
+import { createClassStudent, type CreatedStudent } from "@/lib/auth/create-user";
+import { displayAccountEmail } from "@/lib/auth/login-email";
 
 export const Route = createFileRoute("/_authenticated/admin/classes")({
   component: AdminClasses,
@@ -483,6 +489,20 @@ function HomeworkPanel({ classId }: { classId: string }) {
   );
 }
 
+function profileLabel(p: Pick<ChatProfile, "username" | "full_name" | "first_name" | "email" | "id">) {
+  return p.username
+    ? `@${p.username}`
+    : p.full_name || p.first_name || displayAccountEmail(p.email) || p.id.slice(0, 8);
+}
+
+function profileMatchesQuery(p: ChatProfile, q: string): boolean {
+  const n = q.trim().toLowerCase().replace(/^@/, "");
+  if (!n) return true;
+  return [p.username, p.full_name, p.first_name, p.last_name, p.email]
+    .filter(Boolean)
+    .some((s) => (s as string).toLowerCase().includes(n));
+}
+
 function MembersPanel({ classId }: { classId: string }) {
   const [rows, setRows] = useState<{ user_id: string; joined_at: string; profile: ChatProfile | null }[]>(
     [],
@@ -492,9 +512,19 @@ function MembersPanel({ classId }: { classId: string }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<ChatProfile[]>([]);
+  const [browse, setBrowse] = useState<ChatProfile[]>([]);
+  const [browseReady, setBrowseReady] = useState(false);
   const [searching, setSearching] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [allClasses, setAllClasses] = useState<ClassRow[]>([]);
+  const [createName, setCreateName] = useState("");
+  const [createPassword, setCreatePassword] = useState("");
+  const [showCreatePw, setShowCreatePw] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [created, setCreated] = useState<(CreatedStudent & { password: string }) | null>(null);
+  const [copied, setCopied] = useState<"username" | "password" | "both" | null>(null);
+  const createNameRef = useRef<HTMLInputElement>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -514,9 +544,23 @@ function MembersPanel({ classId }: { classId: string }) {
     }
   }, [classId]);
 
+  const reloadBrowse = useCallback(async () => {
+    try {
+      setBrowse(await listUsersForAdmin({ excludeClassId: classId }));
+    } catch {
+      setBrowse([]);
+    } finally {
+      setBrowseReady(true);
+    }
+  }, [classId]);
+
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    void reloadBrowse();
+  }, [reloadBrowse]);
 
   useEffect(() => {
     void listAllClasses()
@@ -543,6 +587,17 @@ function MembersPanel({ classId }: { classId: string }) {
   const mutedIds = new Set(mutes.map((m) => m.user_id));
   const memberIds = new Set(rows.map((r) => r.user_id));
 
+  const pickerList = (() => {
+    const byId = new Map<string, ChatProfile>();
+    for (const p of browse) {
+      if (!memberIds.has(p.id) && profileMatchesQuery(p, query)) byId.set(p.id, p);
+    }
+    for (const p of hits) {
+      if (!memberIds.has(p.id)) byId.set(p.id, p);
+    }
+    return [...byId.values()];
+  })();
+
   function classNameFor(cid: string | null | undefined): string | null {
     if (!cid) return null;
     return allClasses.find((c) => c.id === cid)?.name ?? "another group";
@@ -554,7 +609,7 @@ function MembersPanel({ classId }: { classId: string }) {
     if (other) {
       if (
         !confirm(
-          `@${user.username || user.email || "user"} is in “${other}”. Move them to this group?`,
+          `${profileLabel(user)} is in “${other}”. Move them to this group?`,
         )
       ) {
         return;
@@ -566,6 +621,7 @@ function MembersPanel({ classId }: { classId: string }) {
       setQuery("");
       setHits([]);
       await reload();
+      await reloadBrowse();
     } catch (e) {
       alert((e as Error)?.message ?? "Could not add student.");
     } finally {
@@ -579,6 +635,7 @@ function MembersPanel({ classId }: { classId: string }) {
     try {
       await removeClassMember(classId, userId);
       await reload();
+      await reloadBrowse();
     } catch (e) {
       alert((e as Error)?.message ?? "Could not remove student.");
     } finally {
@@ -603,6 +660,55 @@ function MembersPanel({ classId }: { classId: string }) {
     }
   }
 
+  function startCreateForName(name: string) {
+    setCreateName(name.trim());
+    setCreated(null);
+    setCreateError(null);
+    window.setTimeout(() => createNameRef.current?.focus(), 0);
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateError(null);
+    setCreated(null);
+    if (createName.trim().length < 2) {
+      setCreateError("Enter the student's name.");
+      return;
+    }
+    if (createPassword.length < 8) {
+      setCreateError("Password must be at least 8 characters.");
+      return;
+    }
+    setCreating(true);
+    try {
+      const row = await createClassStudent({
+        name: createName,
+        password: createPassword,
+        classId,
+      });
+      setCreated({ ...row, password: createPassword });
+      setCreateName("");
+      setCreatePassword("");
+      setQuery("");
+      await reload();
+      await reloadBrowse();
+    } catch (err) {
+      setCreateError((err as Error).message ?? "Could not create account.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function copyText(kind: "username" | "password" | "both", value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(kind);
+      window.setTimeout(() => setCopied(null), 1600);
+    } catch {
+      /* clipboard blocked */
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-8">
@@ -610,6 +716,8 @@ function MembersPanel({ classId }: { classId: string }) {
       </div>
     );
   }
+
+  const noMatches = query.trim().length >= 2 && !searching && pickerList.length === 0;
 
   return (
     <div className="space-y-3">
@@ -621,7 +729,7 @@ function MembersPanel({ classId }: { classId: string }) {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by username or email…"
+          placeholder="Type a name, or pick from the list…"
           className={CONTROL}
         />
         {searching && (
@@ -629,12 +737,21 @@ function MembersPanel({ classId }: { classId: string }) {
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
           </div>
         )}
-        {!searching && query.trim().length >= 2 && hits.length === 0 && (
-          <p className="mt-2 text-xs text-brand-100">No matching users.</p>
+        {noMatches && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <p className="text-xs text-brand-100">No matching users.</p>
+            <button
+              type="button"
+              onClick={() => startCreateForName(query)}
+              className="text-xs font-bold text-white underline-offset-2 hover:underline"
+            >
+              Create account for “{query.trim()}”
+            </button>
+          </div>
         )}
-        {hits.length > 0 && (
+        {pickerList.length > 0 && (
           <ul className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-brand-400/40">
-            {hits.map((h) => {
+            {pickerList.map((h) => {
               const elsewhere = classNameFor(h.class_id);
               return (
                 <li
@@ -642,12 +759,11 @@ function MembersPanel({ classId }: { classId: string }) {
                   className="flex items-center gap-2 border-b border-brand-400/30 px-3 py-2 last:border-0"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-bold">
-                      {h.username ? `@${h.username}` : h.full_name || h.email || h.id.slice(0, 8)}
-                    </div>
+                    <div className="truncate text-sm font-bold">{profileLabel(h)}</div>
                     <div className="truncate text-[11px] text-brand-100">
-                      {h.email}
-                      {elsewhere ? ` · in ${elsewhere}` : ""}
+                      {[displayAccountEmail(h.email), elsewhere ? `in ${elsewhere}` : "not in a group"]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </div>
                   </div>
                   <button
@@ -663,13 +779,106 @@ function MembersPanel({ classId }: { classId: string }) {
             })}
           </ul>
         )}
+        {browseReady && !query.trim() && pickerList.length === 0 && (
+          <p className="mt-2 text-xs text-brand-100">Everyone else is already in this group.</p>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-brand-400/40 bg-brand-800/60 p-3">
+        <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+          <Plus className="h-3.5 w-3.5" />
+          Create account
+        </label>
+        <p className="mb-3 text-xs text-brand-100">
+          Name and password only. The student signs in with the generated username, then changes
+          credentials and sets SAT goals.
+        </p>
+        <form onSubmit={(e) => void handleCreate(e)} className="space-y-2">
+          <input
+            ref={createNameRef}
+            value={createName}
+            onChange={(e) => setCreateName(e.target.value)}
+            placeholder="Student name"
+            className={CONTROL}
+            autoComplete="off"
+          />
+          <div className="relative">
+            <input
+              type={showCreatePw ? "text" : "password"}
+              value={createPassword}
+              onChange={(e) => setCreatePassword(e.target.value)}
+              placeholder="Password (8+ characters)"
+              className={CONTROL + " pr-10"}
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowCreatePw((v) => !v)}
+              className="tap absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-brand-100 hover:text-white"
+              aria-label={showCreatePw ? "Hide password" : "Show password"}
+            >
+              {showCreatePw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {createError && (
+            <p className="rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
+              {createError}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={creating}
+            className="btn-brand inline-flex items-center justify-center gap-2 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
+          >
+            {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            Create and add to group
+          </button>
+        </form>
+        {created && (
+          <div className="mt-3 rounded-lg border border-brand-200/40 bg-brand-900/50 p-3">
+            <p className="text-xs font-bold text-white">Account ready — give these to the student</p>
+            <div className="mt-2 space-y-1.5 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-brand-100">
+                  Username <span className="font-bold text-white">{created.username}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void copyText("username", created.username)}
+                  className="tap inline-flex items-center gap-1 text-[11px] font-bold text-white"
+                >
+                  <Copy className="h-3 w-3" /> {copied === "username" ? "Copied" : "Copy"}
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-brand-100">
+                  Password <span className="font-bold text-white">{created.password}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void copyText("password", created.password)}
+                  className="tap inline-flex items-center gap-1 text-[11px] font-bold text-white"
+                >
+                  <Copy className="h-3 w-3" /> {copied === "password" ? "Copied" : "Copy"}
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                void copyText("both", `Username: ${created.username}\nPassword: ${created.password}`)
+              }
+              className="mt-2 text-[11px] font-bold text-brand-100 underline-offset-2 hover:text-white hover:underline"
+            >
+              {copied === "both" ? "Copied both" : "Copy username and password"}
+            </button>
+          </div>
+        )}
       </div>
 
       <ul className="divide-y divide-brand-400/30 overflow-hidden rounded-xl border border-brand-400/40">
         {rows.map((r) => {
-          const label = r.profile?.username
-            ? `@${r.profile.username}`
-            : r.profile?.full_name || r.user_id.slice(0, 8);
+          const label = r.profile ? profileLabel(r.profile) : r.user_id.slice(0, 8);
           return (
             <li key={r.user_id} className="flex items-center gap-3 px-3 py-2.5">
               <Users className="h-4 w-4 text-brand-100" />
@@ -682,7 +891,10 @@ function MembersPanel({ classId }: { classId: string }) {
                     </span>
                   )}
                 </div>
-                <div className="text-[11px] text-brand-100">{r.profile?.email}</div>
+                <div className="text-[11px] text-brand-100">
+                  {displayAccountEmail(r.profile?.email) ??
+                    (r.profile?.username ? `login: ${r.profile.username}` : "")}
+                </div>
               </div>
               <button
                 type="button"

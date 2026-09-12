@@ -11,10 +11,20 @@ import {
   Shield,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
+import { displayAccountEmail } from "@/lib/auth/login-email";
+import {
+  listSavedAccounts,
+  prepareAddAccount,
+  signOutAll,
+  signOutCurrent,
+  switchToAccount,
+  type SavedAccount,
+} from "@/lib/auth/account-switcher";
 import { scrollWindowToTop } from "@/lib/smooth-scroll";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { NotificationAnchorProvider } from "@/components/notifications/NotificationAnchorContext";
@@ -318,6 +328,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(true);
   const [staffRole, setStaffRole] = useState<StaffRole | null>(null);
+  const [accounts, setAccounts] = useState<SavedAccount[]>([]);
+  const [uid, setUid] = useState<string>("");
+  const [switching, setSwitching] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const drawerTimer = useRef<number | null>(null);
 
@@ -335,9 +348,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       const { data } = await supabase.auth.getUser();
       const u = data.user;
       if (!u) return;
-      setEmail(u.email ?? "");
+      setUid(u.id);
+      setEmail(displayAccountEmail(u.email) ?? "");
       const [{ data: prof }, { data: sp }, role] = await Promise.all([
-        supabase.from("profiles").select("full_name,first_name").eq("id", u.id).maybeSingle(),
+        supabase.from("profiles").select("full_name,first_name,username").eq("id", u.id).maybeSingle(),
         supabase
           .from("student_profiles")
           .select("current_streak")
@@ -345,9 +359,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           .maybeSingle(),
         getStaffRole(u.id),
       ]);
-      setName(prof?.full_name || prof?.first_name || u.email?.split("@")[0] || "Student");
+      setName(
+        prof?.full_name ||
+          prof?.first_name ||
+          prof?.username ||
+          displayAccountEmail(u.email)?.split("@")[0] ||
+          "Student",
+      );
       setStreak(sp?.current_streak ?? 0);
       setStaffRole(role);
+      setAccounts(listSavedAccounts());
     })();
   }, []);
 
@@ -407,7 +428,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function signOut() {
-    await supabase.auth.signOut();
+    const next = await signOutCurrent();
+    if (next) {
+      window.location.assign("/dashboard");
+      return;
+    }
+    navigate({ to: "/signin", replace: true });
+  }
+
+  async function handleSwitch(userId: string) {
+    if (userId === uid || switching) return;
+    setSwitching(true);
+    try {
+      await switchToAccount(userId);
+      window.location.assign("/dashboard");
+    } catch (err) {
+      setSwitching(false);
+      setAccounts(listSavedAccounts());
+      alert((err as Error).message);
+    }
+  }
+
+  async function handleAddAccount() {
+    await prepareAddAccount();
+    window.location.assign("/signin?add=1");
+  }
+
+  async function handleSignOutAll() {
+    await signOutAll();
     navigate({ to: "/signin", replace: true });
   }
 
@@ -569,11 +617,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 />
               </button>
               {menuOpen && (
-                <div className="rise-in absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-brand-400/40 bg-brand-600 py-1 shadow-float">
+                <div className="rise-in absolute right-0 mt-2 w-64 overflow-hidden rounded-xl border border-brand-400/40 bg-brand-600 py-1 shadow-float">
                   <div className="border-b border-brand-400/30 px-4 py-2.5">
                     <div className="truncate text-sm font-semibold text-white">{name}</div>
                     <div className="truncate text-xs text-brand-100">{email}</div>
                   </div>
+                  {accounts.filter((a) => a.userId !== uid).length > 0 && (
+                    <div className="border-b border-brand-400/30 py-1">
+                      <div className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                        Switch account
+                      </div>
+                      {accounts
+                        .filter((a) => a.userId !== uid)
+                        .map((account) => (
+                          <button
+                            key={account.userId}
+                            type="button"
+                            disabled={switching}
+                            onClick={() => void handleSwitch(account.userId)}
+                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-white transition-colors hover:bg-brand-400 disabled:opacity-50"
+                          >
+                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-400 text-[10px] font-bold">
+                              {account.displayName.slice(0, 1).toUpperCase()}
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block truncate">{account.displayName}</span>
+                              <span className="block truncate text-[11px] text-brand-100">
+                                {account.username ? `@${account.username}` : account.email}
+                              </span>
+                            </span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
                   <Link
                     to="/profile"
                     onClick={() => setMenuOpen(false)}
@@ -582,11 +658,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <User className="h-4 w-4" /> Profile
                   </Link>
                   <button
-                    onClick={signOut}
+                    type="button"
+                    onClick={() => void handleAddAccount()}
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-white transition-colors hover:bg-brand-400"
+                  >
+                    <Plus className="h-4 w-4" /> Add account
+                  </button>
+                  <button
+                    onClick={() => void signOut()}
                     className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-brand-100 transition-colors hover:bg-brand-800 hover:text-white"
                   >
                     <LogOut className="h-4 w-4" /> Sign out
                   </button>
+                  {accounts.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => void handleSignOutAll()}
+                      className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-brand-100 transition-colors hover:bg-brand-800 hover:text-white"
+                    >
+                      <LogOut className="h-4 w-4" /> Sign out all
+                    </button>
+                  )}
                 </div>
               )}
             </div>

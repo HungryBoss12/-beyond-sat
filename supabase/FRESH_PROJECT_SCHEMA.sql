@@ -44,6 +44,7 @@ CREATE TABLE public.profiles (
   grade INT,
   birth_date DATE,
   intro_completed BOOLEAN NOT NULL DEFAULT false,
+  must_change_credentials BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

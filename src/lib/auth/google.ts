@@ -29,3 +29,18 @@ export async function signInWithGoogle(): Promise<void> {
   });
   if (error) throw error;
 }
+
+export async function linkGoogleAccount(): Promise<void> {
+  const next = typeof window !== "undefined" ? `${window.location.origin}/auth/callback?next=/profile` : googleRedirectTo();
+  const { error } = await supabase.auth.linkIdentity({
+    provider: "google",
+    options: {
+      redirectTo: next,
+      queryParams: {
+        access_type: "offline",
+        prompt: "select_account",
+      },
+    },
+  });
+  if (error) throw error;
+}

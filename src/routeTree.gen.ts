@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as BannedRouteImport } from './routes/banned'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -19,9 +20,9 @@ import { Route as AuthenticatedAnalysisRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBeyondAiRouteImport } from './routes/_authenticated/beyond-ai'
 import { Route as AuthenticatedClassesRouteImport } from './routes/_authenticated/classes'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedFirstLoginRouteImport } from './routes/_authenticated/first-login'
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
-import { Route as AuthenticatedFirstLoginRouteImport } from './routes/_authenticated/first-login'
 import { Route as AuthenticatedPracticeRouteImport } from './routes/_authenticated/practice'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedVocabRouteImport } from './routes/_authenticated/vocab'
@@ -73,6 +74,11 @@ const BannedRoute = BannedRouteImport.update({
   path: '/banned',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SigninRoute = SigninRouteImport.update({
   id: '/signin',
   path: '/signin',
@@ -108,6 +114,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFirstLoginRoute = AuthenticatedFirstLoginRouteImport.update({
+  id: '/first-login',
+  path: '/first-login',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedNewsRoute = AuthenticatedNewsRouteImport.update({
   id: '/news',
   path: '/news',
@@ -116,11 +127,6 @@ const AuthenticatedNewsRoute = AuthenticatedNewsRouteImport.update({
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedFirstLoginRoute = AuthenticatedFirstLoginRouteImport.update({
-  id: '/first-login',
-  path: '/first-login',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPracticeRoute = AuthenticatedPracticeRouteImport.update({
@@ -327,6 +333,7 @@ const AuthenticatedAdminVocabDeckDeckIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/banned': typeof BannedRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
@@ -334,9 +341,9 @@ export interface FileRoutesByFullPath {
   '/beyond-ai': typeof AuthenticatedBeyondAiRoute
   '/classes': typeof AuthenticatedClassesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/first-login': typeof AuthenticatedFirstLoginRoute
   '/news': typeof AuthenticatedNewsRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/first-login': typeof AuthenticatedFirstLoginRoute
   '/practice': typeof AuthenticatedPracticeRouteWithChildren
   '/profile': typeof AuthenticatedProfileRoute
   '/vocab': typeof AuthenticatedVocabRouteWithChildren
@@ -377,15 +384,16 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/banned': typeof BannedRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/analysis': typeof AuthenticatedAnalysisRouteWithChildren
   '/beyond-ai': typeof AuthenticatedBeyondAiRoute
   '/classes': typeof AuthenticatedClassesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/first-login': typeof AuthenticatedFirstLoginRoute
   '/news': typeof AuthenticatedNewsRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/first-login': typeof AuthenticatedFirstLoginRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/admin/classes': typeof AuthenticatedAdminClassesRoute
@@ -425,6 +433,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/banned': typeof BannedRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
@@ -432,9 +441,9 @@ export interface FileRoutesById {
   '/_authenticated/beyond-ai': typeof AuthenticatedBeyondAiRoute
   '/_authenticated/classes': typeof AuthenticatedClassesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/first-login': typeof AuthenticatedFirstLoginRoute
   '/_authenticated/news': typeof AuthenticatedNewsRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
-  '/_authenticated/first-login': typeof AuthenticatedFirstLoginRoute
   '/_authenticated/practice': typeof AuthenticatedPracticeRouteWithChildren
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/vocab': typeof AuthenticatedVocabRouteWithChildren
@@ -477,6 +486,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/banned'
+    | '/reset-password'
     | '/signin'
     | '/signup'
     | '/admin'
@@ -484,9 +494,9 @@ export interface FileRouteTypes {
     | '/beyond-ai'
     | '/classes'
     | '/dashboard'
+    | '/first-login'
     | '/news'
     | '/onboarding'
-    | '/first-login'
     | '/practice'
     | '/profile'
     | '/vocab'
@@ -527,15 +537,16 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/banned'
+    | '/reset-password'
     | '/signin'
     | '/signup'
     | '/analysis'
     | '/beyond-ai'
     | '/classes'
     | '/dashboard'
+    | '/first-login'
     | '/news'
     | '/onboarding'
-    | '/first-login'
     | '/profile'
     | '/auth/callback'
     | '/admin/classes'
@@ -574,6 +585,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/banned'
+    | '/reset-password'
     | '/signin'
     | '/signup'
     | '/_authenticated/admin'
@@ -581,9 +593,9 @@ export interface FileRouteTypes {
     | '/_authenticated/beyond-ai'
     | '/_authenticated/classes'
     | '/_authenticated/dashboard'
+    | '/_authenticated/first-login'
     | '/_authenticated/news'
     | '/_authenticated/onboarding'
-    | '/_authenticated/first-login'
     | '/_authenticated/practice'
     | '/_authenticated/profile'
     | '/_authenticated/vocab'
@@ -626,6 +638,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   BannedRoute: typeof BannedRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SigninRoute: typeof SigninRoute
   SignupRoute: typeof SignupRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -652,6 +665,13 @@ declare module '@tanstack/react-router' {
       path: '/banned'
       fullPath: '/banned'
       preLoaderRoute: typeof BannedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signin': {
@@ -703,6 +723,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/first-login': {
+      id: '/_authenticated/first-login'
+      path: '/first-login'
+      fullPath: '/first-login'
+      preLoaderRoute: typeof AuthenticatedFirstLoginRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/news': {
       id: '/_authenticated/news'
       path: '/news'
@@ -715,13 +742,6 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/first-login': {
-      id: '/_authenticated/first-login'
-      path: '/first-login'
-      fullPath: '/first-login'
-      preLoaderRoute: typeof AuthenticatedFirstLoginRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/practice': {
@@ -1148,9 +1168,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBeyondAiRoute: typeof AuthenticatedBeyondAiRoute
   AuthenticatedClassesRoute: typeof AuthenticatedClassesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedFirstLoginRoute: typeof AuthenticatedFirstLoginRoute
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRouteWithChildren
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
-  AuthenticatedFirstLoginRoute: typeof AuthenticatedFirstLoginRoute
   AuthenticatedPracticeRoute: typeof AuthenticatedPracticeRouteWithChildren
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedVocabRoute: typeof AuthenticatedVocabRouteWithChildren
@@ -1162,9 +1182,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBeyondAiRoute: AuthenticatedBeyondAiRoute,
   AuthenticatedClassesRoute: AuthenticatedClassesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedFirstLoginRoute: AuthenticatedFirstLoginRoute,
   AuthenticatedNewsRoute: AuthenticatedNewsRouteWithChildren,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
-  AuthenticatedFirstLoginRoute: AuthenticatedFirstLoginRoute,
   AuthenticatedPracticeRoute: AuthenticatedPracticeRouteWithChildren,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedVocabRoute: AuthenticatedVocabRouteWithChildren,
@@ -1177,6 +1197,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   BannedRoute: BannedRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SigninRoute: SigninRoute,
   SignupRoute: SignupRoute,
   AuthCallbackRoute: AuthCallbackRoute,
@@ -1184,13 +1205,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -1346,9 +1346,31 @@
      starts light. */
   background: radial-gradient(
     circle 34rem at var(--gx, 50%) var(--gy, 30%),
-    rgba(83, 82, 145, 0.12),
-    rgba(83, 82, 145, 0.05) 34%,
+    rgba(83, 82, 145, 0.16),
+    rgba(83, 82, 145, 0.07) 34%,
     transparent 65%
+  );
+}
+
+/* White / pale cards. `reveal-surface` defaults to a white wash for navy
+   panels; that wash is invisible on `#fff` / brand-25. Brand ink is the
+   light-mode equivalent — same radius, readable on a pale fill. */
+.reveal-surface.bg-white::before,
+.reveal-surface.bg-brand-25::before,
+.reveal-on-light::before {
+  background: radial-gradient(
+    circle 22rem at var(--px, 50%) var(--py, 50%),
+    rgba(11, 7, 97, 0.12),
+    transparent 42%
+  );
+}
+.reveal-surface.bg-white::after,
+.reveal-surface.bg-brand-25::after,
+.reveal-on-light::after {
+  background: radial-gradient(
+    circle 12rem at var(--px, 50%) var(--py, 50%),
+    rgba(83, 82, 145, 0.5),
+    transparent 40%
   );
 }
 
@@ -1452,6 +1474,258 @@
 .nav-vocab-srs-arc,
 .nav-vocab-srs-tip {
   transform-origin: inherit;
+}
+
+/* Lessons catalogs: section mark leads, then copy / tabs / cards. */
+@keyframes lesson-mark-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.82) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes lesson-tab-pane {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.lesson-mark-enter {
+  animation: lesson-mark-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lesson-mark-orb {
+  overflow: hidden;
+  transition:
+    border-color 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lesson-card:hover .lesson-mark-orb {
+  border-color: color-mix(in srgb, var(--color-brand-300) 70%, transparent);
+  background-color: var(--color-brand-500);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-brand-400) 28%, transparent),
+    0 10px 24px color-mix(in srgb, var(--color-brand-600) 35%, transparent);
+  transform: translateY(-2px);
+}
+
+.book-mark,
+.sigma-mark {
+  width: 20px;
+  height: 20px;
+  overflow: hidden;
+  color: var(--color-brand-100);
+}
+
+.book-closed,
+.book-open {
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.book-open {
+  opacity: 0;
+}
+
+.book-mark-flipping .book-closed,
+.book-mark-finishing .book-closed {
+  opacity: 0;
+}
+
+.book-mark-flipping .book-open,
+.book-mark-finishing .book-open {
+  opacity: 1;
+}
+
+.book-page-left,
+.book-flip-leaf {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+}
+
+.book-mark-flipping .book-flip-leaf {
+  animation: book-page-turn 0.64s 0.4s ease-in-out 3;
+}
+
+.book-mark-finishing .book-flip-leaf {
+  animation: none;
+  transform: scaleX(1);
+}
+
+.book-mark-finishing .book-page-left {
+  animation: book-close-finish 0.56s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes book-page-turn {
+  0% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(-1);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes book-close-finish {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(-1);
+  }
+}
+
+.sigma-ghost {
+  opacity: 1;
+  transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sigma-mark.is-drawn .sigma-ghost {
+  opacity: 0.22;
+}
+
+.sigma-stroke {
+  stroke-dasharray: 22;
+  stroke-dashoffset: 22;
+  opacity: 0;
+  transition:
+    stroke-dashoffset 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sigma-mark.is-drawn .sigma-stroke {
+  stroke-dashoffset: 0;
+  opacity: 1;
+}
+
+.sigma-mark.is-drawn .sigma-s1 {
+  transition-duration: 0.18s;
+  transition-delay: 0ms;
+}
+
+.sigma-mark.is-drawn .sigma-s2 {
+  transition-duration: 0.18s;
+  transition-delay: 180ms;
+}
+
+.sigma-mark.is-drawn .sigma-s3 {
+  transition-duration: 0.18s;
+  transition-delay: 360ms;
+}
+
+.sigma-mark.is-drawn .sigma-s4 {
+  transition-duration: 0.18s;
+  transition-delay: 540ms;
+}
+
+.sigma-mark:not(.is-drawn) .sigma-s4 {
+  transition-delay: 0ms;
+}
+
+.sigma-mark:not(.is-drawn) .sigma-s3 {
+  transition-delay: 80ms;
+}
+
+.sigma-mark:not(.is-drawn) .sigma-s2 {
+  transition-delay: 160ms;
+}
+
+.sigma-mark:not(.is-drawn) .sigma-s1 {
+  transition-delay: 240ms;
+}
+
+.lesson-copy-enter {
+  animation: rise-in 0.5s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lesson-back-enter {
+  animation: rise-in 0.45s 0.06s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lesson-tabs-enter {
+  animation: rise-in 0.45s 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lesson-tab-pane {
+  animation: lesson-tab-pane 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lesson-tab-pill {
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lesson-stagger > * {
+  animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lesson-stagger > *:nth-child(1) { animation-delay: 220ms; }
+.lesson-stagger > *:nth-child(2) { animation-delay: 280ms; }
+.lesson-stagger > *:nth-child(3) { animation-delay: 340ms; }
+.lesson-stagger > *:nth-child(4) { animation-delay: 400ms; }
+.lesson-stagger > *:nth-child(5) { animation-delay: 460ms; }
+.lesson-stagger > *:nth-child(6) { animation-delay: 520ms; }
+.lesson-stagger > *:nth-child(7) { animation-delay: 580ms; }
+.lesson-stagger > *:nth-child(8) { animation-delay: 640ms; }
+.lesson-stagger > *:nth-child(n + 9) { animation-delay: 700ms; }
+
+.beyond-ai-mark-svg {
+  display: block;
+  overflow: visible;
+}
+.beyond-ai-orbit,
+.beyond-ai-core,
+.beyond-ai-spark {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes beyond-ai-mark-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.8) rotate(-12deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes beyond-ai-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes beyond-ai-core {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  40% { transform: scale(1.08) rotate(8deg); }
+}
+@keyframes beyond-ai-spark {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.35); opacity: 1; }
+}
+.beyond-ai-mark {
+  animation: beyond-ai-mark-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.beyond-ai-mark .beyond-ai-orbit,
+.group:hover .beyond-ai-orbit,
+.group:focus-visible .beyond-ai-orbit {
+  animation: beyond-ai-orbit 8s linear infinite;
+}
+.beyond-ai-mark .beyond-ai-core,
+.group:hover .beyond-ai-core,
+.group:focus-visible .beyond-ai-core {
+  animation: beyond-ai-core 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.beyond-ai-mark .beyond-ai-spark-a,
+.group:hover .beyond-ai-spark-a {
+  animation: beyond-ai-spark 1.4s ease-in-out infinite;
+}
+.beyond-ai-mark .beyond-ai-spark-b,
+.group:hover .beyond-ai-spark-b {
+  animation: beyond-ai-spark 1.4s 0.3s ease-in-out infinite;
 }
 
 .group:hover .nav-ico-vocab,
@@ -2169,6 +2443,7 @@
   .nav-ico-dashboard,
   .nav-ico-practice,
   .nav-ico-vocab,
+  .nav-ico-lessons,
   .nav-ico-analysis,
   .nav-ico-ai,
   .nav-ico-news,
@@ -2183,6 +2458,26 @@
   .nav-vocab-srs,
   .nav-vocab-srs-arc,
   .nav-vocab-srs-tip,
+  .lesson-mark-enter,
+  .lesson-mark-orb,
+  .lesson-glyph,
+  .lesson-glyph-rw,
+  .lesson-glyph-math,
+  .lesson-glyph-lessons,
+  .book-flip-leaf,
+  .book-page-left,
+  .book-closed,
+  .book-open,
+  .sigma-stroke,
+  .lesson-copy-enter,
+  .lesson-back-enter,
+  .lesson-tabs-enter,
+  .lesson-tab-pane,
+  .lesson-stagger > *,
+  .beyond-ai-mark,
+  .beyond-ai-orbit,
+  .beyond-ai-core,
+  .beyond-ai-spark,
   .vocab-hub-glyph-interactive,
   .vocab-hub-deck,
   .vocab-hub-card,
@@ -2237,6 +2532,8 @@
      are the belt to that braces: even if a variable were set, nothing paints. */
   .reveal-surface::before,
   .reveal-surface::after,
+  .vocab-reveal-surface::before,
+  .vocab-reveal-surface::after,
   .ambient-glow {
     display: none !important;
   }

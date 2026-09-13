@@ -1,8 +1,7 @@
 /* BeyondSAT PWA service worker — network-first for pages, cache for static assets. */
-const CACHE = "beyondsat-static-v4";
+const CACHE = "beyondsat-static-v5";
 const PRECACHE = [
   "/offline.html",
-  "/offline-tetris.js",
   "/manifest.webmanifest",
   "/favicon.svg",
   "/pwa-192x192.png",

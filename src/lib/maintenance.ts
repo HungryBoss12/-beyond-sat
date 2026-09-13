@@ -70,7 +70,6 @@ const EXEMPT_PREFIXES = [
   "/manifest",
   "/sw.js",
   "/offline.html",
-  "/offline-tetris.js",
   "/pwa-",
   "/apple-touch-icon",
 ];

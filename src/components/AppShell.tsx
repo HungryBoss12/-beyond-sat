@@ -2,6 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   BookOpen,
+  GraduationCap,
   User,
   Flame,
   LogOut,
@@ -12,6 +13,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
+  MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,21 +30,29 @@ import {
 import { scrollWindowToTop } from "@/lib/smooth-scroll";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { NotificationAnchorProvider } from "@/components/notifications/NotificationAnchorContext";
-import { RevealLink } from "@/components/ui/reveal-card";
+import { AmbientGlow, RevealLink } from "@/components/ui/reveal-card";
 
 /**
- * Seven items fit the mobile tab bar at `grid-cols-7` with truncated labels.
- * Vocab sits between Practice and Classes as its own primary section.
+ * Desktop rail lists every destination. The mobile tab bar keeps five slots:
+ * Dashboard, Practice, Lessons, Vocab, and More (Classes, Analysis, Beyond AI, Profile).
  */
 const NAV = [
   { to: "/dashboard", label: "Dashboard", kind: "dashboard" },
   { to: "/practice", label: "Practice", kind: "practice", icon: BookOpen },
+  { to: "/lessons", label: "Lessons", kind: "lessons" },
   { to: "/vocab", label: "Vocab", kind: "vocab" },
   { to: "/classes", label: "Classes", kind: "classes" },
   { to: "/analysis", label: "Analysis", kind: "analysis" },
   { to: "/beyond-ai", label: "Beyond AI", kind: "ai" },
   { to: "/profile", label: "Profile", kind: "profile" },
 ] as const;
+
+const MOBILE_PRIMARY = NAV.filter((n) =>
+  n.kind === "dashboard" || n.kind === "practice" || n.kind === "lessons" || n.kind === "vocab",
+);
+const MOBILE_MORE = NAV.filter((n) =>
+  n.kind === "classes" || n.kind === "analysis" || n.kind === "ai" || n.kind === "profile",
+);
 
 const NAV_OPEN_KEY = "beyond-sat-nav-open";
 const DRAWER_MS = 450;
@@ -273,6 +283,15 @@ function NavGlyph({
     );
   }
 
+  if (kind === "lessons") {
+    return (
+      <GraduationCap
+        aria-hidden
+        className={`${cls} transition-transform duration-200 group-hover:scale-110`}
+      />
+    );
+  }
+
   if (kind === "profile") {
     return (
       <svg viewBox="0 0 24 24" className={cls} aria-hidden="true" fill="none">
@@ -326,6 +345,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [drawerMounted, setDrawerMounted] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(true);
   const [staffRole, setStaffRole] = useState<StaffRole | null>(null);
   const [accounts, setAccounts] = useState<SavedAccount[]>([]);
@@ -472,7 +492,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "transition-[padding] duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " + padClass;
   const currentNav = activeNavKey(pathname, staffRole);
   const rail = useSlidingHighlight(currentNav);
-  const mobileIdx = NAV.findIndex((n) => n.to === currentNav);
+  const moreActive =
+    moreOpen ||
+    currentNav === "admin" ||
+    MOBILE_MORE.some((n) => n.to === currentNav);
+  const mobileIdx = moreActive
+    ? MOBILE_PRIMARY.length
+    : MOBILE_PRIMARY.findIndex((n) => n.to === currentNav);
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
 
   const navLinks = (opts: { onNavigate?: () => void; iconSize: string }) => (
     <>
@@ -515,7 +545,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <NotificationAnchorProvider>
-    <div className="min-h-screen bg-white text-brand-900">
+    <div className="relative isolate min-h-screen bg-white text-brand-900">
+      <AmbientGlow />
       <aside
         className={
           "fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-brand-400/30 bg-brand-600 lg:flex " +
@@ -603,7 +634,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => setMenuOpen((v) => !v)}
                 className="btn-ghost inline-flex items-center gap-2 rounded-full border border-brand-400/50 bg-brand-800 py-1 pl-1 pr-2"
               >
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-400 text-xs font-bold text-white">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-400 text-xs font-bold text-white shadow-brand">
                   {initials}
                 </span>
                 <span className="hidden max-w-[120px] truncate text-sm font-semibold text-white sm:inline">
@@ -617,13 +648,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 />
               </button>
               {menuOpen && (
-                <div className="rise-in absolute right-0 mt-2 w-64 overflow-hidden rounded-xl border border-brand-400/40 bg-brand-600 py-1 shadow-float">
+                <div className="pop-in absolute right-0 mt-2 w-64 overflow-hidden rounded-xl border border-brand-400/40 bg-brand-600 py-1 shadow-float">
                   <div className="border-b border-brand-400/30 px-4 py-2.5">
                     <div className="truncate text-sm font-semibold text-white">{name}</div>
                     <div className="truncate text-xs text-brand-100">{email}</div>
                   </div>
                   {accounts.filter((a) => a.userId !== uid).length > 0 && (
-                    <div className="border-b border-brand-400/30 py-1">
+                    <div className="stagger-fast border-b border-brand-400/30 py-1">
                       <div className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
                         Switch account
                       </div>
@@ -635,7 +666,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             type="button"
                             disabled={switching}
                             onClick={() => void handleSwitch(account.userId)}
-                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-white transition-colors hover:bg-brand-400 disabled:opacity-50"
+                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-white transition-all duration-200 hover:bg-brand-400 hover:pl-5 disabled:opacity-50"
                           >
                             <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-400 text-[10px] font-bold">
                               {account.displayName.slice(0, 1).toUpperCase()}
@@ -732,11 +763,67 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-400/30 bg-brand-600/95 backdrop-blur-md lg:hidden">
-        <div className="relative grid grid-cols-7">
+      {moreOpen && (
+        <div className="fixed inset-0 z-30 lg:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-brand-900/50 backdrop-blur-sm"
+            aria-label="Close more destinations"
+            onClick={() => setMoreOpen(false)}
+          />
+          <div
+            role="dialog"
+            aria-label="More"
+            className="absolute inset-x-0 bottom-[3.75rem] rounded-t-2xl border-t border-brand-400/30 bg-brand-600 px-3 pb-3 pt-2 shadow-float"
+          >
+            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-white/25" aria-hidden />
+            <div className="grid grid-cols-4 gap-1">
+              {MOBILE_MORE.map((n) => {
+                const active = n.to === currentNav;
+                return (
+                  <Link
+                    key={n.to}
+                    to={n.to}
+                    onClick={() => setMoreOpen(false)}
+                    {...navPlayHandlers()}
+                    className={
+                      "group flex flex-col items-center gap-1 rounded-xl px-1 py-2.5 text-[11px] font-semibold " +
+                      (active ? "bg-brand-400 text-white" : "text-brand-100 hover:bg-brand-800 hover:text-white")
+                    }
+                  >
+                    <NavGlyph
+                      icon={"icon" in n ? n.icon : undefined}
+                      kind={n.kind}
+                      className="h-5 w-5"
+                    />
+                    {n.label}
+                  </Link>
+                );
+              })}
+              {staffRole && (
+                <RevealLink
+                  to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
+                  onClick={() => setMoreOpen(false)}
+                  {...navPlayHandlers()}
+                  className={
+                    "group flex flex-col items-center gap-1 rounded-xl px-1 py-2.5 text-[11px] font-semibold " +
+                    (currentNav === "admin" ? "bg-brand-400 text-white" : "text-brand-100 hover:bg-brand-800 hover:text-white")
+                  }
+                >
+                  <NavGlyph icon={Shield} kind="admin" className="h-5 w-5" />
+                  {staffRole === "admin" ? "Admin" : "Editor"}
+                </RevealLink>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-brand-400/30 bg-brand-600/95 backdrop-blur-md lg:hidden">
+        <div className="relative grid grid-cols-5">
           <span
             aria-hidden
-            className="nav-tab-pill pointer-events-none absolute top-1.5 left-0 flex w-[calc(100%/7)] justify-center"
+            className="nav-tab-pill pointer-events-none absolute top-1.5 left-0 flex w-[calc(100%/5)] justify-center"
             style={{
               transform: `translateX(${Math.max(0, mobileIdx) * 100}%)`,
               opacity: mobileIdx < 0 ? 0 : 1,
@@ -744,12 +831,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <span className="h-7 w-12 rounded-full bg-brand-400" />
           </span>
-          {NAV.map((n) => {
+          {MOBILE_PRIMARY.map((n) => {
             const active = n.to === currentNav;
             return (
               <Link
                 key={n.to}
                 to={n.to}
+                onClick={() => setMoreOpen(false)}
                 {...navPlayHandlers()}
                 className={
                   "group relative z-10 flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 text-[10px] font-semibold transition-colors duration-200 " +
@@ -768,6 +856,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          <button
+            type="button"
+            onClick={() => setMoreOpen((open) => !open)}
+            className={
+              "group relative z-10 flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 text-[10px] font-semibold transition-colors duration-200 " +
+              (moreActive ? "text-white" : "text-brand-100 hover:text-white")
+            }
+            aria-expanded={moreOpen}
+            aria-haspopup="dialog"
+          >
+            <MoreHorizontal
+              aria-hidden
+              className={
+                "relative mb-0.5 h-5 w-5 transition-transform duration-300 " +
+                (moreActive ? "scale-110" : "")
+              }
+            />
+            <span className="w-full truncate text-center leading-tight">More</span>
+          </button>
         </div>
       </nav>
     </div>

@@ -109,101 +109,6 @@
       .retry:active {
         transform: scale(0.98);
       }
-      .tetris {
-        margin-top: 1.25rem;
-        padding: 0.85rem;
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.06);
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-        text-align: center;
-      }
-      .tetris-title {
-        margin: 0 0 0.55rem;
-        font-size: 0.7rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: #c8c8e0;
-      }
-      .tetris-hud {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.5rem;
-        margin-bottom: 0.55rem;
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: #e8e8f5;
-      }
-      .tetris-hud button {
-        appearance: none;
-        border: 0;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.12);
-        color: #fff;
-        font: inherit;
-        font-size: 0.72rem;
-        font-weight: 700;
-        padding: 0.35rem 0.6rem;
-        cursor: pointer;
-      }
-      .board-wrap {
-        position: relative;
-        display: inline-block;
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
-      }
-      canvas {
-        display: block;
-        width: 180px;
-        height: 360px;
-        background: #040459;
-        touch-action: none;
-      }
-      .overlay {
-        position: absolute;
-        inset: 0;
-        display: grid;
-        place-items: center;
-        padding: 1rem;
-        background: rgba(4, 4, 89, 0.72);
-        font-size: 0.8rem;
-        font-weight: 700;
-        color: #fff;
-      }
-      .overlay[hidden] {
-        display: none;
-      }
-      .pad {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 0.4rem;
-        margin-top: 0.65rem;
-      }
-      .pad button {
-        appearance: none;
-        border: 0;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.12);
-        color: #fff;
-        font: inherit;
-        font-size: 1.05rem;
-        font-weight: 700;
-        min-height: 2.6rem;
-        cursor: pointer;
-        user-select: none;
-        -webkit-user-select: none;
-        touch-action: manipulation;
-      }
-      .pad button:active {
-        background: rgba(255, 255, 255, 0.22);
-      }
-      .hint {
-        margin: 0.55rem 0 0;
-        font-size: 0.68rem;
-        color: rgba(200, 200, 224, 0.75);
-      }
     </style>
   </head>
   <body>
@@ -216,33 +121,10 @@
         <p class="eyebrow">BeyondSAT</p>
         <h1>No internet connection</h1>
         <p class="lead">
-          You're offline. Reconnect when you can — or clear a few lines while you wait.
+          You're offline. Reconnect when you can, then try again.
         </p>
         <button class="retry" type="button" data-retry onclick="location.reload()">Try again</button>
       </div>
-
-      <section class="tetris" id="offline-tetris" aria-label="Offline Tetris">
-        <p class="tetris-title">Meanwhile · Tetris</p>
-        <div class="tetris-hud">
-          <span>Score <strong data-score>0</strong></span>
-          <button type="button" data-restart>New game</button>
-        </div>
-        <div class="board-wrap">
-          <canvas data-board width="180" height="360" aria-label="Tetris board"></canvas>
-          <div class="overlay" data-overlay hidden></div>
-        </div>
-        <div class="pad">
-          <button type="button" data-left aria-label="Move left">←</button>
-          <button type="button" data-rotate aria-label="Rotate">↻</button>
-          <button type="button" data-right aria-label="Move right">→</button>
-          <button type="button" data-soft aria-label="Soft drop">↓</button>
-        </div>
-        <p class="hint">Arrow keys / WASD · Space rotates · ↓ soft drop</p>
-      </section>
     </main>
-    <script src="/offline-tetris.js?v=4"></script>
-    <script>
-      window.startOfflineTetris(document.getElementById("offline-tetris"));
-    </script>
   </body>
 </html>

@@ -22,7 +22,10 @@ export function slugUsernameFromName(name: string): string {
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 20);
-  const withLetter = /^[a-z]/.test(cleaned) ? cleaned : `u${cleaned.replace(/^_+/, "")}`;
-  const base = withLetter.length >= 3 ? withLetter : `user${withLetter}`;
+  if (!cleaned || !/[a-z]/.test(cleaned)) {
+    const suffix = cleaned.replace(/[^0-9a-z]/g, "") || "1";
+    return `user${suffix}`.slice(0, 24);
+  }
+  const base = cleaned.length >= 3 ? cleaned : `user${cleaned}`;
   return base.slice(0, 24);
 }

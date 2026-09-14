@@ -14,8 +14,19 @@ function json(body: unknown, status: number): Response {
   });
 }
 
+function isOpaqueSupabaseKey(value: string): boolean {
+  return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
+}
+
 function restHeaders(key: string): HeadersInit {
-  return { apikey: key, Authorization: `Bearer ${key}`, "content-type": "application/json" };
+  const headers: Record<string, string> = {
+    apikey: key,
+    "content-type": "application/json",
+  };
+  if (!isOpaqueSupabaseKey(key)) {
+    headers.Authorization = `Bearer ${key}`;
+  }
+  return headers;
 }
 
 export async function handleUinfoFlush(request: Request, env: unknown): Promise<Response> {

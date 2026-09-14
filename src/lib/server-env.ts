@@ -18,6 +18,13 @@ export function readEnv(env: unknown, key: string): string | undefined {
   const fromArg = env && typeof env === "object" ? (env as WorkerEnv)[key] : undefined;
   if (typeof fromArg === "string" && fromArg.trim()) return fromArg.trim();
 
+  /* Nitro's Cloudflare module also mirrors bindings onto globalThis.__env__. */
+  const fromGlobal =
+    typeof globalThis !== "undefined"
+      ? (globalThis as { __env__?: WorkerEnv }).__env__?.[key]
+      : undefined;
+  if (typeof fromGlobal === "string" && fromGlobal.trim()) return fromGlobal.trim();
+
   const fromProcess = typeof process !== "undefined" && process.env ? process.env[key] : undefined;
   return fromProcess?.trim() || undefined;
 }

@@ -19,8 +19,22 @@ type CacheRow = {
   updated_at: string;
 };
 
+function isOpaqueSupabaseKey(value: string): boolean {
+  return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
+}
+
+/** PostgREST headers for the service role (or any server-side Supabase key). */
 function restHeaders(key: string): HeadersInit {
-  return { apikey: key, Authorization: `Bearer ${key}`, "content-type": "application/json" };
+  const headers: Record<string, string> = {
+    apikey: key,
+    "content-type": "application/json",
+  };
+  /* New opaque keys are not JWTs — sending `Authorization: Bearer sb_secret_…`
+     makes PostgREST reject the call. Legacy `eyJ…` service_role JWTs still need Bearer. */
+  if (!isOpaqueSupabaseKey(key)) {
+    headers.Authorization = `Bearer ${key}`;
+  }
+  return headers;
 }
 
 function json(body: unknown, status: number): Response {
@@ -123,14 +137,38 @@ export function parseApiKeys(raw: string | null | undefined): string[] {
   return out;
 }
 
-async function readApiKeys(url: string, serviceKey: string): Promise<string[]> {
+async function readApiKeysFromSettings(url: string, serviceKey: string): Promise<string[]> {
   const res = await fetch(
     `${url}/rest/v1/app_settings?key=eq.youtube_data_api_key&select=value`,
     { headers: restHeaders(serviceKey) },
   );
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.error(`[youtube] app_settings read failed (${res.status})`);
+    return [];
+  }
   const rows = (await res.json()) as { value?: string | null }[];
   return parseApiKeys(rows[0]?.value);
+}
+
+/** Prefer Worker secrets, then Admin Settings (via service role). */
+async function resolveApiKeys(env: unknown, url: string | undefined, serviceKey: string | undefined) {
+  const fromEnv = parseApiKeys(
+    readEnv(env, "YOUTUBE_DATA_API_KEYS") ?? readEnv(env, "YOUTUBE_DATA_API_KEY"),
+  );
+  if (fromEnv.length > 0) return fromEnv;
+  if (!url || !serviceKey) {
+    console.error(
+      "[youtube] no YOUTUBE_DATA_API_KEY(S) secret and SUPABASE_SERVICE_ROLE_KEY/URL missing — cannot load Admin Settings keys",
+    );
+    return [];
+  }
+  const fromSettings = await readApiKeysFromSettings(url, serviceKey);
+  if (fromSettings.length === 0) {
+    console.error(
+      "[youtube] Admin Settings youtube_data_api_key empty or unreadable with service role (RLS returns [] for anon)",
+    );
+  }
+  return fromSettings;
 }
 
 type SearchOutcome =
@@ -274,10 +312,10 @@ export async function loadYoutubeRecs(
 ): Promise<YoutubeRec[]> {
   const url = readEnv(env, "SUPABASE_URL") ?? readEnv(env, "VITE_SUPABASE_URL");
   const serviceKey = readEnv(env, "SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceKey) return [];
 
   const query = buildSearchQuery(uinfo, opts?.hint ?? "");
-  const cached = await readCache(url, serviceKey, userId);
+  const cached =
+    url && serviceKey ? await readCache(url, serviceKey, userId) : null;
 
   if (!opts?.refresh) {
     const exact = cacheFresh(cached, query);
@@ -285,7 +323,7 @@ export async function loadYoutubeRecs(
     if (!opts?.allowSearch) return (cacheFresh(cached) ?? []).slice(0, MAX_RECS);
   }
 
-  const apiKeys = await readApiKeys(url, serviceKey);
+  const apiKeys = await resolveApiKeys(env, url, serviceKey);
   if (apiKeys.length === 0) return cacheFresh(cached) ?? [];
 
   try {
@@ -298,7 +336,9 @@ export async function loadYoutubeRecs(
       }
       const videos = outcome.videos.slice(0, MAX_RECS);
       if (videos.length === 0) return cacheFresh(cached) ?? [];
-      await writeCache(url, serviceKey, userId, query, videos);
+      if (url && serviceKey) {
+        await writeCache(url, serviceKey, userId, query, videos);
+      }
       return videos;
     }
     return cacheFresh(cached) ?? [];

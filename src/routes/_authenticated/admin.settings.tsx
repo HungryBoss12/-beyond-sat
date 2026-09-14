@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2, Save, Calculator, Sparkles, Wrench, KeyRound, MessageCircle } from "lucide-react";
+import { Loader2, Save, Calculator, Sparkles, Wrench, KeyRound, MessageCircle, Youtube } from "lucide-react";
 import {
   createTelegramLinkCode,
   fetchTelegramAdmins,
@@ -26,6 +26,7 @@ export const Route = createFileRoute("/_authenticated/admin/settings")({
  */
 const SETTING_KEYS = [
   "desmos_api_key",
+  "youtube_data_api_key",
   "openrouter_model_chat",
   "openrouter_model_quick",
   "openrouter_model_reasoning",
@@ -39,6 +40,7 @@ type Settings = Record<SettingKey, string>;
 
 const EMPTY: Settings = {
   desmos_api_key: "",
+  youtube_data_api_key: "",
   openrouter_model_chat: "",
   openrouter_model_quick: "",
   openrouter_model_reasoning: "",
@@ -73,6 +75,7 @@ function AdminSettings() {
   const [tgBusy, setTgBusy] = useState(false);
   const [tgErr, setTgErr] = useState<string | null>(null);
   const [tgWebhook, setTgWebhook] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   async function refreshTelegramAdmins() {
     try {
@@ -103,10 +106,15 @@ function AdminSettings() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("app_settings")
         .select("key,value")
         .in("key", SETTING_KEYS as unknown as string[]);
+      if (error) {
+        setLoadError(error.message);
+        setLoading(false);
+        return;
+      }
       const next = { ...EMPTY };
       for (const row of (data as { key: string; value: string | null }[] | null) ?? []) {
         if ((SETTING_KEYS as readonly string[]).includes(row.key)) {
@@ -114,6 +122,7 @@ function AdminSettings() {
         }
       }
       setSettings(next);
+      setLoadError(null);
       setLoading(false);
       try {
         const status = await fetchTelegramLinkStatus();
@@ -131,6 +140,10 @@ function AdminSettings() {
   }
 
   async function save(card: string, keys: SettingKey[], overrides?: Partial<Settings>) {
+    if (loadError) {
+      alert("Settings could not be loaded. Refresh the page before saving.");
+      return;
+    }
     setSavingCard(card);
     setSavedCard(null);
     const source = { ...settings, ...overrides };
@@ -151,6 +164,11 @@ function AdminSettings() {
       <div className="rise-in">
         <h2 className="text-2xl font-black tracking-tight text-slate-900">Site settings</h2>
         <p className="text-sm text-slate-500 mt-1">Configure integrations and site-wide options.</p>
+        {loadError ? (
+          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+            Could not load settings ({loadError}). Refresh before saving so keys are not overwritten.
+          </p>
+        ) : null}
       </div>
 
       {/* ---------------------------------------------------------------- */}
@@ -192,6 +210,56 @@ function AdminSettings() {
           disabled={loading}
           hint={
             !settings.desmos_api_key.trim() ? "Leave empty to disable the calculator." : undefined
+          }
+        />
+      </Card>
+
+      {/* ---------------------------------------------------------------- */}
+      <Card
+        icon={Youtube}
+        title="YouTube Data API"
+        description={
+          <>
+            Paste Google Cloud{" "}
+            <a
+              href="https://developers.google.com/youtube/v3/getting-started"
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-white underline"
+            >
+              YouTube Data API v3
+            </a>{" "}
+            keys (<span className="font-semibold text-white">AIza…</span> API keys, not OAuth
+            tokens). One key per line — primary first, then backups. When the first key hits its
+            daily quota, the next key is tried automatically. Keys stay server-side. Search costs
+            about 100 quota units; the default daily cap is 10,000 per key.
+          </>
+        }
+      >
+        <Field label="YouTube Data API keys">
+          {loading ? (
+            <InputSkeleton />
+          ) : (
+            <textarea
+              autoComplete="off"
+              spellCheck={false}
+              rows={4}
+              value={settings.youtube_data_api_key}
+              onChange={(e) => set("youtube_data_api_key", e.target.value)}
+              placeholder={"AIza…primary\nAIza…backup"}
+              className={INPUT + " font-mono text-xs"}
+            />
+          )}
+        </Field>
+        <Actions
+          onSave={() => save("youtube", ["youtube_data_api_key"])}
+          saving={savingCard === "youtube"}
+          saved={savedCard === "youtube"}
+          disabled={loading}
+          hint={
+            !settings.youtube_data_api_key.trim()
+              ? "Leave empty to skip YouTube picks (Featured staff videos still work)."
+              : `${settings.youtube_data_api_key.split(/[\n,]+/).filter((k) => k.trim()).length} key(s) — backups used when quota is full.`
           }
         />
       </Card>

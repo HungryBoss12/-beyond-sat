@@ -341,10 +341,16 @@ export function buildRequestBody(
   model: string,
   stream: boolean,
   surface: AiSurface = "panel",
+  _uinfo = "",
+  youtube = "",
 ): OpenRouterBody {
+  let system = buildSystemPrompt(task);
+  if (youtube.trim()) {
+    system += `\n\n${youtube.trim()}`;
+  }
   return {
     model,
-    messages: [{ role: "system", content: buildSystemPrompt(task) }, ...messages],
+    messages: [{ role: "system", content: system }, ...messages],
     temperature: TEMPERATURE[task],
     max_tokens: resolveMaxTokens(task, surface),
     stream,

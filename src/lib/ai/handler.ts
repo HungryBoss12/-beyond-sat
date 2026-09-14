@@ -21,6 +21,14 @@ import {
   readSupabaseConfig,
   verifySupabaseUser,
 } from "../server-env";
+import { loadUinfoSummary } from "@/lib/uinfo/summarize";
+import {
+  formatYoutubePromptBlock,
+  latestUserText,
+  loadCachedYoutubeRecs,
+  loadYoutubeRecs,
+  videoIntent,
+} from "@/lib/youtube/search";
 
 /**
  * The `/api/ai/chat` endpoint (master_plan.md §5A).
@@ -226,13 +234,34 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
 
   const safe = prepareMessagesForTask(messages, task);
 
+  let youtube = "";
+  if (surface === "page") {
+    try {
+      const uinfo = await loadUinfoSummary(env, user.id);
+      const hint = latestUserText(safe);
+      const intent = videoIntent(hint);
+      const recs =
+        intent === "none"
+          ? await loadCachedYoutubeRecs(env, user.id)
+          : await loadYoutubeRecs(env, user.id, uinfo, {
+              refresh: intent === "refresh",
+              hint,
+              allowSearch: true,
+            });
+      youtube = formatYoutubePromptBlock(recs);
+    } catch (error) {
+      console.error("[ai] youtube recs skipped", error);
+      youtube = "";
+    }
+  }
+
   const apiKey = readEnv(env, "OPENROUTER_API_KEY");
   if (!apiKey) {
     console.error(missingOpenRouterKeyMessage());
     return json({ error: "Beyond AI isn't available right now." }, 503);
   }
 
-  const body = buildRequestBody(task, safe, model, stream, surface);
+  const body = buildRequestBody(task, safe, model, stream, surface, "", youtube);
 
   let upstream: Response;
   try {
@@ -269,7 +298,7 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
             "HTTP-Referer": "https://beyondsat.app",
             "X-Title": "Beyond SAT",
           },
-          body: JSON.stringify(buildRequestBody(task, safe, fallback, stream, surface)),
+          body: JSON.stringify(buildRequestBody(task, safe, fallback, stream, surface, "", youtube)),
         });
       } catch (error) {
         console.error("[ai] upstream fallback request failed", error);

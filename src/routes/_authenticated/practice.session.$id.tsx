@@ -2,13 +2,16 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TestPlayer } from "@/components/TestPlayer";
-import {
-  emptyAnswer,
-  type AnswerState,
-  type QuestionRow,
-} from "@/components/QuestionCard";
+import { type AnswerState, type QuestionRow } from "@/components/QuestionCard";
 import type { TestType } from "@/lib/session";
 import { applyResolvedImageUrls } from "@/lib/storage-url";
+import { hydrateDraftAnswers } from "@/lib/draft-answers";
+import {
+  fallbackScheduleFromSections,
+  scheduleFromModules,
+  type MockModuleMeta,
+  type MockSchedule,
+} from "@/lib/mock-phase";
 
 export const Route = createFileRoute("/_authenticated/practice/session/$id")({
   component: SessionRunner,
@@ -18,29 +21,9 @@ export const Route = createFileRoute("/_authenticated/practice/session/$id")({
 type SessionMeta = {
   question_ids?: string[];
   draft_answers?: unknown;
+  modules?: MockModuleMeta[];
   [key: string]: unknown;
 };
-
-function hydrateDraftAnswers(count: number, drafts: unknown): AnswerState[] {
-  const base = Array.from({ length: count }, () => emptyAnswer());
-  if (!Array.isArray(drafts)) return base;
-  for (let i = 0; i < count; i++) {
-    const d = drafts[i];
-    if (!d || typeof d !== "object") continue;
-    const row = d as Partial<AnswerState>;
-    base[i] = {
-      selectedChoiceId:
-        typeof row.selectedChoiceId === "string" ? row.selectedChoiceId : null,
-      gridAnswer: typeof row.gridAnswer === "string" ? row.gridAnswer : "",
-      eliminated: Array.isArray(row.eliminated)
-        ? row.eliminated.filter((x): x is string => typeof x === "string")
-        : [],
-      markedForReview: row.markedForReview === true,
-      highlights: Array.isArray(row.highlights) ? (row.highlights as AnswerState["highlights"]) : [],
-    };
-  }
-  return base;
-}
 
 function SessionRunner() {
   const { id } = Route.useParams();
@@ -51,14 +34,7 @@ function SessionRunner() {
   const [type, setType] = useState<TestType>("practice");
   const [userId, setUserId] = useState<string>("");
   const [duration, setDuration] = useState<number>(0);
-  const [mockSchedule, setMockSchedule] = useState<
-    | {
-        rwSeconds: number;
-        mathSeconds: number;
-        breakSeconds: number;
-      }
-    | undefined
-  >();
+  const [mockSchedule, setMockSchedule] = useState<MockSchedule | undefined>();
   const [initialAnswers, setInitialAnswers] = useState<AnswerState[] | undefined>();
   const [sessionMeta, setSessionMeta] = useState<SessionMeta>({});
 
@@ -158,19 +134,32 @@ function SessionRunner() {
           mx = withBreak.data;
         }
         if (mx) {
-          const rw =
-            (mx.rw_module1_time_seconds ?? 0) + (mx.rw_module2_time_seconds ?? 0);
-          const math =
-            (mx.math_module1_time_seconds ?? 0) + (mx.math_module2_time_seconds ?? 0);
-          const breakSeconds =
-            typeof mx.section_break_seconds === "number" ? mx.section_break_seconds : 1200;
-          setMockSchedule({ rwSeconds: rw, mathSeconds: math, breakSeconds });
-          /* Total remaining clock for resume fallback / non-sectioned display. */
-          setDuration(rw + math);
+          const times = {
+            rw1: mx.rw_module1_time_seconds ?? 0,
+            rw2: mx.rw_module2_time_seconds ?? 0,
+            math1: mx.math_module1_time_seconds ?? 0,
+            math2: mx.math_module2_time_seconds ?? 0,
+            breakSeconds:
+              typeof mx.section_break_seconds === "number" ? mx.section_break_seconds : 1200,
+          };
+          const modules = Array.isArray(meta.modules) ? (meta.modules as MockModuleMeta[]) : [];
+          const schedule =
+            modules.length > 0
+              ? scheduleFromModules(ordered, modules, times)
+              : fallbackScheduleFromSections(
+                  ordered,
+                  times.rw1 + times.rw2,
+                  times.math1 + times.math2,
+                  times.breakSeconds,
+                );
+          setMockSchedule(schedule);
+          setDuration(
+            times.rw1 + times.rw2 + times.math1 + times.math2,
+          );
         }
       }
 
-      setInitialAnswers(hydrateDraftAnswers(ordered.length, meta.draft_answers));
+      setInitialAnswers(hydrateDraftAnswers(ordered, meta.draft_answers));
       setSessionMeta(meta);
       setLoading(false);
     })();

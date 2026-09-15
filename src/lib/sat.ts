@@ -134,9 +134,17 @@ export function scoreBand(total: number): {
 
 export type Section = "reading_writing" | "math";
 export type Difficulty = "easy" | "medium" | "hard" | "C" | "B" | "D" | "A" | "S";
-export type LetterDifficulty = "C" | "B" | "D" | "A" | "S";
+/** Selectable letter grades for new questions: A hardest, C easiest. */
+export type LetterDifficulty = "A" | "B" | "C";
 
-export const LETTER_DIFFICULTIES: LetterDifficulty[] = ["C", "B", "D", "A", "S"];
+/** Display / pick order: A (top/hardest) → C (lowest/easiest). */
+export const LETTER_DIFFICULTIES: LetterDifficulty[] = ["A", "B", "C"];
+
+export const LETTER_DIFFICULTY_HINT: Record<LetterDifficulty, string> = {
+  A: "hardest",
+  B: "",
+  C: "easiest",
+};
 
 export const SECTION_LABEL: Record<Section, string> = {
   reading_writing: "Reading & Writing",
@@ -256,7 +264,6 @@ export function difficultyColor(d: Difficulty | string | null | undefined): stri
   const label = difficultyLabel(d);
   switch (label) {
     case "S":
-      return "bg-brand-300 text-white";
     case "A":
       return "bg-brand-400 text-white";
     case "B":

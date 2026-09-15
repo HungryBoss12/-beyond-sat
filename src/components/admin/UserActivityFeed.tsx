@@ -20,14 +20,14 @@ const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
 export function UserActivityFeed({ events }: { events: AdminActivityRow[] }) {
   if (events.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-brand-400/40 p-8 text-center text-sm text-brand-100">
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
         No activity recorded yet.
       </div>
     );
   }
 
   return (
-    <ul className="divide-y divide-brand-400/30 rounded-xl border border-brand-400/40 bg-brand-800/40">
+    <ul className="divide-y divide-brand-400/30 overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
       {events.map((e, i) => {
         const Icon = KIND_ICON[e.kind] ?? ClipboardCheck;
         const when = e.occurred_at

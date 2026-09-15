@@ -3,10 +3,9 @@
  *
  * On the edge, secrets arrive as the `env` argument to `fetch`. Under `vite dev`
  * there is no such argument, and — unlike the production build — nothing puts
- * dotenv values onto `process.env` either: the Lovable config only runs
- * `loadEnv(mode, cwd, "VITE_")` to `define` the `import.meta.env.VITE_*`
- * literals, and the Nitro plugin that reads `.env`/`.env.local` is registered
- * only when `command === "build"`. So a non-prefixed secret such as
+ * dotenv values onto `process.env` either: Vite only inlines `VITE_*` via `import.meta.env`,
+ * and the Nitro plugin that reads `.env`/`.env.local` is registered only when
+ * `command === "build"`. So a non-prefixed secret such as
  * `OPENROUTER_API_KEY` is invisible in dev no matter which file it sits in, and
  * `wrangler secret put` sets it on the *deployed* Worker, which `vite dev`
  * never talks to.

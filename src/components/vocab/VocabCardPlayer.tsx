@@ -5,7 +5,9 @@ import { ArrowLeft, Loader2, RotateCcw } from "lucide-react";
 import { fetchVocabSession, submitVocabReview } from "@/lib/vocab/client";
 import { recordDeckHomeworkProgress } from "@/lib/vocab/homework";
 import { supabase } from "@/integrations/supabase/client";
+import { logUinfo } from "@/lib/uinfo/log";
 import { AmbientGlow } from "@/components/ui/reveal-card";
+import { usePointerGlow } from "@/hooks/usePointerGlow";
 import { AnkiDeckCounts } from "@/components/vocab/AnkiDeckCounts";
 import {
   emptySessionSummary,
@@ -42,6 +44,41 @@ function highlightWord(passage: string, word: string): ReactNode {
     ) : (
       part
     ),
+  );
+}
+
+function RatingKey({
+  rating,
+  interval,
+  pressed,
+  reduceMotion,
+  onRate,
+}: {
+  rating: ReviewRating;
+  interval: string;
+  pressed: boolean;
+  reduceMotion: boolean | null;
+  onRate: (rating: ReviewRating) => void;
+}) {
+  const ref = usePointerGlow<HTMLButtonElement>();
+  return (
+    <motion.button
+      ref={ref}
+      type="button"
+      onClick={() => onRate(rating)}
+      whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+      className={cn(
+        "vocab-reveal-surface tap flex flex-col items-center rounded-xl py-3 text-sm font-bold text-white ring-1 ring-white/25 transition-colors duration-200",
+        pressed && "opacity-80",
+        rating === 1 && "bg-brand-900/50 hover:bg-brand-900/70",
+        rating === 2 && "bg-brand-800/55 hover:bg-brand-800/75",
+        rating === 3 && "bg-brand-600/45 hover:bg-brand-600/60",
+        rating === 4 && "bg-brand-400/30 hover:bg-brand-400/45",
+      )}
+    >
+      <span>{RATING_LABELS[rating]}</span>
+      <span className="text-xs font-normal text-white/70">{interval}</span>
+    </motion.button>
   );
 }
 
@@ -174,6 +211,7 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
 
   const finishSession = useCallback(async () => {
     setSummary({ ...sessionRef.current, reviewed: sessionRef.current.reviewed });
+    logUinfo("v", `v${sessionRef.current.reviewed}`);
     onDone?.();
     try {
       const { data: sess } = await supabase.auth.getSession();
@@ -210,9 +248,6 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
       sessionRef.current.ratings[rating] += 1;
 
       const isLast = idx + 1 >= queue.length;
-
-      sessionRef.current.reviewed += 1;
-      sessionRef.current.ratings[rating] += 1;
 
       if (!isLast) {
         setIdx((i) => i + 1);
@@ -450,23 +485,14 @@ export function VocabCardPlayer({ deckId, deckTitle, onDone }: Props) {
             exit="exit"
           >
             {([1, 2, 3, 4] as ReviewRating[]).map((r) => (
-              <motion.button
+              <RatingKey
                 key={r}
-                type="button"
-                onClick={() => rate(r)}
-                whileTap={reduceMotion ? undefined : { scale: 0.97 }}
-                className={cn(
-                  "vocab-reveal-surface tap flex flex-col items-center rounded-xl py-3 text-sm font-bold text-white ring-1 ring-white/25 transition-colors duration-200",
-                  pressedRating === r && "opacity-80",
-                  r === 1 && "bg-brand-900/50 hover:bg-brand-900/70",
-                  r === 2 && "bg-brand-800/55 hover:bg-brand-800/75",
-                  r === 3 && "bg-brand-600/45 hover:bg-brand-600/60",
-                  r === 4 && "bg-brand-400/30 hover:bg-brand-400/45",
-                )}
-              >
-                <span>{RATING_LABELS[r]}</span>
-                <span className="text-xs font-normal text-white/70">{intervals[r]}</span>
-              </motion.button>
+                rating={r}
+                interval={intervals[r]}
+                pressed={pressedRating === r}
+                reduceMotion={reduceMotion}
+                onRate={rate}
+              />
             ))}
           </motion.footer>
         ) : null}

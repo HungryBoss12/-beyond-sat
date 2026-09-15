@@ -15,6 +15,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { BeyondAiMark } from "@/components/ai/BeyondAiMark";
 import { ChatTurn } from "@/components/ai/ChatTurn";
 import { WelcomeEmblem } from "@/components/ai/WelcomeEmblem";
 import { scrollNearBottom, scrollToBottom, scrollWindowToTop } from "@/lib/smooth-scroll";
@@ -31,7 +32,6 @@ import {
   setConversationModel,
   type Conversation,
 } from "@/lib/ai/conversations";
-import { loadAiContext } from "@/lib/ai/context";
 import {
   CHAT_MODEL_CHOICES,
   DEFAULT_CHAT_MODEL,
@@ -81,11 +81,6 @@ function BeyondAiPage() {
      inside the stream, where the state variable would be the closure's snapshot. */
   const activeRef = useRef<string | null>(null);
   activeRef.current = activeId;
-  /* The student's own numbers, prepended to their first message only. Sent as
-     part of the user turn, never as a system instruction — the system prompt is
-     assembled server-side and must stay out of the client's reach. */
-  const contextRef = useRef<string | null>(null);
-  const sentContext = useRef(false);
 
   const persist = useCallback((turn: { user: ChatMessage; assistant: string }) => {
     const id = activeRef.current;
@@ -128,9 +123,6 @@ function BeyondAiPage() {
         setSaveError("Saved chats couldn't be loaded. You can still start a new one.");
       }
     })();
-    void (async () => {
-      contextRef.current = await loadAiContext();
-    })();
   }, []);
 
   /* Pin to the bottom as tokens arrive, but only when the student is already near
@@ -151,7 +143,7 @@ function BeyondAiPage() {
     activeRef.current = conversation.id;
     setModel(conversation.model);
     setDrawerOpen(false);
-    sentContext.current = true; // an existing chat already has its context
+    /* existing chats already have their transcript */
     try {
       load(await loadMessages(conversation.id));
     } catch {
@@ -163,7 +155,6 @@ function BeyondAiPage() {
   function startNewChat() {
     setActiveId(null);
     activeRef.current = null;
-    sentContext.current = false;
     setDraft("");
     setAttachment(null);
     setDrawerOpen(false);
@@ -230,17 +221,11 @@ function BeyondAiPage() {
       }
     }
 
-    const withContext =
-      contextRef.current && !sentContext.current && trimmed
-        ? `${contextRef.current}\n\n${trimmed}`
-        : trimmed;
-    sentContext.current = true;
-
     const image = attachment ?? undefined;
     setDraft("");
     setAttachment(null);
     setAttachError(null);
-    void send(withContext, { imageDataUrl: image, model });
+    void send(trimmed, { imageDataUrl: image, model });
   }
 
   const empty = messages.length === 0;
@@ -366,6 +351,7 @@ function BeyondAiPage() {
             >
               <PanelLeftOpen className="h-5 w-5" />
             </button>
+            <BeyondAiMark size="sm" className="hidden sm:grid" />
             <div className="min-w-0">
               <h1 className="truncate text-sm font-bold text-slate-900 sm:text-base">
                 {active?.title ?? "New chat"}
@@ -409,10 +395,10 @@ function BeyondAiPage() {
         </div>
 
         {/* Composer */}
-        <div className="shrink-0 border-t border-brand-400/20 px-3 py-3 sm:px-5">
+        <div className="shrink-0 border-t border-brand-400/30 bg-brand-600 px-3 py-3 sm:px-5">
           <div className="mx-auto max-w-3xl">
             {attachment && (
-              <div className="mb-2 inline-flex items-start gap-2 rounded-xl bg-brand-25 p-2 ring-1 ring-brand-400/30">
+              <div className="mb-2 inline-flex items-start gap-2 rounded-xl bg-brand-800 p-2 ring-1 ring-brand-400/40">
                 <img
                   src={attachment}
                   alt="Attachment preview"
@@ -422,14 +408,14 @@ function BeyondAiPage() {
                   type="button"
                   onClick={() => setAttachment(null)}
                   aria-label="Remove image"
-                  className="tap grid h-7 w-7 place-items-center rounded-lg text-slate-500 hover:bg-white hover:text-brand-600"
+                  className="tap grid h-7 w-7 place-items-center rounded-lg text-brand-100 hover:bg-brand-400 hover:text-white"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             )}
             {attachError && (
-              <p className="mb-2 text-xs font-semibold text-slate-600">{attachError}</p>
+              <p className="mb-2 text-xs font-semibold text-brand-100">{attachError}</p>
             )}
 
             <form
@@ -456,7 +442,7 @@ function BeyondAiPage() {
                 onClick={() => fileRef.current?.click()}
                 disabled={preparing}
                 aria-label="Attach an image"
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-25 text-brand-600 ring-1 ring-brand-400/40 transition hover:bg-brand-50 disabled:opacity-60"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-800 text-white ring-1 ring-brand-400/40 transition hover:bg-brand-400 disabled:opacity-60"
               >
                 <ImagePlus className="h-4 w-4" />
               </button>
@@ -487,7 +473,7 @@ function BeyondAiPage() {
                 }}
                 rows={1}
                 placeholder={preparing ? "Preparing image…" : "Ask anything about the SAT…"}
-                className="max-h-40 min-h-[2.75rem] flex-1 resize-y rounded-xl border border-brand-400/40 bg-brand-25 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:outline-none"
+                className="max-h-40 min-h-[2.75rem] flex-1 resize-y rounded-xl border border-brand-400/40 bg-brand-800 px-3 py-2.5 text-sm text-white placeholder:text-brand-100 focus:border-brand-200 focus:outline-none"
               />
 
               {streaming ? (
@@ -495,7 +481,7 @@ function BeyondAiPage() {
                   type="button"
                   onClick={stop}
                   aria-label="Stop generating"
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-25 text-brand-600 ring-1 ring-brand-400/40 transition hover:bg-brand-50"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-800 text-white ring-1 ring-brand-400/40 transition hover:bg-brand-400"
                 >
                   <Square className="h-4 w-4" />
                 </button>
@@ -510,7 +496,7 @@ function BeyondAiPage() {
                 </button>
               )}
             </form>
-            <p className="mt-2 text-center text-[11px] text-slate-500">
+            <p className="mt-2 text-center text-[11px] text-brand-100">
               Beyond AI can make mistakes — check anything that decides an answer.
             </p>
           </div>
@@ -549,6 +535,9 @@ function Welcome({
 }) {
   return (
     <div className="rise-in py-8 text-center">
+      <div className="mb-4 flex justify-center">
+        <BeyondAiMark />
+      </div>
       <WelcomeEmblem />
       <h2 className="mt-4 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
         What are we working on?
@@ -603,7 +592,7 @@ function ModelPicker({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="btn-ghost inline-flex items-center gap-1.5 rounded-full border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-bold"
+        className="inline-flex items-center gap-1.5 rounded-full border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-bold text-white"
       >
         <Sparkles className="h-3.5 w-3.5 text-brand-200" />
         <span className="max-w-[9rem] truncate">{current.label}</span>
@@ -637,7 +626,7 @@ function ModelPicker({
                 }
               />
               <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold">{choice.label}</span>
+                <span className="block truncate text-sm font-semibold text-white">{choice.label}</span>
                 <span className="block truncate text-[11px] text-brand-100">{choice.hint}</span>
               </span>
             </button>

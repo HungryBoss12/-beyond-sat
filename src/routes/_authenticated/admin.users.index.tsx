@@ -29,7 +29,7 @@ import {
   type CreatedStudent,
 } from "@/lib/auth/create-user";
 import { isSyntheticAccountEmail } from "@/lib/auth/login-email";
-import { listAllClasses } from "@/lib/classes/api";
+import { listAllClasses, addClassMember } from "@/lib/classes/api";
 import type { ClassRow } from "@/lib/classes/types";
 import { isOnline, lastSeenLabel } from "@/lib/presence";
 import { errorMessage } from "@/lib/utils";
@@ -95,6 +95,11 @@ function AdminStudents() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [created, setCreated] = useState<(CreatedStudent & { password: string }) | null>(null);
   const [copied, setCopied] = useState<"username" | "password" | "both" | null>(null);
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkClassId, setBulkClassId] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   function setPageTab(next: PageTab) {
     void navigate({
@@ -279,6 +284,15 @@ function AdminStudents() {
     }
   }
 
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   const needle = q.trim().toLowerCase().replace(/^@/, "");
   const filtered = useMemo(() => {
     let list = rows.filter((r) => {
@@ -315,6 +329,51 @@ function AdminStudents() {
     });
     return list;
   }, [rows, needle, filter, classFilter, sortKey, sortAsc]);
+
+  function toggleSelectAllFiltered() {
+    setSelectedIds((prev) => {
+      const allSelected =
+        filtered.length > 0 && filtered.every((u) => prev.has(u.id));
+      if (allSelected) return new Set();
+      return new Set(filtered.map((u) => u.id));
+    });
+  }
+
+  async function bulkAddToClass() {
+    setBulkError(null);
+    if (!bulkClassId) {
+      setBulkError("Pick a class group.");
+      return;
+    }
+    if (selectedIds.size === 0) return;
+    setBulkBusy(true);
+    const ids = [...selectedIds];
+    const failures: string[] = [];
+    try {
+      for (const userId of ids) {
+        try {
+          await addClassMember(bulkClassId, userId);
+        } catch (e) {
+          const label =
+            rows.find((r) => r.id === userId)?.full_name ||
+            rows.find((r) => r.id === userId)?.email ||
+            userId;
+          failures.push(`${label}: ${(e as Error).message ?? "failed"}`);
+        }
+      }
+      setSelectedIds(new Set());
+      await load();
+      if (failures.length) {
+        setBulkError(
+          failures.length === ids.length
+            ? failures.slice(0, 3).join(" · ")
+            : `Added ${ids.length - failures.length}; ${failures.length} failed. ${failures[0]}`,
+        );
+      }
+    } finally {
+      setBulkBusy(false);
+    }
+  }
 
   const studentCount = rows.filter((r) => r.role === "student").length;
   const onlineCount = rows.filter((r) => isOnline(r.last_seen_at)).length;
@@ -423,8 +482,67 @@ function AdminStudents() {
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                onClick={() => setPageTab("provisioning")}
+                className="btn-brand inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white shadow-brand"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Create student
+              </button>
             </div>
           </RevealCard>
+
+          {selectedIds.size > 0 ? (
+            <RevealCard className="relative sticky top-2 z-20 overflow-hidden rounded-2xl border border-brand-200/50 bg-brand-600 p-3 text-white shadow-panel">
+              <PanelGlow />
+              <div className="relative flex flex-wrap items-center gap-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-brand-100">
+                  {selectedIds.size} selected
+                </span>
+                <AdminSelect
+                  value={bulkClassId}
+                  onValueChange={setBulkClassId}
+                  placeholder="Add to class…"
+                  className="min-w-[180px]"
+                  size="sm"
+                  options={classes.map((c) => ({
+                    value: c.id,
+                    label: c.active ? c.name : `${c.name} (inactive)`,
+                  }))}
+                />
+                <button
+                  type="button"
+                  disabled={bulkBusy || !bulkClassId}
+                  onClick={() => void bulkAddToClass()}
+                  className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
+                >
+                  {bulkBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
+                  Add to class
+                </button>
+                <button
+                  type="button"
+                  disabled={bulkBusy}
+                  onClick={() => {
+                    setSelectedIds(new Set());
+                    setBulkError(null);
+                  }}
+                  className="tap rounded-lg px-3 py-2 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
+                >
+                  Clear
+                </button>
+                {bulkError ? (
+                  <p className="w-full text-xs font-semibold text-white ring-1 ring-brand-300/60 rounded-lg bg-brand-900 px-3 py-2">
+                    {bulkError}
+                  </p>
+                ) : null}
+              </div>
+            </RevealCard>
+          ) : null}
 
           {!loading && !err && !insightsReady && (
             <div className="rounded-xl border border-dashed border-brand-300/50 bg-brand-800/50 p-4 text-sm text-brand-100">
@@ -447,25 +565,47 @@ function AdminStudents() {
                   <div className="p-8 text-center text-sm text-brand-100">No students found.</div>
                 ) : (
                   <>
-                    {insightsReady && (
-                      <div className="hidden border-b border-brand-400/30 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200 md:grid md:grid-cols-[1fr_100px_80px_100px_120px] md:gap-3">
+                    <div
+                      className={
+                        "border-b border-brand-400/30 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200 " +
+                        (insightsReady
+                          ? "hidden md:grid md:grid-cols-[auto_1fr_100px_80px_100px_120px] md:gap-3 md:items-center"
+                          : "flex items-center gap-3")
+                      }
+                    >
+                      <label className="inline-flex cursor-pointer items-center">
+                        <input
+                          type="checkbox"
+                          checked={
+                            filtered.length > 0 && filtered.every((u) => selectedIds.has(u.id))
+                          }
+                          onChange={toggleSelectAllFiltered}
+                          className="h-4 w-4 rounded border-brand-400 bg-brand-800 text-brand-400 focus:ring-brand-300"
+                          aria-label="Select all visible students"
+                        />
+                      </label>
+                      {insightsReady ? (
+                        <>
+                          <span>Student</span>
+                          <SortHeader
+                            label="Tests"
+                            active={sortKey === "tests_total"}
+                            asc={sortAsc}
+                            onClick={() => toggleSort("tests_total")}
+                          />
+                          <span>Streak</span>
+                          <span>Class</span>
+                          <SortHeader
+                            label="Last active"
+                            active={sortKey === "last_seen"}
+                            asc={sortAsc}
+                            onClick={() => toggleSort("last_seen")}
+                          />
+                        </>
+                      ) : (
                         <span>Student</span>
-                        <SortHeader
-                          label="Tests"
-                          active={sortKey === "tests_total"}
-                          asc={sortAsc}
-                          onClick={() => toggleSort("tests_total")}
-                        />
-                        <span>Streak</span>
-                        <span>Class</span>
-                        <SortHeader
-                          label="Last active"
-                          active={sortKey === "last_seen"}
-                          asc={sortAsc}
-                          onClick={() => toggleSort("last_seen")}
-                        />
-                      </div>
-                    )}
+                      )}
+                    </div>
                     <ul className="divide-y divide-brand-400/30">
                       {filtered.map((u) => (
                         <UserListRow
@@ -473,6 +613,8 @@ function AdminStudents() {
                           u={u}
                           busy={busy === u.id}
                           insightsReady={insightsReady}
+                          selected={selectedIds.has(u.id)}
+                          onToggleSelect={() => toggleSelected(u.id)}
                           onRole={(role) => void setRole(u, role)}
                           onBan={() => void toggleBan(u)}
                         />
@@ -752,12 +894,16 @@ function UserListRow({
   u,
   busy,
   insightsReady,
+  selected,
+  onToggleSelect,
   onRole,
   onBan,
 }: {
   u: UserRow;
   busy: boolean;
   insightsReady: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
   onRole: (role: Role) => void;
   onBan: () => void;
 }) {
@@ -769,6 +915,18 @@ function UserListRow({
   return (
     <li className="group">
       <div className="flex flex-wrap items-center gap-3 px-4 py-3 md:gap-4">
+        <label
+          className="tap shrink-0 cursor-pointer"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+            className="h-4 w-4 rounded border-brand-400 bg-brand-800 text-brand-400 focus:ring-brand-300"
+            aria-label={`Select ${u.full_name || u.email || "student"}`}
+          />
+        </label>
         <Link
           to="/admin/users/$userId"
           params={{ userId: u.id }}

@@ -314,6 +314,86 @@
     text-underline-offset: 0.15em;
   }
 
+  /* Keep KaTeX radicals/stretchy SVGs intact (preflight svg rules collapse them). */
+  .math-text {
+    color: inherit;
+  }
+  .math-text .katex,
+  .math-text .katex-html,
+  .math-text .katex .base,
+  .katex,
+  .katex-html,
+  .katex .base {
+    color: inherit;
+  }
+  .katex svg,
+  .math-text .katex svg {
+    display: block !important;
+    max-width: none !important;
+    max-height: none !important;
+    width: 100% !important;
+    height: inherit !important;
+    overflow: visible !important;
+    fill: currentColor;
+    stroke: currentColor;
+    vertical-align: baseline;
+  }
+  .katex .sqrt > .sqrt-sign,
+  .math-text .katex .sqrt > .sqrt-sign {
+    color: inherit;
+  }
+
+  /* Prefer bundled public fonts when the CSS-relative font URLs 404 in the Worker. */
+  @font-face {
+    font-family: KaTeX_Main;
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url("/katex/fonts/KaTeX_Main-Regular.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: KaTeX_Main;
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url("/katex/fonts/KaTeX_Main-Bold.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: KaTeX_Math;
+    font-style: italic;
+    font-weight: 400;
+    font-display: block;
+    src: url("/katex/fonts/KaTeX_Math-Italic.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: KaTeX_Size1;
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url("/katex/fonts/KaTeX_Size1-Regular.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: KaTeX_Size2;
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url("/katex/fonts/KaTeX_Size2-Regular.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: KaTeX_Size3;
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url("/katex/fonts/KaTeX_Size3-Regular.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: KaTeX_Size4;
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url("/katex/fonts/KaTeX_Size4-Regular.woff2") format("woff2");
+  }
+
   .vocab-surface {
     color: #fff;
   }

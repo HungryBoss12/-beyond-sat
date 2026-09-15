@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState, type RefCallback } from "react";
 
 /**
  * Writes the pointer's position, relative to the returned element, into two CSS
@@ -15,16 +15,16 @@ import { useEffect, useRef } from "react";
  * No-ops under `prefers-reduced-motion: reduce`. The gradients keyed to these
  * variables fall back to their unset state, which the `@utility` definitions in
  * styles.css treat as "centred and invisible".
+ *
+ * The ref is a callback so a late-mounted node (conditional footer, tab panel)
+ * still binds. An empty-deps `useRef` + `useEffect` would see `null` on the
+ * first pass and never attach.
  */
-export function usePointerGlow<T extends HTMLElement = HTMLDivElement>() {
-  const ref = useRef<T | null>(null);
+export function usePointerGlow<T extends HTMLElement = HTMLDivElement>(): RefCallback<T> {
+  const [el, setEl] = useState<T | null>(null);
 
   useEffect(() => {
-    const el = ref.current;
     if (!el) return;
-
-    // matchMedia is unavailable during SSR; this effect is client-only so the
-    // guard is just for safety in test environments.
     if (typeof window === "undefined" || !window.matchMedia) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
@@ -38,53 +38,55 @@ export function usePointerGlow<T extends HTMLElement = HTMLDivElement>() {
       el.style.setProperty("--py", `${pendingY}px`);
     };
 
-    const onMove = (e: PointerEvent) => {
-      // getBoundingClientRect is read here rather than cached because cards move
-      // on scroll and on hover (the `lift` utility translates them).
+    const writePos = (clientX: number, clientY: number) => {
       const rect = el.getBoundingClientRect();
-      pendingX = e.clientX - rect.left;
-      pendingY = e.clientY - rect.top;
+      pendingX = clientX - rect.left;
+      pendingY = clientY - rect.top;
       if (!frame) frame = requestAnimationFrame(flush);
     };
 
-    /* Opacity is driven by a separate variable so the glow fades out on leave
-       instead of snapping — and so it stays hidden until the pointer has
-       actually been somewhere, rather than flashing at the top-left corner. */
-    const onEnter = () => el.style.setProperty("--glow", "1");
+    const onEnter = (e: PointerEvent) => {
+      writePos(e.clientX, e.clientY);
+      el.style.setProperty("--glow", "1");
+    };
+
+    const onMove = (e: PointerEvent) => writePos(e.clientX, e.clientY);
+
     const onLeave = () => {
       if (frame) cancelAnimationFrame(frame);
       frame = 0;
       el.style.setProperty("--glow", "0");
     };
 
-    el.addEventListener("pointermove", onMove, { passive: true });
     el.addEventListener("pointerenter", onEnter);
+    el.addEventListener("pointermove", onMove, { passive: true });
     el.addEventListener("pointerleave", onLeave);
 
     return () => {
       if (frame) cancelAnimationFrame(frame);
-      el.removeEventListener("pointermove", onMove);
       el.removeEventListener("pointerenter", onEnter);
+      el.removeEventListener("pointermove", onMove);
       el.removeEventListener("pointerleave", onLeave);
     };
-  }, []);
+  }, [el]);
 
-  return ref;
+  return setEl;
 }
 
 /**
  * Viewport-level variant: tracks the pointer across the whole window and writes
  * `--gx` / `--gy` onto the returned element, which is expected to be a fixed
- * overlay. Used for the landing page's ambient spotlight.
+ * overlay. Used for the page-level ambient spotlight.
  *
- * Kept separate from `usePointerGlow` because the maths differs — this one wants
- * viewport coordinates, not element-relative ones, so there's no rect to read.
+ * Coordinates stay viewport-absolute so they match `position: fixed`. The
+ * overlay must NOT sit inside an ancestor with a `transform` (AppShell's
+ * `route-enter` animation) — that ancestor becomes the containing block and
+ * the glow collapses to the content column, then stacks behind white paint.
  */
-export function useAmbientGlow<T extends HTMLElement = HTMLDivElement>() {
-  const ref = useRef<T | null>(null);
+export function useAmbientGlow<T extends HTMLElement = HTMLDivElement>(): RefCallback<T> {
+  const [el, setEl] = useState<T | null>(null);
 
   useEffect(() => {
-    const el = ref.current;
     if (!el) return;
     if (typeof window === "undefined" || !window.matchMedia) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -106,12 +108,21 @@ export function useAmbientGlow<T extends HTMLElement = HTMLDivElement>() {
       if (!frame) frame = requestAnimationFrame(flush);
     };
 
+    const onLeaveWindow = (e: PointerEvent) => {
+      if (e.relatedTarget != null) return;
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+      el.style.setProperty("--glow", "0");
+    };
+
     window.addEventListener("pointermove", onMove, { passive: true });
+    document.documentElement.addEventListener("pointerleave", onLeaveWindow);
     return () => {
       if (frame) cancelAnimationFrame(frame);
       window.removeEventListener("pointermove", onMove);
+      document.documentElement.removeEventListener("pointerleave", onLeaveWindow);
     };
-  }, []);
+  }, [el]);
 
-  return ref;
+  return setEl;
 }

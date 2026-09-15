@@ -25,6 +25,7 @@ import {
   Gift,
 } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 
 /** Shared control styling for every field in the section editors. */
 const CONTROL_CLASS =
@@ -293,17 +294,14 @@ function AdminHomepage() {
             <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-brand-100">
               Add a new section
             </label>
-            <select
+            <AdminSelect
               value={newKind}
-              onChange={(e) => setNewKind(e.target.value)}
-              className={CONTROL_CLASS}
-            >
-              {KIND_OPTIONS.map((k) => (
-                <option key={k.value} value={k.value}>
-                  {k.label} — {k.description}
-                </option>
-              ))}
-            </select>
+              onValueChange={setNewKind}
+              options={KIND_OPTIONS.map((k) => ({
+                value: k.value,
+                label: `${k.label} — ${k.description}`,
+              }))}
+            />
           </div>
           <button
             onClick={addSection}
@@ -931,14 +929,14 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
             >
               <div className="grid gap-3 md:grid-cols-4">
                 <Field label="Who's speaking">
-                  <select
+                  <AdminSelect
                     value={jsonFieldText(m.role) || "user"}
-                    onChange={(e) => updateMessage(i, { role: e.target.value })}
-                    className={CONTROL_CLASS}
-                  >
-                    <option value="user">Student</option>
-                    <option value="assistant">Beyond AI</option>
-                  </select>
+                    onValueChange={(v) => updateMessage(i, { role: v })}
+                    options={[
+                      { value: "user", label: "Student" },
+                      { value: "assistant", label: "Beyond AI" },
+                    ]}
+                  />
                 </Field>
                 <div className="md:col-span-3">
                   {/* Maths is written the same way as in questions, so an admin

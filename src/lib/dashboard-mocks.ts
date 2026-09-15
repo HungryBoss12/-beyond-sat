@@ -11,7 +11,7 @@ export type MockSessionRow = {
   started_at: string;
   total_questions: number | null;
   correct_count: number | null;
-  metadata: { draft_answers?: AnswerState[] | null } | null;
+  metadata: { draft_answers?: unknown } | null;
 };
 
 export type MockTrendPoint = {
@@ -47,18 +47,29 @@ function parseMetadata(session: MockSessionRow): MockSessionRow["metadata"] {
   return raw;
 }
 
-export function countDraftProgress(drafts: AnswerState[] | null | undefined): number {
-  if (!drafts?.length) return 0;
-  return drafts.filter(
-    (a) => !!a.selectedChoiceId || a.gridAnswer.trim().length > 0 || a.markedForReview,
-  ).length;
+export function countDraftProgress(drafts: unknown): number {
+  if (!drafts) return 0;
+  const rows = Array.isArray(drafts)
+    ? drafts
+    : typeof drafts === "object"
+      ? Object.values(drafts as Record<string, unknown>)
+      : [];
+  return rows.filter((raw) => {
+    if (!raw || typeof raw !== "object") return false;
+    const a = raw as Partial<AnswerState>;
+    return (
+      !!a.selectedChoiceId ||
+      (typeof a.gridAnswer === "string" && a.gridAnswer.trim().length > 0) ||
+      a.markedForReview === true
+    );
+  }).length;
 }
 
 /** Completion % for a practice set — 100 when done, answered/total when in progress. */
 export function practiceSetProgressPct(
   completed: boolean,
   totalQuestions: number,
-  draftAnswers: AnswerState[] | null | undefined,
+  draftAnswers: unknown,
 ): number {
   if (completed) return 100;
   if (totalQuestions <= 0) return 0;

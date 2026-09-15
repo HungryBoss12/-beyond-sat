@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Section, Difficulty } from "./sat";
 import { questionCountFor, rawToScaled, skillsFor } from "./sat";
 import { format } from "date-fns";
+import { sortMockModules, type MockModuleMeta } from "./mock-phase";
 
 export type TestType = "practice" | "daily" | "mock";
 
@@ -111,6 +112,17 @@ export async function startDailySession(): Promise<{ sessionId: string; resumed:
     .maybeSingle();
   if (dtErr) throw dtErr;
   if (!dt) throw new Error("No daily test is available for today.");
+
+  const { data: finished } = await supabase
+    .from("test_sessions")
+    .select("id")
+    .eq("user_id", uid)
+    .eq("daily_test_id", dt.id)
+    .not("completed_at", "is", null)
+    .limit(1);
+  if (finished && finished.length > 0) {
+    throw new Error("You already finished today's daily test.");
+  }
 
   const { data: existing } = await supabase
     .from("test_sessions")
@@ -235,8 +247,7 @@ export async function startMockSession(
   if (existing && existing.length > 0)
     return { sessionId: existing[0].id as string, resumed: true };
 
-  // Prefer mock_exam_sections (tests picker); fallback to legacy per-question rows
-  let ids: string[] = [];
+  const modules: MockModuleMeta[] = [];
   const { data: sections } = await supabase
     .from("mock_exam_sections")
     .select("test_id, module, section_index")
@@ -257,14 +268,23 @@ export async function startMockSession(
     linkedIds.sort((a, b) => {
       const left = testById.get(a);
       const right = testById.get(b);
-      const leftSection = left?.section === "reading_writing" ? 0 : 1;
-      const rightSection = right?.section === "reading_writing" ? 0 : 1;
+      const leftSection = left?.section === "reading_writing" ? 0 : 2;
+      const rightSection = right?.section === "reading_writing" ? 0 : 2;
       if (leftSection !== rightSection) return leftSection - rightSection;
       return (left?.module ?? 1) - (right?.module ?? 1);
     });
-    ids = await questionsForTests(linkedIds);
+    for (const testId of linkedIds) {
+      const test = testById.get(testId);
+      const qids = await questionsForTests([testId]);
+      const section = test?.section ?? "reading_writing";
+      const module = test?.module === 2 ? 2 : 1;
+      const existingModule = modules.find((m) => m.section === section && m.module === module);
+      if (existingModule) existingModule.question_ids.push(...qids);
+      else modules.push({ section, module, question_ids: qids });
+    }
   }
-  if (ids.length === 0) {
+  if (modules.every((m) => m.question_ids.length === 0)) {
+    modules.length = 0;
     const { data: mq } = await supabase
       .from("mock_exam_questions")
       .select("question_id, section, module, position")
@@ -272,8 +292,22 @@ export async function startMockSession(
       .order("section", { ascending: true })
       .order("module", { ascending: true })
       .order("position", { ascending: true });
-    ids = (mq ?? []).map((r) => r.question_id as string);
+    const grouped = new Map<string, MockModuleMeta>();
+    for (const row of mq ?? []) {
+      const section = row.section as Section;
+      const module = row.module === 2 ? 2 : 1;
+      const key = `${section}:${module}`;
+      let bucket = grouped.get(key);
+      if (!bucket) {
+        bucket = { section, module, question_ids: [] };
+        grouped.set(key, bucket);
+      }
+      bucket.question_ids.push(row.question_id as string);
+    }
+    modules.push(...sortMockModules([...grouped.values()]));
   }
+  const orderedModules = sortMockModules(modules.filter((m) => m.question_ids.length > 0));
+  const ids = orderedModules.flatMap((m) => m.question_ids);
   if (ids.length === 0) throw new Error("This mock exam has no questions yet.");
 
   const { data: sess, error } = await supabase
@@ -283,7 +317,7 @@ export async function startMockSession(
       type: "mock",
       mock_exam_id: mockExamId,
       total_questions: ids.length,
-      metadata: { question_ids: ids },
+      metadata: { question_ids: ids, modules: orderedModules },
     })
     .select("id")
     .single();
@@ -304,8 +338,8 @@ export function scaledScore(
   correct: number,
   total: number,
   section: Section = "reading_writing",
-): number {
-  if (total <= 0) return 200;
+): number | null {
+  if (total <= 0) return null;
   const official = questionCountFor(section);
   const projected = (Math.max(0, Math.min(total, correct)) / total) * official;
   return rawToScaled(section, projected);

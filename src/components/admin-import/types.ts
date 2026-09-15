@@ -6,7 +6,7 @@ export const CONTROL_CLASS =
   "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none";
 
 /** Rows per insert request. Keeps the payload well under any body limit. */
-export const CHUNK = 100;
+export const CHUNK = 8;
 
 /**
  * A row in the preview, plus the draft it came from.

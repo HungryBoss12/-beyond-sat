@@ -42,6 +42,8 @@ export function readSupabaseConfig(env: unknown): SupabaseConfig | null {
 /**
  * Mirror Worker secrets onto process.env so server-only clients (e.g. service
  * role) see the same project URL/keys as `readEnv` / staff JWT auth.
+ * When the Worker `env` argument provides a value, it always wins over any
+ * build-time leftover already on process.env (stale publishable keys, etc.).
  */
 export function hydrateServerEnv(env: unknown): void {
   if (typeof process === "undefined" || !process.env) return;
@@ -55,6 +57,12 @@ export function hydrateServerEnv(env: unknown): void {
     "TELEGRAM_WEBHOOK_SECRET",
   ] as const;
   for (const key of keys) {
+    const fromWorker =
+      env && typeof env === "object" ? (env as WorkerEnv)[key] : undefined;
+    if (typeof fromWorker === "string" && fromWorker.trim()) {
+      process.env[key] = fromWorker.trim();
+      continue;
+    }
     const val = readEnv(env, key);
     if (val && !process.env[key]?.trim()) process.env[key] = val;
   }

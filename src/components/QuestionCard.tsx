@@ -9,6 +9,7 @@ import {
   X as XIcon,
 } from "lucide-react";
 import { MathText } from "@/components/MathText";
+import { sanitizeGridInput } from "@/lib/grid-answer";
 import {
   DEFAULT_HIGHLIGHT_BINDINGS,
   formatBinding,
@@ -18,7 +19,7 @@ import {
   type HighlightBindings,
 } from "@/lib/highlightBindings";
 
-export type Choice = { id: string; text: string };
+export type Choice = { id: string; text: string; image_url?: string | null };
 
 export type QuestionRow = {
   id: string;
@@ -530,8 +531,11 @@ function QuestionBody({
           </label>
           <input
             value={answer.gridAnswer}
-            onChange={(e) => onChange({ ...answer, gridAnswer: e.target.value })}
-            inputMode="numeric"
+            onChange={(e) => onChange({ ...answer, gridAnswer: sanitizeGridInput(e.target.value) })}
+            inputMode="text"
+            autoComplete="off"
+            spellCheck={false}
+            maxLength={6}
             className="mt-2 block w-full max-w-xs rounded border-2 border-test-edge bg-white px-4 py-3 text-xl font-bold tabular-nums text-test-ink placeholder:text-test-muted/60 focus:border-test-accent focus:outline-none"
             placeholder="e.g. 3.14 or 5/8"
           />
@@ -588,11 +592,21 @@ function QuestionBody({
                   </span>
                   <span
                     className={
-                      "flex-1 text-[17px] leading-[1.6] md:text-[18px] " +
+                      "flex min-w-0 flex-1 flex-col gap-2 text-[17px] leading-[1.6] md:text-[18px] " +
                       (eliminated ? "text-test-muted line-through" : "text-test-ink")
                     }
                   >
-                    <MathText>{c.text}</MathText>
+                    {c.text?.trim() ? <MathText>{c.text}</MathText> : null}
+                    {c.image_url ? (
+                      <img
+                        src={c.image_url}
+                        alt=""
+                        className={
+                          "max-h-40 w-auto max-w-full rounded-md border border-test-edge object-contain " +
+                          (eliminated ? "opacity-50" : "")
+                        }
+                      />
+                    ) : null}
                   </span>
                 </button>
 

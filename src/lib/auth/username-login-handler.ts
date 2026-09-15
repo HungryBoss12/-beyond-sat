@@ -27,16 +27,19 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: rows, error: lookupErr } = await supabaseAdmin
     .from("profiles")
-    .select("id")
-    .ilike("username", username)
+    .select("id,banned")
+    .eq("username", username)
     .limit(1);
   if (lookupErr) {
     console.error("[username-login] lookup failed", lookupErr.message);
     return jsonResponse({ error: "Could not sign in. Try again." }, 500);
   }
-  const profile = (rows ?? [])[0] as { id: string } | undefined;
+  const profile = (rows ?? [])[0] as { id: string; banned: boolean | null } | undefined;
   if (!profile) {
     return jsonResponse({ error: "That username and password don't match." }, 401);
+  }
+  if (profile.banned) {
+    return jsonResponse({ error: "This account is banned." }, 403);
   }
 
   const { data: authUser, error: userErr } = await supabaseAdmin.auth.admin.getUserById(profile.id);

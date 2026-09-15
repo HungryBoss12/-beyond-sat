@@ -17,6 +17,7 @@ import { ListSkeleton } from "@/components/ui/skeletons";
 import { RevealCard } from "@/components/ui/reveal-card";
 import { AdminTestPreview } from "@/components/admin/AdminTestPreview";
 import { MockExamBuilderModal } from "@/components/admin/MockExamBuilderModal";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import {
   QuestionEditModal,
   loadQuestionWithAnswers,
@@ -594,66 +595,63 @@ function AdminTests() {
               </Field>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <Field label="Section">
-                  <select
+                  <AdminSelect
                     value={editing.section}
-                    onChange={(e) => {
-                      const s = e.target.value as Section;
+                    onValueChange={(v) => {
+                      const s = v as Section;
                       setEditing({ ...editing, section: s });
                       setEditingQs([]);
                       reloadPool(s);
                     }}
-                    className={CONTROL_CLASS}
-                  >
-                    <option value="math">Math</option>
-                    <option value="reading_writing">Reading &amp; Writing</option>
-                  </select>
+                    options={[
+                      { value: "math", label: "Math" },
+                      { value: "reading_writing", label: "Reading & Writing" },
+                    ]}
+                  />
                 </Field>
                 <Field label="Module">
-                  <select
-                    value={editing.module}
-                    onChange={(e) =>
-                      setEditing({ ...editing, module: Number(e.target.value) as 1 | 2 })
+                  <AdminSelect
+                    value={String(editing.module)}
+                    onValueChange={(v) =>
+                      setEditing({ ...editing, module: Number(v) as 1 | 2 })
                     }
-                    className={CONTROL_CLASS}
-                  >
-                    <option value={1}>Module 1</option>
-                    <option value={2}>Module 2</option>
-                  </select>
+                    options={[
+                      { value: "1", label: "Module 1" },
+                      { value: "2", label: "Module 2" },
+                    ]}
+                  />
                 </Field>
                 <Field label="Difficulty">
-                  <select
-                    value={editing.difficulty}
-                    onChange={(e) =>
-                      setEditing({ ...editing, difficulty: e.target.value as LetterDifficulty })
+                  <AdminSelect
+                    value={
+                      LETTER_DIFFICULTIES.includes(editing.difficulty as LetterDifficulty)
+                        ? editing.difficulty
+                        : "C"
                     }
-                    className={CONTROL_CLASS}
-                  >
-                    {LETTER_DIFFICULTIES.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={(v) =>
+                      setEditing({ ...editing, difficulty: v as LetterDifficulty })
+                    }
+                    options={LETTER_DIFFICULTIES.map((d) => ({
+                      value: d,
+                      label: `${d}${d === "A" ? " (hardest)" : d === "C" ? " (easiest)" : ""}`,
+                    }))}
+                  />
                 </Field>
                 <Field label="Source date">
                   <div className="flex gap-1">
-                    <select
-                      value={editing.source_month ?? ""}
-                      onChange={(e) =>
+                    <AdminSelect
+                      value={editing.source_month != null ? String(editing.source_month) : ""}
+                      onValueChange={(v) =>
                         setEditing({
                           ...editing,
-                          source_month: e.target.value ? Number(e.target.value) : null,
+                          source_month: v ? Number(v) : null,
                         })
                       }
-                      className={CONTROL_CLASS + " flex-1 px-2"}
-                    >
-                      <option value="">Month</option>
-                      {MONTHS.map((m, i) => (
-                        <option key={m} value={i + 1}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="Month"
+                      className="flex-1"
+                      triggerClassName="px-2"
+                      options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                    />
                     <input
                       type="number"
                       min={2000}

@@ -33,6 +33,8 @@ export type LessonListItem = Pick<
   "id" | "topic_id" | "title" | "sort_order" | "duration_seconds" | "published" | "video_path"
 > & { completed?: boolean };
 
+export type VideoVote = -1 | 0 | 1;
+
 export type RecommendedVideo = {
   id: string;
   topic_id: string;
@@ -40,6 +42,9 @@ export type RecommendedVideo = {
   youtube_url: string;
   sort_order: number;
   duration_seconds: number | null;
+  youtube_video_id?: string;
+  score?: number;
+  my_vote?: VideoVote;
 };
 
 export type StaffTree = {

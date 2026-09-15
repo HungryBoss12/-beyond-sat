@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { CalendarDays, Loader2, Sparkles, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { Skeleton } from "@/components/ui/panel";
-import { ClassChatSetupForm } from "@/components/classes/ClassChatSetupForm";
-import { getChatProfile } from "@/lib/classes";
+import { PanelGlow, Skeleton } from "@/components/ui/panel";
+import { AmbientGlow, RevealCard } from "@/components/ui/reveal-card";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   component: Onboarding,
@@ -21,7 +21,6 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 });
 
 type ExamDateOpt = { id: string; exam_date: string; label: string | null };
-type Step = "goals" | "class";
 
 function parseLocalDate(ymd: string): Date {
   const [y, m, d] = ymd.split("-").map(Number);
@@ -38,7 +37,6 @@ function todayYmd(): string {
 function Onboarding() {
   const navigate = useNavigate();
   const [uid, setUid] = useState<string | null>(null);
-  const [step, setStep] = useState<Step>("goals");
   const [examDate, setExamDate] = useState<string>("");
   const [targetRw, setTargetRw] = useState<string>("700");
   const [targetMath, setTargetMath] = useState<string>("700");
@@ -47,7 +45,6 @@ function Onboarding() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [alreadyInClass, setAlreadyInClass] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +65,7 @@ function Onboarding() {
       if (cancelled) return;
       setUid(user.id);
 
-      const [{ data: prof }, { data: sp }, { data: dates }, chat] = await Promise.all([
+      const [{ data: prof }, { data: sp }, { data: dates }] = await Promise.all([
         supabase.from("profiles").select("intro_completed").eq("id", user.id).maybeSingle(),
         supabase
           .from("student_profiles")
@@ -81,22 +78,11 @@ function Onboarding() {
           .eq("active", true)
           .gte("exam_date", todayYmd())
           .order("exam_date", { ascending: true }),
-        getChatProfile(user.id).catch(() => null),
       ]);
 
-      if (prof?.intro_completed && (chat?.chat_setup_completed || chat?.class_id)) {
+      if (prof?.intro_completed || sp?.intro_completed_at) {
         navigate({ to: "/dashboard", replace: true });
         return;
-      }
-
-      if (chat?.class_id) setAlreadyInClass(true);
-
-      if (prof?.intro_completed || sp?.intro_completed_at) {
-        if (chat?.class_id) {
-          navigate({ to: "/dashboard", replace: true });
-          return;
-        }
-        setStep("class");
       }
 
       const opts = (dates ?? []) as ExamDateOpt[];
@@ -192,11 +178,16 @@ function Onboarding() {
       .maybeSingle();
     if (!existing) {
       const { data: userData } = await supabase.auth.getUser();
-      await supabase.from("profiles").insert({
+      const { error: insErr } = await supabase.from("profiles").insert({
         id: uid,
         email: userData.user?.email ?? null,
         intro_completed: true,
       });
+      if (insErr) {
+        setSaving(false);
+        setErr(insErr.message);
+        return;
+      }
     } else {
       const { error: pErr } = await supabase
         .from("profiles")
@@ -209,11 +200,7 @@ function Onboarding() {
       }
     }
     setSaving(false);
-    if (alreadyInClass) {
-      navigate({ to: "/dashboard", replace: true });
-      return;
-    }
-    setStep("class");
+    navigate({ to: "/dashboard", replace: true });
   }
 
   if (loading) {
@@ -236,35 +223,23 @@ function Onboarding() {
   }
 
   const fieldClass =
-    "w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-lg font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none";
-
-  if (step === "class") {
-    return (
-      <div className="grid min-h-screen place-items-center bg-white p-6">
-        <div className="pop-in w-full max-w-md rounded-3xl border border-brand-400/40 bg-brand-600 p-8 text-white shadow-brand md:p-10">
-          <ClassChatSetupForm
-            submitLabel="Enter BeyondSAT"
-            onDone={() => navigate({ to: "/dashboard", replace: true })}
-          />
-        </div>
-      </div>
-    );
-  }
+    "w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-lg font-semibold text-white outline-none transition duration-200 [color-scheme:dark] focus:border-brand-200 focus:ring-2 focus:ring-brand-300/40";
 
   return (
-    <div className="grid min-h-screen place-items-center bg-white p-6">
-      <div className="pop-in w-full max-w-md rounded-3xl border border-brand-400/40 bg-brand-600 p-8 text-white shadow-brand md:p-10">
-        <div className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-brand-400 text-white">
+    <div className="relative isolate grid min-h-screen place-items-center bg-white p-6">
+      <AmbientGlow />
+      <RevealCard className="pop-in relative w-full max-w-md overflow-hidden rounded-3xl border border-brand-400/40 bg-brand-600 p-8 text-white shadow-brand md:p-10">
+        <PanelGlow />
+        <div className="relative">
+        <div className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-brand-400 text-white shadow-brand">
           <CalendarDays className="h-7 w-7" />
         </div>
         <h1 className="text-2xl font-black tracking-tight text-white md:text-3xl">
           Set your SAT goals
         </h1>
         <p className="mt-2 text-sm text-brand-100">
-          Pick your exam date and set separate targets for English and Math.
-          {alreadyInClass
-            ? " You are already in a class group — you can finish chat setup later from Profile."
-            : " Next you'll join your class group for Classes chat and homework."}
+          Pick your exam date and set separate targets for English and Math. Your teacher assigns
+          your class group when you are ready for Classes chat and homework.
         </p>
 
         <div className="mt-6 grid grid-cols-2 gap-3">
@@ -330,19 +305,16 @@ function Onboarding() {
               )}
             </>
           ) : (
-            <select
+            <AdminSelect
+              tone="light"
               value={examDate}
-              onChange={(e) => setExamDate(e.target.value)}
-              className={fieldClass}
-            >
-              <option value="">Select an exam date…</option>
-              {dateOptions.map((d) => (
-                <option key={d.id} value={d.exam_date}>
-                  {format(parseLocalDate(d.exam_date), "EEEE, MMMM d, yyyy")}
-                  {d.label ? ` — ${d.label}` : ""}
-                </option>
-              ))}
-            </select>
+              onValueChange={setExamDate}
+              placeholder="Select an exam date…"
+              options={dateOptions.map((d) => ({
+                value: d.exam_date,
+                label: `${format(parseLocalDate(d.exam_date), "EEEE, MMMM d, yyyy")}${d.label ? ` — ${d.label}` : ""}`,
+              }))}
+            />
           )}
           {dateOptions.length > 0 && (
             <button
@@ -378,9 +350,10 @@ function Onboarding() {
           className="btn-brand mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-400 py-3.5 font-bold text-white disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {alreadyInClass ? "Continue to BeyondSAT" : "Continue — join your class"}
+          Continue to BeyondSAT
         </button>
-      </div>
+        </div>
+      </RevealCard>
     </div>
   );
 }

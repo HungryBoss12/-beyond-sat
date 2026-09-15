@@ -341,10 +341,13 @@ export function buildRequestBody(
   model: string,
   stream: boolean,
   surface: AiSurface = "panel",
-  _uinfo = "",
+  uinfo = "",
   youtube = "",
 ): OpenRouterBody {
   let system = buildSystemPrompt(task);
+  if (uinfo.trim()) {
+    system += `\n\nUInfo (staff observation profile, do not quote verbatim to the student):\n${uinfo.trim()}`;
+  }
   if (youtube.trim()) {
     system += `\n\n${youtube.trim()}`;
   }

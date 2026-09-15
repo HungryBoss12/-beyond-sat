@@ -13,6 +13,8 @@ import {
   switchToAccount,
   type SavedAccount,
 } from "@/lib/auth/account-switcher";
+import { PanelGlow } from "@/components/ui/panel";
+import { AmbientGlow, RevealCard } from "@/components/ui/reveal-card";
 
 export const Route = createFileRoute("/signin")({
   component: SignIn,
@@ -112,10 +114,13 @@ function SignIn() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="relative isolate flex min-h-screen flex-col bg-white">
+      <AmbientGlow />
       <SiteNav />
-      <main className="grid flex-1 place-items-center px-4 py-14">
-        <div className="rise-in w-full max-w-md rounded-2xl border border-brand-400/40 bg-brand-600 p-8 shadow-panel md:p-10">
+      <main className="relative grid flex-1 place-items-center px-4 py-14">
+        <RevealCard className="rise-in relative w-full max-w-md overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 p-8 shadow-brand md:p-10">
+          <PanelGlow />
+          <div className="relative">
           <h1 className="text-center text-2xl font-black tracking-tight text-white md:text-3xl">
             {adding ? "Add an account" : "Welcome back"}
           </h1>
@@ -124,7 +129,7 @@ function SignIn() {
           </p>
 
           {!adding && saved.length > 0 && (
-            <div className="mt-6 space-y-2">
+            <div className="stagger mt-6 space-y-2">
               <p className="text-[11px] font-bold uppercase tracking-wider text-brand-100">
                 Continue as
               </p>
@@ -134,7 +139,7 @@ function SignIn() {
                   type="button"
                   disabled={switchingId === account.userId}
                   onClick={() => void continueAs(account)}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl border border-brand-400/40 bg-brand-800 px-3 py-2.5 text-left text-sm text-white hover:bg-brand-400/40 disabled:opacity-60"
+                  className="flex w-full items-center justify-between gap-2 rounded-xl border border-brand-400/40 bg-brand-800 px-3 py-2.5 text-left text-sm text-white shadow-panel transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-200/50 hover:bg-brand-400/40 disabled:opacity-60"
                 >
                   <span className="min-w-0">
                     <span className="block truncate font-bold">{account.displayName}</span>
@@ -197,12 +202,12 @@ function SignIn() {
             </label>
 
             {error && (
-              <p className="rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
+              <p className="pop-in rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
                 {error}
               </p>
             )}
             {info && (
-              <p className="rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
+              <p className="pop-in rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
                 {info}
               </p>
             )}
@@ -233,7 +238,8 @@ function SignIn() {
               Create an account
             </Link>
           </p>
-        </div>
+          </div>
+        </RevealCard>
       </main>
       <SiteFooter />
     </div>

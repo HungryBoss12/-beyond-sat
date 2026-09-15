@@ -75,6 +75,10 @@ function parseSection(raw: string, fallback: Section): Section {
 function parseDifficulty(raw: string, fallback: Difficulty): Difficulty {
   const v = raw.trim().toUpperCase();
   if ((LETTER_DIFFICULTIES as string[]).includes(v)) return v as LetterDifficulty;
+  if (v === "D" || v === "S") return v as Difficulty;
+  if (v === "EASY") return "C";
+  if (v === "MEDIUM") return "B";
+  if (v === "HARD") return "A";
   return fallback;
 }
 
@@ -86,7 +90,11 @@ function parseIntOrNull(raw: string): number | null {
 function ensureChoices(choices: AdminChoice[]): AdminChoice[] {
   return CHOICE_LETTERS.map((id) => {
     const existing = choices.find((c) => c.id === id);
-    return { id, text: existing?.text ?? "" };
+    return {
+      id,
+      text: existing?.text ?? "",
+      image_url: existing?.image_url ?? null,
+    };
   });
 }
 

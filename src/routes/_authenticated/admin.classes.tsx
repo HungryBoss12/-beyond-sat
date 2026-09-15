@@ -19,6 +19,7 @@ import {
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { PanelGlow } from "@/components/ui/panel";
 import { RevealCard } from "@/components/ui/reveal-card";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import {
   SUBJECT_LABEL,
   addClassMember,
@@ -377,14 +378,14 @@ function HomeworkPanel({ classId }: { classId: string }) {
       <div className="rounded-xl border border-brand-400/40 bg-brand-800 p-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-brand-100">Assign homework</h3>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          <select
-            className={CONTROL}
+          <AdminSelect
             value={subject}
-            onChange={(e) => setSubject(e.target.value as ClassSubject)}
-          >
-            <option value="math">Maths</option>
-            <option value="ebrw">EBRW</option>
-          </select>
+            onValueChange={(v) => setSubject(v as ClassSubject)}
+            options={[
+              { value: "math", label: "Maths" },
+              { value: "ebrw", label: "EBRW" },
+            ]}
+          />
           <input
             type="datetime-local"
             className={CONTROL}
@@ -534,6 +535,8 @@ function MembersPanel({ classId }: { classId: string }) {
   const createNameRef = useRef<HTMLInputElement>(null);
   const reloadSeq = useRef(0);
   const browseSeq = useRef(0);
+  const [pickerSelected, setPickerSelected] = useState<Set<string>>(() => new Set());
+  const [bulkAdding, setBulkAdding] = useState(false);
 
   const reload = useCallback(async () => {
     const seq = ++reloadSeq.current;
@@ -580,6 +583,7 @@ function MembersPanel({ classId }: { classId: string }) {
     setCreated(null);
     setCopied(null);
     setShowCreatePw(false);
+    setPickerSelected(new Set());
     void reload();
     void reloadBrowse();
     void listAllClasses()
@@ -649,12 +653,56 @@ function MembersPanel({ classId }: { classId: string }) {
       await addClassMember(classId, user.id);
       setQuery("");
       setHits([]);
+      setPickerSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(user.id);
+        return next;
+      });
       await reload();
       await reloadBrowse();
     } catch (e) {
       alert((e as Error)?.message ?? "Could not add student.");
     } finally {
       setAddingId(null);
+    }
+  }
+
+  function togglePickerSelected(id: string) {
+    setPickerSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function addSelectedStudents() {
+    const chosen = pickerList.filter((p) => pickerSelected.has(p.id));
+    if (chosen.length === 0) return;
+    const moving = chosen.filter((p) => classNameFor(p.class_id));
+    if (moving.length > 0) {
+      if (
+        !confirm(
+          `${moving.length} selected student(s) are in another group. Move them here?`,
+        )
+      ) {
+        return;
+      }
+    }
+    setBulkAdding(true);
+    try {
+      for (const user of chosen) {
+        await addClassMember(classId, user.id);
+      }
+      setPickerSelected(new Set());
+      setQuery("");
+      setHits([]);
+      await reload();
+      await reloadBrowse();
+    } catch (e) {
+      alert((e as Error)?.message ?? "Could not add selected students.");
+    } finally {
+      setBulkAdding(false);
     }
   }
 
@@ -781,34 +829,75 @@ function MembersPanel({ classId }: { classId: string }) {
           </div>
         )}
         {pickerList.length > 0 && (
-          <ul className="stagger-fast mt-2 max-h-48 overflow-y-auto rounded-lg border border-brand-400/40">
-            {pickerList.map((h) => {
-              const elsewhere = classNameFor(h.class_id);
-              return (
-                <li
-                  key={h.id}
-                  className="flex items-center gap-2 border-b border-brand-400/30 px-3 py-2 last:border-0 transition-colors duration-200 hover:bg-brand-400/25"
+          <>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={bulkAdding || pickerSelected.size === 0}
+                onClick={() => void addSelectedStudents()}
+                className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
+              >
+                {bulkAdding ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <UserPlus className="h-3.5 w-3.5" />
+                )}
+                Add selected{pickerSelected.size > 0 ? ` (${pickerSelected.size})` : ""}
+              </button>
+              {pickerSelected.size > 0 ? (
+                <button
+                  type="button"
+                  disabled={bulkAdding}
+                  onClick={() => setPickerSelected(new Set())}
+                  className="tap text-[11px] font-semibold text-brand-100 hover:text-white"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-bold">{profileLabel(h)}</div>
-                    <div className="truncate text-[11px] text-brand-100">
-                      {[displayAccountEmail(h.email), elsewhere ? `in ${elsewhere}` : "not in a group"]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={addingId === h.id}
-                    onClick={() => void addStudent(h)}
-                    className="btn-brand shrink-0 rounded-lg bg-brand-400 px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            <ul className="stagger-fast mt-2 max-h-48 overflow-y-auto rounded-lg border border-brand-400/40">
+              {pickerList.map((h) => {
+                const elsewhere = classNameFor(h.class_id);
+                return (
+                  <li
+                    key={h.id}
+                    className="flex items-center gap-2 border-b border-brand-400/30 px-3 py-2 last:border-0 transition-colors duration-200 hover:bg-brand-400/25"
                   >
-                    {addingId === h.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+                    <input
+                      type="checkbox"
+                      checked={pickerSelected.has(h.id)}
+                      onChange={() => togglePickerSelected(h.id)}
+                      className="h-4 w-4 shrink-0 rounded border-brand-400 bg-brand-800 text-brand-400 focus:ring-brand-300"
+                      aria-label={`Select ${profileLabel(h)}`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-bold">{profileLabel(h)}</div>
+                      <div className="truncate text-[11px] text-brand-100">
+                        {[
+                          displayAccountEmail(h.email),
+                          elsewhere ? `in ${elsewhere}` : "not in a group",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={addingId === h.id || bulkAdding}
+                      onClick={() => void addStudent(h)}
+                      className="btn-brand shrink-0 rounded-lg bg-brand-400 px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
+                    >
+                      {addingId === h.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        "Add"
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
         {browseReady && !query.trim() && pickerList.length === 0 && (
           <p className="mt-2 text-xs text-brand-100 fade-in">Everyone else is already in this group.</p>
@@ -825,7 +914,7 @@ function MembersPanel({ classId }: { classId: string }) {
         </label>
         <p className="mb-3 text-xs text-brand-100">
           Name and password only. The student signs in with the generated username, then changes
-          credentials and sets SAT goals.
+          credentials and sets SAT goals. Class group is this class.
         </p>
         <form onSubmit={(e) => void handleCreate(e)} className="space-y-2">
           <input
@@ -1239,15 +1328,15 @@ function AttendancePanel({ classId }: { classId: string }) {
     <div className="space-y-3">
       <div className="grid gap-2 sm:grid-cols-2">
         <input type="date" className={CONTROL} value={date} onChange={(e) => setDate(e.target.value)} />
-        <select
-          className={CONTROL}
+        <AdminSelect
           value={subject}
-          onChange={(e) => setSubject(e.target.value as ClassSubject | "")}
-        >
-          <option value="">Any / general</option>
-          <option value="math">Maths</option>
-          <option value="ebrw">EBRW</option>
-        </select>
+          onValueChange={(v) => setSubject(v as ClassSubject | "")}
+          placeholder="Any / general"
+          options={[
+            { value: "math", label: "Maths" },
+            { value: "ebrw", label: "EBRW" },
+          ]}
+        />
       </div>
       <ul className="max-h-72 divide-y divide-brand-400/30 overflow-y-auto rounded-xl border border-brand-400/40">
         {members.map((m) => (

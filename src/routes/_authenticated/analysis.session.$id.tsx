@@ -62,10 +62,21 @@ function SessionReview() {
         setLoading(false);
         return;
       }
-      const { data: qs } = await supabase
-        .from("questions")
-        .select("id,section,skill,difficulty,kind,prompt,question_text,choices,image_url")
-        .in("id", ids);
+      const qs: QuestionRow[] = [];
+      const chunkSize = 40;
+      for (let i = 0; i < ids.length; i += chunkSize) {
+        const chunk = ids.slice(i, i + chunkSize);
+        const { data, error: qErr } = await supabase
+          .from("questions")
+          .select("id,section,skill,difficulty,kind,prompt,question_text,choices,image_url")
+          .in("id", chunk);
+        if (qErr) {
+          setErr(qErr.message);
+          setLoading(false);
+          return;
+        }
+        qs.push(...((data ?? []) as QuestionRow[]));
+      }
       const { data: ans } = await supabase.rpc("get_answers_for_review", {
         p_question_ids: ids,
       });

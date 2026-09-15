@@ -35,12 +35,21 @@ function DailyGate() {
         return;
       }
       if (uid) {
-        const { data: sp } = await supabase
-          .from("student_profiles")
-          .select("last_daily_completed_date")
-          .eq("user_id", uid)
-          .maybeSingle();
-        if (sp?.last_daily_completed_date === today) {
+        const [{ data: sp }, { data: done }] = await Promise.all([
+          supabase
+            .from("student_profiles")
+            .select("last_daily_completed_date")
+            .eq("user_id", uid)
+            .maybeSingle(),
+          supabase
+            .from("test_sessions")
+            .select("id")
+            .eq("user_id", uid)
+            .eq("daily_test_id", dt.id)
+            .not("completed_at", "is", null)
+            .limit(1),
+        ]);
+        if (sp?.last_daily_completed_date === today || (done && done.length > 0)) {
           setState({ kind: "done" });
           return;
         }

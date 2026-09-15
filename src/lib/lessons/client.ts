@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logUinfo } from "@/lib/uinfo/log";
+import { HUB_TOP_LIMIT, SECTION_REC_LIMIT, sortByScore } from "./ranking";
+import { youtubeId } from "./video";
 import type {
   Lesson,
   LessonListItem,
@@ -10,6 +12,7 @@ import type {
   SkillWatch,
   StaffTree,
   SyllabusTopic,
+  VideoVote,
 } from "./types";
 
 function err(message: string, error: { message: string } | null) {
@@ -21,6 +24,129 @@ function err(message: string, error: { message: string } | null) {
     );
   }
   throw new Error(raw);
+}
+
+function videoKey(video: RecommendedVideo): string {
+  return video.youtube_video_id || youtubeId(video.youtube_url) || video.id;
+}
+
+export async function ensureCatalogEntries(
+  videos: {
+    youtube_video_id?: string;
+    title: string;
+    youtube_url: string;
+    duration_seconds?: number | null;
+  }[],
+): Promise<void> {
+  await Promise.all(
+    videos.map(async (video) => {
+      const id = video.youtube_video_id || youtubeId(video.youtube_url);
+      if (!id || !video.title.trim()) return;
+      const { error } = await supabase.rpc("bs_upsert_lesson_video", {
+        p_video_id: id,
+        p_title: video.title.trim(),
+        p_youtube_url: video.youtube_url.trim() || `https://www.youtube.com/watch?v=${id}`,
+        p_duration_seconds: video.duration_seconds ?? null,
+      });
+      if (error) console.error("[lessons] catalog upsert failed", error.message);
+    }),
+  );
+}
+
+export async function attachRanking(videos: RecommendedVideo[]): Promise<RecommendedVideo[]> {
+  if (videos.length === 0) return [];
+  const ids = [...new Set(videos.map(videoKey).filter(Boolean))];
+  if (ids.length === 0) {
+    return videos.map((video) => ({
+      ...video,
+      youtube_video_id: videoKey(video),
+      score: video.score ?? 0,
+      my_vote: video.my_vote ?? 0,
+    }));
+  }
+
+  const { data: user } = await supabase.auth.getUser();
+  const [{ data: catalog }, votes] = await Promise.all([
+    supabase
+      .from("lesson_video_catalog")
+      .select("youtube_video_id, score")
+      .in("youtube_video_id", ids),
+    user.user
+      ? supabase
+          .from("lesson_video_votes")
+          .select("youtube_video_id, vote")
+          .eq("user_id", user.user.id)
+          .in("youtube_video_id", ids)
+      : Promise.resolve({ data: [] as { youtube_video_id: string; vote: number }[] }),
+  ]);
+
+  const scores = new Map((catalog ?? []).map((row) => [row.youtube_video_id, row.score]));
+  const mine = new Map(
+    (votes.data ?? []).map((row) => [row.youtube_video_id, row.vote as VideoVote]),
+  );
+
+  return videos.map((video) => {
+    const id = videoKey(video);
+    return {
+      ...video,
+      youtube_video_id: id,
+      score: scores.get(id) ?? video.score ?? 0,
+      my_vote: mine.get(id) ?? 0,
+    };
+  });
+}
+
+export async function fetchTopRankedVideos(limit = HUB_TOP_LIMIT): Promise<RecommendedVideo[]> {
+  const { data, error } = await supabase
+    .from("lesson_video_catalog")
+    .select("youtube_video_id, title, youtube_url, duration_seconds, score")
+    .order("score", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  err("Could not load top videos", error);
+
+  const { data: user } = await supabase.auth.getUser();
+  const ids = (data ?? []).map((row) => row.youtube_video_id);
+  const votes =
+    user.user && ids.length
+      ? await supabase
+          .from("lesson_video_votes")
+          .select("youtube_video_id, vote")
+          .eq("user_id", user.user.id)
+          .in("youtube_video_id", ids)
+      : { data: [] as { youtube_video_id: string; vote: number }[] };
+
+  const mine = new Map(
+    (votes.data ?? []).map((row) => [row.youtube_video_id, row.vote as VideoVote]),
+  );
+
+  return (data ?? []).map((row, index) => ({
+    id: row.youtube_video_id,
+    topic_id: "",
+    title: row.title,
+    youtube_url: row.youtube_url,
+    sort_order: index,
+    duration_seconds: row.duration_seconds,
+    youtube_video_id: row.youtube_video_id,
+    score: row.score,
+    my_vote: mine.get(row.youtube_video_id) ?? 0,
+  }));
+}
+
+export async function voteLessonVideo(
+  youtubeVideoId: string,
+  vote: VideoVote,
+): Promise<{ score: number; my_vote: VideoVote }> {
+  const { data, error } = await supabase.rpc("bs_vote_lesson_video", {
+    p_video_id: youtubeVideoId,
+    p_vote: vote,
+  });
+  err("Could not save vote", error);
+  const row = data as { score?: number; my_vote?: number } | null;
+  return {
+    score: typeof row?.score === "number" ? row.score : 0,
+    my_vote: (typeof row?.my_vote === "number" ? row.my_vote : 0) as VideoVote,
+  };
 }
 
 export async function listSubjects(): Promise<LessonSubject[]> {
@@ -104,13 +230,20 @@ export async function fetchSyllabus(slug: string): Promise<{
     byTopic.set(row.topic_id, list);
   }
 
+  const featuredRows = (featured.data ?? []) as RecommendedVideo[];
+  await ensureCatalogEntries(featuredRows);
+  const rankedFeatured = sortByScore(await attachRanking(featuredRows)).slice(
+    0,
+    SECTION_REC_LIMIT,
+  );
+
   return {
     subject: subject as LessonSubject,
     topics: ((topics ?? []) as LessonTopic[]).map((topic) => ({
       ...topic,
       lessons: byTopic.get(topic.id) ?? [],
     })),
-    featured: (featured.data ?? []) as RecommendedVideo[],
+    featured: rankedFeatured,
   };
 }
 
@@ -317,6 +450,13 @@ export async function createRecommended(input: {
     duration_seconds: input.duration_seconds ?? null,
   });
   err("Could not add recommended video", error);
+  await ensureCatalogEntries([
+    {
+      title: input.title,
+      youtube_url: input.youtube_url,
+      duration_seconds: input.duration_seconds ?? null,
+    },
+  ]);
 }
 
 export async function updateRecommended(
@@ -333,6 +473,13 @@ export async function updateRecommended(
     })
     .eq("id", id);
   err("Could not update recommended video", error);
+  await ensureCatalogEntries([
+    {
+      title: input.title,
+      youtube_url: input.youtube_url,
+      duration_seconds: input.duration_seconds ?? null,
+    },
+  ]);
 }
 
 export async function deleteRecommended(id: string) {
@@ -356,9 +503,9 @@ export async function fetchYoutubeRecs(): Promise<RecommendedVideo[]> {
         durationSeconds?: number | null;
       }[];
     };
-    return (data.videos ?? [])
+    const mapped = (data.videos ?? [])
       .filter((video) => video.videoId && video.title && video.url)
-      .slice(0, 5)
+      .slice(0, SECTION_REC_LIMIT)
       .map((video) => ({
         id: video.videoId as string,
         topic_id: "",
@@ -366,7 +513,10 @@ export async function fetchYoutubeRecs(): Promise<RecommendedVideo[]> {
         youtube_url: video.url as string,
         sort_order: 0,
         duration_seconds: video.durationSeconds ?? null,
+        youtube_video_id: video.videoId as string,
       }));
+    await ensureCatalogEntries(mapped);
+    return sortByScore(await attachRanking(mapped)).slice(0, SECTION_REC_LIMIT);
   } catch {
     return [];
   }

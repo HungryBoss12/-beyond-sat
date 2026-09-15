@@ -9,6 +9,7 @@ import { mergeGeneratedIntoDraft, needsVocabAttention, type VocabDraft } from "@
 import { fixVocabWords, generateVocabContent, saveVocabContent } from "@/lib/vocab/client";
 import type { AnkiDeckNode, GeneratedVocabItem } from "@/lib/vocab/types";
 import { PageHead, Panel } from "@/components/ui/panel";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 
 const TOPICS = [
   "20 High-Yield Humanities SAT Words",
@@ -353,17 +354,11 @@ function AdminVocabImportPage() {
               </p>
             </div>
             <AdminField label="Topic">
-              <select
+              <AdminSelect
                 value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                className={inputCls}
-              >
-                {TOPICS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setTopic}
+                options={TOPICS.map((t) => ({ value: t, label: t }))}
+              />
             </AdminField>
             <AdminField label="Quiz title (optional)">
               <input

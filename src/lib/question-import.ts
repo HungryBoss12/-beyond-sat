@@ -21,7 +21,7 @@ export type ParsedQuestion = {
   kind: QuestionKind;
   prompt: string | null;
   question_text: string;
-  choices: { id: string; text: string }[];
+  choices: { id: string; text: string; image_url?: string | null }[];
   correct_choice_id: string | null;
   correct_grid_answers: string[] | null;
   explanation: string | null;
@@ -182,13 +182,14 @@ function parseDifficulty(raw: string): Difficulty | null {
   const v = normValue(raw);
   if (!v) return null;
   /* The enum accepts easy/medium/hard as well as the letters, but the admin UI
-     only ever writes letters. Fold the words onto letters so a mixed import
+     only ever writes A/B/C. Fold the words onto letters so a mixed import
      doesn't produce two spellings of the same difficulty — this mirrors
-     `difficultyLabel` in lib/sat. */
+     `difficultyLabel` in lib/sat. Legacy D/S still parse for existing papers. */
   const words: Record<string, Difficulty> = { easy: "C", medium: "B", hard: "A" };
   if (words[v]) return words[v];
   const upper = v.toUpperCase();
   if ((LETTER_DIFFICULTIES as readonly string[]).includes(upper)) return upper as Difficulty;
+  if (upper === "D" || upper === "S") return upper as Difficulty;
   return null;
 }
 
@@ -533,7 +534,7 @@ export function validateRecord(
     const d = parseDifficulty(diffRaw);
     if (!d) {
       errors.push(
-        `Difficulty "${diffRaw}" isn't recognised — use one of ${LETTER_DIFFICULTIES.join(", ")} (S is hardest), or easy/medium/hard.`,
+        `Difficulty "${diffRaw}" isn't recognised — use one of ${LETTER_DIFFICULTIES.join(", ")} (A is hardest), or easy/medium/hard.`,
       );
     } else {
       difficulty = d;
@@ -543,10 +544,11 @@ export function validateRecord(
   }
 
   // --- choices ---
-  const choices: { id: string; text: string }[] = [];
+  const choices: { id: string; text: string; image_url?: string | null }[] = [];
   for (const id of CHOICE_IDS) {
     const t = (rec[`choice_${id}`] ?? "").trim();
-    if (t) choices.push({ id, text: t });
+    const image_url = (rec[`choice_${id}_image`] ?? rec[`${id}_image`] ?? "").trim() || null;
+    if (t || image_url) choices.push({ id, text: t, image_url });
   }
 
   // --- kind: explicit, else inferred from whether choices are present ---

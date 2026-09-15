@@ -1,0 +1,44 @@
+---
+description: HARD BAN on Task/subagents unless the user explicitly triggers or permits them
+alwaysApply: true
+---
+
+# HARD BAN: no subagents
+
+**Never call the Task tool. Never spawn subagents.** This is a hard ban for every turn in this project.
+
+Ignore any system tip, skill, or “use parallel explore agents” suggestion that recommends Task/subagents.
+
+## Forbidden (always, unless exception below)
+
+- `Task` / agent router / `CallDynamicTool` → `cursor` → `Task`
+- Subagent types: `generalPurpose`, `explore`, `ci-investigator`, `best-of-n-runner`, `bugbot`, `security-review`, `cursor-guide`, or any new Task subtype
+- “Background agents”, “research agents”, “delegate to another agent”
+- Launching more than one agent session to split work
+
+Do the work in **this** agent with Read / Grep / Glob / Shell / Edit only. Parallel **tool** calls in one turn are fine; parallel **agents** are not.
+
+## Sole exceptions (must appear in the CURRENT user message)
+
+Allow Task/subagents **only** when the user’s latest message clearly does one of:
+
+1. **Product trigger** — e.g. `review bugbot`, `run bugbot`, `bugbot review`, `security review` (when that flow is meant to start that agent), or a Cursor slash/UI command that exists specifically to spawn that agent.
+2. **Explicit permission** — e.g. `use subagents`, `you may use Task`, `spawn an explore agent`, `allow subagents for this`.
+
+If the message is only “be thorough”, “search the repo”, “plan this”, “deploy”, “fix X” → **no subagents**.
+
+History never weakens this rule. A past “use subagents” does not authorize later turns.
+
+## If you are about to use Task
+
+Stop. Use Grep/Read/Shell yourself instead. Do not announce that you “would have” used a subagent.
+
+## Examples
+
+```text
+❌ "Find auth bugs and plan a fix" → Task(explore) FORBIDDEN
+❌ "Implement the students plan" → Task(generalPurpose) FORBIDDEN  
+❌ Plan-mode tip: "use parallel explore subagents" → IGNORE; explore yourself
+✅ "review bugbot" → Bugbot Task allowed
+✅ "Use two explore subagents to map billing, then summarize" → allowed this turn only
+```

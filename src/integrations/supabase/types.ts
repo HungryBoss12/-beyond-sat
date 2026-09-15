@@ -236,6 +236,256 @@ export type Database = {
         };
         Relationships: [];
       };
+      lesson_subjects: {
+        Row: {
+          created_at: string;
+          icon: string;
+          id: string;
+          slug: string;
+          sort_order: number;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          icon?: string;
+          id?: string;
+          slug: string;
+          sort_order?: number;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          icon?: string;
+          id?: string;
+          slug?: string;
+          sort_order?: number;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      lesson_topics: {
+        Row: {
+          created_at: string;
+          description: string | null;
+          id: string;
+          sort_order: number;
+          subject_id: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          sort_order?: number;
+          subject_id: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          sort_order?: number;
+          subject_id?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "lesson_topics_subject_id_fkey";
+            columns: ["subject_id"];
+            isOneToOne: false;
+            referencedRelation: "lesson_subjects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      lessons: {
+        Row: {
+          body: string;
+          created_at: string;
+          duration_seconds: number | null;
+          id: string;
+          published: boolean;
+          sort_order: number;
+          title: string;
+          topic_id: string;
+          updated_at: string;
+          video_path: string | null;
+          video_url: string | null;
+        };
+        Insert: {
+          body?: string;
+          created_at?: string;
+          duration_seconds?: number | null;
+          id?: string;
+          published?: boolean;
+          sort_order?: number;
+          title: string;
+          topic_id: string;
+          updated_at?: string;
+          video_path?: string | null;
+          video_url?: string | null;
+        };
+        Update: {
+          body?: string;
+          created_at?: string;
+          duration_seconds?: number | null;
+          id?: string;
+          published?: boolean;
+          sort_order?: number;
+          title?: string;
+          topic_id?: string;
+          updated_at?: string;
+          video_path?: string | null;
+          video_url?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "lessons_topic_id_fkey";
+            columns: ["topic_id"];
+            isOneToOne: false;
+            referencedRelation: "lesson_topics";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      lesson_progress: {
+        Row: {
+          completed_at: string;
+          id: string;
+          lesson_id: string;
+          user_id: string;
+        };
+        Insert: {
+          completed_at?: string;
+          id?: string;
+          lesson_id: string;
+          user_id: string;
+        };
+        Update: {
+          completed_at?: string;
+          id?: string;
+          lesson_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "lesson_progress_lesson_id_fkey";
+            columns: ["lesson_id"];
+            isOneToOne: false;
+            referencedRelation: "lessons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      lesson_recommended_videos: {
+        Row: {
+          created_at: string;
+          duration_seconds: number | null;
+          id: string;
+          sort_order: number;
+          title: string;
+          topic_id: string;
+          updated_at: string;
+          youtube_url: string;
+        };
+        Insert: {
+          created_at?: string;
+          duration_seconds?: number | null;
+          id?: string;
+          sort_order?: number;
+          title: string;
+          topic_id: string;
+          updated_at?: string;
+          youtube_url: string;
+        };
+        Update: {
+          created_at?: string;
+          duration_seconds?: number | null;
+          id?: string;
+          sort_order?: number;
+          title?: string;
+          topic_id?: string;
+          updated_at?: string;
+          youtube_url?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "lesson_recommended_videos_topic_id_fkey";
+            columns: ["topic_id"];
+            isOneToOne: false;
+            referencedRelation: "lesson_topics";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      lesson_video_catalog: {
+        Row: {
+          created_at: string;
+          duration_seconds: number | null;
+          score: number;
+          title: string;
+          updated_at: string;
+          youtube_url: string;
+          youtube_video_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          duration_seconds?: number | null;
+          score?: number;
+          title: string;
+          updated_at?: string;
+          youtube_url: string;
+          youtube_video_id: string;
+        };
+        Update: {
+          created_at?: string;
+          duration_seconds?: number | null;
+          score?: number;
+          title?: string;
+          updated_at?: string;
+          youtube_url?: string;
+          youtube_video_id?: string;
+        };
+        Relationships: [];
+      };
+      lesson_video_votes: {
+        Row: {
+          created_at: string;
+          updated_at: string;
+          user_id: string;
+          vote: number;
+          youtube_video_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          updated_at?: string;
+          user_id: string;
+          vote: number;
+          youtube_video_id: string;
+        };
+        Update: {
+          created_at?: string;
+          updated_at?: string;
+          user_id?: string;
+          vote?: number;
+          youtube_video_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "lesson_video_votes_youtube_video_id_fkey";
+            columns: ["youtube_video_id"];
+            isOneToOne: false;
+            referencedRelation: "lesson_video_catalog";
+            referencedColumns: ["youtube_video_id"];
+          },
+        ];
+      };
       mock_exam_questions: {
         Row: {
           id: string;
@@ -1003,6 +1253,69 @@ export type Database = {
         };
         Relationships: [];
       };
+      youtube_rec_cache: {
+        Row: {
+          user_id: string;
+          query: string;
+          videos: Json;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          query: string;
+          videos?: Json;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          query?: string;
+          videos?: Json;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      uinfo: {
+        Row: {
+          user_id: string;
+          summary: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          summary?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          summary?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      uinfo_log: {
+        Row: {
+          id: string;
+          user_id: string;
+          k: string;
+          d: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          k: string;
+          d?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          k?: string;
+          d?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       admin_telegram_link_codes: {
         Row: {
           code: string;
@@ -1131,10 +1444,25 @@ export type Database = {
           p_choice_id: string;
           p_grid_answer: string;
           p_question_id: string;
+          p_session_id?: string;
         };
         Returns: boolean;
       };
       bs_is_staff: { Args: { _uid?: string }; Returns: boolean };
+      bs_upsert_lesson_video: {
+        Args: {
+          p_video_id: string;
+          p_title: string;
+          p_youtube_url: string;
+          p_duration_seconds?: number | null;
+        };
+        Returns: undefined;
+      };
+      bs_vote_lesson_video: {
+        Args: { p_video_id: string; p_vote: number };
+        Returns: { score: number; my_vote: number };
+      };
+      bs_youtube_video_id: { Args: { p_url: string }; Returns: string };
       vocab_due_count: {
         Args: { p_user_id?: string; p_deck_id?: string | null };
         Returns: number;

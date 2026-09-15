@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const QUESTION_IMAGES_BUCKET = "question-images";
 export const HOMEWORK_UPLOADS_BUCKET = "homework-uploads";
+export const LESSON_UPLOADS_BUCKET = "lesson-uploads";
 
 const DISPLAY_TTL_SECONDS = 60 * 60;
 const SIGN_BATCH = 50;
@@ -29,7 +30,9 @@ export function parseStorageRef(
 
   if (/^https?:\/\//i.test(value)) return null;
 
-  const known = value.match(/^(question-images|homework-uploads)\/(.+)$/);
+  const known = value.match(
+    /^(question-images|homework-uploads|chat-uploads|lesson-uploads)\/(.+)$/,
+  );
   if (known) {
     return { bucket: known[1], path: known[2] };
   }
@@ -121,19 +124,34 @@ export async function resolveDisplayUrl(
   return map.get(value) ?? value;
 }
 
-/** Replace `image_url` on each row with a freshly signed display URL when needed. */
-export async function applyResolvedImageUrls<T extends { image_url?: string | null }>(
-  rows: T[],
-  defaultBucket = QUESTION_IMAGES_BUCKET,
-): Promise<T[]> {
-  const map = await resolveDisplayUrls(
-    rows.map((r) => r.image_url),
-    defaultBucket,
-  );
+/** Replace `image_url` on each row (and nested choice images) with signed display URLs. */
+export async function applyResolvedImageUrls<
+  T extends {
+    image_url?: string | null;
+    choices?: { id: string; text: string; image_url?: string | null }[] | null;
+  },
+>(rows: T[], defaultBucket = QUESTION_IMAGES_BUCKET): Promise<T[]> {
+  const refs: (string | null | undefined)[] = [];
+  for (const r of rows) {
+    refs.push(r.image_url);
+    for (const c of r.choices ?? []) refs.push(c.image_url);
+  }
+  const map = await resolveDisplayUrls(refs, defaultBucket);
   return rows.map((r) => {
-    const raw = r.image_url;
-    if (!raw) return r;
-    const next = map.get(raw);
-    return next && next !== raw ? { ...r, image_url: next } : r;
+    let next: T = r;
+    if (r.image_url) {
+      const signed = map.get(r.image_url);
+      if (signed && signed !== r.image_url) next = { ...next, image_url: signed };
+    }
+    if (Array.isArray(r.choices) && r.choices.length > 0) {
+      const choices = r.choices.map((c) => {
+        if (!c.image_url) return c;
+        const signed = map.get(c.image_url);
+        return signed && signed !== c.image_url ? { ...c, image_url: signed } : c;
+      });
+      const changed = choices.some((c, i) => c !== r.choices![i]);
+      if (changed) next = { ...next, choices };
+    }
+    return next;
   });
 }

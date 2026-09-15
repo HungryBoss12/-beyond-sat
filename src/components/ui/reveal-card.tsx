@@ -31,7 +31,7 @@ export function RevealCard({
     <Tag
       // The ref type is widened because `as` can name any block element; every
       // option is an HTMLElement, which is all the hook needs.
-      ref={ref as React.Ref<never>}
+      ref={ref as never}
       className={cn("reveal-surface", className)}
       {...rest}
     >
@@ -61,15 +61,14 @@ export function RevealLink({ className, children, ...rest }: LinkComponentProps<
 }
 
 /**
- * The page-level ambient spotlight. Mount once per page, as a direct child of the
- * page's outermost element.
+ * The page-level ambient spotlight. Mount once, as a direct child of the
+ * element that owns the page background and `isolate`.
  *
- * IMPORTANT: this is `position: fixed`, so it must NOT be rendered inside an
- * element with an animated `transform` — that element becomes the containing
- * block and the overlay collapses to its box. The app has hit this twice
- * already: AppShell's `route-enter` wrapper (src/components/AppShell.tsx:300)
- * and admin's, which is why `_authenticated/route.tsx` keeps a `bare` list.
- * Mount this outside any `route-enter` / `rise-in` wrapper.
+ * `position: fixed` + `z-index: -1` only reads as a glow on white if that
+ * parent is a stacking context (`isolate`) *and* paints the white fill.
+ * Without `isolate` the layer escapes and sits behind `bg-white` — invisible.
+ * Do not mount this inside `route-enter` / `rise-in`: a transform ancestor
+ * becomes the containing block and the overlay collapses to the content column.
  */
 export function AmbientGlow() {
   const ref = useAmbientGlow<HTMLDivElement>();

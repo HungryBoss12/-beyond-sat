@@ -4,6 +4,9 @@ import { Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isValidUsername, normalizeUsername } from "@/lib/classes/types";
 import { rememberCurrentSession } from "@/lib/auth/account-switcher";
+import { sessionAuthHeaders } from "@/lib/auth/session-headers";
+import { PanelGlow } from "@/components/ui/panel";
+import { AmbientGlow, RevealCard } from "@/components/ui/reveal-card";
 
 export const Route = createFileRoute("/_authenticated/first-login")({
   component: FirstLogin,
@@ -81,32 +84,30 @@ function FirstLogin() {
     }
 
     setSaving(true);
-    const { error: pwErr } = await supabase.auth.updateUser({
-      password,
-      ...(nextEmail ? { email: nextEmail } : {}),
-    });
-    if (pwErr) {
-      setSaving(false);
-      setErr(pwErr.message);
+    try {
+      const headers = await sessionAuthHeaders();
+      const res = await fetch("/api/auth/complete-first-login", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          password,
+          username: nextUsername,
+          email: nextEmail || null,
+        }),
+      });
+      const body = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setErr(body.error ?? "Could not save your password.");
+        return;
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not save your password.");
       return;
-    }
-
-    const { error: profErr } = await supabase
-      .from("profiles")
-      .update({
-        username: nextUsername || null,
-        must_change_credentials: false,
-        ...(nextEmail ? { email: nextEmail } : {}),
-      })
-      .eq("id", uid);
-    if (profErr) {
+    } finally {
       setSaving(false);
-      setErr(profErr.message);
-      return;
     }
 
     await rememberCurrentSession();
-    setSaving(false);
     navigate({ to: "/onboarding", replace: true });
   }
 
@@ -119,15 +120,15 @@ function FirstLogin() {
   }
 
   const fieldClass =
-    "w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-sm font-semibold text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none";
+    "w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-sm font-semibold text-white outline-none transition duration-200 [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:ring-2 focus:ring-brand-300/40";
 
   return (
-    <div className="grid min-h-screen place-items-center bg-white p-6">
-      <form
-        onSubmit={(e) => void handleSubmit(e)}
-        className="pop-in w-full max-w-md rounded-3xl border border-brand-400/40 bg-brand-600 p-8 text-white shadow-brand md:p-10"
-      >
-        <div className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-brand-400 text-white">
+    <div className="relative isolate grid min-h-screen place-items-center bg-white p-6">
+      <AmbientGlow />
+      <RevealCard className="pop-in relative w-full max-w-md overflow-hidden rounded-3xl border border-brand-400/40 bg-brand-600 p-8 text-white shadow-brand md:p-10">
+        <PanelGlow />
+        <form onSubmit={(e) => void handleSubmit(e)} className="relative">
+        <div className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-brand-400 text-white shadow-brand">
           <KeyRound className="h-7 w-7" />
         </div>
         <h1 className="text-2xl font-black tracking-tight text-white md:text-3xl">
@@ -138,11 +139,12 @@ function FirstLogin() {
           goals. You can connect Google later from Profile.
         </p>
         {currentUsername && (
-          <p className="mt-3 text-xs text-brand-100">
+          <p className="mt-3 text-xs text-brand-100 fade-in">
             Current username <span className="font-bold text-white">@{currentUsername}</span>
           </p>
         )}
 
+        <div className="stagger">
         <label className="mt-6 block">
           <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand-100">
             New password
@@ -206,7 +208,7 @@ function FirstLogin() {
         </label>
 
         {err && (
-          <div className="mt-3 rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
+          <div className="mt-3 rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60 pop-in">
             {err}
           </div>
         )}
@@ -219,7 +221,9 @@ function FirstLogin() {
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Save and continue
         </button>
-      </form>
+        </div>
+        </form>
+      </RevealCard>
     </div>
   );
 }

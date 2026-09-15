@@ -6,11 +6,51 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { readEnv } from "@/lib/server-env";
 
-function isNewSupabaseApiKey(value: string): boolean {
-  return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const b64 = parts[1]!.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));
+    const json = atob(b64 + pad);
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
-function createSupabaseFetch(supabaseKey: string): typeof fetch {
+function assertServiceRoleKey(key: string): void {
+  if (key.startsWith("sb_publishable_")) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is set to a publishable key. Use the service_role JWT or sb_secret_ key from the Supabase dashboard (Cloudflare: wrangler secret put SUPABASE_SERVICE_ROLE_KEY).",
+    );
+  }
+  const publishable =
+    process.env.SUPABASE_PUBLISHABLE_KEY?.trim() ||
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+    readEnv(undefined, "SUPABASE_PUBLISHABLE_KEY") ||
+    readEnv(undefined, "VITE_SUPABASE_PUBLISHABLE_KEY");
+  if (publishable && key === publishable) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY matches the publishable/anon key. Set the real service_role / sb_secret_ secret on the Worker.",
+    );
+  }
+  if (key.startsWith("eyJ")) {
+    const payload = decodeJwtPayload(key);
+    const role = payload?.role;
+    if (role === "anon" || role === "authenticated") {
+      throw new Error(
+        `SUPABASE_SERVICE_ROLE_KEY looks like a JWT with role "${String(role)}", not service_role. Update the Worker secret.`,
+      );
+    }
+  }
+}
+
+/**
+ * Admin Auth API needs both `apikey` and `Authorization: Bearer <service_role>`.
+ * Do not strip Bearer for opaque sb_secret_ keys (unlike the browser publishable client).
+ */
+function createAdminFetch(supabaseKey: string): typeof fetch {
   return (input, init) => {
     const headers = new Headers(
       typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
@@ -20,15 +60,10 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
       new Headers(init.headers).forEach((value, key) => headers.set(key, value));
     }
 
-    // New Supabase API keys are opaque strings, not bearer JWTs.
-    if (
-      isNewSupabaseApiKey(supabaseKey) &&
-      headers.get("Authorization") === `Bearer ${supabaseKey}`
-    ) {
-      headers.delete("Authorization");
-    }
-
     headers.set("apikey", supabaseKey);
+    if (!headers.get("Authorization")) {
+      headers.set("Authorization", `Bearer ${supabaseKey}`);
+    }
 
     if (typeof FormData !== "undefined" && init?.body instanceof FormData) {
       headers.delete("Content-Type");
@@ -38,8 +73,7 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
-function createSupabaseAdminClient() {
-  // Prefer hydrated process.env; fall back to VITE URL so Worker + vite share one project.
+function resolveAdminCredentials(): { url: string; key: string } {
   const SUPABASE_URL =
     process.env.SUPABASE_URL?.trim() ||
     process.env.VITE_SUPABASE_URL?.trim() ||
@@ -59,9 +93,15 @@ function createSupabaseAdminClient() {
     throw new Error(message);
   }
 
-  return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  assertServiceRoleKey(SUPABASE_SERVICE_ROLE_KEY);
+  return { url: SUPABASE_URL, key: SUPABASE_SERVICE_ROLE_KEY };
+}
+
+function createSupabaseAdminClient() {
+  const { url, key } = resolveAdminCredentials();
+  return createClient<Database>(url, key, {
     global: {
-      fetch: createSupabaseFetch(SUPABASE_SERVICE_ROLE_KEY),
+      fetch: createAdminFetch(key),
     },
     auth: {
       storage: undefined,
@@ -72,6 +112,26 @@ function createSupabaseAdminClient() {
 }
 
 let _supabaseAdmin: ReturnType<typeof createSupabaseAdminClient> | undefined;
+let _supabaseAdminKey: string | undefined;
+
+/** Drop the cached admin client so the next access uses freshly hydrated secrets. */
+export function resetSupabaseAdmin(): void {
+  _supabaseAdmin = undefined;
+  _supabaseAdminKey = undefined;
+}
+
+/**
+ * Ensure the singleton matches the current SUPABASE_SERVICE_ROLE_KEY
+ * (call after hydrateServerEnv).
+ */
+export function ensureSupabaseAdmin(): ReturnType<typeof createSupabaseAdminClient> {
+  const { key } = resolveAdminCredentials();
+  if (!_supabaseAdmin || _supabaseAdminKey !== key) {
+    _supabaseAdmin = createSupabaseAdminClient();
+    _supabaseAdminKey = key;
+  }
+  return _supabaseAdmin;
+}
 
 // Server-side Supabase client with service role - bypasses RLS
 // SECURITY: Only use this for trusted server-side operations, never expose to client code
@@ -79,7 +139,7 @@ let _supabaseAdmin: ReturnType<typeof createSupabaseAdminClient> | undefined;
 // Top-level import is safe only in other .server.ts modules - route files and *.functions.ts ship to the client bundle.
 export const supabaseAdmin = new Proxy({} as ReturnType<typeof createSupabaseAdminClient>, {
   get(_, prop, receiver) {
-    if (!_supabaseAdmin) _supabaseAdmin = createSupabaseAdminClient();
-    return Reflect.get(_supabaseAdmin, prop, receiver);
+    const client = ensureSupabaseAdmin();
+    return Reflect.get(client, prop, receiver);
   },
 });

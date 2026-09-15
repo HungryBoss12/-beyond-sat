@@ -123,6 +123,41 @@ export async function fetchAdminUserSessions(
   return (data ?? []) as AdminUserSessionRow[];
 }
 
+export type AdminUinfo = {
+  summary: string;
+  updated_at: string | null;
+  pending: number;
+};
+
+export async function fetchAdminUinfo(userId: string): Promise<AdminUinfo> {
+  const [{ data: row }, { count }] = await Promise.all([
+    supabase.from("uinfo").select("summary, updated_at").eq("user_id", userId).maybeSingle(),
+    supabase
+      .from("uinfo_log")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
+  ]);
+  return {
+    summary: row?.summary ?? "",
+    updated_at: row?.updated_at ?? null,
+    pending: count ?? 0,
+  };
+}
+
+export async function flushAdminUinfo(userId: string): Promise<void> {
+  const token = (await supabase.auth.getSession()).data.session?.access_token;
+  if (!token) throw new Error("Sign in required");
+  const response = await fetch("/api/ai/uinfo", {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({ userId }),
+  });
+  if (!response.ok) {
+    const data = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error ?? "Could not refresh UInfo");
+  }
+}
+
 export async function fetchAdminUserActivity(
   userId: string,
   limit = 80,

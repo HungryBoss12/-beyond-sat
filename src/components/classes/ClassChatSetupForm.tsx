@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Loader2, Users } from "lucide-react";
+import { Camera, Loader2 } from "lucide-react";
 import {
   getChatProfile,
   isValidUsername,
@@ -12,12 +12,11 @@ import {
 } from "@/lib/classes";
 
 const CONTROL =
-  "w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-sm font-semibold text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none";
+  "w-full rounded-xl border-2 border-brand-400/50 bg-brand-800 px-4 py-3 text-sm font-semibold text-white outline-none transition duration-200 [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:ring-2 focus:ring-brand-300/40";
 
 /**
- * Shared class + chat profile setup used by onboarding (new users) and profile
- * (existing users who registered before Classes shipped).
- * Prefills username / class when an admin already enrolled the student.
+ * Chat profile setup used by onboarding (new users) and profile.
+ * Class group is assigned by an admin — students only set username / photo / Telegram.
  */
 export function ClassChatSetupForm({
   onDone,
@@ -29,12 +28,11 @@ export function ClassChatSetupForm({
   compact?: boolean;
 }) {
   const [classes, setClasses] = useState<ClassRow[]>([]);
-  const [classId, setClassId] = useState("");
+  const [classId, setClassId] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [telegram, setTelegram] = useState("");
   const [avatarPath, setAvatarPath] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [classLocked, setClassLocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -60,15 +58,9 @@ export function ClassChatSetupForm({
           const url = await resolveAvatarUrl(profile.avatar_url);
           if (url) setAvatarPreview(url);
         }
-
-        if (profile?.class_id) {
-          setClassId(profile.class_id);
-          setClassLocked(true);
-        } else if (rows.length === 1) {
-          setClassId(rows[0].id);
-        }
+        if (profile?.class_id) setClassId(profile.class_id);
       } catch (e) {
-        setErr((e as Error)?.message ?? "Could not load classes.");
+        setErr((e as Error)?.message ?? "Could not load profile.");
       } finally {
         setLoading(false);
       }
@@ -94,10 +86,6 @@ export function ClassChatSetupForm({
 
   async function submit() {
     setErr(null);
-    if (!classId) {
-      setErr("Pick your class group.");
-      return;
-    }
     if (!isValidUsername(username)) {
       setErr("Username must be 3–24 characters, start with a letter, and use only a-z, 0-9, _.");
       return;
@@ -108,7 +96,6 @@ export function ClassChatSetupForm({
         username: normalizeUsername(username),
         avatar_url: avatarPath,
         telegram_username: telegram || null,
-        class_id: classId,
       });
       onDone?.();
     } catch (e) {
@@ -122,18 +109,23 @@ export function ClassChatSetupForm({
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-8 text-sm text-brand-100">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading classes…
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
       </div>
     );
   }
 
+  const assignedName = classId
+    ? (classes.find((c) => c.id === classId)?.name ?? "Your assigned group")
+    : null;
+
   return (
-    <div className={compact ? "space-y-4" : "space-y-5"}>
+    <div className={(compact ? "space-y-4" : "space-y-5") + " rise-in"}>
       {!compact && (
         <div>
-          <h2 className="text-xl font-black text-white">Join your class</h2>
+          <h2 className="text-xl font-black text-white">Set up Classes chat</h2>
           <p className="mt-1 text-sm text-brand-100">
-            Choose your group, pick a username for Classes chat, and optionally connect Telegram.
+            Pick a username for Classes chat and optionally connect Telegram. Your teacher assigns
+            your class group.
           </p>
         </div>
       )}
@@ -185,36 +177,21 @@ export function ClassChatSetupForm({
         />
       </label>
 
-      <label className="block">
-        <span className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-100">
-          <Users className="h-3.5 w-3.5" /> Class group
-        </span>
-        {classes.length === 0 ? (
-          <p className="rounded-xl border border-brand-400/40 bg-brand-800 px-4 py-3 text-sm text-brand-100">
-            No classes yet. Ask an admin to create one, then refresh.
-          </p>
-        ) : classLocked ? (
-          <p className="rounded-xl border border-brand-400/40 bg-brand-800 px-4 py-3 text-sm font-semibold text-white">
-            {classes.find((c) => c.id === classId)?.name ?? "Your assigned group"}
-            <span className="mt-0.5 block text-xs font-normal text-brand-100">
+      <div className="rounded-xl border border-brand-400/40 bg-brand-800 px-4 py-3 text-sm">
+        {assignedName ? (
+          <>
+            <p className="font-semibold text-white">{assignedName}</p>
+            <p className="mt-0.5 text-xs text-brand-100">
               Assigned by your teacher — contact them to switch groups.
-            </span>
-          </p>
+            </p>
+          </>
         ) : (
-          <select
-            value={classId}
-            onChange={(e) => setClassId(e.target.value)}
-            className={CONTROL}
-          >
-            <option value="">Select your class…</option>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <p className="text-brand-100">
+            Your teacher will assign you to a class. You can finish chat setup now and join chats
+            once you are added.
+          </p>
         )}
-      </label>
+      </div>
 
       <label className="block">
         <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand-100">
@@ -238,7 +215,7 @@ export function ClassChatSetupForm({
       <button
         type="button"
         onClick={() => void submit()}
-        disabled={saving || uploading || classes.length === 0}
+        disabled={saving || uploading}
         className="btn-brand inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-400 py-3 font-bold text-white disabled:opacity-50"
       >
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

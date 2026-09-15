@@ -13,6 +13,7 @@ export type AdminAnim =
   | "mocks"
   | "examdates"
   | "news"
+  | "lessons"
   | "classes"
   | "notifications"
   | "users"
@@ -55,6 +56,7 @@ export function AdminNavIcon({ anim, className, hovered: hoveredProp }: Props) {
       {anim === "mocks" && <MocksIcon hovered={h} />}
       {anim === "examdates" && <ExamDatesIcon hovered={h} />}
       {anim === "news" && <NewsIcon hovered={h} />}
+      {anim === "lessons" && <LessonsIcon hovered={h} />}
       {anim === "classes" && <ClassesIcon hovered={h} />}
       {anim === "notifications" && <NotificationsIcon hovered={h} />}
       {anim === "users" && <UsersIcon hovered={h} />}
@@ -437,6 +439,34 @@ function NotificationsIcon({ hovered }: { hovered: boolean }) {
         style={{ willChange: "transform" }}
       />
     </motion.svg>
+  );
+}
+
+function LessonsIcon({ hovered }: { hovered: boolean }) {
+  return (
+    <svg {...svgProps}>
+      <motion.g
+        animate={{ y: hovered ? -1.4 : 0 }}
+        transition={SNAP}
+        style={{ willChange: "transform" }}
+      >
+        <path d="M5 6.5h9.5a2 2 0 0 1 2 2V19H7a2 2 0 0 1-2-2V6.5Z" />
+        <path d="M7 19V7.6" />
+        <motion.path
+          d="M10 11h5M10 14h3.5"
+          animate={{ opacity: hovered ? 1 : 0.65 }}
+          transition={SNAP}
+        />
+      </motion.g>
+      <motion.path
+        d="M15.2 5.2 20 8.1 15.2 11V5.2Z"
+        fill="currentColor"
+        stroke="none"
+        animate={{ x: hovered ? 1.2 : 0, scale: hovered ? 1.08 : 1 }}
+        transition={SNAP}
+        style={{ willChange: "transform", transformOrigin: "17px 8px" }}
+      />
+    </svg>
   );
 }
 

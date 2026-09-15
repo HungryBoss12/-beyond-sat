@@ -27,6 +27,7 @@ pnpm-lock.yaml
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
+.lovable/
 
 # Editor directories and files
 .vscode/*

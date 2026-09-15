@@ -10,17 +10,27 @@ import { ListSkeleton } from "@/components/ui/skeletons";
 import { getStaffRole } from "@/lib/admin";
 import {
   fetchAdminUserActivity,
+  fetchAdminUinfo,
   fetchAdminUserDetail,
   fetchAdminUserSessions,
+  flushAdminUinfo,
   type AdminActivityRow,
+  type AdminUinfo,
   type AdminUserDetail,
   type AdminUserSessionRow,
 } from "@/lib/admin/users";
 import { isOnline, lastSeenLabel } from "@/lib/presence";
-import { errorMessage } from "@/lib/utils";
+import { errorMessage, formatGrade } from "@/lib/utils";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 
 type Role = "student" | "editor" | "admin";
-type Tab = "overview" | "tests" | "vocab" | "activity";
+
+const ROLE_OPTIONS = [
+  { value: "student", label: "Student" },
+  { value: "editor", label: "Editor" },
+  { value: "admin", label: "Admin" },
+];
+type Tab = "overview" | "tests" | "vocab" | "activity" | "uinfo";
 
 export const Route = createFileRoute("/_authenticated/admin/users/$userId")({
   beforeLoad: async () => {
@@ -40,9 +50,11 @@ function AdminUserDetailPage() {
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [sessions, setSessions] = useState<AdminUserSessionRow[]>([]);
   const [activity, setActivity] = useState<AdminActivityRow[]>([]);
+  const [uinfo, setUinfo] = useState<AdminUinfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [tabErr, setTabErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const loadDetail = useCallback(async () => {
@@ -64,21 +76,68 @@ function AdminUserDetailPage() {
   }, [loadDetail]);
 
   useEffect(() => {
-    if (tab === "tests" && sessions.length === 0 && detail) {
+    setSessions([]);
+    setActivity([]);
+    setUinfo(null);
+    setTabErr(null);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!detail) return;
+    let cancelled = false;
+    if (tab === "tests") {
       setTabLoading(true);
+      setTabErr(null);
       fetchAdminUserSessions(userId)
-        .then(setSessions)
-        .catch((e) => setErr(errorMessage(e, "Could not load sessions.")))
-        .finally(() => setTabLoading(false));
+        .then((rows) => {
+          if (!cancelled) setSessions(rows);
+        })
+        .catch((e) => {
+          if (!cancelled) setTabErr(errorMessage(e, "Could not load sessions."));
+        })
+        .finally(() => {
+          if (!cancelled) setTabLoading(false);
+        });
     }
-    if (tab === "activity" && activity.length === 0 && detail) {
+    if (tab === "activity") {
       setTabLoading(true);
+      setTabErr(null);
       fetchAdminUserActivity(userId)
-        .then(setActivity)
-        .catch((e) => setErr(errorMessage(e, "Could not load activity.")))
-        .finally(() => setTabLoading(false));
+        .then((rows) => {
+          if (!cancelled) setActivity(rows);
+        })
+        .catch((e) => {
+          if (!cancelled) setTabErr(errorMessage(e, "Could not load activity."));
+        })
+        .finally(() => {
+          if (!cancelled) setTabLoading(false);
+        });
     }
-  }, [tab, userId, detail, sessions.length, activity.length]);
+    if (tab === "uinfo") {
+      setTabLoading(true);
+      setTabErr(null);
+      void (async () => {
+        try {
+          const current = await fetchAdminUinfo(userId);
+          if (cancelled) return;
+          if (current.pending > 0) {
+            await flushAdminUinfo(userId);
+            if (cancelled) return;
+            setUinfo(await fetchAdminUinfo(userId));
+          } else {
+            setUinfo(current);
+          }
+        } catch (e) {
+          if (!cancelled) setTabErr(errorMessage(e, "Could not load AI summary."));
+        } finally {
+          if (!cancelled) setTabLoading(false);
+        }
+      })();
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, userId, detail]);
 
   async function setRole(role: Role) {
     if (!detail) return;
@@ -128,13 +187,14 @@ function AdminUserDetailPage() {
     ["tests", "Tests"],
     ["vocab", "Vocab"],
     ["activity", "Activity"],
+    ["uinfo", "AI summary"],
   ];
 
   return (
     <div>
       <Link
         to="/admin/users"
-        className="tap inline-flex items-center gap-1.5 text-sm font-semibold text-brand-100 hover:text-white"
+        className="tap inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-brand-600"
       >
         <ArrowLeft className="h-4 w-4" />
         All users
@@ -145,7 +205,7 @@ function AdminUserDetailPage() {
           <ListSkeleton rows={4} />
         </div>
       ) : err || !detail ? (
-        <div className="mt-4 rounded-xl border border-dashed border-brand-300/50 bg-brand-800/50 p-6 text-center text-sm text-brand-100">
+        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-600">
           <p>{err ?? "User not found."}</p>
           <button
             type="button"
@@ -159,13 +219,16 @@ function AdminUserDetailPage() {
         <>
           <Header detail={detail} busy={busy} onRole={setRole} onBan={toggleBan} />
 
-          <div className="mt-4 flex gap-1 rounded-lg border border-brand-400/40 bg-brand-600 p-1">
+          <div className="mt-4 flex flex-wrap gap-1 rounded-2xl border border-brand-400/40 bg-brand-600 p-1">
             {tabs.map(([key, label]) => (
               <button
                 key={key}
-                onClick={() => setTab(key)}
+                onClick={() => {
+                  setTab(key);
+                  setTabErr(null);
+                }}
                 className={
-                  "tap rounded-md px-3 py-1.5 text-xs font-semibold " +
+                  "tap min-w-0 flex-1 rounded-xl px-3 py-2 text-xs font-semibold " +
                   (tab === key
                     ? "bg-brand-400 text-white shadow-brand"
                     : "text-brand-100 hover:bg-brand-800 hover:text-white")
@@ -177,12 +240,23 @@ function AdminUserDetailPage() {
           </div>
 
           <div className="mt-4">
-            {tab === "overview" && <OverviewTab detail={detail} />}
-            {tab === "tests" &&
-              (tabLoading ? <ListSkeleton rows={5} /> : <UserTestsTable sessions={sessions} />)}
-            {tab === "vocab" && <VocabTab detail={detail} />}
-            {tab === "activity" &&
-              (tabLoading ? <ListSkeleton rows={6} /> : <UserActivityFeed events={activity} />)}
+            {tabErr ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-600">
+                <p>{tabErr}</p>
+              </div>
+            ) : tab === "overview" ? (
+              <OverviewTab detail={detail} />
+            ) : tab === "tests" ? (
+              tabLoading ? <ListSkeleton rows={5} /> : <UserTestsTable sessions={sessions} />
+            ) : tab === "vocab" ? (
+              <VocabTab detail={detail} />
+            ) : tab === "activity" ? (
+              tabLoading ? <ListSkeleton rows={6} /> : <UserActivityFeed events={activity} />
+            ) : tabLoading ? (
+              <ListSkeleton rows={4} />
+            ) : (
+              <UinfoPanel data={uinfo} />
+            )}
           </div>
         </>
       )}
@@ -238,16 +312,14 @@ function Header({
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <select
+        <AdminSelect
           value={role}
+          onValueChange={(v) => onRole(v as Role)}
           disabled={busy}
-          onChange={(e) => onRole(e.target.value as Role)}
-          className="rounded-lg border border-brand-400/50 bg-brand-800 px-2 py-1.5 text-xs font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none disabled:opacity-60"
-        >
-          <option value="student">Student</option>
-          <option value="editor">Editor</option>
-          <option value="admin">Admin</option>
-        </select>
+          size="sm"
+          className="w-[110px]"
+          options={ROLE_OPTIONS}
+        />
         <button
           onClick={onBan}
           disabled={busy}
@@ -279,7 +351,7 @@ function OverviewTab({ detail }: { detail: AdminUserDetail }) {
   const identityRows = [
     ["City", profile.city],
     ["School", profile.school],
-    ["Grade", profile.grade],
+    ["Grade", formatGrade(profile.grade)],
     ["Username", profile.username],
     ["Telegram", profile.telegram_username],
     ["Banned reason", profile.banned_reason],
@@ -305,7 +377,10 @@ function OverviewTab({ detail }: { detail: AdminUserDetail }) {
         <Section title="Identity">
           <dl className="grid gap-2 sm:grid-cols-2">
             {identityRows.map(([k, v]) => (
-              <div key={String(k)} className="rounded-lg bg-brand-800/60 px-3 py-2">
+              <div
+                key={String(k)}
+                className="rounded-xl border border-brand-400/40 bg-brand-600 px-3 py-2 shadow-panel"
+              >
                 <dt className="text-[10px] font-bold uppercase tracking-wider text-brand-200">{k}</dt>
                 <dd className="text-sm font-semibold text-white">{String(v)}</dd>
               </div>
@@ -317,7 +392,10 @@ function OverviewTab({ detail }: { detail: AdminUserDetail }) {
         <Section title="Goals & streaks">
           <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {goalRows.map(([k, v]) => (
-              <div key={String(k)} className="rounded-lg bg-brand-800/60 px-3 py-2">
+              <div
+                key={String(k)}
+                className="rounded-xl border border-brand-400/40 bg-brand-600 px-3 py-2 shadow-panel"
+              >
                 <dt className="text-[10px] font-bold uppercase tracking-wider text-brand-200">{k}</dt>
                 <dd className="text-sm font-semibold text-white">{String(v)}</dd>
               </div>
@@ -341,7 +419,7 @@ function VocabTab({ detail }: { detail: AdminUserDetail }) {
       ].map(([label, value]) => (
         <div
           key={String(label)}
-          className="rounded-xl border border-brand-400/40 bg-brand-800/60 px-4 py-3"
+          className="rounded-2xl border border-brand-400/40 bg-brand-600 px-4 py-3 shadow-panel"
         >
           <div className="text-[10px] font-bold uppercase tracking-wider text-brand-200">{label}</div>
           <div className="mt-1 text-2xl font-black text-white">{value}</div>
@@ -351,10 +429,29 @@ function VocabTab({ detail }: { detail: AdminUserDetail }) {
   );
 }
 
+function UinfoPanel({ data }: { data: AdminUinfo | null }) {
+  return (
+    <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-sm font-black uppercase tracking-wider text-brand-100">AI summary</h3>
+        <p className="text-xs text-brand-100">
+          {data?.updated_at
+            ? `Updated ${format(new Date(data.updated_at), "MMM d, yyyy · h:mm a")}`
+            : "No summary yet"}
+          {data ? ` · ${data.pending} pending log${data.pending === 1 ? "" : "s"}` : ""}
+        </p>
+      </div>
+      <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-white">
+        {data?.summary?.trim() || "No observations yet. Logs collect as this student uses the site."}
+      </p>
+    </div>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="mb-2 text-sm font-black uppercase tracking-wider text-brand-100">{title}</h3>
+      <h3 className="mb-2 text-sm font-black uppercase tracking-wider text-slate-900">{title}</h3>
       {children}
     </div>
   );

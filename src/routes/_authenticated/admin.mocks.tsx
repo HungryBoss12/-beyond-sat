@@ -19,6 +19,7 @@ import {
   saveMockExam,
   type FullPaper,
 } from "@/lib/mock-exams";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 
 type Mock = {
   id: string;
@@ -384,22 +385,17 @@ function PaperPicker({
         <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-white">
           {SECTION_LABEL[section]}
         </span>
-        <select
+        <AdminSelect
           value={selectedKey ?? ""}
-          onChange={(event) => onChange(event.target.value || null)}
-          className={CONTROL_CLASS}
-        >
-          <option value="">— Choose a full paper —</option>
-          {dateGroups.map((dateGroup) => (
-            <optgroup key={dateGroup.key} label={dateGroup.label}>
-              {dateGroup.items.map((paper) => (
-                <option key={paper.key} value={paper.key}>
-                  {paper.title}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+          onValueChange={(v) => onChange(v || null)}
+          placeholder="— Choose a full paper —"
+          options={dateGroups.flatMap((dateGroup) =>
+            dateGroup.items.map((paper) => ({
+              value: paper.key,
+              label: `${dateGroup.label} — ${paper.title}`,
+            })),
+          )}
+        />
       </label>
 
       {papers.length === 0 ? (

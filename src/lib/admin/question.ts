@@ -1,6 +1,6 @@
 import type { Difficulty, Section } from "@/lib/sat";
 
-export type AdminChoice = { id: string; text: string };
+export type AdminChoice = { id: string; text: string; image_url?: string | null };
 
 /** Saved (or draft-new) question as edited in the admin modal. */
 export type AdminQuestion = {
@@ -31,10 +31,10 @@ export function emptyAdminQuestion(): AdminQuestion {
     prompt: "",
     question_text: "",
     choices: [
-      { id: "A", text: "" },
-      { id: "B", text: "" },
-      { id: "C", text: "" },
-      { id: "D", text: "" },
+      { id: "A", text: "", image_url: null },
+      { id: "B", text: "", image_url: null },
+      { id: "C", text: "", image_url: null },
+      { id: "D", text: "", image_url: null },
     ],
     correct_choice_id: "A",
     correct_grid_answers: [],

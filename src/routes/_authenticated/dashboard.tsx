@@ -11,6 +11,7 @@ import {
   BarChart3,
   Gauge,
   CalendarClock,
+  BookOpen,
 } from "lucide-react";
 import {
   Area,
@@ -306,6 +307,7 @@ function Dashboard() {
         />
         <RadarPanel data={radarData} hasData={attempts.length > 0} weakest={weakest} />
         <HistoryPanel mocks={mocks} />
+        <LessonsShortcutPanel />
       </div>
     </div>
   );
@@ -544,6 +546,25 @@ function AccuracyPanel({
 }
 
 /** Today's daily test — the one saturated surface on the page. */
+function LessonsShortcutPanel() {
+  return (
+    <Panel interactive>
+      <PanelHead label="Lessons" icon={BookOpen} />
+      <h3 className="mt-3 text-lg font-black text-white">Taught walkthroughs</h3>
+      <p className="mt-1 text-sm text-brand-100">
+        Reading & Writing and Math topics with notes, video, and a playlist.
+      </p>
+      <Link
+        to="/lessons"
+        className="group mt-4 inline-flex items-center gap-2 text-sm font-bold text-brand-200"
+      >
+        Browse lessons
+        <ArrowRight className="arrow-slide h-4 w-4" />
+      </Link>
+    </Panel>
+  );
+}
+
 function DailyPanel({
   done,
   streak,

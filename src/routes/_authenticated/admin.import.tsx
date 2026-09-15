@@ -52,6 +52,7 @@ import {
   type Mode,
   type VisionState,
 } from "@/components/admin-import";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import type { ActivityEntry } from "@/lib/import/activity-log";
 import { cloneDraft } from "@/lib/import/activity-log";
 import {
@@ -1487,18 +1488,14 @@ function AdminImport() {
             </Field>
             <Field label="Source date">
               <div className="flex gap-1">
-                <select
-                  value={month ?? ""}
-                  onChange={(e) => setMonth(e.target.value ? Number(e.target.value) : null)}
-                  className={CONTROL_CLASS + " flex-1 px-2"}
-                >
-                  <option value="">Month</option>
-                  {MONTHS.map((m, i) => (
-                    <option key={m} value={i + 1}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
+                <AdminSelect
+                  value={month != null ? String(month) : ""}
+                  onValueChange={(v) => setMonth(v ? Number(v) : null)}
+                  placeholder="Month"
+                  className="flex-1"
+                  triggerClassName="px-2"
+                  options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                />
                 <input
                   type="number"
                   min={2000}
@@ -1514,42 +1511,38 @@ function AdminImport() {
 
           <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
             <Field label="Section">
-              <select
+              <AdminSelect
                 value={section}
-                onChange={(e) => setSection(e.target.value as Section)}
-                className={CONTROL_CLASS}
-              >
-                <option value="reading_writing">Reading &amp; Writing</option>
-                <option value="math">Math</option>
-              </select>
+                onValueChange={(v) => setSection(v as Section)}
+                options={[
+                  { value: "reading_writing", label: "Reading & Writing" },
+                  { value: "math", label: "Math" },
+                ]}
+              />
             </Field>
             <Field label="Module">
-              <select
+              <AdminSelect
                 value={module === "both" ? "both" : String(module)}
-                onChange={(e) => {
-                  const v = e.target.value;
+                onValueChange={(v) => {
                   setModuleChoice(v === "both" ? "both" : (Number(v) as 1 | 2));
                 }}
                 disabled={!makeSet}
-                className={CONTROL_CLASS + " disabled:opacity-40"}
-              >
-                <option value="1">Module 1</option>
-                <option value="2">Module 2</option>
-                <option value="both">Both modules (one file)</option>
-              </select>
+                options={[
+                  { value: "1", label: "Module 1" },
+                  { value: "2", label: "Module 2" },
+                  { value: "both", label: "Both modules (one file)" },
+                ]}
+              />
             </Field>
             <Field label="Difficulty">
-              <select
+              <AdminSelect
                 value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value as LetterDifficulty)}
-                className={CONTROL_CLASS}
-              >
-                {LETTER_DIFFICULTIES.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
+                onValueChange={(v) => setDifficulty(v as LetterDifficulty)}
+                options={LETTER_DIFFICULTIES.map((d) => ({
+                  value: d,
+                  label: `${d}${d === "A" ? " (hardest)" : d === "C" ? " (easiest)" : ""}`,
+                }))}
+              />
             </Field>
           </div>
           {module === "both" && makeSet && (

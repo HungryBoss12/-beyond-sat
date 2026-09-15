@@ -155,12 +155,10 @@ export async function saveChatSetup(input: {
   username: string;
   avatar_url?: string | null;
   telegram_username?: string | null;
-  class_id: string;
 }): Promise<void> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Not signed in");
   const username = normalizeUsername(input.username);
-  await joinClass(input.class_id);
   const { error: pErr } = await db
     .from("profiles")
     .update({
@@ -168,7 +166,6 @@ export async function saveChatSetup(input: {
       avatar_url: input.avatar_url ?? null,
       telegram_username: input.telegram_username?.replace(/^@/, "").trim() || null,
       chat_setup_completed: true,
-      class_id: input.class_id,
     })
     .eq("id", u.user.id);
   if (pErr) throw pErr;

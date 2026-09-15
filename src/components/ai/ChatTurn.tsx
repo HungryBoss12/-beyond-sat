@@ -38,7 +38,7 @@ export function ChatTurn({
             />
           )}
           {text && (
-            <div className="rounded-2xl rounded-br-sm bg-brand-400 px-3.5 py-2.5 text-sm font-medium text-white whitespace-pre-wrap">
+            <div className="rounded-2xl rounded-br-sm bg-brand-800 px-3.5 py-2.5 text-sm font-medium leading-relaxed text-white ring-1 ring-brand-400/30 whitespace-pre-wrap">
               {text}
             </div>
           )}

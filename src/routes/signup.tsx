@@ -4,10 +4,13 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
+import { AmbientGlow } from "@/components/ui/reveal-card";
 import { AuthOrDivider, GoogleAuthButton } from "@/components/GoogleAuthButton";
 import { supabase } from "@/integrations/supabase/client";
 import { appUrl } from "@/lib/app-url";
 import { rememberCurrentSession } from "@/lib/auth/account-switcher";
+import { isSyntheticAccountEmail } from "@/lib/auth/login-email";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 
 export const Route = createFileRoute("/signup")({
   component: SignUp,
@@ -86,6 +89,11 @@ function SignUp() {
       return;
     }
     setLoading(true);
+    if (isSyntheticAccountEmail(parsed.data.email)) {
+      setFormError("Use a real email address.");
+      setLoading(false);
+      return;
+    }
     const { data, error } = await supabase.auth.signUp({
       email: parsed.data.email,
       password: parsed.data.password,
@@ -156,7 +164,8 @@ function SignUp() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="relative isolate flex min-h-screen flex-col bg-white">
+      <AmbientGlow />
       <SiteNav />
       <main className="grid flex-1 place-items-center px-4 py-14">
         <div className="rise-in w-full max-w-lg rounded-2xl border border-brand-400/40 bg-brand-600 p-8 shadow-panel md:p-10">
@@ -215,22 +224,23 @@ function SignUp() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Grade" error={errors.grade}>
-                    <select
-                      className={inputCls}
+                    <AdminSelect
+                      tone="light"
                       value={form.grade}
-                      onChange={(e) => setField("grade", e.target.value as FormValues["grade"])}
-                    >
-                      <option value="">Select…</option>
-                      <option value="5">5th</option>
-                      <option value="6">6th</option>
-                      <option value="7">7th</option>
-                      <option value="8">8th</option>
-                      <option value="9">9th</option>
-                      <option value="10">10th</option>
-                      <option value="11">11th</option>
-                      <option value="12">12th</option>
-                      <option value="graduated">Graduated</option>
-                    </select>
+                      onValueChange={(v) => setField("grade", v as FormValues["grade"])}
+                      placeholder="Select…"
+                      options={[
+                        { value: "5", label: "5th" },
+                        { value: "6", label: "6th" },
+                        { value: "7", label: "7th" },
+                        { value: "8", label: "8th" },
+                        { value: "9", label: "9th" },
+                        { value: "10", label: "10th" },
+                        { value: "11", label: "11th" },
+                        { value: "12", label: "12th" },
+                        { value: "graduated", label: "Graduated" },
+                      ]}
+                    />
                   </Field>
                   <Field label="Date of birth" error={errors.birth_date}>
                     <input

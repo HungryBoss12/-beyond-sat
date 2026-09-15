@@ -69,7 +69,7 @@ export function VocabSessionResults({ summary, streak, onStudyMore }: Props) {
           {([1, 2, 3, 4] as ReviewRating[]).map((r) => (
             <div
               key={r}
-              className="vocab-reveal-surface rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-center ring-1 ring-white/10"
+              className="rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-center ring-1 ring-white/10"
             >
               <div className="text-xs text-white/60">{RATING_LABELS[r]}</div>
               <div className="text-lg font-bold tabular-nums">{summary.ratings[r]}</div>

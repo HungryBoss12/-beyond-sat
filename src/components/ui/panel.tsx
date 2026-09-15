@@ -47,7 +47,7 @@ export function Panel({
   const ref = usePointerGlow<HTMLElement>();
   return (
     <Tag
-      ref={ref as React.Ref<never>}
+      ref={ref as never}
       className={cx(
         "reveal-surface relative rounded-2xl border p-5 md:p-6 text-white",
         tone === "plain" && "border-brand-400/40 bg-brand-600 shadow-panel",

@@ -4,7 +4,7 @@ import { LayoutGroup, motion } from "motion/react";
 import { supabase } from "@/integrations/supabase/client";
 import { canEditorAccess, getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 import { ArrowLeft, Menu, X, ChevronRight } from "lucide-react";
-import { RevealLink } from "@/components/ui/reveal-card";
+import { AmbientGlow, RevealLink } from "@/components/ui/reveal-card";
 import { AdminNavIcon, type AdminAnim } from "@/components/admin/AdminNavIcon";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -72,6 +72,7 @@ const NAV = [
   },
   { to: "/admin/news", label: "News", anim: "news", group: "Content" },
   { to: "/admin/vocab", label: "Vocab", anim: "vocab", group: "Content" },
+  { to: "/admin/lessons", label: "Lessons", anim: "lessons", group: "Content" },
   { to: "/admin/classes", label: "Classes", anim: "classes", group: "Content" },
   { to: "/admin/users", label: "Students", anim: "users", group: "Students", adminOnly: true },
   { to: "/admin/notifications", label: "Notifications", anim: "notifications", group: "Manage" },
@@ -105,7 +106,9 @@ function AdminLayout() {
   const current = visibleNav(staffRole).find((n) => isActive(n, pathname));
 
   return (
-    <div className="min-h-screen bg-white text-brand-900 lg:grid lg:grid-cols-[260px_1fr]">
+    <div className="relative isolate min-h-screen bg-white text-brand-900">
+      <AmbientGlow />
+      <div className="lg:grid lg:grid-cols-[260px_1fr]">
       <aside className="sticky top-0 hidden h-screen flex-col border-r border-brand-400/30 bg-brand-600 lg:flex">
         <SidebarBody pathname={pathname} role={staffRole} />
       </aside>
@@ -151,6 +154,7 @@ function AdminLayout() {
         <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
           <Outlet />
         </main>
+      </div>
       </div>
     </div>
   );

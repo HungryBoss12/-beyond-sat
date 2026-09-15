@@ -121,7 +121,7 @@ const RETRYABLE_REASONS = new Set([
   "ipRefererBlocked",
 ]);
 
-const MAX_RECS = 5;
+const MAX_RECS = 2;
 
 /** Split a stored settings value into ordered, unique API keys. */
 export function parseApiKeys(raw: string | null | undefined): string[] {

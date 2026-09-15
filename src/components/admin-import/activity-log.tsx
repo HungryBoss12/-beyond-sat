@@ -6,6 +6,7 @@ import {
   type ActivityEntry,
 } from "@/lib/import/activity-log";
 import { CONTROL_CLASS } from "./types";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 
 function truncate(s: string, max = 80): string {
   const t = s.replace(/\s+/g, " ").trim();
@@ -152,18 +153,13 @@ export function ActivityLogPanel({
         >
           <label className="block shrink-0 text-[11px] font-semibold text-brand-100">
             Question
-            <select
-              value={selectedIndex}
-              onChange={(e) => setSelectedIndex(Number(e.target.value))}
-              className={CONTROL_CLASS + " mt-1 w-full sm:w-28"}
+            <AdminSelect
+              value={String(selectedIndex)}
+              onValueChange={(v) => setSelectedIndex(Number(v))}
+              className="mt-1 w-full sm:w-28"
               disabled={asking}
-            >
-              {drafts.map((d, i) => (
-                <option key={i} value={i}>
-                  Q{d.number}
-                </option>
-              ))}
-            </select>
+              options={drafts.map((d, i) => ({ value: String(i), label: `Q${d.number}` }))}
+            />
           </label>
           <label className="block min-w-0 flex-1 text-[11px] font-semibold text-brand-100">
             Ask Gemini

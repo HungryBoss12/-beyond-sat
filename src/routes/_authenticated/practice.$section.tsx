@@ -103,7 +103,7 @@ type PaperGroup = {
  * with, and a bank can hold either. Only the values actually present are offered
  * — a filter button that matches nothing is worse than no button.
  */
-const DIFF_ORDER = ["easy", "medium", "hard", "C", "B", "D", "A", "S"];
+const DIFF_ORDER = ["A", "B", "C", "easy", "medium", "hard", "D", "S"];
 
 type SortOrder = "shuffle" | "newest" | "oldest";
 type StatusFilter = "all" | "new" | "in_progress" | "done";

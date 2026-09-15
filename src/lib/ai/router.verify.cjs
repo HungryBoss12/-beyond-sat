@@ -139,6 +139,7 @@ check("every task's system prompt carries all three universal rules", () => {
     assert.ok(system.content.includes(prompts.IDENTITY_RULE), `${task}: identity rule missing`);
     assert.ok(system.content.includes(prompts.DOMAIN_RULE), `${task}: domain rule missing`);
     assert.ok(system.content.includes(prompts.LATEX_RULE), `${task}: LaTeX rule missing`);
+    assert.ok(system.content.includes(prompts.VIDEO_RULE), `${task}: video rule missing`);
   }
 });
 
@@ -156,6 +157,22 @@ check("the system prompt is prepended, not appended", () => {
   assert.equal(body.messages.length, 2);
   assert.equal(body.messages[0].role, "system");
   assert.equal(body.messages[1].role, "user");
+});
+
+check("UInfo and YouTube extras append after the system prompt", () => {
+  const body = router.buildRequestBody(
+    "chat",
+    USER,
+    "m",
+    false,
+    "page",
+    "Weak in algebra.",
+    "YouTube picks (real URLs only; do not invent videos):\n1. Algebra — https://www.youtube.com/watch?v=abc123",
+  );
+  const system = body.messages[0].content;
+  assert.ok(system.includes("Weak in algebra."));
+  assert.ok(system.includes("https://www.youtube.com/watch?v=abc123"));
+  assert.ok(system.includes(prompts.VIDEO_RULE));
 });
 
 /* -------------------------------------------------------------------------

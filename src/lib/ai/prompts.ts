@@ -52,6 +52,9 @@ export const FORMAT_RULE = `When you explain a question or a concept, structure 
 
 This structure is for explanations only. For conversation, greetings, encouragement and short follow-ups, reply in one or two plain sentences with no headings, no numbered steps and no bold answer line.`;
 
+/** Video recs: never invent YouTube IDs. Use the injected list or staff Featured links. */
+export const VIDEO_RULE = `When recommending videos, use only the YouTube picks listed in this prompt or staff Featured lesson links. Never invent YouTube URLs, video IDs, or titles. If no list is present, point the student to Lessons Featured videos instead of making up links.`;
+
 /** Per-task additions, appended after the universal rules. */
 const TASK_RULES: Record<string, string> = {
   chat: `Keep replies brief and conversational — a few sentences unless the student asks for a full worked solution.`,
@@ -69,7 +72,7 @@ export const IMAGE_RECOGNITION_PROMPT = `You are reading an image for an SAT tut
  * instructions without being able to contradict them silently.
  */
 export function buildSystemPrompt(task: string): string {
-  return [IDENTITY_RULE, DOMAIN_RULE, LATEX_RULE, FORMAT_RULE, TASK_RULES[task]]
+  return [IDENTITY_RULE, DOMAIN_RULE, LATEX_RULE, FORMAT_RULE, VIDEO_RULE, TASK_RULES[task]]
     .filter(Boolean)
     .join("\n\n");
 }

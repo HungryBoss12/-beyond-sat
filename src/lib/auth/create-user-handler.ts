@@ -33,6 +33,23 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
   }
 
   hydrateServerEnv(env);
+  try {
+    const { resetSupabaseAdmin, ensureSupabaseAdmin } = await import(
+      "@/integrations/supabase/client.server"
+    );
+    resetSupabaseAdmin();
+    ensureSupabaseAdmin();
+  } catch (e) {
+    console.error("[create-user] service role config", (e as Error).message);
+    return jsonResponse(
+      {
+        error:
+          (e as Error).message ||
+          "Server service role key is invalid. Set Cloudflare secret SUPABASE_SERVICE_ROLE_KEY to the project's service_role JWT or sb_secret_ key (not the publishable/anon key).",
+      },
+      500,
+    );
+  }
 
   const auth = await requireStaff(request, env);
   if (!auth.ok) return auth.response;
@@ -141,6 +158,16 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
       return jsonResponse(
         { error: "That login name is already taken. Try a slightly different name." },
         409,
+      );
+    }
+    if (/invalid api key/i.test(msg)) {
+      console.error("[create-user] Invalid API key from Auth Admin — check SUPABASE_SERVICE_ROLE_KEY");
+      return jsonResponse(
+        {
+          error:
+            "Server service role key is invalid. Set Cloudflare secret SUPABASE_SERVICE_ROLE_KEY to the project's service_role JWT or sb_secret_ key (not the publishable/anon key).",
+        },
+        500,
       );
     }
     return jsonResponse({ error: msg }, 400);

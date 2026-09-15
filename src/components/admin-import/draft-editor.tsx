@@ -13,6 +13,7 @@ import { uploadQuestionImage } from "@/lib/import/upload-question-image";
 import { resolveDisplayUrl } from "@/lib/storage-url";
 import { CONTROL_CLASS } from "./types";
 import { Field } from "./field";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 
 const CHOICE_IDS = ["A", "B", "C", "D"] as const;
 
@@ -116,70 +117,61 @@ export function DraftEditor({
         </Field>
         {showModule && (
           <Field label="Module">
-            <select
+            <AdminSelect
               value={rec.module === "2" ? "2" : "1"}
               disabled={disabled}
-              onChange={(e) => setField("module", e.target.value)}
-              className={CONTROL_CLASS + " disabled:opacity-40"}
-            >
-              <option value="1">Module 1</option>
-              <option value="2">Module 2</option>
-            </select>
+              onValueChange={(v) => setField("module", v)}
+              options={[
+                { value: "1", label: "Module 1" },
+                { value: "2", label: "Module 2" },
+              ]}
+            />
           </Field>
         )}
         <Field label="Section">
-          <select
+          <AdminSelect
             value={section}
             disabled={disabled}
-            onChange={(e) => setSection(e.target.value as Section)}
-            className={CONTROL_CLASS + " disabled:opacity-40"}
-          >
-            <option value="reading_writing">{SECTION_LABEL.reading_writing}</option>
-            <option value="math">{SECTION_LABEL.math}</option>
-          </select>
+            onValueChange={(v) => setSection(v as Section)}
+            options={[
+              { value: "reading_writing", label: SECTION_LABEL.reading_writing },
+              { value: "math", label: SECTION_LABEL.math },
+            ]}
+          />
         </Field>
         <Field label="Skill">
-          <select
+          <AdminSelect
             value={skills.includes(rec.skill) ? rec.skill : skills[0]}
             disabled={disabled}
-            onChange={(e) => setField("skill", e.target.value)}
-            className={CONTROL_CLASS + " disabled:opacity-40"}
-          >
-            {skills.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+            onValueChange={(v) => setField("skill", v)}
+            options={skills.map((s) => ({ value: s, label: s }))}
+          />
         </Field>
         <Field label="Type">
-          <select
+          <AdminSelect
             value={kind}
             disabled={disabled}
-            onChange={(e) => setKind(e.target.value as "multiple_choice" | "grid_in")}
-            className={CONTROL_CLASS + " disabled:opacity-40"}
-          >
-            <option value="multiple_choice">Multiple choice</option>
-            <option value="grid_in">Grid-in</option>
-          </select>
+            onValueChange={(v) => setKind(v as "multiple_choice" | "grid_in")}
+            options={[
+              { value: "multiple_choice", label: "Multiple choice" },
+              { value: "grid_in", label: "Grid-in" },
+            ]}
+          />
         </Field>
         <Field label="Difficulty">
-          <select
+          <AdminSelect
             value={
               LETTER_DIFFICULTIES.includes(rec.difficulty as LetterDifficulty)
                 ? rec.difficulty
                 : "C"
             }
             disabled={disabled}
-            onChange={(e) => setField("difficulty", e.target.value)}
-            className={CONTROL_CLASS + " disabled:opacity-40"}
-          >
-            {LETTER_DIFFICULTIES.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
+            onValueChange={(v) => setField("difficulty", v)}
+            options={LETTER_DIFFICULTIES.map((d) => ({
+              value: d,
+              label: `${d}${d === "A" ? " (hardest)" : d === "C" ? " (easiest)" : ""}`,
+            }))}
+          />
         </Field>
       </div>
 
@@ -280,17 +272,34 @@ export function DraftEditor({
       )}
 
       {kind === "multiple_choice" ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-brand-100">Choices</p>
           {CHOICE_IDS.map((id) => (
-            <div key={id} className="flex items-start gap-2">
-              <span className="mt-2 w-5 shrink-0 text-xs font-bold text-brand-200">{id}</span>
-              <textarea
-                value={rec[`choice_${id}`] ?? ""}
+            <div key={id} className="space-y-1.5">
+              <div className="flex items-start gap-2">
+                <span className="mt-2 w-5 shrink-0 text-xs font-bold text-brand-200">{id}</span>
+                <textarea
+                  value={rec[`choice_${id}`] ?? ""}
+                  disabled={disabled}
+                  onChange={(e) => setField(`choice_${id}`, e.target.value)}
+                  rows={2}
+                  className={CONTROL_CLASS + " min-h-[2.5rem] resize-y disabled:opacity-40"}
+                  placeholder={`Choice ${id} text — use $…$ for math, e.g. $6\\sqrt{3}$`}
+                />
+              </div>
+              {(rec[`choice_${id}`] ?? "").trim() ? (
+                <div className="ml-7 rounded-lg bg-brand-900/50 px-3 py-2 text-sm text-white">
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-brand-200">
+                    Preview
+                  </p>
+                  <MathText>{rec[`choice_${id}`]}</MathText>
+                </div>
+              ) : null}
+              <DraftChoiceImage
+                choiceId={id}
+                imageRef={rec[`choice_${id}_image`] ?? ""}
                 disabled={disabled}
-                onChange={(e) => setField(`choice_${id}`, e.target.value)}
-                rows={2}
-                className={CONTROL_CLASS + " min-h-[2.5rem] resize-y disabled:opacity-40"}
+                onChange={(path) => setField(`choice_${id}_image`, path ?? "")}
               />
             </div>
           ))}
@@ -340,6 +349,91 @@ export function DraftEditor({
           className={CONTROL_CLASS + " min-h-[3rem] resize-y disabled:opacity-40"}
         />
       </Field>
+    </div>
+  );
+}
+
+function DraftChoiceImage({
+  choiceId,
+  imageRef,
+  disabled,
+  onChange,
+}: {
+  choiceId: string;
+  imageRef: string;
+  disabled?: boolean;
+  onChange: (path: string | null) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const raw = imageRef.trim();
+
+  useEffect(() => {
+    let live = true;
+    if (!raw) {
+      setPreview("");
+      return;
+    }
+    if (/^data:/i.test(raw)) {
+      setPreview(raw);
+      return;
+    }
+    void resolveDisplayUrl(raw).then((url) => {
+      if (live) setPreview(url ?? raw);
+    });
+    return () => {
+      live = false;
+    };
+  }, [raw]);
+
+  return (
+    <div className="ml-7 flex flex-wrap items-center gap-2">
+      {preview ? (
+        <img
+          src={preview}
+          alt=""
+          className="h-12 w-12 rounded-md border border-brand-400/50 object-cover"
+        />
+      ) : null}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (!f) return;
+          setUploading(true);
+          setError(null);
+          void uploadQuestionImage(f)
+            .then((path) => onChange(path))
+            .catch((err) => setError(err instanceof Error ? err.message : "Upload failed"))
+            .finally(() => setUploading(false));
+        }}
+      />
+      <button
+        type="button"
+        disabled={disabled || uploading}
+        onClick={() => fileRef.current?.click()}
+        className="tap inline-flex items-center gap-1 rounded-md border border-brand-400/50 bg-brand-900 px-2 py-1 text-[11px] font-semibold text-white hover:bg-brand-400 disabled:opacity-40"
+      >
+        {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+        {uploading ? "Uploading…" : preview ? `Replace ${choiceId} image` : `Upload ${choiceId} image`}
+      </button>
+      {preview ? (
+        <button
+          type="button"
+          disabled={disabled || uploading}
+          onClick={() => onChange(null)}
+          className="text-[11px] font-semibold text-brand-100 hover:text-white hover:underline disabled:opacity-40"
+        >
+          Remove
+        </button>
+      ) : null}
+      {error ? <p className="w-full text-[11px] font-semibold text-amber-100">{error}</p> : null}
     </div>
   );
 }

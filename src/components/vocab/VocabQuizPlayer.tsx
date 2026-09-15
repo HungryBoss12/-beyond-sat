@@ -66,6 +66,7 @@ export function VocabQuizPlayer({ quiz, questions }: Props) {
 
   const handleSubmit = useCallback(async () => {
     if (submittingRef.current || resultRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const payload = questions.map((qu) => ({
@@ -76,27 +77,35 @@ export function VocabQuizPlayer({ quiz, questions }: Props) {
       if (res.score === res.total) {
         void recordQuizHomeworkCompletion(quiz.id, res.score, res.total);
       }
+      resultRef.current = res;
       setResult(res);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Submit failed");
-    } finally {
+      submittingRef.current = false;
       setSubmitting(false);
+      alert(e instanceof Error ? e.message : "Submit failed");
     }
   }, [questions, quiz.id]);
 
   useEffect(() => {
     if (!quiz.time_limit_seconds || result) return;
-    const t = setInterval(() => {
-      setTimeLeft((s) => {
-        if (s <= 1) {
-          clearInterval(t);
-          void handleSubmit();
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(t);
+    const endsAt = Date.now() + quiz.time_limit_seconds * 1000;
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+      setTimeLeft(left);
+      if (left <= 0) {
+        void handleSubmit();
+      }
+    };
+    tick();
+    const t = setInterval(tick, 250);
+    const onVis = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [quiz.time_limit_seconds, result, handleSubmit]);
 
   const q = questions[idx];

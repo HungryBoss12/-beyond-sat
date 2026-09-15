@@ -40,6 +40,7 @@ import {
   addSubmissionFiles,
   uploadChatFile,
   uploadHomeworkFile,
+  resolveAvatarUrls,
   SUBJECT_LABEL,
   type ChatAttachment,
   type ChatMessage,
@@ -67,6 +68,38 @@ function RevealButton({
   return <button ref={ref} className={cn("reveal-surface", className)} {...props} />;
 }
 
+function avatarInitial(p: ChatProfile | null | undefined): string {
+  const raw = p ? displayName(p) : "?";
+  return raw.replace(/^@/, "").slice(0, 1).toUpperCase() || "?";
+}
+
+function AvatarBubble({
+  src,
+  label,
+  className,
+}: {
+  src?: string | null;
+  label: string;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt=""
+        onError={() => setFailed(true)}
+        className={cn("shrink-0 rounded-full object-cover", className)}
+      />
+    );
+  }
+  return (
+    <span className={cn("grid shrink-0 place-items-center rounded-full font-black", className)}>
+      {label}
+    </span>
+  );
+}
+
 function RevealLabel({
   className,
   children,
@@ -91,8 +124,10 @@ function ClassesPage() {
       try {
         const profile = await getChatProfile();
         setMe(profile);
-        if (!profile?.chat_setup_completed || !profile.class_id) {
-          setErr("Finish your Classes setup on Profile first.");
+        if (!profile?.chat_setup_completed) {
+          setErr("Finish your Classes chat setup on Profile first.");
+        } else if (!profile.class_id) {
+          setErr("Your teacher has not assigned you to a class yet. Check back once they add you.");
         }
       } catch (e) {
         setErr((e as Error)?.message ?? "Could not load Classes.");
@@ -183,6 +218,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [profiles, setProfiles] = useState<Map<string, ChatProfile>>(new Map());
+  const [avatarUrls, setAvatarUrls] = useState<Map<string, string>>(new Map());
   const [draft, setDraft] = useState("");
   const [search, setSearch] = useState("");
   const [hits, setHits] = useState<ChatProfile[]>([]);
@@ -204,6 +240,28 @@ function ChatsPane({ me }: { me: ChatProfile }) {
   useEffect(() => {
     void getStaffRole(me.id).then((r) => setIsStaff(Boolean(r)));
   }, [me.id]);
+
+  const avatarKey = [
+    me.avatar_url ?? "",
+    ...[...profiles.values(), ...peers.values(), ...hits].map((p) => p.avatar_url ?? ""),
+  ]
+    .filter(Boolean)
+    .sort()
+    .join("|");
+
+  useEffect(() => {
+    const refs = [
+      me.avatar_url,
+      ...[...profiles.values(), ...peers.values(), ...hits].map((p) => p.avatar_url),
+    ];
+    let live = true;
+    void resolveAvatarUrls(refs).then((map) => {
+      if (live) setAvatarUrls(map);
+    });
+    return () => {
+      live = false;
+    };
+  }, [avatarKey, me.avatar_url]);
 
   const reloadThreads = useCallback(async () => {
     const rows = await listMyThreads();
@@ -398,6 +456,11 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                     onClick={() => void startDm(h)}
                     className="tap flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-brand-500"
                   >
+                    <AvatarBubble
+                      src={h.avatar_url ? avatarUrls.get(h.avatar_url) : null}
+                      label={avatarInitial(h)}
+                      className="h-7 w-7 bg-brand-500 text-[10px] text-white"
+                    />
                     <span className="font-bold">@{h.username}</span>
                     <span className="truncate text-xs text-brand-100">{h.full_name}</span>
                   </RevealButton>
@@ -484,8 +547,19 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                 const sender = profiles.get(m.sender_id);
                 const files = attsByMsg.get(m.id) ?? [];
                 const deleted = Boolean(m.deleted_at);
+                const senderSrc = sender?.avatar_url ? avatarUrls.get(sender.avatar_url) : null;
                 return (
-                  <div key={m.id} className={"flex " + (mine ? "justify-end" : "justify-start")}>
+                  <div
+                    key={m.id}
+                    className={"flex items-end gap-2 " + (mine ? "justify-end" : "justify-start")}
+                  >
+                    {!mine && (
+                      <AvatarBubble
+                        src={senderSrc}
+                        label={avatarInitial(sender)}
+                        className="mb-0.5 h-8 w-8 bg-brand-800 text-[11px] text-white"
+                      />
+                    )}
                     <RevealCard
                       className={
                         "max-w-[80%] rounded-2xl px-3 py-2 text-sm " +

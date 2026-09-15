@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BookOpen, ArrowRight, X } from "lucide-react";
 import { PageHead, Panel } from "@/components/ui/panel";
-import { AmbientGlow, RevealLink } from "@/components/ui/reveal-card";
+import { RevealLink } from "@/components/ui/reveal-card";
 import { VocabStreakWidget } from "@/components/vocab/VocabStreakWidget";
 import { VocabDueBanner } from "@/components/vocab/VocabDueBanner";
 import { VocabDeckGlyph, VocabQuizGlyph } from "@/components/vocab/VocabHubGlyphs";
@@ -95,8 +95,7 @@ function VocabHub() {
   }, []);
 
   return (
-    <div className="relative isolate mx-auto max-w-3xl space-y-6 pb-10">
-      <AmbientGlow />
+    <div className="mx-auto max-w-3xl space-y-6 pb-10">
       <PageHead
         title="Vocabulary"
         subtitle="Anki-style spaced repetition and Words-in-Context practice for the Digital SAT."

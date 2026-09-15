@@ -4,6 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { usePresenceHeartbeat } from "@/lib/presence";
 import { subscribeAccountRefresh } from "@/lib/auth/account-switcher";
+import { logUinfoRoute } from "@/lib/uinfo/log";
+
+function isLessonPlayer(pathname: string) {
+  const parts = pathname.split("/").filter(Boolean);
+  return parts[0] === "lessons" && parts.length >= 4;
+}
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -45,6 +51,9 @@ function Layout() {
      which render outside the shell. */
   usePresenceHeartbeat();
   useEffect(() => subscribeAccountRefresh(), []);
+  useEffect(() => {
+    logUinfoRoute(pathname);
+  }, [pathname]);
   /* A live test session is a full-screen runner (Bluebook-style): its own top
      bar, timer and question navigator replace the app chrome. Rendering it
      inside AppShell stacked the app header above it and put the mobile tab bar
@@ -64,7 +73,8 @@ function Layout() {
     pathname.startsWith("/practice/session") ||
     pathname.startsWith("/vocab/deck/") ||
     pathname === "/vocab/deck" ||
-    pathname.startsWith("/vocab/tests/");
+    pathname.startsWith("/vocab/tests/") ||
+    isLessonPlayer(pathname);
   if (bare) return <Outlet />;
   return (
     <AppShell>

@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { formatGrade } from "@/lib/utils";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import { HighlightShortcutsCard } from "@/components/HighlightShortcutsCard";
 import { PageHead, Panel as Surface, PanelGlow, Skeleton } from "@/components/ui/panel";
 import { HeadSkeleton, PanelGridSkeleton, ListSkeleton } from "@/components/ui/skeletons";
@@ -258,8 +260,8 @@ function Profile() {
       .slice(0, 2)
       .toUpperCase() || "S";
   /* Admin-created students already have username + class_id and chat_setup_completed.
-     Only nudge users who still need to pick a group (or never finished chat setup). */
-  const needsClassSetup = !chat?.chat_setup_completed || !chat?.class_id;
+     Nudge users who still need a chat username (class is assigned by admins only). */
+  const needsClassSetup = !chat?.chat_setup_completed;
 
   async function saveInfo(form: Partial<ProfileRow>) {
     if (!uid) return;
@@ -321,7 +323,7 @@ function Profile() {
           <PanelGlow />
           <h2 className="mb-1 text-lg font-black text-white">Finish your Classes setup</h2>
           <p className="mb-4 text-sm text-brand-100">
-            Pick a username and join a class group to unlock chats and homework.
+            Pick a username for Classes chat. Your teacher assigns your class group.
           </p>
           <ClassChatSetupForm
             compact
@@ -339,6 +341,7 @@ function Profile() {
             <img
               src={avatarSrc}
               alt=""
+              onError={() => setAvatarSrc(null)}
               className="h-16 w-16 shrink-0 rounded-full object-cover shadow-brand md:h-20 md:w-20"
             />
           ) : (
@@ -411,7 +414,7 @@ function Profile() {
               <Field label="Last name" value={profile?.last_name} />
               <Field label="City" value={profile?.city} />
               <Field label="School" value={profile?.school} />
-              <Field label="Grade" value={profile?.grade != null ? String(profile.grade) : null} />
+              <Field label="Grade" value={formatGrade(profile?.grade)} />
               <Field
                 label="Birth date"
                 value={
@@ -467,14 +470,16 @@ function Profile() {
         </Panel>
       </div>
 
-      <Surface className="p-5">
+      <Surface tone="brand" className="relative overflow-hidden p-5">
+        <PanelGlow />
+        <div className="relative">
         <h2 className="text-lg font-black text-white">Account</h2>
         <p className="mt-1 text-sm text-brand-100">
           Change your password here. Connect Google when you want to sign in with it later.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {googleLinked ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-800 px-3 py-1.5 text-xs font-bold text-white">
+            <span className="pop-in inline-flex items-center gap-1.5 rounded-full bg-brand-800 px-3 py-1.5 text-xs font-bold text-white shadow-brand">
               <Link2 className="h-3.5 w-3.5" /> Google connected
             </span>
           ) : (
@@ -482,7 +487,7 @@ function Profile() {
               type="button"
               onClick={() => void handleLinkGoogle()}
               disabled={linkingGoogle}
-              className="btn-ghost inline-flex items-center gap-2 rounded-lg border border-brand-300/60 bg-brand-800 px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+              className="btn-ghost inline-flex items-center gap-2 rounded-lg border border-brand-300/60 bg-brand-800 px-3 py-2 text-sm font-bold text-white shadow-panel transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-200/60 disabled:opacity-50"
             >
               {linkingGoogle ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
               Connect Google
@@ -490,11 +495,11 @@ function Profile() {
           )}
         </div>
         {googleError && (
-          <p className="mt-3 rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
+          <p className="pop-in mt-3 rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
             {googleError}
           </p>
         )}
-        <form onSubmit={(e) => void handleChangePassword(e)} className="mt-5 grid gap-3 sm:grid-cols-2">
+        <form onSubmit={(e) => void handleChangePassword(e)} className="stagger mt-5 grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-brand-100">
               New password
@@ -504,7 +509,7 @@ function Profile() {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               autoComplete="new-password"
-              className="w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
+              className="w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white outline-none transition duration-200 [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:ring-2 focus:ring-brand-300/40"
             />
           </label>
           <label className="block">
@@ -516,7 +521,7 @@ function Profile() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               autoComplete="new-password"
-              className="w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
+              className="w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white outline-none transition duration-200 [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:ring-2 focus:ring-brand-300/40"
             />
           </label>
           <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
@@ -528,10 +533,11 @@ function Profile() {
               {savingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
               Update password
             </button>
-            {passwordInfo && <span className="text-sm font-semibold text-white">{passwordInfo}</span>}
-            {passwordError && <span className="text-sm font-semibold text-brand-100">{passwordError}</span>}
+            {passwordInfo && <span className="pop-in text-sm font-semibold text-white">{passwordInfo}</span>}
+            {passwordError && <span className="pop-in text-sm font-semibold text-brand-100">{passwordError}</span>}
           </div>
         </form>
+        </div>
       </Surface>
 
       <HighlightShortcutsCard />
@@ -688,7 +694,28 @@ function InfoForm({
       <Input label="Last name" value={last} onChange={setLast} />
       <Input label="City" value={city} onChange={setCity} />
       <Input label="School" value={school} onChange={setSchool} />
-      <Input label="Grade" value={grade} onChange={setGrade} type="number" />
+      <label className="block">
+        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-brand-100">
+          Grade
+        </span>
+        <AdminSelect
+          tone="light"
+          value={grade}
+          onValueChange={setGrade}
+          placeholder="Select…"
+          options={[
+            { value: "5", label: "5th" },
+            { value: "6", label: "6th" },
+            { value: "7", label: "7th" },
+            { value: "8", label: "8th" },
+            { value: "9", label: "9th" },
+            { value: "10", label: "10th" },
+            { value: "11", label: "11th" },
+            { value: "12", label: "12th" },
+            { value: "13", label: "Graduated" },
+          ]}
+        />
+      </label>
       <Input label="Birth date" value={birth} onChange={setBirth} type="date" />
       <div className="col-span-2 flex justify-end">
         <SaveButton saving={saving} />
@@ -780,19 +807,16 @@ function GoalsForm({
             )}
           </>
         ) : (
-          <select
+          <AdminSelect
+            tone="light"
             value={examDate}
-            onChange={(e) => setExamDate(e.target.value)}
-            className="block w-full rounded-lg border border-brand-400/60 bg-brand-800 px-3 py-2 text-sm text-white focus:border-brand-200 focus:outline-none"
-          >
-            <option value="">Select an exam date…</option>
-            {dateOptions.map((d) => (
-              <option key={d.id} value={d.exam_date}>
-                {format(parseLocalDate(d.exam_date), "MMM d, yyyy")}
-                {d.label ? ` — ${d.label}` : ""}
-              </option>
-            ))}
-          </select>
+            onValueChange={setExamDate}
+            placeholder="Select an exam date…"
+            options={dateOptions.map((d) => ({
+              value: d.exam_date,
+              label: `${format(parseLocalDate(d.exam_date), "MMM d, yyyy")}${d.label ? ` — ${d.label}` : ""}`,
+            }))}
+          />
         )}
         {dateOptions.length > 0 && (
           <button

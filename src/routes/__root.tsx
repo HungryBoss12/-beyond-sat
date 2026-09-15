@@ -9,7 +9,6 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { registerPwa } from "../lib/pwa";
 import { OfflineGate } from "../components/OfflineScreen";
 import { NotFoundPage } from "../components/NotFoundPage";
@@ -21,9 +20,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -83,13 +79,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e394838f-6ccb-415e-9098-9f2d20b5ca8a/id-preview-49c0175c--aaab0b16-e494-4172-9ce0-d0020de19284.lovable.app-1784425483421.png",
+        content: "/pwa-512x512.png",
       },
       {
         name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e394838f-6ccb-415e-9098-9f2d20b5ca8a/id-preview-49c0175c--aaab0b16-e494-4172-9ce0-d0020de19284.lovable.app-1784425483421.png",
+        content: "/pwa-512x512.png",
       },
       { name: "theme-color", content: "#0b0761" },
       { name: "mobile-web-app-capable", content: "yes" },

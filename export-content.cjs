@@ -2,7 +2,7 @@
 // =====================================================================
 // BeyondSAT content rescue: OLD Supabase project -> NEW Supabase project.
 //
-// The old project's dashboard is unreachable (Lovable owns it), but its
+// The old project's dashboard was unreachable, but its
 // REST API is not: the publishable key plus an admin login satisfies every
 // RLS policy on the content tables. This pulls that content out and pushes
 // it into the new project.

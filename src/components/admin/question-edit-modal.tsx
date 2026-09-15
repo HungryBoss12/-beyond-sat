@@ -23,12 +23,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveDisplayUrl, toPersistableImageRef } from "@/lib/storage-url";
 import {
   LETTER_DIFFICULTIES,
+  LETTER_DIFFICULTY_HINT,
   MATH_SKILLS,
   MONTHS,
   RW_SKILLS,
   type Difficulty,
   type Section,
 } from "@/lib/sat";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 
 const CONTROL_CLASS =
   "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none";
@@ -195,7 +197,14 @@ export function QuestionEditModal({
         kind: editing.kind,
         prompt: editing.prompt || null,
         question_text: editing.question_text,
-        choices: editing.kind === "multiple_choice" ? editing.choices : [],
+        choices:
+          editing.kind === "multiple_choice"
+            ? editing.choices.map((c) => ({
+                id: c.id,
+                text: c.text,
+                image_url: toPersistableImageRef(c.image_url) ?? null,
+              }))
+            : [],
         correct_choice_id: editing.kind === "multiple_choice" ? editing.correct_choice_id : null,
         correct_grid_answers: editing.kind === "grid_in" ? editing.correct_grid_answers : null,
         explanation: editing.explanation || null,
@@ -271,88 +280,77 @@ export function QuestionEditModal({
         <div className="space-y-4 p-6">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Section">
-              <select
+              <AdminSelect
                 value={editing.section}
                 disabled={busy}
-                onChange={(e) => {
-                  const s = e.target.value as Section;
+                onValueChange={(v) => {
+                  const s = v as Section;
                   setEditing({
                     ...editing,
                     section: s,
                     skill: s === "math" ? "Algebra" : "Craft and Structure",
                   });
                 }}
-                className={CONTROL_CLASS + " disabled:opacity-40"}
-              >
-                <option value="math">Math</option>
-                <option value="reading_writing">Reading &amp; Writing</option>
-              </select>
+                options={[
+                  { value: "math", label: "Math" },
+                  { value: "reading_writing", label: "Reading & Writing" },
+                ]}
+              />
             </Field>
             <Field label="Skill">
-              <select
+              <AdminSelect
                 value={editing.skill}
                 disabled={busy}
-                onChange={(e) => setEditing({ ...editing, skill: e.target.value })}
-                className={CONTROL_CLASS + " disabled:opacity-40"}
-              >
-                {skills.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+                onValueChange={(v) => setEditing({ ...editing, skill: v })}
+                options={skills.map((s) => ({ value: s, label: s }))}
+              />
             </Field>
             <Field label="Difficulty">
-              <select
-                value={editing.difficulty}
-                disabled={busy}
-                onChange={(e) =>
-                  setEditing({ ...editing, difficulty: e.target.value as Difficulty })
+              <AdminSelect
+                value={
+                  LETTER_DIFFICULTIES.includes(editing.difficulty as (typeof LETTER_DIFFICULTIES)[number])
+                    ? editing.difficulty
+                    : "C"
                 }
-                className={CONTROL_CLASS + " disabled:opacity-40"}
-              >
-                {LETTER_DIFFICULTIES.map((d) => (
-                  <option key={d} value={d}>
-                    {d} {d === "S" ? "(highest)" : ""}
-                  </option>
-                ))}
-              </select>
+                disabled={busy}
+                onValueChange={(v) =>
+                  setEditing({ ...editing, difficulty: v as Difficulty })
+                }
+                options={LETTER_DIFFICULTIES.map((d) => ({
+                  value: d,
+                  label: `${d}${LETTER_DIFFICULTY_HINT[d] ? ` (${LETTER_DIFFICULTY_HINT[d]})` : ""}`,
+                }))}
+              />
             </Field>
             <Field label="Kind">
-              <select
+              <AdminSelect
                 value={editing.kind}
                 disabled={busy}
-                onChange={(e) =>
+                onValueChange={(v) =>
                   setEditing({
                     ...editing,
-                    kind: e.target.value as AdminQuestion["kind"],
+                    kind: v as AdminQuestion["kind"],
                   })
                 }
-                className={CONTROL_CLASS + " disabled:opacity-40"}
-              >
-                <option value="multiple_choice">Multiple choice</option>
-                <option value="grid_in">Grid-in</option>
-              </select>
+                options={[
+                  { value: "multiple_choice", label: "Multiple choice" },
+                  { value: "grid_in", label: "Grid-in" },
+                ]}
+              />
             </Field>
             <Field label="Source month">
-              <select
-                value={editing.source_month ?? ""}
+              <AdminSelect
+                value={editing.source_month != null ? String(editing.source_month) : ""}
                 disabled={busy}
-                onChange={(e) =>
+                onValueChange={(v) =>
                   setEditing({
                     ...editing,
-                    source_month: e.target.value ? Number(e.target.value) : null,
+                    source_month: v ? Number(v) : null,
                   })
                 }
-                className={CONTROL_CLASS + " disabled:opacity-40"}
-              >
-                <option value="">— None —</option>
-                {MONTHS.map((m, i) => (
-                  <option key={m} value={i + 1}>
-                    {m}
-                  </option>
-                ))}
-              </select>
+                placeholder="— None —"
+                options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+              />
             </Field>
             <Field label="Source year">
               <input
@@ -470,7 +468,7 @@ export function QuestionEditModal({
 
           {editing.kind === "multiple_choice" ? (
             <Field label="Choices (mark the correct one)">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {editing.choices.map((c, i) => (
                   <div key={c.id} className="flex items-start gap-2">
                     <input
@@ -482,7 +480,7 @@ export function QuestionEditModal({
                       className="mt-3 h-4 w-4 accent-brand-200 [color-scheme:dark]"
                     />
                     <span className="w-6 pt-2 text-sm font-bold text-white">{c.id}</span>
-                    <div className="flex-1">
+                    <div className="min-w-0 flex-1 space-y-2">
                       <MixedMathEditor
                         value={c.text}
                         onChange={(v) => {
@@ -492,7 +490,17 @@ export function QuestionEditModal({
                         }}
                         rows={1}
                         singleLine
-                        placeholder={`Choice ${c.id}`}
+                        placeholder={`Choice ${c.id} text (optional if you upload an image)`}
+                      />
+                      <ChoiceImageField
+                        choiceId={c.id}
+                        imageRef={c.image_url}
+                        disabled={busy}
+                        onChange={(image_url) => {
+                          const next = [...editing.choices];
+                          next[i] = { ...c, image_url };
+                          setEditing({ ...editing, choices: next });
+                        }}
                       />
                     </div>
                   </div>
@@ -696,10 +704,106 @@ export async function loadQuestionWithAnswers(
 }
 
 function ensureFourChoices(
-  choices: { id: string; text: string }[],
+  choices: { id: string; text: string; image_url?: string | null }[],
 ): AdminQuestion["choices"] {
   return (["A", "B", "C", "D"] as const).map((id) => {
     const existing = choices.find((c) => c.id === id);
-    return { id, text: existing?.text ?? "" };
+    return {
+      id,
+      text: existing?.text ?? "",
+      image_url: existing?.image_url ?? null,
+    };
   });
+}
+
+function ChoiceImageField({
+  choiceId,
+  imageRef,
+  disabled,
+  onChange,
+}: {
+  choiceId: string;
+  imageRef?: string | null;
+  disabled?: boolean;
+  onChange: (path: string | null) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const raw = (imageRef ?? "").trim();
+    if (!raw) {
+      setPreview(null);
+      return;
+    }
+    void resolveDisplayUrl(raw).then((url) => {
+      if (!cancelled) setPreview(url ?? raw);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageRef]);
+
+  async function upload(file: File) {
+    setUploading(true);
+    setError(null);
+    try {
+      const path = await uploadQuestionImage(file);
+      onChange(path);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {preview ? (
+        <img
+          src={preview}
+          alt=""
+          className="h-12 w-12 rounded-md border border-brand-400/50 object-cover"
+        />
+      ) : null}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) void upload(f);
+        }}
+      />
+      <button
+        type="button"
+        disabled={disabled || uploading}
+        onClick={() => fileRef.current?.click()}
+        className="tap inline-flex items-center gap-1 rounded-md border border-brand-400/50 bg-brand-900 px-2 py-1 text-[11px] font-semibold text-white hover:bg-brand-400 disabled:opacity-40"
+      >
+        {uploading ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <Upload className="h-3 w-3" />
+        )}
+        {uploading ? "Uploading…" : preview ? `Replace ${choiceId} image` : `Upload ${choiceId} image`}
+      </button>
+      {preview ? (
+        <button
+          type="button"
+          disabled={disabled || uploading}
+          onClick={() => onChange(null)}
+          className="text-[11px] font-semibold text-brand-100 hover:text-white hover:underline disabled:opacity-40"
+        >
+          Remove
+        </button>
+      ) : null}
+      {error ? <p className="w-full text-[11px] font-semibold text-amber-100">{error}</p> : null}
+    </div>
+  );
 }

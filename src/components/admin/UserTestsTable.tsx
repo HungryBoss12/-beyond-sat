@@ -4,16 +4,16 @@ import type { AdminUserSessionRow } from "@/lib/admin/users";
 export function UserTestsTable({ sessions }: { sessions: AdminUserSessionRow[] }) {
   if (sessions.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-brand-400/40 p-8 text-center text-sm text-brand-100">
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
         No test sessions yet.
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-brand-400/40">
+    <div className="overflow-x-auto rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
       <table className="min-w-full text-left text-sm">
-        <thead className="bg-brand-800/80 text-[10px] font-bold uppercase tracking-wider text-brand-200">
+        <thead className="bg-brand-800 text-[10px] font-bold uppercase tracking-wider text-brand-200">
           <tr>
             <th className="px-4 py-2.5">Test</th>
             <th className="px-4 py-2.5">Type</th>

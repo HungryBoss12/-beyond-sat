@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import { cn } from "@/lib/utils";
 
 /**
  * Renders text that may contain LaTeX segments and a small HTML allowlist.
@@ -21,27 +22,40 @@ export function MathText({
   className?: string;
   block?: boolean;
 }) {
-  const html = useMemo(() => renderMath(children ?? ""), [children]);
+  const html = useMemo(() => renderMathText(children ?? ""), [children]);
   const Tag = block ? "div" : "span";
-  return <Tag className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+  return (
+    <Tag
+      className={cn("math-text", className)}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 }
 
 const PATTERN = /(\$\$[\s\S]+?\$\$)|(\\\[[\s\S]+?\\\])|(\$[^\n$]+?\$)|(\\\([\s\S]+?\\\))/g;
 
-/** Only balanced open/close `<u>` — no attributes, no nesting of other tags. */
-const U_TAG = /<u>([\s\S]*?)<\/u>/gi;
+/** Balanced `<u>…</u>` — attributes on the open tag are stripped. */
+const U_TAG = /<u\b[^>]*>([\s\S]*?)<\/u>/gi;
 
 function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/** Decode entity-encoded underline tags saved from editors or imports. */
+function normalizeUnderlineMarkup(input: string): string {
+  return input
+    .replace(/&lt;\s*\/\s*u\s*&gt;/gi, "</u>")
+    .replace(/&lt;\s*u\s*&gt;/gi, "<u>")
+    .replace(/<u\b[^>]*>/gi, "<u>");
+}
+
 /** Escape prose but keep allowlisted `<u>…</u>` as real underlines. */
 function escapeProse(s: string): string {
+  const tag = new RegExp(U_TAG.source, U_TAG.flags);
   let out = "";
   let last = 0;
-  U_TAG.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = U_TAG.exec(s))) {
+  while ((m = tag.exec(s))) {
     out += escapeHtml(s.slice(last, m.index));
     out += `<u>${escapeHtml(m[1])}</u>`;
     last = m.index + m[0].length;
@@ -50,13 +64,15 @@ function escapeProse(s: string): string {
   return out;
 }
 
-function renderMath(input: string): string {
+/** Exported for unit tests. */
+export function renderMathText(input: string): string {
   if (!input) return "";
+  const normalized = normalizeUnderlineMarkup(input);
   let out = "";
   let last = 0;
-  input.replace(PATTERN, (match, ...args) => {
+  normalized.replace(PATTERN, (match, ...args) => {
     const offset = args[args.length - 2] as number;
-    if (offset > last) out += escapeProse(input.slice(last, offset));
+    if (offset > last) out += escapeProse(normalized.slice(last, offset));
     let tex = match;
     let displayMode = false;
     if (tex.startsWith("$$") && tex.endsWith("$$")) {
@@ -82,7 +98,7 @@ function renderMath(input: string): string {
     last = offset + match.length;
     return match;
   });
-  if (last < input.length) out += escapeProse(input.slice(last));
+  if (last < normalized.length) out += escapeProse(normalized.slice(last));
   // preserve line breaks in plain text portions
   return out.replace(/\n/g, "<br/>");
 }

@@ -23,6 +23,18 @@ import {
 import { DesmosCalculator } from "@/components/DesmosCalculator";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { bumpDailyStreak, scaledScore, type TestType } from "@/lib/session";
+import { draftsByQuestionId } from "@/lib/draft-answers";
+import {
+  lockedIndicesForPhase,
+  mockPhaseOrder,
+  nextPhase,
+  phaseLabel,
+  phaseSeconds,
+  readMockPhase,
+  type MockPhase,
+  type MockSchedule,
+} from "@/lib/mock-phase";
+import { logUinfo } from "@/lib/uinfo/log";
 
 type Props = {
   sessionId: string;
@@ -31,20 +43,14 @@ type Props = {
   questions: QuestionRow[];
   /** Total exam time in seconds; when 0, no timer. Used when mockSchedule is absent. */
   durationSeconds?: number;
-  /** Full-mock section clocks + break between R&W and Math. */
-  mockSchedule?: {
-    rwSeconds: number;
-    mathSeconds: number;
-    breakSeconds: number;
-  };
+  /** Full-mock per-module clocks + break between R&W and Math. */
+  mockSchedule?: MockSchedule;
   /** Hydrated from test_sessions.metadata.draft_answers on Resume. */
   initialAnswers?: AnswerState[];
   /** Current session metadata (question_ids, etc.) — drafts are merged into this. */
   sessionMetadata?: Record<string, unknown>;
   onExit?: () => void;
 };
-
-type MockPhase = "rw" | "break" | "math";
 
 function fmt(sec: number) {
   const s = Math.max(0, Math.floor(sec));
@@ -57,20 +63,6 @@ function fmt(sec: number) {
   return `${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
 }
 
-function readMockPhase(meta: Record<string, unknown> | undefined): MockPhase | null {
-  const p = meta?.mock_phase;
-  if (p === "rw" || p === "break" || p === "math") return p;
-  return null;
-}
-
-function indicesForSection(questions: QuestionRow[], section: "reading_writing" | "math") {
-  const out: number[] = [];
-  questions.forEach((q, i) => {
-    if (q.section === section) out.push(i);
-  });
-  return out;
-}
-
 type Result = {
   correct: number;
   total: number;
@@ -78,7 +70,7 @@ type Result = {
   rwTotal: number;
   mathCorrect: number;
   mathTotal: number;
-  scaled: { rw: number; math: number; total: number } | null;
+  scaled: { rw: number | null; math: number | null; total: number } | null;
 };
 
 export function TestPlayer({
@@ -93,36 +85,30 @@ export function TestPlayer({
   onExit,
 }: Props) {
   const navigate = useNavigate();
-  const rwIndices = useMemo(
-    () => indicesForSection(questions, "reading_writing"),
-    [questions],
+  const phaseOrder = useMemo(
+    () => (mockSchedule ? mockPhaseOrder(mockSchedule) : []),
+    [mockSchedule],
   );
-  const mathIndices = useMemo(() => indicesForSection(questions, "math"), [questions]);
-  const useSections =
-    type === "mock" && Boolean(mockSchedule) && rwIndices.length > 0 && mathIndices.length > 0;
+  const useSections = type === "mock" && Boolean(mockSchedule) && phaseOrder.length > 0;
+  const firstPhase: MockPhase = phaseOrder[0] ?? "rw1";
 
   const [phase, setPhase] = useState<MockPhase>(() => {
-    if (!(type === "mock" && mockSchedule)) return "rw";
-    const rw = indicesForSection(questions, "reading_writing");
-    const math = indicesForSection(questions, "math");
-    if (rw.length === 0 || math.length === 0) return "rw";
-    return readMockPhase(sessionMetadata) ?? "rw";
+    if (!useSections || !mockSchedule) return firstPhase;
+    return readMockPhase(sessionMetadata) ?? firstPhase;
   });
 
+  function indicesForPhase(p: MockPhase): number[] {
+    if (!mockSchedule || p === "break") return [];
+    return mockSchedule.indices[p] ?? [];
+  }
+
   const [idx, setIdx] = useState(() => {
-    if (!(type === "mock" && mockSchedule)) return 0;
-    const rw = indicesForSection(questions, "reading_writing");
-    const math = indicesForSection(questions, "math");
-    if (rw.length === 0 || math.length === 0) return 0;
-    const p = readMockPhase(sessionMetadata) ?? "rw";
+    if (!useSections || !mockSchedule) return 0;
+    const p = readMockPhase(sessionMetadata) ?? firstPhase;
+    const active = p === "break" ? [] : (mockSchedule.indices[p] ?? []);
     const savedIdx = sessionMetadata?.mock_idx;
-    if (p === "math") {
-      if (typeof savedIdx === "number" && math.includes(savedIdx)) return savedIdx;
-      return math[0] ?? 0;
-    }
-    if (p === "break") return rw[rw.length - 1] ?? 0;
-    if (typeof savedIdx === "number" && rw.includes(savedIdx)) return savedIdx;
-    return rw[0] ?? 0;
+    if (typeof savedIdx === "number" && active.includes(savedIdx)) return savedIdx;
+    return active[0] ?? 0;
   });
 
   const [answers, setAnswers] = useState<AnswerState[]>(() =>
@@ -134,20 +120,18 @@ export function TestPlayer({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  const resultRef = useRef<Result | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(() => {
-    if (!(type === "mock" && mockSchedule)) return durationSeconds;
-    const rw = indicesForSection(questions, "reading_writing");
-    const math = indicesForSection(questions, "math");
-    if (rw.length === 0 || math.length === 0) return durationSeconds;
-    const p = readMockPhase(sessionMetadata) ?? "rw";
+    if (!useSections || !mockSchedule) return durationSeconds;
+    const p = readMockPhase(sessionMetadata) ?? firstPhase;
+    const endsAt = Date.parse(String(sessionMetadata?.phase_ends_at ?? ""));
+    if (Number.isFinite(endsAt)) return Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
     const saved =
       typeof sessionMetadata?.mock_time_left === "number"
         ? (sessionMetadata.mock_time_left as number)
         : null;
     if (saved != null && saved >= 0) return saved;
-    if (p === "break") return mockSchedule.breakSeconds;
-    if (p === "math") return mockSchedule.mathSeconds;
-    return mockSchedule.rwSeconds;
+    return phaseSeconds(mockSchedule, p);
   });
   /* Bluebook chrome state. Directions and the notes panel are disclosures in
      the header; the clock has a Hide control because a visible countdown is a
@@ -166,6 +150,7 @@ export function TestPlayer({
   const phaseRef = useRef(phase);
   const submittingRef = useRef(false);
   const submitRef = useRef<() => Promise<void>>(async () => {});
+  const endsAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (Object.keys(metaRef.current).length === 0 && sessionMetadata) {
@@ -231,90 +216,105 @@ export function TestPlayer({
     phase?: MockPhase;
     timeLeft?: number;
     idx?: number;
+    endsAt?: number | null;
   }) {
     if (!useSections) return;
+    const endsAt = patch.endsAt !== undefined ? patch.endsAt : endsAtRef.current;
     void patchSessionMetadata({
       ...(patch.phase != null ? { mock_phase: patch.phase } : {}),
       ...(patch.timeLeft != null ? { mock_time_left: patch.timeLeft } : {}),
       ...(patch.idx != null ? { mock_idx: patch.idx } : {}),
+      phase_ends_at: endsAt != null ? new Date(endsAt).toISOString() : null,
     });
   }
 
   function scheduleDraftSave(next: AnswerState[]) {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      void patchSessionMetadata({ draft_answers: next });
+      void patchSessionMetadata({ draft_answers: draftsByQuestionId(questions, next) });
     }, 400);
   }
 
-  function enterMath() {
+  function enterPhase(next: MockPhase) {
     if (!mockSchedule) return;
-    const first = mathIndices[0] ?? 0;
-    setPhase("math");
-    setTimeLeft(mockSchedule.mathSeconds);
-    setIdx(first);
+    const secs = phaseSeconds(mockSchedule, next);
+    const endsAt = Date.now() + Math.max(0, secs) * 1000;
+    endsAtRef.current = secs > 0 ? endsAt : null;
+    const active = indicesForPhase(next);
+    setPhase(next);
+    setTimeLeft(secs);
     setShowReview(false);
     questionStartRef.current = Date.now();
+    if (active.length > 0) setIdx(active[0]!);
     persistMockProgress({
-      phase: "math",
-      timeLeft: mockSchedule.mathSeconds,
-      idx: first,
+      phase: next,
+      timeLeft: secs,
+      idx: active[0] ?? idx,
+      endsAt: endsAtRef.current,
     });
   }
 
-  function enterBreakOrMath() {
-    if (!mockSchedule) return;
-    setShowReview(false);
-    if (mockSchedule.breakSeconds > 0) {
-      setPhase("break");
-      setTimeLeft(mockSchedule.breakSeconds);
-      persistMockProgress({
-        phase: "break",
-        timeLeft: mockSchedule.breakSeconds,
-      });
-    } else {
-      enterMath();
+  function advancePhase() {
+    const nxt = nextPhase(phaseOrder, phaseRef.current);
+    if (!nxt) {
+      void submitRef.current();
+      return;
     }
+    enterPhase(nxt);
   }
 
   const showClock = useSections
-    ? phase === "break"
-      ? (mockSchedule?.breakSeconds ?? 0) > 0
-      : phase === "rw"
-        ? (mockSchedule?.rwSeconds ?? 0) > 0
-        : (mockSchedule?.mathSeconds ?? 0) > 0
+    ? phaseSeconds(mockSchedule!, phase) > 0
     : durationSeconds > 0;
 
   useEffect(() => {
+    if (endsAtRef.current != null) return;
+    if (useSections && mockSchedule) {
+      const p = readMockPhase(sessionMetadata) ?? firstPhase;
+      const left =
+        typeof sessionMetadata?.mock_time_left === "number"
+          ? (sessionMetadata.mock_time_left as number)
+          : phaseSeconds(mockSchedule, p);
+      const iso = sessionMetadata?.phase_ends_at;
+      const parsed = typeof iso === "string" ? Date.parse(iso) : NaN;
+      endsAtRef.current = Number.isFinite(parsed)
+        ? parsed
+        : Date.now() + Math.max(0, left) * 1000;
+      persistMockProgress({ phase: p, endsAt: endsAtRef.current });
+    } else if (durationSeconds > 0) {
+      endsAtRef.current = Date.now() + durationSeconds * 1000;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const expiryHandledRef = useRef(false);
+  useEffect(() => {
+    expiryHandledRef.current = false;
+  }, [phase]);
+
+  useEffect(() => {
     if (!showClock) return;
-    const t = setInterval(() => {
-      setTimeLeft((v) => {
-        const next = v - 1;
-        if (next <= 0) {
-          clearInterval(t);
-          const p = phaseRef.current;
-          if (useSections) {
-            if (p === "rw") {
-              queueMicrotask(() => enterBreakOrMath());
-              return 0;
-            }
-            if (p === "break") {
-              queueMicrotask(() => enterMath());
-              return 0;
-            }
-            void submitRef.current();
-            return 0;
-          }
-          void submitRef.current();
-          return 0;
-        }
-        if (useSections && next % 20 === 0) {
-          persistMockProgress({ timeLeft: next, phase: phaseRef.current });
-        }
-        return next;
-      });
-    }, 1000);
-    return () => clearInterval(t);
+    const tick = () => {
+      const ends = endsAtRef.current;
+      if (ends == null) return;
+      const left = Math.max(0, Math.ceil((ends - Date.now()) / 1000));
+      setTimeLeft(left);
+      if (left <= 0 && !expiryHandledRef.current) {
+        expiryHandledRef.current = true;
+        if (useSections) queueMicrotask(() => advancePhase());
+        else void submitRef.current();
+      }
+    };
+    tick();
+    const t = setInterval(tick, 250);
+    const onVis = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVis);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showClock, phase, useSections]);
 
@@ -348,10 +348,9 @@ export function TestPlayer({
   function goto(i: number) {
     if (useSections) {
       if (phase === "break") return;
-      if (phase === "rw" && !rwIndices.includes(i)) return;
-      if (phase === "math" && !mathIndices.includes(i)) return;
+      const active = indicesForPhase(phase);
+      if (!active.includes(i)) return;
     }
-    // record time for current question
     const elapsed = Math.round((Date.now() - questionStartRef.current) / 1000);
     timePerQ.current[idx] = (timePerQ.current[idx] ?? 0) + elapsed;
     questionStartRef.current = Date.now();
@@ -361,9 +360,9 @@ export function TestPlayer({
   }
 
   async function submit() {
-    if (submitting || result) return;
-    setSubmitting(true);
+    if (submittingRef.current || resultRef.current) return;
     submittingRef.current = true;
+    setSubmitting(true);
     setSubmitError(null);
     try {
       const elapsed = Math.round((Date.now() - questionStartRef.current) / 1000);
@@ -378,7 +377,7 @@ export function TestPlayer({
       const gradeFailures: string[] = [];
       const attempts = await Promise.all(
         questions.map(async (q, i) => {
-          const a = currentAnswers[i];
+          const a = currentAnswers[i] ?? emptyAnswer();
           let isCorrect: boolean | null = null;
           const hasAnswer = q.kind === "grid_in" ? !!a.gridAnswer.trim() : !!a.selectedChoiceId;
           if (hasAnswer) {
@@ -386,6 +385,7 @@ export function TestPlayer({
               p_question_id: q.id,
               p_choice_id: a.selectedChoiceId ?? "",
               p_grid_answer: a.gridAnswer || "",
+              p_session_id: sessionId,
             });
             if (gradeErr) {
               gradeFailures.push(gradeErr.message || `Question ${i + 1} could not be graded`);
@@ -422,19 +422,23 @@ export function TestPlayer({
         );
       }
 
-      const { error: aErr } = await supabase.from("attempts").insert(attempts);
+      const { error: aErr } = await supabase.from("attempts").upsert(attempts, {
+        onConflict: "session_id,question_id",
+      });
       if (aErr) {
         throw new Error(
           aErr.message || "Could not save your answers. Your session is still saved — try Submit again.",
         );
       }
 
+      const rwScaled = scaledScore(rwC, rwT, "reading_writing");
+      const mathScaled = scaledScore(mC, mT, "math");
       const scaled =
         type === "mock"
           ? {
-              rw: scaledScore(rwC, rwT, "reading_writing"),
-              math: scaledScore(mC, mT, "math"),
-              total: scaledScore(rwC, rwT, "reading_writing") + scaledScore(mC, mT, "math"),
+              rw: rwScaled,
+              math: mathScaled,
+              total: (rwScaled ?? 0) + (mathScaled ?? 0),
             }
           : null;
 
@@ -463,8 +467,15 @@ export function TestPlayer({
       }
 
       if (type === "daily") await bumpDailyStreak(userId);
+      const code =
+        type === "mock"
+          ? `m${scaled?.total ?? correct}`
+          : type === "daily"
+            ? `d${correct}`
+            : `p${correct}`;
+      logUinfo("t", code);
 
-      setResult({
+      const nextResult: Result = {
         correct,
         total: questions.length,
         rwCorrect: rwC,
@@ -472,10 +483,11 @@ export function TestPlayer({
         mathCorrect: mC,
         mathTotal: mT,
         scaled,
-      });
+      };
+      resultRef.current = nextResult;
+      setResult(nextResult);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Submit failed. Try again.");
-    } finally {
       submittingRef.current = false;
       setSubmitting(false);
     }
@@ -496,7 +508,7 @@ export function TestPlayer({
     [answers, questions],
   );
   const answeredCount = answered.filter(Boolean).length;
-  const marked = answers.map((a) => a.markedForReview);
+  const marked = questions.map((_, i) => answers[i]?.markedForReview ?? false);
 
   if (result)
     return <ResultsView result={result} type={type} onExit={() => navigate({ to: "/practice" })} />;
@@ -525,22 +537,22 @@ export function TestPlayer({
     );
   }
 
-  const sectionLabel =
-    phase === "break"
-      ? "Break"
-      : q.section === "math"
-        ? "Math"
-        : "Reading and Writing";
   const moduleLabel =
-    type === "mock"
-      ? `Mock · ${sectionLabel}`
-      : `${type === "daily" ? "Daily Test" : "Practice"}: ${sectionLabel}`;
+    type === "mock" && useSections
+      ? phaseLabel(phase)
+      : `${type === "daily" ? "Daily Test" : type === "mock" ? "Mock" : "Practice"}: ${
+          q.section === "math" ? "Math" : "Reading and Writing"
+        }`;
 
   const activeIndices = useSections
-    ? phase === "math"
-      ? mathIndices
-      : rwIndices
+    ? indicesForPhase(phase)
     : questions.map((_, i) => i);
+  const rwNav = useSections
+    ? [...(mockSchedule?.indices.rw1 ?? []), ...(mockSchedule?.indices.rw2 ?? [])]
+    : undefined;
+  const mathNav = useSections
+    ? [...(mockSchedule?.indices.math1 ?? []), ...(mockSchedule?.indices.math2 ?? [])]
+    : undefined;
   const localPos = activeIndices.indexOf(idx);
   const isFirstInSection = localPos <= 0;
   const isLastInSection = localPos >= activeIndices.length - 1;
@@ -767,7 +779,7 @@ export function TestPlayer({
       {phase === "break" ? (
         <BreakScreen
           timeLeft={timeLeft}
-          onEndEarly={() => enterMath()}
+          onEndEarly={() => advancePhase()}
         />
       ) : showReview ? (
         <div className="min-h-0 flex-1 overflow-y-auto bg-test-chrome px-4 py-8 sm:px-6">
@@ -776,27 +788,21 @@ export function TestPlayer({
             answered={answered}
             marked={marked}
             current={idx}
-            moduleLabel={
-              useSections
-                ? phase === "math"
-                  ? "Math"
-                  : "Reading and Writing"
-                : moduleLabel
-            }
-            rwIndices={useSections ? rwIndices : undefined}
-            mathIndices={useSections ? mathIndices : undefined}
+            moduleLabel={useSections ? phaseLabel(phase) : moduleLabel}
+            rwIndices={useSections && (phase === "rw1" || phase === "rw2") ? activeIndices : rwNav}
+            mathIndices={useSections && (phase === "math1" || phase === "math2") ? activeIndices : mathNav}
             allowedIndices={useSections ? activeIndices : undefined}
             onGoto={(i) => goto(i)}
             onSubmit={
-              useSections && phase === "rw"
-                ? () => enterBreakOrMath()
+              useSections && nextPhase(phaseOrder, phase)
+                ? () => advancePhase()
                 : submit
             }
             submitLabel={
-              useSections && phase === "rw"
-                ? mockSchedule && mockSchedule.breakSeconds > 0
+              useSections && nextPhase(phaseOrder, phase)
+                ? nextPhase(phaseOrder, phase) === "break"
                   ? "Start break"
-                  : "Continue to Math"
+                  : `Continue to ${phaseLabel(nextPhase(phaseOrder, phase)!)}`
                 : "Submit"
             }
             submitting={submitting}
@@ -807,7 +813,7 @@ export function TestPlayer({
         <QuestionCard
           q={q}
           index={idx}
-          answer={answers[idx]}
+          answer={answers[idx] ?? emptyAnswer()}
           onChange={(a) => updateAnswer(idx, a)}
           showNotes={showNotes}
           onCloseNotes={() => setShowNotes(false)}
@@ -825,13 +831,23 @@ export function TestPlayer({
           answeredCount={sectionAnsweredCount}
           showReview={showReview}
           studentName={studentName}
-          rwIndices={useSections ? rwIndices : undefined}
-          mathIndices={useSections ? mathIndices : undefined}
-          lockedIndices={
+          rwIndices={
             useSections
-              ? phase === "rw"
-                ? mathIndices
-                : rwIndices
+              ? phase === "rw1" || phase === "rw2"
+                ? activeIndices
+                : rwNav
+              : undefined
+          }
+          mathIndices={
+            useSections
+              ? phase === "math1" || phase === "math2"
+                ? activeIndices
+                : mathNav
+              : undefined
+          }
+          lockedIndices={
+            useSections && mockSchedule
+              ? lockedIndicesForPhase(mockSchedule, phase)
               : undefined
           }
           onPrev={() => {
@@ -1297,27 +1313,36 @@ function ResultsView({
           </p>
         </div>
         {result.scaled && (
-          <div className="grid grid-cols-2 gap-4 stagger">
+          <div
+            className={
+              (result.rwTotal > 0 && result.mathTotal > 0 ? "grid-cols-2" : "grid-cols-1") +
+              " grid gap-4 stagger"
+            }
+          >
+            {result.rwTotal > 0 && (
             <div className="rounded-2xl bg-brand-800 p-5 ring-1 ring-brand-300/40">
               <div className="text-xs font-bold uppercase tracking-wider text-brand-100">
                 R&amp;W
               </div>
               <div className="mt-2 text-4xl font-black">
-                <AnimatedNumber value={result.scaled.rw} duration={1100} />
+                <AnimatedNumber value={result.scaled.rw ?? 0} duration={1100} />
               </div>
               <div className="mt-1 text-xs text-brand-100">
                 {result.rwCorrect}/{result.rwTotal} correct
               </div>
             </div>
+            )}
+            {result.mathTotal > 0 && (
             <div className="rounded-2xl bg-brand-800 p-5 ring-1 ring-brand-300/40">
               <div className="text-xs font-bold uppercase tracking-wider text-brand-100">Math</div>
               <div className="mt-2 text-4xl font-black">
-                <AnimatedNumber value={result.scaled.math} duration={1100} />
+                <AnimatedNumber value={result.scaled.math ?? 0} duration={1100} />
               </div>
               <div className="mt-1 text-xs text-brand-100">
                 {result.mathCorrect}/{result.mathTotal} correct
               </div>
             </div>
+            )}
           </div>
         )}
         <div className="rise-in flex items-center justify-between rounded-2xl bg-brand-800 p-5 ring-1 ring-brand-300/40">

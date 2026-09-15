@@ -21,6 +21,7 @@ import {
   readSupabaseConfig,
   verifySupabaseUser,
 } from "../server-env";
+import { userIsBanned } from "@/lib/vocab/rest";
 import { loadUinfoSummary } from "@/lib/uinfo/summarize";
 import {
   formatYoutubePromptBlock,
@@ -168,6 +169,13 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
   if (!user) {
     return json({ error: "Your session has expired. Sign in again." }, 401);
   }
+  const banned = await userIsBanned(config, token, user.id);
+  if (banned === "unknown") {
+    return json({ error: "Could not verify account" }, 503);
+  }
+  if (banned === "yes") {
+    return json({ error: "This account is banned." }, 403);
+  }
 
   let payload: AiChatRequest;
   try {
@@ -233,11 +241,15 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
   }
 
   const safe = prepareMessagesForTask(messages, task);
-
+  let uinfo = "";
   let youtube = "";
   if (surface === "page") {
     try {
-      const uinfo = await loadUinfoSummary(env, user.id);
+      uinfo = await loadUinfoSummary(env, user.id);
+    } catch {
+      uinfo = "";
+    }
+    try {
       const hint = latestUserText(safe);
       const intent = videoIntent(hint);
       const recs =
@@ -249,8 +261,7 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
               allowSearch: true,
             });
       youtube = formatYoutubePromptBlock(recs);
-    } catch (error) {
-      console.error("[ai] youtube recs skipped", error);
+    } catch {
       youtube = "";
     }
   }
@@ -261,7 +272,7 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
     return json({ error: "Beyond AI isn't available right now." }, 503);
   }
 
-  const body = buildRequestBody(task, safe, model, stream, surface, "", youtube);
+  const body = buildRequestBody(task, safe, model, stream, surface, uinfo, youtube);
 
   let upstream: Response;
   try {
@@ -298,7 +309,7 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
             "HTTP-Referer": "https://beyondsat.app",
             "X-Title": "Beyond SAT",
           },
-          body: JSON.stringify(buildRequestBody(task, safe, fallback, stream, surface, "", youtube)),
+          body: JSON.stringify(buildRequestBody(task, safe, fallback, stream, surface, uinfo, youtube)),
         });
       } catch (error) {
         console.error("[ai] upstream fallback request failed", error);

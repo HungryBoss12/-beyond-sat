@@ -1,7 +1,7 @@
 # Moving BeyondSAT to a fresh Supabase project
 
-The current project (`secadznjokojeswksmbx`) was provisioned by Lovable inside
-**Lovable's own Supabase organisation**, not yours. That is why signing in with
+The legacy project (`secadznjokojeswksmbx`) lived in a hosted Supabase org you
+could not access from your own dashboard. That is why signing in with
 your GitHub shows no such project — it was never in your account. The API keys
 still work (the live site proves it), but the dashboard is out of reach, so no
 SQL can be run against it.

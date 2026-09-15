@@ -26,7 +26,9 @@ export async function handleVocabQuizSubmit(request: Request, env: unknown): Pro
   if (!quizId) return jsonResponse({ error: "quizId required" }, 400);
 
   const answers = Array.isArray(body.answers) ? (body.answers as AnswerPayload[]) : [];
-  if (answers.length === 0) return jsonResponse({ error: "answers required" }, 400);
+  if (answers.length === 0 && questions.length === 0) {
+    return jsonResponse({ error: "answers required" }, 400);
+  }
 
   const { restFetch } = await import("../rest");
 

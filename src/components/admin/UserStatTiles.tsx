@@ -48,7 +48,7 @@ export function UserStatTiles({ stats }: { stats: Stats }) {
       {tiles.map((t) => (
         <div
           key={t.label}
-          className="rounded-xl border border-brand-400/40 bg-brand-800/60 px-4 py-3 ring-1 ring-brand-400/20"
+          className="rounded-2xl border border-brand-400/40 bg-brand-600 px-4 py-3 shadow-panel"
         >
           <div className="text-[10px] font-bold uppercase tracking-wider text-brand-200">
             {t.label}

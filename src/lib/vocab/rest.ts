@@ -75,7 +75,28 @@ export async function requireUser(
   if (!user) {
     return { ok: false, response: jsonResponse({ error: "Session expired" }, 401) };
   }
+  const banned = await userIsBanned(config, token, user.id);
+  if (banned === "unknown") {
+    return { ok: false, response: jsonResponse({ error: "Could not verify account" }, 503) };
+  }
+  if (banned === "yes") {
+    return { ok: false, response: jsonResponse({ error: "This account is banned." }, 403) };
+  }
   return { ok: true, user, token, config };
+}
+
+export async function userIsBanned(
+  config: SupabaseConfig,
+  token: string,
+  userId: string,
+): Promise<"yes" | "no" | "unknown"> {
+  const result = await restFetch<{ banned: boolean }[]>(
+    config,
+    token,
+    `profiles?id=eq.${encodeURIComponent(userId)}&select=banned`,
+  );
+  if (result.error) return "unknown";
+  return result.data?.[0]?.banned ? "yes" : "no";
 }
 
 export async function requireStaff(

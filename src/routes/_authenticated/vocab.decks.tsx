@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { AmbientGlow } from "@/components/ui/reveal-card";
 import { PageHead, Panel } from "@/components/ui/panel";
 import { DeckTreeList } from "@/components/vocab/DeckTreeList";
 import { AnkiDeckCountLegend } from "@/components/vocab/AnkiDeckCounts";
@@ -47,8 +46,7 @@ function VocabDecksPage() {
   }, []);
 
   return (
-    <div className="relative isolate mx-auto max-w-2xl space-y-6 pb-10">
-      <AmbientGlow />
+    <div className="mx-auto max-w-2xl space-y-6 pb-10">
       <PageHead
         title="Decks"
         subtitle={

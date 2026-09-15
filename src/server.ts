@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleAiChat } from "./lib/ai/handler";
+import { handleUinfoFlush } from "./lib/uinfo/summarize";
 import { handleYoutubeRecs } from "./lib/youtube/search";
 import { handleImportVision } from "./lib/import/vision-handler";
 import { handleImportFix } from "./lib/import/fix-handler";
@@ -13,6 +14,7 @@ import { handleVocabGenerate } from "./lib/vocab/handlers/generate";
 import { handleVocabQuizSubmit } from "./lib/vocab/handlers/quiz-submit";
 import { handleVocabReview, handleVocabSession } from "./lib/vocab/handlers/session";
 import { handleAdminCreateUser } from "./lib/auth/create-user-handler";
+import { handleCompleteFirstLogin } from "./lib/auth/complete-first-login-handler";
 import { handleUsernameLogin } from "./lib/auth/username-login-handler";
 import { handleEnsureTelegramWebhook } from "./lib/telegram/ensure-webhook-handler";
 import { handleTelegramWebhook } from "./lib/telegram/webhook";
@@ -120,6 +122,10 @@ export default {
         return await handleAiChat(request, env);
       }
 
+      if (url.pathname === "/api/ai/uinfo") {
+        return await handleUinfoFlush(request, env);
+      }
+
       if (url.pathname === "/api/ai/youtube-recs") {
         return await handleYoutubeRecs(request, env);
       }
@@ -172,6 +178,10 @@ export default {
 
       if (url.pathname === "/api/auth/username-login") {
         return await handleUsernameLogin(request, env);
+      }
+
+      if (url.pathname === "/api/auth/complete-first-login") {
+        return await handleCompleteFirstLogin(request, env);
       }
 
       if (url.pathname === "/api/telegram/webhook") {

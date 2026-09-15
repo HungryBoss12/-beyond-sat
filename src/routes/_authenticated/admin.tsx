@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 });
 
 /** Nav order defines section order; labels group the sidebar links. */
-const NAV_GROUPS = ["General", "Content", "Manage"] as const;
+const NAV_GROUPS = ["General", "Content", "Students", "Manage"] as const;
 
 type NavItem = {
   to: string;
@@ -73,8 +73,8 @@ const NAV = [
   { to: "/admin/news", label: "News", anim: "news", group: "Content" },
   { to: "/admin/vocab", label: "Vocab", anim: "vocab", group: "Content" },
   { to: "/admin/classes", label: "Classes", anim: "classes", group: "Content" },
+  { to: "/admin/users", label: "Students", anim: "users", group: "Students", adminOnly: true },
   { to: "/admin/notifications", label: "Notifications", anim: "notifications", group: "Manage" },
-  { to: "/admin/users", label: "Students", anim: "users", group: "Manage", adminOnly: true },
   {
     to: "/admin/settings",
     label: "Settings",

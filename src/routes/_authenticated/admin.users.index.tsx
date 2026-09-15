@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -11,14 +11,24 @@ import {
   Loader2,
   Plus,
   Search,
+  Sparkles,
+  Wand2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ListSkeleton } from "@/components/ui/skeletons";
+import { PanelGlow } from "@/components/ui/panel";
+import { RevealCard } from "@/components/ui/reveal-card";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import {
   fetchAdminUsersSummary,
   type AdminUserSummaryRow,
 } from "@/lib/admin/users";
-import { createClassStudent, type CreatedStudent } from "@/lib/auth/create-user";
+import {
+  createClassStudent,
+  generateStudentPassword,
+  type CreatedStudent,
+} from "@/lib/auth/create-user";
+import { isSyntheticAccountEmail } from "@/lib/auth/login-email";
 import { listAllClasses } from "@/lib/classes/api";
 import type { ClassRow } from "@/lib/classes/types";
 import { isOnline, lastSeenLabel } from "@/lib/presence";
@@ -28,11 +38,18 @@ type Role = "student" | "editor" | "admin";
 type Filter = "students" | "all" | "online" | "staff" | "banned";
 type ClassFilter = "all" | "unassigned" | string;
 type SortKey = "created_at" | "tests_total" | "last_seen";
+type PageTab = "directory" | "provisioning";
 
 type UserRow = AdminUserSummaryRow & { role: Role; username: string | null };
 
 const CONTROL =
   "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white outline-none transition duration-200 [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:ring-2 focus:ring-brand-300/40";
+
+const ROLE_OPTIONS = [
+  { value: "student", label: "Student" },
+  { value: "editor", label: "Editor" },
+  { value: "admin", label: "Admin" },
+];
 
 function missingObject(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
@@ -40,12 +57,21 @@ function missingObject(error: { code?: string; message?: string } | null): boole
   return /does not exist|could not find/i.test(error.message ?? "");
 }
 
+function isStaffCreated(r: Pick<UserRow, "staff_created" | "email">): boolean {
+  return !!r.staff_created || isSyntheticAccountEmail(r.email);
+}
+
 export const Route = createFileRoute("/_authenticated/admin/users/")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: search.tab === "provisioning" ? ("provisioning" as const) : ("directory" as const),
+  }),
   component: AdminStudents,
   head: () => ({ meta: [{ title: "Students — Admin — BeyondSAT" }] }),
 });
 
 function AdminStudents() {
+  const { tab } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const [rows, setRows] = useState<UserRow[]>([]);
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,13 +86,22 @@ function AdminStudents() {
   const [, setTick] = useState(0);
 
   const [createName, setCreateName] = useState("");
+  const [createUsername, setCreateUsername] = useState("");
   const [createPassword, setCreatePassword] = useState("");
   const [createClassId, setCreateClassId] = useState("");
+  const [mustChange, setMustChange] = useState(true);
   const [showCreatePw, setShowCreatePw] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [created, setCreated] = useState<(CreatedStudent & { password: string }) | null>(null);
   const [copied, setCopied] = useState<"username" | "password" | "both" | null>(null);
+
+  function setPageTab(next: PageTab) {
+    void navigate({
+      search: (prev) => ({ ...prev, tab: next }),
+      replace: true,
+    });
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -88,6 +123,7 @@ function AdminStudents() {
         summary.rows.map((r) => ({
           ...r,
           username: r.username ?? null,
+          staff_created: !!r.staff_created || isSyntheticAccountEmail(r.email),
           role: (r.role as Role) || "student",
         })),
       );
@@ -137,6 +173,7 @@ function AdminStudents() {
         last_active_at: null,
         class_name: null,
         accuracy_pct: null,
+        staff_created: isSyntheticAccountEmail(p.email),
       })),
     );
   }
@@ -215,10 +252,15 @@ function AdminStudents() {
         name: createName,
         password: createPassword,
         classId: createClassId,
+        username: createUsername.trim() || undefined,
+        mustChangeCredentials: mustChange,
       });
       setCreated({ ...row, password: createPassword });
       setCreateName("");
+      setCreateUsername("");
       setCreatePassword("");
+      setMustChange(true);
+      setPageTab("provisioning");
       await load();
     } catch (err) {
       setCreateError((err as Error).message ?? "Could not create account.");
@@ -276,7 +318,7 @@ function AdminStudents() {
 
   const studentCount = rows.filter((r) => r.role === "student").length;
   const onlineCount = rows.filter((r) => isOnline(r.last_seen_at)).length;
-  const tabs: [Filter, string][] = [
+  const filterTabs: [Filter, string][] = [
     ["students", `Students ${studentCount}`],
     ["all", `All ${rows.length}`],
     ["online", `Online ${onlineCount}`],
@@ -289,152 +331,32 @@ function AdminStudents() {
     return names;
   }, [rows]);
 
+  const staffCreatedRows = useMemo(
+    () =>
+      [...rows.filter(isStaffCreated)].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      ),
+    [rows],
+  );
+
+  const pageTabs: [PageTab, string][] = [
+    ["directory", "Directory"],
+    ["provisioning", `Provisioning · ${staffCreatedRows.length}`],
+  ];
+
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-4 text-white shadow-panel">
-        <div className="flex flex-wrap items-center gap-2">
-          <Plus className="h-4 w-4 text-brand-100" />
-          <h2 className="text-xs font-bold uppercase tracking-wider text-brand-100">Create student</h2>
-        </div>
-        <p className="mt-1 text-xs text-brand-100">
-          Name, password, and class. The student signs in with the generated username, then changes
-          credentials and sets SAT goals.
-        </p>
-        <form onSubmit={(e) => void handleCreate(e)} className="mt-3 grid gap-2 md:grid-cols-[1fr_1fr_minmax(140px,200px)_auto]">
-          <input
-            value={createName}
-            onChange={(e) => setCreateName(e.target.value)}
-            placeholder="Student name"
-            className={CONTROL}
-            autoComplete="off"
-          />
-          <div className="relative">
-            <input
-              type={showCreatePw ? "text" : "password"}
-              value={createPassword}
-              onChange={(e) => setCreatePassword(e.target.value)}
-              placeholder="Password (8+ characters)"
-              className={CONTROL + " pr-10"}
-              autoComplete="new-password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowCreatePw((v) => !v)}
-              className="tap absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-brand-100 hover:text-white"
-              aria-label={showCreatePw ? "Hide password" : "Show password"}
-            >
-              {showCreatePw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-          <select
-            value={createClassId}
-            onChange={(e) => setCreateClassId(e.target.value)}
-            className={CONTROL}
-          >
-            <option value="">Select class…</option>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {!c.active ? " (inactive)" : ""}
-              </option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            disabled={creating}
-            className="btn-brand inline-flex items-center justify-center gap-2 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
-          >
-            {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-            Create and add
-          </button>
-        </form>
-        {createError && (
-          <p className="mt-2 rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
-            {createError}
-          </p>
-        )}
-        {created && (
-          <div className="mt-3 rounded-lg border border-brand-200/50 bg-brand-900/50 p-3">
-            <p className="text-xs font-bold text-white">Account ready — give these to the student</p>
-            <div className="mt-2 space-y-1.5 text-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="truncate text-brand-100">
-                  Username <span className="font-bold text-white">{created.username}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void copyText("username", created.username)}
-                  className="tap inline-flex items-center gap-1 text-[11px] font-bold text-white"
-                >
-                  <Copy className="h-3 w-3" /> {copied === "username" ? "Copied" : "Copy"}
-                </button>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="truncate text-brand-100">
-                  Password <span className="font-bold text-white">{created.password}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void copyText("password", created.password)}
-                  className="tap inline-flex items-center gap-1 text-[11px] font-bold text-white"
-                >
-                  <Copy className="h-3 w-3" /> {copied === "password" ? "Copied" : "Copy"}
-                </button>
-              </div>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  void copyText("both", `Username: ${created.username}\nPassword: ${created.password}`)
-                }
-                className="text-[11px] font-bold text-brand-100 underline-offset-2 hover:text-white hover:underline"
-              >
-                {copied === "both" ? "Copied both" : "Copy username and password"}
-              </button>
-              <Link
-                to="/admin/users/$userId"
-                params={{ userId: created.userId }}
-                className="text-[11px] font-bold text-white underline-offset-2 hover:underline"
-              >
-                Open profile
-              </Link>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-0 flex-1 md:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-200" />
-          <input
-            placeholder="Search by name, username, or email…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="w-full rounded-lg border border-brand-400/50 bg-brand-600 py-2 pl-9 pr-3 text-sm text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
-          />
-        </div>
-        <select
-          value={classFilter}
-          onChange={(e) => setClassFilter(e.target.value as ClassFilter)}
-          className="rounded-lg border border-brand-400/50 bg-brand-600 px-3 py-2 text-xs font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
-        >
-          <option value="all">All classes</option>
-          <option value="unassigned">Unassigned</option>
-          {classOptions.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
-        <div className="flex shrink-0 flex-wrap gap-1 rounded-lg border border-brand-400/40 bg-brand-600 p-1">
-          {tabs.map(([key, label]) => (
+      <RevealCard className="relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 p-2 text-white shadow-panel lift">
+        <PanelGlow />
+        <div className="relative flex flex-wrap gap-1">
+          {pageTabs.map(([key, label]) => (
             <button
               key={key}
-              onClick={() => setFilter(key)}
+              type="button"
+              onClick={() => setPageTab(key)}
               className={
-                "tap rounded-md px-3 py-1.5 text-xs font-semibold " +
-                (filter === key
+                "tap rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wider " +
+                (tab === key
                   ? "bg-brand-400 text-white shadow-brand"
                   : "text-brand-100 hover:bg-brand-800 hover:text-white")
               }
@@ -443,70 +365,365 @@ function AdminStudents() {
             </button>
           ))}
         </div>
-      </div>
-
-      {!loading && !err && !insightsReady && (
-        <div className="rounded-xl border border-dashed border-brand-300/50 bg-brand-800/50 p-4 text-sm text-brand-100">
-          <span className="font-bold text-white">User insights migration not applied yet.</span> Run{" "}
-          <code className="rounded bg-brand-900 px-1.5 py-0.5 text-xs">
-            20260830000001_admin_user_insights.sql
-          </code>{" "}
-          in Supabase. Basic list and role controls still work.
-        </div>
-      )}
+      </RevealCard>
 
       {err ? (
-        <div className="rounded-xl border border-dashed border-brand-300/50 bg-brand-800/50 p-6 text-center">
-          <p className="text-sm font-semibold text-white">{err}</p>
-          <button
-            onClick={() => void load()}
-            className="btn-brand mt-4 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
-          >
-            Try again
-          </button>
-        </div>
-      ) : loading ? (
-        <ListSkeleton rows={6} />
+        <RevealCard className="relative overflow-hidden rounded-xl border border-dashed border-brand-300/50 bg-brand-800/50 p-6 text-center lift">
+          <PanelGlow />
+          <div className="relative">
+            <p className="text-sm font-semibold text-white">{err}</p>
+            <button
+              onClick={() => void load()}
+              className="btn-brand mt-4 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
+            >
+              Try again
+            </button>
+          </div>
+        </RevealCard>
+      ) : null}
+
+      {tab === "directory" ? (
+        <>
+          <RevealCard className="relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 p-3 text-white shadow-panel lift">
+            <PanelGlow />
+            <div className="relative flex flex-wrap items-center gap-3">
+              <div className="relative min-w-0 flex-1 md:max-w-md">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-200" />
+                <input
+                  placeholder="Search by name, username, or email…"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="w-full rounded-lg border border-brand-400/50 bg-brand-800 py-2 pl-9 pr-3 text-sm text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
+                />
+              </div>
+              <AdminSelect
+                value={classFilter}
+                onValueChange={setClassFilter}
+                className="min-w-[140px]"
+                size="sm"
+                options={[
+                  { value: "all", label: "All classes" },
+                  { value: "unassigned", label: "Unassigned" },
+                  ...classOptions.map((name) => ({ value: name, label: name })),
+                ]}
+              />
+              <div className="flex shrink-0 flex-wrap gap-1 rounded-lg border border-brand-400/40 bg-brand-800 p-1">
+                {filterTabs.map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setFilter(key)}
+                    className={
+                      "tap rounded-md px-3 py-1.5 text-xs font-semibold " +
+                      (filter === key
+                        ? "bg-brand-400 text-white shadow-brand"
+                        : "text-brand-100 hover:bg-brand-900 hover:text-white")
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </RevealCard>
+
+          {!loading && !err && !insightsReady && (
+            <div className="rounded-xl border border-dashed border-brand-300/50 bg-brand-800/50 p-4 text-sm text-brand-100">
+              <span className="font-bold text-white">User insights migration not applied yet.</span>{" "}
+              Run{" "}
+              <code className="rounded bg-brand-900 px-1.5 py-0.5 text-xs">
+                20260830000001_admin_user_insights.sql
+              </code>{" "}
+              in Supabase. Basic list and role controls still work.
+            </div>
+          )}
+
+          {loading && !err ? (
+            <ListSkeleton rows={6} />
+          ) : !err ? (
+            <RevealCard className="relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel lift">
+              <PanelGlow />
+              <div className="relative">
+                {filtered.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-brand-100">No students found.</div>
+                ) : (
+                  <>
+                    {insightsReady && (
+                      <div className="hidden border-b border-brand-400/30 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200 md:grid md:grid-cols-[1fr_100px_80px_100px_120px] md:gap-3">
+                        <span>Student</span>
+                        <SortHeader
+                          label="Tests"
+                          active={sortKey === "tests_total"}
+                          asc={sortAsc}
+                          onClick={() => toggleSort("tests_total")}
+                        />
+                        <span>Streak</span>
+                        <span>Class</span>
+                        <SortHeader
+                          label="Last active"
+                          active={sortKey === "last_seen"}
+                          asc={sortAsc}
+                          onClick={() => toggleSort("last_seen")}
+                        />
+                      </div>
+                    )}
+                    <ul className="divide-y divide-brand-400/30">
+                      {filtered.map((u) => (
+                        <UserListRow
+                          key={u.id}
+                          u={u}
+                          busy={busy === u.id}
+                          insightsReady={insightsReady}
+                          onRole={(role) => void setRole(u, role)}
+                          onBan={() => void toggleBan(u)}
+                        />
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            </RevealCard>
+          ) : null}
+        </>
       ) : (
-        <div className="rise-in overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
-          {filtered.length === 0 ? (
-            <div className="p-8 text-center text-sm text-brand-100">No students found.</div>
-          ) : (
-            <>
-              {insightsReady && (
-                <div className="hidden border-b border-brand-400/30 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200 md:grid md:grid-cols-[1fr_100px_80px_100px_120px] md:gap-3">
-                  <span>Student</span>
-                  <SortHeader
-                    label="Tests"
-                    active={sortKey === "tests_total"}
-                    asc={sortAsc}
-                    onClick={() => toggleSort("tests_total")}
+        <>
+          <RevealCard className="relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 p-4 text-white shadow-panel lift">
+            <PanelGlow />
+            <div className="relative">
+              <div className="flex flex-wrap items-center gap-2">
+                <Plus className="h-4 w-4 text-brand-100" />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-brand-100">
+                  Create student
+                </h2>
+              </div>
+              <p className="mt-1 text-xs text-brand-100">
+                Name, optional username, password, and class. Hand off the login, then the student
+                finishes setup.
+              </p>
+              <form onSubmit={(e) => void handleCreate(e)} className="mt-3 space-y-3">
+                <div className="grid gap-2 md:grid-cols-2">
+                  <input
+                    value={createName}
+                    onChange={(e) => setCreateName(e.target.value)}
+                    placeholder="Student name"
+                    className={CONTROL}
+                    autoComplete="off"
                   />
-                  <span>Streak</span>
-                  <span>Class</span>
-                  <SortHeader
-                    label="Last active"
-                    active={sortKey === "last_seen"}
-                    asc={sortAsc}
-                    onClick={() => toggleSort("last_seen")}
+                  <input
+                    value={createUsername}
+                    onChange={(e) => setCreateUsername(e.target.value)}
+                    placeholder="Username (optional — auto from name)"
+                    className={CONTROL}
+                    autoComplete="off"
                   />
                 </div>
-              )}
-              <ul className="divide-y divide-brand-400/30">
-                {filtered.map((u) => (
-                  <UserListRow
-                    key={u.id}
-                    u={u}
-                    busy={busy === u.id}
-                    insightsReady={insightsReady}
-                    onRole={(role) => void setRole(u, role)}
-                    onBan={() => void toggleBan(u)}
+                <div className="grid gap-2 md:grid-cols-[1fr_auto_minmax(160px,220px)]">
+                  <div className="relative">
+                    <input
+                      type={showCreatePw ? "text" : "password"}
+                      value={createPassword}
+                      onChange={(e) => setCreatePassword(e.target.value)}
+                      placeholder="Password (8+ characters)"
+                      className={CONTROL + " pr-10"}
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCreatePw((v) => !v)}
+                      className="tap absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-brand-100 hover:text-white"
+                      aria-label={showCreatePw ? "Hide password" : "Show password"}
+                    >
+                      {showCreatePw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreatePassword(generateStudentPassword());
+                      setShowCreatePw(true);
+                    }}
+                    className="tap inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-800 px-3 py-2 text-xs font-bold text-white ring-1 ring-brand-400/40 hover:bg-brand-900"
+                  >
+                    <Wand2 className="h-3.5 w-3.5" />
+                    Generate
+                  </button>
+                  <AdminSelect
+                    value={createClassId}
+                    onValueChange={setCreateClassId}
+                    placeholder="Select class…"
+                    options={classes.map((c) => ({
+                      value: c.id,
+                      label: c.active ? c.name : `${c.name} (inactive)`,
+                    }))}
                   />
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <label className="tap inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-brand-100">
+                    <input
+                      type="checkbox"
+                      checked={mustChange}
+                      onChange={(e) => setMustChange(e.target.checked)}
+                      className="h-4 w-4 rounded border-brand-400 bg-brand-800 text-brand-400 focus:ring-brand-300"
+                    />
+                    Require password / username change on first login
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={creating}
+                    className="btn-brand inline-flex items-center justify-center gap-2 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
+                  >
+                    {creating ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Plus className="h-3.5 w-3.5" />
+                    )}
+                    Create and add
+                  </button>
+                </div>
+              </form>
+              {createError && (
+                <p className="mt-2 rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
+                  {createError}
+                </p>
+              )}
+              {created && (
+                <div className="mt-3 rounded-lg border border-brand-200/50 bg-brand-900/50 p-3">
+                  <p className="text-xs font-bold text-white">
+                    Account ready — give these to the student
+                  </p>
+                  <div className="mt-2 space-y-1.5 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="truncate text-brand-100">
+                        Username <span className="font-bold text-white">{created.username}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void copyText("username", created.username)}
+                        className="tap inline-flex items-center gap-1 text-[11px] font-bold text-white"
+                      >
+                        <Copy className="h-3 w-3" /> {copied === "username" ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="truncate text-brand-100">
+                        Password <span className="font-bold text-white">{created.password}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void copyText("password", created.password)}
+                        className="tap inline-flex items-center gap-1 text-[11px] font-bold text-white"
+                      >
+                        <Copy className="h-3 w-3" /> {copied === "password" ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void copyText(
+                          "both",
+                          `Username: ${created.username}\nPassword: ${created.password}`,
+                        )
+                      }
+                      className="text-[11px] font-bold text-brand-100 underline-offset-2 hover:text-white hover:underline"
+                    >
+                      {copied === "both" ? "Copied both" : "Copy username and password"}
+                    </button>
+                    <Link
+                      to="/admin/users/$userId"
+                      params={{ userId: created.userId }}
+                      className="text-[11px] font-bold text-white underline-offset-2 hover:underline"
+                    >
+                      Open profile
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+          </RevealCard>
+
+          <section className="space-y-2">
+            <div className="flex flex-wrap items-end justify-between gap-2 px-0.5">
+              <div>
+                <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-200">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Admin-created accounts
+                </h2>
+                <p className="text-xs text-brand-100">
+                  Previously and newly provisioned logins, with progress stats.
+                </p>
+              </div>
+              <span className="rounded-md bg-brand-800 px-2 py-1 text-[11px] font-bold text-brand-100 ring-1 ring-brand-400/40">
+                {staffCreatedRows.length} accounts
+              </span>
+            </div>
+            {loading && !err ? (
+              <ListSkeleton rows={4} />
+            ) : (
+              <RevealCard className="relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel lift">
+                <PanelGlow />
+                <div className="relative">
+                  {staffCreatedRows.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-brand-100">
+                      No admin-created accounts yet. Use Create student above.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="hidden border-b border-brand-400/30 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200 md:grid md:grid-cols-[1fr_72px_72px_72px_100px_100px] md:gap-3">
+                        <span>Account</span>
+                        <span>Tests</span>
+                        <span>Accuracy</span>
+                        <span>Streak</span>
+                        <span>Class</span>
+                        <span>Created</span>
+                      </div>
+                      <ul className="divide-y divide-brand-400/30">
+                        {staffCreatedRows.map((u) => (
+                          <li key={`staff-${u.id}`}>
+                            <Link
+                              to="/admin/users/$userId"
+                              params={{ userId: u.id }}
+                              className="tap flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-brand-800/40 md:grid md:grid-cols-[1fr_72px_72px_72px_100px_100px] md:gap-3"
+                            >
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-semibold text-white">
+                                  {u.full_name || "—"}
+                                  {u.username ? (
+                                    <span className="ml-1.5 text-[11px] font-normal text-brand-200">
+                                      @{u.username}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div className="truncate text-xs text-brand-100">
+                                  {u.banned
+                                    ? "Banned"
+                                    : isOnline(u.last_seen_at)
+                                      ? "Online now"
+                                      : lastSeenLabel(u.last_seen_at)}
+                                </div>
+                              </div>
+                              <div className="text-sm tabular-nums text-white">{u.tests_total}</div>
+                              <div className="text-sm tabular-nums text-white">
+                                {u.accuracy_pct == null ? "—" : `${u.accuracy_pct}%`}
+                              </div>
+                              <div className="text-sm font-semibold text-white">{u.current_streak}</div>
+                              <div className="truncate text-xs text-brand-100">
+                                {u.class_name || "—"}
+                              </div>
+                              <div className="text-xs text-brand-100">
+                                {format(new Date(u.created_at), "MMM d, yyyy")}
+                              </div>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              </RevealCard>
+            )}
+          </section>
+        </>
       )}
     </div>
   );
@@ -616,16 +833,14 @@ function UserListRow({
         </Link>
 
         <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <select
+          <AdminSelect
             value={u.role}
+            onValueChange={(v) => onRole(v as Role)}
             disabled={busy}
-            onChange={(e) => onRole(e.target.value as Role)}
-            className="rounded-lg border border-brand-400/50 bg-brand-800 px-2 py-1.5 text-xs font-semibold text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none disabled:opacity-60"
-          >
-            <option value="student">Student</option>
-            <option value="editor">Editor</option>
-            <option value="admin">Admin</option>
-          </select>
+            size="sm"
+            className="w-[110px]"
+            options={ROLE_OPTIONS}
+          />
           <button
             onClick={onBan}
             disabled={busy}

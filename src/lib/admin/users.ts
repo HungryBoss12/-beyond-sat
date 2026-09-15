@@ -17,6 +17,7 @@ export type AdminUserSummaryRow = {
   last_active_at: string | null;
   class_name: string | null;
   accuracy_pct: number | null;
+  staff_created: boolean;
 };
 
 export type AdminUserDetail = {

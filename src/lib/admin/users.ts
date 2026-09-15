@@ -4,6 +4,7 @@ export type AdminUserSummaryRow = {
   id: string;
   email: string | null;
   full_name: string | null;
+  username: string | null;
   created_at: string;
   last_seen_at: string | null;
   banned: boolean;

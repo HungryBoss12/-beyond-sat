@@ -49,6 +49,7 @@ import { Route as AuthenticatedVocabIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedVocabDeckRouteImport } from './routes/_authenticated/vocab.deck'
 import { Route as AuthenticatedVocabDecksRouteImport } from './routes/_authenticated/vocab.decks'
 import { Route as AuthenticatedVocabTestsRouteImport } from './routes/_authenticated/vocab.tests'
+import { Route as AuthenticatedAdminUsersIndexRouteImport } from './routes/_authenticated/admin.users.index'
 import { Route as AuthenticatedAdminUsersUserIdRouteImport } from './routes/_authenticated/admin.users.$userId'
 import { Route as AuthenticatedAdminVocabIndexRouteImport } from './routes/_authenticated/admin.vocab.index'
 import { Route as AuthenticatedAdminVocabAssignmentsRouteImport } from './routes/_authenticated/admin.vocab.assignments'
@@ -269,6 +270,12 @@ const AuthenticatedVocabTestsRoute = AuthenticatedVocabTestsRouteImport.update({
   path: '/tests',
   getParentRoute: () => AuthenticatedVocabRoute,
 } as any)
+const AuthenticatedAdminUsersIndexRoute =
+  AuthenticatedAdminUsersIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminUsersRoute,
+  } as any)
 const AuthenticatedAdminUsersUserIdRoute =
   AuthenticatedAdminUsersUserIdRouteImport.update({
     id: '/$userId',
@@ -365,6 +372,7 @@ export interface FileRoutesByFullPath {
   '/practice/': typeof AuthenticatedPracticeIndexRoute
   '/vocab/': typeof AuthenticatedVocabIndexRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
+  '/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
   '/admin/vocab/assignments': typeof AuthenticatedAdminVocabAssignmentsRoute
   '/admin/vocab/decks': typeof AuthenticatedAdminVocabDecksRoute
   '/analysis/session/$id': typeof AuthenticatedAnalysisSessionIdRoute
@@ -399,7 +407,7 @@ export interface FileRoutesByTo {
   '/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/tests': typeof AuthenticatedAdminTestsRoute
-  '/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
+  '/admin/users': typeof AuthenticatedAdminUsersIndexRoute
   '/news/$slug': typeof AuthenticatedNewsSlugRoute
   '/practice/$section': typeof AuthenticatedPracticeSectionRoute
   '/practice/daily': typeof AuthenticatedPracticeDailyRoute
@@ -463,6 +471,7 @@ export interface FileRoutesById {
   '/_authenticated/practice/': typeof AuthenticatedPracticeIndexRoute
   '/_authenticated/vocab/': typeof AuthenticatedVocabIndexRoute
   '/_authenticated/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
+  '/_authenticated/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
   '/_authenticated/admin/vocab/assignments': typeof AuthenticatedAdminVocabAssignmentsRoute
   '/_authenticated/admin/vocab/decks': typeof AuthenticatedAdminVocabDecksRoute
   '/_authenticated/analysis/session/$id': typeof AuthenticatedAnalysisSessionIdRoute
@@ -515,6 +524,7 @@ export interface FileRouteTypes {
     | '/practice/'
     | '/vocab/'
     | '/admin/users/$userId'
+    | '/admin/users/'
     | '/admin/vocab/assignments'
     | '/admin/vocab/decks'
     | '/analysis/session/$id'
@@ -612,6 +622,7 @@ export interface FileRouteTypes {
     | '/_authenticated/practice/'
     | '/_authenticated/vocab/'
     | '/_authenticated/admin/users/$userId'
+    | '/_authenticated/admin/users/'
     | '/_authenticated/admin/vocab/assignments'
     | '/_authenticated/admin/vocab/decks'
     | '/_authenticated/analysis/session/$id'
@@ -913,6 +924,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVocabTestsRouteImport
       parentRoute: typeof AuthenticatedVocabRoute
     }
+    '/_authenticated/admin/users/': {
+      id: '/_authenticated/admin/users/'
+      path: '/'
+      fullPath: '/admin/users/'
+      preLoaderRoute: typeof AuthenticatedAdminUsersIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminUsersRoute
+    }
     '/_authenticated/admin/users/$userId': {
       id: '/_authenticated/admin/users/$userId'
       path: '/$userId'
@@ -981,11 +999,13 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminUsersRouteChildren {
   AuthenticatedAdminUsersUserIdRoute: typeof AuthenticatedAdminUsersUserIdRoute
+  AuthenticatedAdminUsersIndexRoute: typeof AuthenticatedAdminUsersIndexRoute
 }
 
 const AuthenticatedAdminUsersRouteChildren: AuthenticatedAdminUsersRouteChildren =
   {
     AuthenticatedAdminUsersUserIdRoute: AuthenticatedAdminUsersUserIdRoute,
+    AuthenticatedAdminUsersIndexRoute: AuthenticatedAdminUsersIndexRoute,
   }
 
 const AuthenticatedAdminUsersRouteWithChildren =

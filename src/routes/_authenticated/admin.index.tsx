@@ -87,7 +87,7 @@ function AdminOverview() {
     { label: "Daily Tests", value: stats?.daily, icon: CalendarDays, to: "/admin/daily" },
     { label: "Mock Exams", value: stats?.mocks, icon: ClipboardList, to: "/admin/mocks" },
     { label: "News", value: stats?.news, icon: Newspaper, to: "/admin/news" },
-    { label: "Users", value: stats?.users, icon: Users, to: "/admin/users" },
+    { label: "Students", value: stats?.users, icon: Users, to: "/admin/users" },
   ] as const;
 
   if (stats === null) {

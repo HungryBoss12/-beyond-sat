@@ -1,4 +1,5 @@
-import { jsonResponse, requireStaff } from "@/lib/vocab/rest";
+import { jsonResponse, requireStaff, restFetch } from "@/lib/vocab/rest";
+import { hydrateServerEnv } from "@/lib/server-env";
 import { accountEmailFor, slugUsernameFromName } from "./login-email";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -18,6 +19,8 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
+
+  hydrateServerEnv(env);
 
   const auth = await requireStaff(request, env);
   if (!auth.ok) return auth.response;
@@ -40,17 +43,27 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
   if (password.length > 72) return jsonResponse({ error: "Password is too long." }, 400);
   if (!UUID_RE.test(classId)) return jsonResponse({ error: "Pick a class group first." }, 400);
 
+  // Validate class with the same project + staff JWT the UI uses (avoids service-role env mismatch).
+  const clsCheck = await restFetch<{ id: string }[]>(
+    auth.config,
+    auth.token,
+    `classes?id=eq.${encodeURIComponent(classId)}&select=id`,
+  );
+  if (clsCheck.error) {
+    console.error("[create-user] class lookup failed", clsCheck.status, clsCheck.error);
+    return jsonResponse(
+      { error: "Could not verify the class group. Try again or refresh the page." },
+      500,
+    );
+  }
+  if (!clsCheck.data?.length) {
+    return jsonResponse({ error: "That class group was not found." }, 404);
+  }
+
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   // Classes tables ship ahead of regenerated supabase types.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabaseAdmin as any;
-
-  const { data: cls, error: clsErr } = await db
-    .from("classes")
-    .select("id")
-    .eq("id", classId)
-    .maybeSingle();
-  if (clsErr || !cls) return jsonResponse({ error: "That class group was not found." }, 404);
 
   const { first_name, last_name, full_name } = splitName(name);
   const base = slugUsernameFromName(name);
@@ -94,7 +107,7 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
     await sleep(150);
   }
 
-  const { error: profErr } = await db
+  const { data: updatedProfile, error: profErr } = await db
     .from("profiles")
     .update({
       username,
@@ -107,11 +120,18 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
       // Username + class membership are set here; avatar/telegram stay optional on Profile.
       chat_setup_completed: true,
     })
-    .eq("id", userId);
-  if (profErr) {
-    console.error("[create-user] profile update failed", profErr.message);
+    .eq("id", userId)
+    .select("id")
+    .maybeSingle();
+  if (profErr || !updatedProfile) {
+    console.error("[create-user] profile update failed", profErr?.message ?? "no row updated");
+    await supabaseAdmin.auth.admin.deleteUser(userId);
     return jsonResponse(
-      { error: `Account was created but the profile could not be finished: ${profErr.message}` },
+      {
+        error: `Account was created but the profile could not be finished: ${
+          profErr?.message ?? "profile row missing"
+        }`,
+      },
       500,
     );
   }
@@ -121,6 +141,7 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
     .from("class_memberships")
     .insert({ class_id: classId, user_id: userId });
   if (memErr) {
+    await supabaseAdmin.auth.admin.deleteUser(userId);
     return jsonResponse(
       { error: `Account was created but could not be added to the class: ${memErr.message}` },
       500,

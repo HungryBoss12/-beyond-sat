@@ -17,6 +17,8 @@ import {
   X,
 } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
+import { PanelGlow } from "@/components/ui/panel";
+import { RevealCard } from "@/components/ui/reveal-card";
 import {
   SUBJECT_LABEL,
   addClassMember,
@@ -65,7 +67,7 @@ export const Route = createFileRoute("/_authenticated/admin/classes")({
 });
 
 const CONTROL =
-  "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none";
+  "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white outline-none transition duration-200 [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:ring-2 focus:ring-brand-300/40";
 
 function AdminClasses() {
   const [classes, setClasses] = useState<ClassRow[]>([]);
@@ -87,7 +89,12 @@ function AdminClasses() {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      setClasses(await listAllClasses());
+      const next = await listAllClasses();
+      setClasses(next);
+      setSelected((cur) => {
+        if (!cur) return null;
+        return next.find((c) => c.id === cur.id) ?? null;
+      });
     } finally {
       setLoading(false);
     }
@@ -525,8 +532,11 @@ function MembersPanel({ classId }: { classId: string }) {
   const [created, setCreated] = useState<(CreatedStudent & { password: string }) | null>(null);
   const [copied, setCopied] = useState<"username" | "password" | "both" | null>(null);
   const createNameRef = useRef<HTMLInputElement>(null);
+  const reloadSeq = useRef(0);
+  const browseSeq = useRef(0);
 
   const reload = useCallback(async () => {
+    const seq = ++reloadSeq.current;
     setLoading(true);
     try {
       const members = await listClassMembers(classId);
@@ -537,36 +547,45 @@ function MembersPanel({ classId }: { classId: string }) {
           profile: await getChatProfile(m.user_id).catch(() => null),
         });
       }
+      if (seq !== reloadSeq.current) return;
       setRows(out);
       setMutes(await listMutes(classId).catch(() => []));
     } finally {
-      setLoading(false);
+      if (seq === reloadSeq.current) setLoading(false);
     }
   }, [classId]);
 
   const reloadBrowse = useCallback(async () => {
+    const seq = ++browseSeq.current;
     try {
-      setBrowse(await listUsersForAdmin({ excludeClassId: classId }));
+      const list = await listUsersForAdmin({ excludeClassId: classId });
+      if (seq !== browseSeq.current) return;
+      setBrowse(list);
     } catch {
+      if (seq !== browseSeq.current) return;
       setBrowse([]);
     } finally {
-      setBrowseReady(true);
+      if (seq === browseSeq.current) setBrowseReady(true);
     }
   }, [classId]);
 
   useEffect(() => {
+    setQuery("");
+    setHits([]);
+    setBrowse([]);
+    setBrowseReady(false);
+    setCreateName("");
+    setCreatePassword("");
+    setCreateError(null);
+    setCreated(null);
+    setCopied(null);
+    setShowCreatePw(false);
     void reload();
-  }, [reload]);
-
-  useEffect(() => {
     void reloadBrowse();
-  }, [reloadBrowse]);
-
-  useEffect(() => {
     void listAllClasses()
       .then(setAllClasses)
       .catch(() => setAllClasses([]));
-  }, []);
+  }, [classId, reload, reloadBrowse]);
 
   useEffect(() => {
     const q = query.trim();
@@ -574,14 +593,24 @@ function MembersPanel({ classId }: { classId: string }) {
       setHits([]);
       return;
     }
+    let cancelled = false;
     const t = window.setTimeout(() => {
       setSearching(true);
       void searchUsersForAdmin(q)
-        .then((list) => setHits(list.filter((p) => p.class_id !== classId)))
-        .catch(() => setHits([]))
-        .finally(() => setSearching(false));
+        .then((list) => {
+          if (!cancelled) setHits(list.filter((p) => p.class_id !== classId));
+        })
+        .catch(() => {
+          if (!cancelled) setHits([]);
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false);
+        });
     }, 220);
-    return () => window.clearTimeout(t);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
   }, [query, classId]);
 
   const mutedIds = new Set(mutes.map((m) => m.user_id));
@@ -720,8 +749,10 @@ function MembersPanel({ classId }: { classId: string }) {
   const noMatches = query.trim().length >= 2 && !searching && pickerList.length === 0;
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-xl border border-brand-400/40 bg-brand-800/60 p-3">
+    <div className="stagger space-y-3">
+      <RevealCard className="relative overflow-hidden rounded-xl border border-brand-400/40 bg-brand-800/60 p-3 lift">
+        <PanelGlow />
+        <div className="relative">
         <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
           <UserPlus className="h-3.5 w-3.5" />
           Add student
@@ -733,30 +764,30 @@ function MembersPanel({ classId }: { classId: string }) {
           className={CONTROL}
         />
         {searching && (
-          <div className="mt-2 flex items-center gap-2 text-xs text-brand-100">
+          <div className="mt-2 flex items-center gap-2 text-xs text-brand-100 fade-in">
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
           </div>
         )}
         {noMatches && (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2 fade-in">
             <p className="text-xs text-brand-100">No matching users.</p>
             <button
               type="button"
               onClick={() => startCreateForName(query)}
-              className="text-xs font-bold text-white underline-offset-2 hover:underline"
+              className="text-xs font-bold text-white underline-offset-2 transition-colors hover:text-brand-100 hover:underline"
             >
               Create account for “{query.trim()}”
             </button>
           </div>
         )}
         {pickerList.length > 0 && (
-          <ul className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-brand-400/40">
+          <ul className="stagger-fast mt-2 max-h-48 overflow-y-auto rounded-lg border border-brand-400/40">
             {pickerList.map((h) => {
               const elsewhere = classNameFor(h.class_id);
               return (
                 <li
                   key={h.id}
-                  className="flex items-center gap-2 border-b border-brand-400/30 px-3 py-2 last:border-0"
+                  className="flex items-center gap-2 border-b border-brand-400/30 px-3 py-2 last:border-0 transition-colors duration-200 hover:bg-brand-400/25"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-bold">{profileLabel(h)}</div>
@@ -780,11 +811,14 @@ function MembersPanel({ classId }: { classId: string }) {
           </ul>
         )}
         {browseReady && !query.trim() && pickerList.length === 0 && (
-          <p className="mt-2 text-xs text-brand-100">Everyone else is already in this group.</p>
+          <p className="mt-2 text-xs text-brand-100 fade-in">Everyone else is already in this group.</p>
         )}
-      </div>
+        </div>
+      </RevealCard>
 
-      <div className="rounded-xl border border-brand-400/40 bg-brand-800/60 p-3">
+      <RevealCard className="relative overflow-hidden rounded-xl border border-brand-400/50 bg-brand-800/60 p-3 shadow-brand lift">
+        <PanelGlow />
+        <div className="relative">
         <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
           <Plus className="h-3.5 w-3.5" />
           Create account
@@ -821,7 +855,7 @@ function MembersPanel({ classId }: { classId: string }) {
             </button>
           </div>
           {createError && (
-            <p className="rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60">
+            <p className="rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white ring-1 ring-brand-300/60 pop-in">
               {createError}
             </p>
           )}
@@ -835,7 +869,7 @@ function MembersPanel({ classId }: { classId: string }) {
           </button>
         </form>
         {created && (
-          <div className="mt-3 rounded-lg border border-brand-200/40 bg-brand-900/50 p-3">
+          <div className="pop-in mt-3 rounded-lg border border-brand-200/50 bg-brand-900/50 p-3 shadow-brand">
             <p className="text-xs font-bold text-white">Account ready — give these to the student</p>
             <div className="mt-2 space-y-1.5 text-sm">
               <div className="flex items-center justify-between gap-2">
@@ -874,13 +908,17 @@ function MembersPanel({ classId }: { classId: string }) {
             </button>
           </div>
         )}
-      </div>
+        </div>
+      </RevealCard>
 
-      <ul className="divide-y divide-brand-400/30 overflow-hidden rounded-xl border border-brand-400/40">
+      <ul className="stagger-fast divide-y divide-brand-400/30 overflow-hidden rounded-xl border border-brand-400/40">
         {rows.map((r) => {
           const label = r.profile ? profileLabel(r.profile) : r.user_id.slice(0, 8);
           return (
-            <li key={r.user_id} className="flex items-center gap-3 px-3 py-2.5">
+            <li
+              key={r.user_id}
+              className="flex items-center gap-3 px-3 py-2.5 transition-colors duration-200 hover:bg-brand-800/70"
+            >
               <Users className="h-4 w-4 text-brand-100" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-bold">
@@ -942,10 +980,11 @@ function ChatPanel({ classId }: { classId: string }) {
   useEffect(() => {
     void (async () => {
       setLoading(true);
+      setActiveId(null);
       try {
         const rows = await listClassThreads(classId);
         setThreads(rows);
-        if (rows.length) setActiveId((cur) => cur ?? rows[0].id);
+        if (rows.length) setActiveId(rows[0].id);
       } catch (e) {
         alert((e as Error)?.message ?? "Could not load threads.");
       } finally {

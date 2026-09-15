@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/$userId")({
   },
   component: AdminUserDetailPage,
   head: ({ params }) => ({
-    meta: [{ title: `User ${params.userId.slice(0, 8)}… — Admin — BeyondSAT` }],
+    meta: [{ title: `Student ${params.userId.slice(0, 8)}… — Admin — BeyondSAT` }],
   }),
 });
 

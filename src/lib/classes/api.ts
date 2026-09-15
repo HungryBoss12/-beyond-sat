@@ -100,9 +100,10 @@ export async function listClassMembers(classId: string): Promise<{ user_id: stri
 
 /** Staff: add a user to a class (moves them if they already belong elsewhere). */
 export async function addClassMember(classId: string, userId: string): Promise<void> {
-  const { error: delErr } = await db.from("class_memberships").delete().eq("user_id", userId);
-  if (delErr) throw delErr;
-  const { error } = await db.from("class_memberships").insert({ class_id: classId, user_id: userId });
+  const { error } = await db.rpc("admin_set_class_member", {
+    p_class_id: classId,
+    p_user_id: userId,
+  });
   if (error) throw error;
 }
 
@@ -114,6 +115,13 @@ export async function removeClassMember(classId: string, userId: string): Promis
     .eq("class_id", classId)
     .eq("user_id", userId);
   if (error) throw error;
+}
+
+const CHAT_DIRECTORY_COLS =
+  "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name";
+
+function fromDirectory(rows: unknown): ChatProfile[] {
+  return ((rows ?? []) as Omit<ChatProfile, "email">[]).map((p) => ({ ...p, email: null }));
 }
 
 export async function getChatProfile(userId?: string): Promise<ChatProfile | null> {
@@ -131,7 +139,16 @@ export async function getChatProfile(userId?: string): Promise<ChatProfile | nul
     .eq("id", uid)
     .maybeSingle();
   if (error) throw error;
-  return (data as ChatProfile) ?? null;
+  if (data) return data as ChatProfile;
+
+  const { data: dir, error: dirErr } = await db
+    .from("chat_directory")
+    .select(CHAT_DIRECTORY_COLS)
+    .eq("id", uid)
+    .maybeSingle();
+  if (dirErr) throw dirErr;
+  if (!dir) return null;
+  return { ...(dir as Omit<ChatProfile, "email">), email: null };
 }
 
 export async function saveChatSetup(input: {
@@ -161,15 +178,12 @@ export async function searchUsersByUsername(q: string, limit = 20): Promise<Chat
   const needle = normalizeUsername(q);
   if (needle.length < 2) return [];
   const { data, error } = await db
-    .from("profiles")
-    .select(
-      "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,email",
-    )
+    .from("chat_directory")
+    .select(CHAT_DIRECTORY_COLS)
     .ilike("username", `${needle}%`)
-    .eq("chat_setup_completed", true)
     .limit(limit);
   if (error) throw error;
-  return (data ?? []) as ChatProfile[];
+  return fromDirectory(data);
 }
 
 const ADMIN_PROFILE_COLS =
@@ -201,22 +215,68 @@ export async function searchUsersForAdmin(q: string, limit = 20): Promise<ChatPr
     )
     .limit(limit);
   if (error) throw error;
-  return (data ?? []) as ChatProfile[];
+  const rows = (data ?? []) as ChatProfile[];
+  if (rows.length === 0) return rows;
+  const ids = rows.map((r) => r.id);
+  const { data: memberships } = await db
+    .from("class_memberships")
+    .select("user_id,class_id")
+    .in("user_id", ids);
+  const classOf = new Map(
+    ((memberships ?? []) as { user_id: string; class_id: string }[]).map((m) => [
+      m.user_id,
+      m.class_id,
+    ]),
+  );
+  return rows.map((r) => ({
+    ...r,
+    class_id: classOf.get(r.id) ?? r.class_id ?? null,
+  }));
 }
 
-/** Staff browse: students not already in this class. */
+/** Staff browse: students not already in this class (membership-aware). */
 export async function listUsersForAdmin(opts?: {
   excludeClassId?: string;
   limit?: number;
 }): Promise<ChatProfile[]> {
   const limit = opts?.limit ?? 80;
+  const excludeClassId = opts?.excludeClassId;
+  let excludeIds: string[] = [];
+  if (excludeClassId) {
+    const { data: members, error: mErr } = await db
+      .from("class_memberships")
+      .select("user_id")
+      .eq("class_id", excludeClassId);
+    if (mErr) throw mErr;
+    excludeIds = ((members ?? []) as { user_id: string }[]).map((m) => m.user_id);
+  }
+
   let query = db.from("profiles").select(ADMIN_PROFILE_COLS).order("full_name").limit(limit);
-  if (opts?.excludeClassId) {
-    query = query.or(`class_id.is.null,class_id.neq.${opts.excludeClassId}`);
+  if (excludeIds.length > 0) {
+    query = query.not("id", "in", `(${excludeIds.map((id) => `"${id}"`).join(",")})`);
   }
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []) as ChatProfile[];
+
+  const rows = (data ?? []) as ChatProfile[];
+  if (!excludeClassId || rows.length === 0) return rows;
+
+  // Prefer membership class over stale profiles.class_id for "elsewhere" labels.
+  const ids = rows.map((r) => r.id);
+  const { data: memberships } = await db
+    .from("class_memberships")
+    .select("user_id,class_id")
+    .in("user_id", ids);
+  const classOf = new Map(
+    ((memberships ?? []) as { user_id: string; class_id: string }[]).map((m) => [
+      m.user_id,
+      m.class_id,
+    ]),
+  );
+  return rows.map((r) => ({
+    ...r,
+    class_id: classOf.get(r.id) ?? r.class_id ?? null,
+  }));
 }
 
 export async function listMyThreads(): Promise<ChatThread[]> {
@@ -260,12 +320,12 @@ export async function listThreadMessages(
     .from("chat_messages")
     .select("id,thread_id,sender_id,body,created_at,edited_at,deleted_at")
     .eq("thread_id", threadId)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(limit);
   if (!opts?.includeDeleted) q = q.is("deleted_at", null);
   const { data, error } = await q;
   if (error) throw error;
-  const messages = (data ?? []) as ChatMessage[];
+  const messages = ((data ?? []) as ChatMessage[]).slice().reverse();
   const ids = messages.map((m) => m.id);
   if (ids.length === 0) return { messages, attachments: [] };
   const { data: atts, error: aErr } = await db
@@ -328,13 +388,11 @@ export async function getDirectPeerProfiles(threadIds: string[]): Promise<Map<st
   }
   if (peerIds.size === 0) return new Map();
   const { data: profiles, error: pErr } = await db
-    .from("profiles")
-    .select(
-      "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,email",
-    )
+    .from("chat_directory")
+    .select(CHAT_DIRECTORY_COLS)
     .in("id", [...peerIds]);
   if (pErr) throw pErr;
-  const byId = new Map(((profiles ?? []) as ChatProfile[]).map((p) => [p.id, p]));
+  const byId = new Map(fromDirectory(profiles).map((p) => [p.id, p]));
   const out = new Map<string, ChatProfile>();
   for (const [tid, uid] of threadPeer) {
     const p = byId.get(uid);

@@ -39,6 +39,31 @@ export function readSupabaseConfig(env: unknown): SupabaseConfig | null {
   return { url, anonKey };
 }
 
+/**
+ * Mirror Worker secrets onto process.env so server-only clients (e.g. service
+ * role) see the same project URL/keys as `readEnv` / staff JWT auth.
+ */
+export function hydrateServerEnv(env: unknown): void {
+  if (typeof process === "undefined" || !process.env) return;
+  const keys = [
+    "SUPABASE_URL",
+    "VITE_SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_PUBLISHABLE_KEY",
+    "VITE_SUPABASE_PUBLISHABLE_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_WEBHOOK_SECRET",
+  ] as const;
+  for (const key of keys) {
+    const val = readEnv(env, key);
+    if (val && !process.env[key]?.trim()) process.env[key] = val;
+  }
+  if (!process.env.SUPABASE_URL?.trim()) {
+    const url = readEnv(env, "VITE_SUPABASE_URL");
+    if (url) process.env.SUPABASE_URL = url;
+  }
+}
+
 /** Bearer token from the Authorization header, if present and non-empty. */
 export function readBearerToken(request: Request): string | null {
   const header = request.headers.get("authorization") ?? "";

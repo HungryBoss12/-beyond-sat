@@ -74,7 +74,7 @@ const NAV = [
   { to: "/admin/vocab", label: "Vocab", anim: "vocab", group: "Content" },
   { to: "/admin/classes", label: "Classes", anim: "classes", group: "Content" },
   { to: "/admin/notifications", label: "Notifications", anim: "notifications", group: "Manage" },
-  { to: "/admin/users", label: "Users", anim: "users", group: "Manage", adminOnly: true },
+  { to: "/admin/users", label: "Students", anim: "users", group: "Manage", adminOnly: true },
   {
     to: "/admin/settings",
     label: "Settings",

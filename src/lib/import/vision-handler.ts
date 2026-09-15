@@ -1,6 +1,7 @@
 import { extractSatPageFromImage, type VisionStage } from "@/lib/gemini/extract-page";
 import { GeminiError } from "@/lib/gemini/errors";
-import { readBearerToken, readEnv, readSupabaseConfig, verifySupabaseUser } from "@/lib/server-env";
+import { readEnv } from "@/lib/server-env";
+import { requireStaff } from "@/lib/vocab/rest";
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -32,20 +33,9 @@ export async function handleImportVision(request: Request, env: unknown): Promis
     return json({ error: "Method not allowed" }, 405);
   }
 
-  const config = readSupabaseConfig(env);
-  if (!config) {
-    console.error("[import/vision] Supabase env missing; cannot authenticate requests");
-    return json({ error: "Server is not configured" }, 500);
-  }
-
-  const token = readBearerToken(request);
-  if (!token) {
-    return json({ error: "Sign in to import questions" }, 401);
-  }
-
-  const user = await verifySupabaseUser(config, token);
-  if (!user) {
-    return json({ error: "Your session has expired. Sign in again." }, 401);
+  const auth = await requireStaff(request, env);
+  if (!auth.ok) {
+    return auth.response;
   }
 
   let payload: VisionRequest;

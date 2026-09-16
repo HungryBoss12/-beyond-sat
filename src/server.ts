@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleAiChat } from "./lib/ai/handler";
+import { handleUinfoFlush } from "./lib/uinfo/summarize";
 import { handleYoutubeRecs } from "./lib/youtube/search";
 import { handleImportVision } from "./lib/import/vision-handler";
 import { handleImportFix } from "./lib/import/fix-handler";
@@ -122,6 +123,10 @@ export default {
 
       if (url.pathname === "/api/ai/youtube-recs") {
         return await handleYoutubeRecs(request, env);
+      }
+
+      if (url.pathname === "/api/ai/uinfo") {
+        return await handleUinfoFlush(request, env);
       }
 
       if (url.pathname === "/api/import/vision") {

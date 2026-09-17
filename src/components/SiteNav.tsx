@@ -1,4 +1,4 @@
-import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import {
@@ -8,18 +8,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const LINKS: { id: string; label: string }[] = [
-  { id: "top", label: "Home" },
-  { id: "features", label: "Programs" },
-  { id: "stats", label: "Results" },
-  { id: "how", label: "About" },
-];
+const LINKS = [
+  { to: "/", label: "Home" },
+  { to: "/programs", label: "Programs" },
+  { to: "/results", label: "Results" },
+  { to: "/about", label: "About" },
+] as const;
 
 /** Sits in the nav between "Results" and "About". */
-const RESOURCES: { id: string; label: string; description: string }[] = [
-  { id: "how", label: "How it works", description: "Three steps to your goal score" },
-  { id: "features", label: "Study guides", description: "What we cover, section by section" },
-  { id: "stats", label: "Score results", description: "Outcomes from real students" },
+const RESOURCES: { hash: string; label: string; description: string }[] = [
+  { hash: "how", label: "How it works", description: "Three steps to your goal score" },
+  { hash: "guides", label: "Study guides", description: "What we cover, section by section" },
+  { hash: "scores", label: "Score results", description: "Outcomes from real students" },
 ];
 
 /** Geometric mark shown to the left of the wordmark. */
@@ -36,33 +36,13 @@ function LogoMark() {
 
 export function SiteNav() {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-
-  function goTo(id: string) {
-    setOpen(false);
-    const scroll = () => {
-      if (id === "top") {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-      }
-      const el = document.getElementById(id);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    };
-    if (pathname !== "/") {
-      router.navigate({ to: "/" });
-      setTimeout(scroll, 60);
-    } else {
-      scroll();
-    }
-  }
 
   return (
     /* The marketing top bar matches the app shell's: brand surface, white page
        behind it, and every label at full opacity rather than a muted grey. */
     <header className="sticky top-0 z-40 border-b border-brand-400/40 bg-brand-600 shadow-brand">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-2.5">
+        <Link to="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
           <LogoMark />
           <span className="text-xl font-black tracking-tight text-white">
             Beyond<span className="text-brand-100">SAT</span>
@@ -71,16 +51,16 @@ export function SiteNav() {
 
         <nav className="hidden items-center gap-8 md:flex">
           {LINKS.map((l) => (
-            <div key={l.id} className="contents">
-              <button
-                onClick={() => goTo(l.id)}
+            <div key={l.to} className="contents">
+              <Link
+                to={l.to}
                 className="text-sm font-semibold text-brand-100 transition-colors hover:text-white"
               >
                 {l.label}
-              </button>
+              </Link>
 
               {/* Resources sits between "Results" and "About" */}
-              {l.id === "stats" && (
+              {l.to === "/results" && (
                 <DropdownMenu>
                   <DropdownMenuTrigger className="inline-flex items-center gap-1 text-sm font-semibold text-brand-100 outline-none transition-colors hover:text-white">
                     Resources
@@ -91,13 +71,15 @@ export function SiteNav() {
                     className="w-64 border-brand-400/40 bg-brand-700 text-white"
                   >
                     {RESOURCES.map((r) => (
-                      <DropdownMenuItem
-                        key={r.label}
-                        onSelect={() => goTo(r.id)}
-                        className="flex-col items-start gap-0.5 py-2 focus:bg-brand-400 focus:text-white"
-                      >
-                        <span className="text-sm font-bold text-white">{r.label}</span>
-                        <span className="text-xs text-brand-100">{r.description}</span>
+                      <DropdownMenuItem key={r.label} asChild className="p-0 focus:bg-transparent">
+                        <Link
+                          to="/resources"
+                          hash={r.hash}
+                          className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-left outline-none focus:bg-brand-400 focus:text-white"
+                        >
+                          <span className="text-sm font-bold text-white">{r.label}</span>
+                          <span className="text-xs text-brand-100">{r.description}</span>
+                        </Link>
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -134,27 +116,30 @@ export function SiteNav() {
       {open && (
         <div className="slide-in space-y-1 border-t border-brand-400/40 bg-brand-700 px-4 py-4 md:hidden">
           {LINKS.map((l) => (
-            <div key={l.id}>
-              <button
-                onClick={() => goTo(l.id)}
+            <div key={l.to}>
+              <Link
+                to={l.to}
+                onClick={() => setOpen(false)}
                 className="block w-full rounded-md px-3 py-2 text-left text-sm font-bold text-white hover:bg-brand-400"
               >
                 {l.label}
-              </button>
+              </Link>
 
-              {l.id === "stats" && (
+              {l.to === "/results" && (
                 <div className="mt-1">
                   <div className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-brand-100">
                     Resources
                   </div>
                   {RESOURCES.map((r) => (
-                    <button
+                    <Link
                       key={r.label}
-                      onClick={() => goTo(r.id)}
+                      to="/resources"
+                      hash={r.hash}
+                      onClick={() => setOpen(false)}
                       className="block w-full rounded-md py-2 pl-6 pr-3 text-left text-sm font-semibold text-brand-100 hover:bg-brand-400 hover:text-white"
                     >
                       {r.label}
-                    </button>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -163,12 +148,14 @@ export function SiteNav() {
           <div className="flex gap-2 pt-3">
             <Link
               to="/signin"
+              onClick={() => setOpen(false)}
               className="tap flex-1 rounded-lg border border-brand-200 px-4 py-2 text-center text-sm font-bold text-white hover:bg-brand-800"
             >
               Sign In
             </Link>
             <Link
               to="/signup"
+              onClick={() => setOpen(false)}
               className="btn-brand flex-1 rounded-lg bg-brand-400 px-4 py-2 text-center text-sm font-bold text-white"
             >
               Sign Up

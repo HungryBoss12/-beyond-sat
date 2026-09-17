@@ -51,19 +51,19 @@ export function SiteFooter() {
           <div className="mb-3 text-sm font-semibold text-white">Programs</div>
           <ul className="space-y-2 text-sm text-brand-100">
             <li>
-              <a href="#" className="hover:text-white">
+              <Link to="/programs" className="hover:text-white">
                 Digital SAT
-              </a>
+              </Link>
             </li>
             <li>
-              <a href="#" className="hover:text-white">
+              <Link to="/programs" hash="mocks" className="hover:text-white">
                 Mock Exams
-              </a>
+              </Link>
             </li>
             <li>
-              <a href="#" className="hover:text-white">
+              <Link to="/programs" hash="bank" className="hover:text-white">
                 Question Bank
-              </a>
+              </Link>
             </li>
           </ul>
         </div>
@@ -71,19 +71,19 @@ export function SiteFooter() {
           <div className="mb-3 text-sm font-semibold text-white">Contact</div>
           <ul className="space-y-2 text-sm text-brand-100">
             <li>
-              <a href="#" className="hover:text-white">
+              <Link to="/support" className="hover:text-white">
                 Support
-              </a>
+              </Link>
             </li>
             <li>
-              <a href="#" className="hover:text-white">
+              <Link to="/privacy" className="hover:text-white">
                 Privacy
-              </a>
+              </Link>
             </li>
             <li>
-              <a href="#" className="hover:text-white">
+              <Link to="/terms" className="hover:text-white">
                 Terms
-              </a>
+              </Link>
             </li>
           </ul>
         </div>

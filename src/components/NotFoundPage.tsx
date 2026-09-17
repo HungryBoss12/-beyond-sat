@@ -45,13 +45,13 @@ function NotFoundContent() {
           >
             Start Practicing
           </Link>
-          <a
-            href="mailto:support@beyondsat.com"
+          <Link
+            to="/support"
             className="not-found-outline-btn tap inline-flex cursor-pointer items-center gap-2 rounded-full border-2 border-brand-600 bg-white px-6 py-3 text-sm font-bold text-brand-600"
           >
             <Mail className="h-4 w-4" />
             Contact Support
-          </a>
+          </Link>
         </div>
 
         <div className="mt-10">

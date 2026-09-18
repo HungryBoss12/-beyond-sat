@@ -85,7 +85,7 @@ export async function handleVocabReview(request: Request, env: unknown): Promise
   >(
     auth.config,
     auth.token,
-    `user_card_states?user_id=eq.${auth.user.id}&card_id=eq.${cardId}&select=*`,
+    `user_card_states?user_id=eq.${encodeURIComponent(auth.user.id)}&card_id=eq.${encodeURIComponent(cardId)}&select=*`,
   );
 
   if (error || !rows?.[0]) {
@@ -95,11 +95,16 @@ export async function handleVocabReview(request: Request, env: unknown): Promise
   const current = rows[0];
   const updated = applyReview(current, rating as ReviewRating);
 
-  const patch = await restFetch(auth.config, auth.token, `user_card_states?id=eq.${current.id}`, {
-    method: "PATCH",
-    body: JSON.stringify(updated),
-    headers: { Prefer: "return=representation" },
-  });
+  const patch = await restFetch(
+    auth.config,
+    auth.token,
+    `user_card_states?id=eq.${encodeURIComponent(current.id)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(updated),
+      headers: { Prefer: "return=representation" },
+    },
+  );
 
   if (patch.error) {
     return jsonResponse({ error: patch.error }, 500);

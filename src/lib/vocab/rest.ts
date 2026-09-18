@@ -46,11 +46,16 @@ export function todayDateStr(): string {
   return format(new Date(), "yyyy-MM-dd");
 }
 
-export function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json; charset=utf-8" },
-  });
+export function jsonResponse(
+  body: unknown,
+  init?: number | { status: number; headers?: Record<string, string> },
+): Response {
+  const status = typeof init === "number" ? init : (init?.status ?? 200);
+  const headers: Record<string, string> = {
+    "content-type": "application/json; charset=utf-8",
+    ...(typeof init === "number" ? {} : (init?.headers ?? {})),
+  };
+  return new Response(JSON.stringify(body), { status, headers });
 }
 
 export async function requireUser(

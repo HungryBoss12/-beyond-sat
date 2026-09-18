@@ -26,7 +26,7 @@ export async function recordUserActivity(
   const { data: existing } = await restFetch<ActivityLog[]>(
     config,
     token,
-    `vocab_activity_logs?user_id=eq.${userId}&activity_date=eq.${today}&select=id,cards_reviewed`,
+    `vocab_activity_logs?user_id=eq.${encodeURIComponent(userId)}&activity_date=eq.${encodeURIComponent(today)}&select=id,cards_reviewed`,
   );
 
   const firstVocabToday = !existing?.[0];
@@ -56,7 +56,7 @@ export async function recordUserActivity(
   const { data: spRows } = await restFetch<StudentProfile[]>(
     config,
     token,
-    `student_profiles?user_id=eq.${userId}&select=current_streak,longest_streak,last_active_at`,
+    `student_profiles?user_id=eq.${encodeURIComponent(userId)}&select=current_streak,longest_streak,last_active_at`,
   );
   const sp = spRows?.[0];
 
@@ -80,7 +80,7 @@ export async function recordUserActivity(
     };
   }
 
-  await restFetch(config, token, `student_profiles?user_id=eq.${userId}`, {
+  await restFetch(config, token, `student_profiles?user_id=eq.${encodeURIComponent(userId)}`, {
     method: "PATCH",
     body: JSON.stringify(patch),
     headers: { Prefer: "return=minimal" },

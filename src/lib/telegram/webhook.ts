@@ -32,7 +32,7 @@ export async function handleTelegramWebhook(request: Request, env: unknown): Pro
   }
 
   const secret = readWebhookSecret(env);
-  if (!verifyWebhookSecret(request, secret)) {
+  if (!(await verifyWebhookSecret(request, secret))) {
     return new Response("Unauthorized", { status: 401 });
   }
 

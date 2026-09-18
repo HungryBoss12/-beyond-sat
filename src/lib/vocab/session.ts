@@ -43,7 +43,7 @@ async function resolveDeckScopeIds(
 }
 
 function deckIdInFilter(ids: string[]): string {
-  return `in.(${ids.join(",")})`;
+  return `in.(${ids.map((id) => encodeURIComponent(id)).join(",")})`;
 }
 
 export async function fetchDueSession(
@@ -59,7 +59,7 @@ export async function fetchDueSession(
   const { data: dueRows, error: dueErr } = await restFetch<StateRow[]>(
     config,
     token,
-    `user_card_states?user_id=eq.${userId}&due=lte.${nowIso}${deckFilter}&select=*,vocab_cards(*)&limit=50`,
+    `user_card_states?user_id=eq.${encodeURIComponent(userId)}&due=lte.${encodeURIComponent(nowIso)}${deckFilter}&select=*,vocab_cards(*)&limit=50`,
   );
   if (dueErr) throw new Error(dueErr);
 
@@ -71,7 +71,7 @@ export async function fetchDueSession(
     const { data: ownedStates } = await restFetch<{ card_id: string }[]>(
       config,
       token,
-      `user_card_states?user_id=eq.${userId}&select=card_id`,
+      `user_card_states?user_id=eq.${encodeURIComponent(userId)}&select=card_id`,
     );
     const ownedIds = new Set((ownedStates ?? []).map((s) => s.card_id));
     states.forEach((s) => ownedIds.add(s.card_id));

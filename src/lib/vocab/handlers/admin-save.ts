@@ -202,7 +202,7 @@ export async function handleVocabAdminSave(request: Request, env: unknown): Prom
 
     if (cardErr) {
       if (cardErr.includes("duplicate") || cardErr.includes("23505")) {
-        const deckFilter = deckId ? `&deck_id=eq.${deckId}` : "";
+        const deckFilter = deckId ? `&deck_id=eq.${encodeURIComponent(deckId)}` : "";
         const { data: existing } = await restFetch<{ id: string }[]>(
           auth.config,
           auth.token,
@@ -232,7 +232,7 @@ export async function handleVocabAdminSave(request: Request, env: unknown): Prom
     const { data: qRows, error: qErr } = await restFetch<{ id: string }[]>(
       auth.config,
       auth.token,
-      "vocab_quiz_questions",
+      "vocab_quiz_questions?select=id",
       {
         method: "POST",
         body: JSON.stringify({
@@ -244,6 +244,8 @@ export async function handleVocabAdminSave(request: Request, env: unknown): Prom
           explanation: q.explanation,
           position: position++,
         }),
+        // Representation would SELECT the answer key columns, which are no
+        // longer granted on read; selecting only `id` keeps the write working.
         headers: { Prefer: "return=representation" },
       },
     );

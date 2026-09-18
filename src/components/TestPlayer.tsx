@@ -368,66 +368,51 @@ export function TestPlayer({
       const elapsed = Math.round((Date.now() - questionStartRef.current) / 1000);
       timePerQ.current[idx] = (timePerQ.current[idx] ?? 0) + elapsed;
 
+      const currentAnswers = answersRef.current;
+      const gradeFailures: string[] = [];
       let correct = 0;
       let rwC = 0,
         rwT = 0,
         mC = 0,
         mT = 0;
-      const currentAnswers = answersRef.current;
-      const gradeFailures: string[] = [];
-      const attempts = await Promise.all(
+
+      /* Grading and persistence both happen inside `submit_attempt` (SECURITY
+         DEFINER): the browser sends only the chosen answer and the server
+         computes `is_correct`, so a forged `attempts` row is no longer
+         possible. Unanswered questions get no attempt row — the server counts
+         them from the session total. */
+      await Promise.all(
         questions.map(async (q, i) => {
           const a = currentAnswers[i] ?? emptyAnswer();
-          let isCorrect: boolean | null = null;
           const hasAnswer = q.kind === "grid_in" ? !!a.gridAnswer.trim() : !!a.selectedChoiceId;
-          if (hasAnswer) {
-            const { data, error: gradeErr } = await supabase.rpc("grade_answer", {
-              p_question_id: q.id,
-              p_choice_id: a.selectedChoiceId ?? "",
-              p_grid_answer: a.gridAnswer || "",
-              p_session_id: sessionId,
-            });
-            if (gradeErr) {
-              gradeFailures.push(gradeErr.message || `Question ${i + 1} could not be graded`);
+          if (!hasAnswer) return;
+          const { data, error: gradeErr } = await supabase.rpc("submit_attempt", {
+            p_session_id: sessionId,
+            p_question_id: q.id,
+            p_choice_id: a.selectedChoiceId ?? "",
+            p_grid_answer: a.gridAnswer || "",
+            p_marked_for_review: a.markedForReview,
+            p_eliminated: a.eliminated,
+            p_time_spent: timePerQ.current[i] ?? 0,
+          });
+          if (gradeErr) {
+            gradeFailures.push(gradeErr.message || `Question ${i + 1} could not be graded`);
+          } else {
+            const ok = (data as boolean | null) ?? false;
+            if (q.section === "reading_writing") {
+              rwT += 1;
+              if (ok) rwC += 1;
             } else {
-              isCorrect = (data as boolean | null) ?? null;
+              mT += 1;
+              if (ok) mC += 1;
             }
           }
-          if (isCorrect) correct += 1;
-          if (q.section === "reading_writing") {
-            rwT += 1;
-            if (isCorrect) rwC += 1;
-          } else {
-            mT += 1;
-            if (isCorrect) mC += 1;
-          }
-          return {
-            user_id: userId,
-            session_id: sessionId,
-            question_id: q.id,
-            test_type: type,
-            selected_choice_id: a.selectedChoiceId,
-            grid_answer: a.gridAnswer || null,
-            is_correct: isCorrect,
-            marked_for_review: a.markedForReview,
-            eliminated_choice_ids: a.eliminated,
-            time_spent_seconds: timePerQ.current[i] ?? 0,
-          };
         }),
       );
 
       if (gradeFailures.length > 0) {
         throw new Error(
           `Could not grade ${gradeFailures.length} question${gradeFailures.length === 1 ? "" : "s"}. Your session is still saved — try Submit again.`,
-        );
-      }
-
-      const { error: aErr } = await supabase.from("attempts").upsert(attempts, {
-        onConflict: "session_id,question_id",
-      });
-      if (aErr) {
-        throw new Error(
-          aErr.message || "Could not save your answers. Your session is still saved — try Submit again.",
         );
       }
 
@@ -448,28 +433,45 @@ export function TestPlayer({
       }
       await metadataWriteChainRef.current.catch(() => {});
       metaRef.current = { ...metaRef.current, draft_answers: null };
-      const { error: completeErr } = await supabase
-        .from("test_sessions")
-        .update({
-          completed_at: new Date().toISOString(),
-          correct_count: correct,
-          total_questions: questions.length,
-          rw_score: scaled?.rw ?? null,
-          math_score: scaled?.math ?? null,
-          score: scaled?.total ?? correct,
-          metadata: { ...metaRef.current },
-        })
-        .eq("id", sessionId);
+      const { data: completeData, error: completeErr } = await supabase.rpc("complete_session", {
+        p_session_id: sessionId,
+      });
       if (completeErr) {
         throw new Error(
           completeErr.message || "Could not finish the session. Try Submit again.",
         );
       }
+      /* The server recomputes the final tally from the recorded attempts; trust
+         its numbers over the client counts in case a submit was retried. */
+      const done = (completeData ?? {}) as {
+        correct?: number;
+        total?: number;
+        rwCorrect?: number;
+        rwTotal?: number;
+        mathCorrect?: number;
+        mathTotal?: number;
+        totalScore?: number;
+        rw?: number | null;
+        math?: number | null;
+      };
+      correct = done.correct ?? correct;
+      rwC = done.rwCorrect ?? rwC;
+      rwT = done.rwTotal ?? rwT;
+      mC = done.mathCorrect ?? mC;
+      mT = done.mathTotal ?? mT;
+      const finalScaled =
+        type === "mock"
+          ? {
+              rw: done.rw ?? scaled?.rw ?? null,
+              math: done.math ?? scaled?.math ?? null,
+              total: done.totalScore ?? scaled?.total ?? correct,
+            }
+          : null;
 
       if (type === "daily") await bumpDailyStreak(userId);
       const code =
         type === "mock"
-          ? `m${scaled?.total ?? correct}`
+          ? `m${finalScaled?.total ?? correct}`
           : type === "daily"
             ? `d${correct}`
             : `p${correct}`;
@@ -482,7 +484,7 @@ export function TestPlayer({
         rwTotal: rwT,
         mathCorrect: mC,
         mathTotal: mT,
-        scaled,
+        scaled: finalScaled,
       };
       resultRef.current = nextResult;
       setResult(nextResult);

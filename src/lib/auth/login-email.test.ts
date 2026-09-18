@@ -16,6 +16,7 @@ describe("login-email", () => {
 
   it("slugs a display name into a username", () => {
     expect(slugUsernameFromName("Islom Admin")).toBe("islom_admin");
-    expect(slugUsernameFromName("12")).toMatch(/^user/);
+    // Digit-led names get a letter prefix; "u12" satisfies USERNAME_RE.
+    expect(slugUsernameFromName("12")).toMatch(/^u[0-9a-z_]{2,}$/);
   });
 });

@@ -46,8 +46,11 @@ export async function searchUsers(
   let profileQuery = supabase.from("profiles").select("id,email,full_name");
 
   if (needle) {
-    const escaped = needle.replace(/[%_]/g, "\\$&");
-    profileQuery = profileQuery.or(`email.ilike.%${escaped}%,full_name.ilike.%${escaped}%`);
+    // Escape PostgREST logical operators first, then percent-encode for the URL.
+    const escaped = needle.replace(/[%_]/g, "\\$&").replace(/[(,)]/g, "");
+    profileQuery = profileQuery.or(
+      `email.ilike.%${encodeURIComponent(escaped)}%,full_name.ilike.%${encodeURIComponent(escaped)}%`,
+    );
   }
 
   const { data: profiles } = await profileQuery
@@ -95,8 +98,7 @@ export async function findUserByEmailOrId(
     .select("id,email,full_name")
     .ilike("email", trimmed)
     .maybeSingle();
-  return data;
-}
+  return data;}
 
 export async function fetchUserDetail(
   supabase: AdminClient,

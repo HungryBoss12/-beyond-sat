@@ -1,5 +1,6 @@
 import { callRpc, readEnv, readSupabaseConfig, type VerifiedUser } from "@/lib/server-env";
 import { DEFAULT_MODELS } from "@/lib/ai/router";
+import { rateLimit } from "@/lib/rate-limit";
 
 const FLUSH_COUNT = 24;
 const FLUSH_AGE_MS = 12 * 60 * 60 * 1000;
@@ -7,11 +8,16 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 type LogRow = { id: string; k: string; d: string; created_at: string };
 
-function json(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json; charset=utf-8" },
-  });
+function json(
+  body: unknown,
+  init?: number | { status: number; headers?: Record<string, string> },
+): Response {
+  const status = typeof init === "number" ? init : (init?.status ?? 200);
+  const headers: Record<string, string> = {
+    "content-type": "application/json; charset=utf-8",
+    ...(typeof init === "number" ? {} : (init?.headers ?? {})),
+  };
+  return new Response(JSON.stringify(body), { status, headers });
 }
 
 function isOpaqueSupabaseKey(value: string): boolean {
@@ -45,6 +51,17 @@ export async function handleUinfoFlush(request: Request, env: unknown): Promise<
   if (!userRes.ok) return json({ error: "Your session has expired." }, 401);
   const user = (await userRes.json()) as VerifiedUser;
   if (!user.id) return json({ error: "Your session has expired." }, 401);
+
+  /* One flush per 10 minutes per user (plan H1). A flush is a billable
+     OpenRouter call over the user's own activity log, so it must not be
+     spammable. Per-isolate caveat applies (lib/rate-limit.ts). */
+  const limit = rateLimit(`uinfo-flush:${user.id}`, 1, 1 / 10);
+  if (!limit.ok) {
+    return json(
+      { error: "Profile insights were just updated. Try again in a few minutes." },
+      { status: 429, headers: { "retry-after": String(limit.retryAfter) } },
+    );
+  }
 
   let targetId = user.id;
   try {

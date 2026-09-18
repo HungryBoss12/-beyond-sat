@@ -2,7 +2,6 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Section, Difficulty } from "./sat";
 import { questionCountFor, rawToScaled, skillsFor } from "./sat";
 import { format } from "date-fns";
-import { sortMockModules, type MockModuleMeta } from "./mock-phase";
 
 export type TestType = "practice" | "daily" | "mock";
 
@@ -236,6 +235,7 @@ export async function startMockSession(
   mockExamId: string,
 ): Promise<{ sessionId: string; resumed: boolean }> {
   const uid = await currentUserId();
+  /* Resume first: an unfinished mock keeps its server-derived question set. */
   const { data: existing } = await supabase
     .from("test_sessions")
     .select("id,completed_at")
@@ -247,82 +247,16 @@ export async function startMockSession(
   if (existing && existing.length > 0)
     return { sessionId: existing[0].id as string, resumed: true };
 
-  const modules: MockModuleMeta[] = [];
-  const { data: sections } = await supabase
-    .from("mock_exam_sections")
-    .select("test_id, module, section_index")
-    .eq("mock_exam_id", mockExamId)
-    .not("test_id", "is", null);
-  if (sections && sections.length > 0) {
-    const linkedIds = [...new Set(sections.map((s) => s.test_id as string))];
-    const { data: linkedTests } = await supabase
-      .from("tests")
-      .select("id,section,module")
-      .in("id", linkedIds);
-    const testById = new Map(
-      ((linkedTests ?? []) as { id: string; section: Section; module: number }[]).map((test) => [
-        test.id,
-        test,
-      ]),
-    );
-    linkedIds.sort((a, b) => {
-      const left = testById.get(a);
-      const right = testById.get(b);
-      const leftSection = left?.section === "reading_writing" ? 0 : 2;
-      const rightSection = right?.section === "reading_writing" ? 0 : 2;
-      if (leftSection !== rightSection) return leftSection - rightSection;
-      return (left?.module ?? 1) - (right?.module ?? 1);
-    });
-    for (const testId of linkedIds) {
-      const test = testById.get(testId);
-      const qids = await questionsForTests([testId]);
-      const section = test?.section ?? "reading_writing";
-      const module = test?.module === 2 ? 2 : 1;
-      const existingModule = modules.find((m) => m.section === section && m.module === module);
-      if (existingModule) existingModule.question_ids.push(...qids);
-      else modules.push({ section, module, question_ids: qids });
-    }
-  }
-  if (modules.every((m) => m.question_ids.length === 0)) {
-    modules.length = 0;
-    const { data: mq } = await supabase
-      .from("mock_exam_questions")
-      .select("question_id, section, module, position")
-      .eq("mock_exam_id", mockExamId)
-      .order("section", { ascending: true })
-      .order("module", { ascending: true })
-      .order("position", { ascending: true });
-    const grouped = new Map<string, MockModuleMeta>();
-    for (const row of mq ?? []) {
-      const section = row.section as Section;
-      const module = row.module === 2 ? 2 : 1;
-      const key = `${section}:${module}`;
-      let bucket = grouped.get(key);
-      if (!bucket) {
-        bucket = { section, module, question_ids: [] };
-        grouped.set(key, bucket);
-      }
-      bucket.question_ids.push(row.question_id as string);
-    }
-    modules.push(...sortMockModules([...grouped.values()]));
-  }
-  const orderedModules = sortMockModules(modules.filter((m) => m.question_ids.length > 0));
-  const ids = orderedModules.flatMap((m) => m.question_ids);
-  if (ids.length === 0) throw new Error("This mock exam has no questions yet.");
-
-  const { data: sess, error } = await supabase
-    .from("test_sessions")
-    .insert({
-      user_id: uid,
-      type: "mock",
-      mock_exam_id: mockExamId,
-      total_questions: ids.length,
-      metadata: { question_ids: ids, modules: orderedModules },
-    })
-    .select("id")
-    .single();
+  /* Mocks are the only scaled (200-800) scores, so the question set is derived
+     inside `start_mock_session` from mock_exam_sections/test_questions — the
+     browser can no longer declare its own question list for a scaled exam. */
+  const { data, error } = await supabase.rpc("start_mock_session", {
+    p_mock_exam_id: mockExamId,
+  });
   if (error) throw error;
-  return { sessionId: sess.id as string, resumed: false };
+  const sessionId = Array.isArray(data) ? (data[0] as string) : (data as string);
+  if (!sessionId) throw new Error("This mock exam has no questions yet.");
+  return { sessionId, resumed: false };
 }
 
 /**

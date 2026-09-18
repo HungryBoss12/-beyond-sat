@@ -21,7 +21,7 @@ function VocabTestRun() {
         supabase.from("vocab_quizzes").select("*").eq("id", id).maybeSingle(),
         supabase
           .from("vocab_quiz_questions")
-          .select("*")
+          .select("id,quiz_id,vocab_card_id,passage_text,options,position")
           .eq("quiz_id", id)
           .order("position", { ascending: true }),
       ]);

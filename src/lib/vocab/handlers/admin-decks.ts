@@ -34,19 +34,30 @@ export async function handleVocabAdminDeck(
     const title = typeof body.title === "string" ? body.title.trim() : "";
     if (!title) return jsonResponse({ error: "title required" }, 400);
 
-    const patch = await restFetch(auth.config, auth.token, `vocab_decks?id=eq.${deckId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ title }),
-      headers: { Prefer: "return=representation" },
-    });
+    const patch = await restFetch(
+      auth.config,
+      auth.token,
+      `vocab_decks?id=eq.${encodeURIComponent(deckId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ title }),
+        headers: { Prefer: "return=representation" },
+      },
+    );
     if (patch.error) return jsonResponse({ error: patch.error }, patch.status);
-    return jsonResponse({ deck: patch.data?.[0] ?? null });
+    const deckRows = (patch.data ?? []) as { id: string }[];
+    return jsonResponse({ deck: deckRows[0] ?? null });
   }
 
   if (request.method === "DELETE") {
-    const del = await restFetch(auth.config, auth.token, `vocab_decks?id=eq.${deckId}`, {
-      method: "DELETE",
-    });
+    const del = await restFetch(
+      auth.config,
+      auth.token,
+      `vocab_decks?id=eq.${encodeURIComponent(deckId)}`,
+      {
+        method: "DELETE",
+      },
+    );
     if (del.error) return jsonResponse({ error: del.error }, del.status);
     return jsonResponse({ ok: true });
   }
@@ -89,19 +100,30 @@ export async function handleVocabAdminCard(
       return jsonResponse({ error: "No fields to update" }, 400);
     }
 
-    const result = await restFetch(auth.config, auth.token, `vocab_cards?id=eq.${cardId}`, {
-      method: "PATCH",
-      body: JSON.stringify(patch),
-      headers: { Prefer: "return=representation" },
-    });
+    const result = await restFetch(
+      auth.config,
+      auth.token,
+      `vocab_cards?id=eq.${encodeURIComponent(cardId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+        headers: { Prefer: "return=representation" },
+      },
+    );
     if (result.error) return jsonResponse({ error: result.error }, result.status);
-    return jsonResponse({ card: result.data?.[0] ?? null });
+    const cardRows = (result.data ?? []) as { id: string }[];
+    return jsonResponse({ card: cardRows[0] ?? null });
   }
 
   if (request.method === "DELETE") {
-    const del = await restFetch(auth.config, auth.token, `vocab_cards?id=eq.${cardId}`, {
-      method: "DELETE",
-    });
+    const del = await restFetch(
+      auth.config,
+      auth.token,
+      `vocab_cards?id=eq.${encodeURIComponent(cardId)}`,
+      {
+        method: "DELETE",
+      },
+    );
     if (del.error) return jsonResponse({ error: del.error }, del.status);
     return jsonResponse({ ok: true });
   }

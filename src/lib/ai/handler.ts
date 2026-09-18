@@ -23,6 +23,7 @@ import {
 } from "../server-env";
 import { userIsBanned } from "@/lib/vocab/rest";
 import { loadUinfoSummary } from "@/lib/uinfo/summarize";
+import { dailyCap, rateLimit } from "@/lib/rate-limit";
 import {
   formatYoutubePromptBlock,
   latestUserText,
@@ -105,11 +106,42 @@ async function probeKey(apiKey: string): Promise<string> {
   }
 }
 
-function json(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json; charset=utf-8" },
-  });
+function json(
+  body: unknown,
+  init?: number | { status: number; headers?: Record<string, string> },
+): Response {
+  const status = typeof init === "number" ? init : (init?.status ?? 200);
+  const headers: Record<string, string> = {
+    "content-type": "application/json; charset=utf-8",
+    ...(typeof init === "number" ? {} : (init?.headers ?? {})),
+  };
+  return new Response(JSON.stringify(body), { status, headers });
+}
+
+/**
+ * Daily chat cap from `app_settings` (`ai_chat_daily_cap`). The table is
+ * admin-only for SELECT, so this goes through the same `get_ai_models`
+ * SECURITY DEFINER channel used for model overrides — it returns every
+ * whitelisted settings key, so the cap piggybacks for free. Falls back to 200
+ * when unset.
+ */
+async function readDailyChatCap(
+  config: { url: string; anonKey: string },
+  token: string,
+): Promise<number> {
+  try {
+    const rows = await callRpc<{ key: string; value: string | null }[]>(
+      config,
+      "get_ai_models",
+      token,
+    );
+    if (!Array.isArray(rows)) return 200;
+    const row = rows.find((r) => r?.key === "ai_chat_daily_cap");
+    const n = row?.value == null ? NaN : Number(row.value);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 200;
+  } catch {
+    return 200;
+  }
 }
 
 function geminiClientError(error: GeminiError): Response {
@@ -175,6 +207,27 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
   }
   if (banned === "yes") {
     return json({ error: "This account is banned." }, 403);
+  }
+
+  /* Rate limit (per-isolate token bucket; see lib/rate-limit.ts for the
+     multi-isolate caveat): 20-request burst, 6/minute sustained, plus a daily
+     cap so one account can't burn the OpenRouter budget overnight. The daily
+     cap reads `ai_chat_daily_cap` from app_settings when present. Rate limits
+     run after auth but before any billable work — a 429 costs nothing. */
+  const perMinute = rateLimit(`ai-chat:${user.id}`, 20, 6);
+  if (!perMinute.ok) {
+    return json(
+      { error: "Too many messages too fast. Pause for a moment and try again." },
+      { status: 429, headers: { "retry-after": String(perMinute.retryAfter) } },
+    );
+  }
+  const dailyMax = await readDailyChatCap(config, token);
+  const day = dailyCap(`ai-chat-day:${user.id}`, dailyMax);
+  if (!day.ok) {
+    return json(
+      { error: "You've hit today's Beyond AI limit. Come back tomorrow." },
+      { status: 429, headers: { "retry-after": String(Math.min(day.retryAfter, 86400)) } },
+    );
   }
 
   let payload: AiChatRequest;

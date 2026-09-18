@@ -72,10 +72,34 @@ export async function answerCallbackQuery(token: string, callbackQueryId: string
   }
 }
 
-export function verifyWebhookSecret(request: Request, expected: string | undefined): boolean {
+/**
+ * Constant-time-ish secret comparison. `===` short-circuits on the first
+ * differing byte, leaking how much of a guessed prefix is right through
+ * response timing. Hashing both sides first (SHA-256) makes the compare cost
+ * independent of where a guess diverges; the digest also equalizes lengths, so
+ * a length leak is gone too. WebCrypto is async, hence the promise.
+ */
+async function timingSafeEqual(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const [da, db] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  const va = new Uint8Array(da);
+  const vb = new Uint8Array(db);
+  let diff = 0;
+  for (let i = 0; i < va.length; i++) diff |= va[i]! ^ vb[i]!;
+  return diff === 0;
+}
+
+export async function verifyWebhookSecret(
+  request: Request,
+  expected: string | undefined,
+): Promise<boolean> {
   if (!expected) return false;
   const header = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
-  return header === expected;
+  if (!header) return false;
+  return timingSafeEqual(header, expected);
 }
 
 export function escapeHtml(text: string): string {

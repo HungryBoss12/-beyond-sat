@@ -72,12 +72,19 @@ const EXEMPT_PREFIXES = [
   "/offline.html",
   "/pwa-",
   "/apple-touch-icon",
+  // Known static assets outside the build-hashed prefixes.
+  "/katex/",
+  "/sql-wasm.wasm",
+  "/fixtures/",
 ];
 
 export function isExemptPath(pathname: string): boolean {
   if (EXEMPT_PREFIXES.some((p) => pathname === p || pathname.startsWith(p))) return true;
-  // Any request with a file extension is an asset request, not a page view.
-  return /\.[a-z0-9]{2,5}$/i.test(pathname);
+  /* Dotted-path exemption removed (plan M): it let any *page* URL with a dot
+     (e.g. /dashboard?x=1.2 or a future /v1.2 route) skip the gate. Static
+     assets are covered by the explicit prefixes above; anything else must go
+     through the maintenance check like a page. */
+  return false;
 }
 
 /**

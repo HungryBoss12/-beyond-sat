@@ -21,6 +21,7 @@ import { handleTelegramWebhook } from "./lib/telegram/webhook";
 import { ensureTelegramWebhook } from "./lib/telegram/webhook-setup";
 import { checkMaintenance } from "./lib/maintenance";
 import { maintenanceResponse } from "./lib/maintenance-page";
+import { applySecurityHeaders } from "./lib/security-headers";
 
 /* Load .dev.vars/.env.local/.env into process.env for `vite dev`.
    This is dead code on the edge — the `if (import.meta.env.DEV)` literal is
@@ -119,77 +120,83 @@ export default {
       const url = new URL(request.url);
 
       if (url.pathname === "/api/ai/chat") {
-        return await handleAiChat(request, env);
+        return applySecurityHeaders(await handleAiChat(request, env), env);
       }
 
       if (url.pathname === "/api/ai/uinfo") {
-        return await handleUinfoFlush(request, env);
+        return applySecurityHeaders(await handleUinfoFlush(request, env), env);
       }
 
       if (url.pathname === "/api/ai/youtube-recs") {
-        return await handleYoutubeRecs(request, env);
+        return applySecurityHeaders(await handleYoutubeRecs(request, env), env);
       }
 
       if (url.pathname === "/api/import/vision") {
-        return await handleImportVision(request, env);
+        return applySecurityHeaders(await handleImportVision(request, env), env);
       }
 
       if (url.pathname === "/api/import/fix") {
-        return await handleImportFix(request, env);
+        return applySecurityHeaders(await handleImportFix(request, env), env);
       }
 
       if (url.pathname === "/api/import/figure") {
-        return await handleImportFigure(request, env);
+        return applySecurityHeaders(await handleImportFigure(request, env), env);
       }
 
       if (url.pathname === "/api/vocab/session") {
-        return await handleVocabSession(request, env);
+        return applySecurityHeaders(await handleVocabSession(request, env), env);
       }
 
       if (url.pathname === "/api/vocab/review") {
-        return await handleVocabReview(request, env);
+        return applySecurityHeaders(await handleVocabReview(request, env), env);
       }
 
       if (url.pathname === "/api/vocab/quiz/submit") {
-        return await handleVocabQuizSubmit(request, env);
+        return applySecurityHeaders(await handleVocabQuizSubmit(request, env), env);
       }
 
       if (url.pathname === "/api/vocab/generate") {
-        return await handleVocabGenerate(request, env);
+        return applySecurityHeaders(await handleVocabGenerate(request, env), env);
       }
 
       if (url.pathname === "/api/vocab/admin/save") {
-        return await handleVocabAdminSave(request, env);
+        return applySecurityHeaders(await handleVocabAdminSave(request, env), env);
       }
 
       const deckAdmin = url.pathname.match(/^\/api\/vocab\/admin\/decks\/([^/]+)$/);
       if (deckAdmin) {
-        return await handleVocabAdminDeck(request, env, decodeURIComponent(deckAdmin[1]));
+        return applySecurityHeaders(
+          await handleVocabAdminDeck(request, env, decodeURIComponent(deckAdmin[1])),
+          env,
+        );
       }
 
       const cardAdmin = url.pathname.match(/^\/api\/vocab\/admin\/cards\/([^/]+)$/);
       if (cardAdmin) {
-        return await handleVocabAdminCard(request, env, decodeURIComponent(cardAdmin[1]));
+        return applySecurityHeaders(
+          await handleVocabAdminCard(request, env, decodeURIComponent(cardAdmin[1])),
+          env,
+        );
       }
 
       if (url.pathname === "/api/admin/create-user") {
-        return await handleAdminCreateUser(request, env);
+        return applySecurityHeaders(await handleAdminCreateUser(request, env), env);
       }
 
       if (url.pathname === "/api/auth/username-login") {
-        return await handleUsernameLogin(request, env);
+        return applySecurityHeaders(await handleUsernameLogin(request, env), env);
       }
 
       if (url.pathname === "/api/auth/complete-first-login") {
-        return await handleCompleteFirstLogin(request, env);
+        return applySecurityHeaders(await handleCompleteFirstLogin(request, env), env);
       }
 
       if (url.pathname === "/api/telegram/webhook") {
-        return await handleTelegramWebhook(request, env);
+        return applySecurityHeaders(await handleTelegramWebhook(request, env), env);
       }
 
       if (url.pathname === "/api/telegram/ensure-webhook") {
-        return await handleEnsureTelegramWebhook(request, env);
+        return applySecurityHeaders(await handleEnsureTelegramWebhook(request, env), env);
       }
 
       const maintenance = await checkMaintenance(request, env, Date.now());
@@ -199,13 +206,16 @@ export default {
 
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return applySecurityHeaders(await normalizeCatastrophicSsrResponse(response), env);
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return applySecurityHeaders(
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+        env,
+      );
     }
   },
 };

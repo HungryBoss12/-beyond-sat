@@ -19,7 +19,7 @@ export async function enqueueMissedWords(
     const { data: existing } = await restFetch<UserCardState[]>(
       config,
       token,
-      `user_card_states?user_id=eq.${userId}&card_id=eq.${cardId}&select=*`,
+      `user_card_states?user_id=eq.${encodeURIComponent(userId)}&card_id=eq.${encodeURIComponent(cardId)}&select=*`,
     );
 
     if (existing?.[0]) {

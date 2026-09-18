@@ -65,9 +65,11 @@ export type VocabQuizQuestion = {
   quiz_id: string;
   vocab_card_id: string | null;
   passage_text: string;
-  correct_answer: string;
+  /** Answer key never reaches the client — graded server-side. */
+  correct_answer?: string;
   options: string[];
-  explanation: string;
+  /** Revealed per-question only after submit, via the graded results. */
+  explanation?: string;
   position: number;
 };
 

@@ -1448,6 +1448,57 @@ export type Database = {
         };
         Returns: boolean;
       };
+      submit_attempt: {
+        Args: {
+          p_session_id: string;
+          p_question_id: string;
+          p_choice_id: string;
+          p_grid_answer: string;
+          p_marked_for_review?: boolean;
+          p_eliminated?: string[] | null;
+          p_time_spent?: number | null;
+        };
+        Returns: boolean;
+      };
+      start_mock_session: {
+        Args: { p_mock_exam_id: string };
+        Returns: string;
+      };
+      complete_session: {
+        Args: { p_session_id: string };
+        Returns: {
+          alreadyCompleted: boolean;
+          correct: number;
+          total: number;
+          rwCorrect: number;
+          rwTotal: number;
+          mathCorrect: number;
+          mathTotal: number;
+          rw: number | null;
+          math: number | null;
+          totalScore: number;
+        }[];
+      };
+      submit_vocab_quiz: {
+        Args: {
+          p_quiz_id: string;
+          p_question_ids: string[];
+          p_selected: string[];
+        };
+        Returns: {
+          error?: string;
+          score: number;
+          total: number;
+          percent: number;
+          missed_card_ids: string[];
+          results: {
+            questionId: string;
+            correct: boolean;
+            correctAnswer: string;
+            explanation: string;
+          }[];
+        }[];
+      };
       bs_is_staff: { Args: { _uid?: string }; Returns: boolean };
       bs_upsert_lesson_video: {
         Args: {

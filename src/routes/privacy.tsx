@@ -53,6 +53,20 @@ function PrivacyPage() {
         </p>
       </MarketingSection>
 
+      <MarketingSection title="AI features">
+        <p>
+          Beyond AI and the automatic study-profile summary are powered by third-party AI providers
+          (currently Google Gemini and OpenRouter, which can route to models such as OpenAI's GPT
+          and Anthropic's Claude). When you chat with Beyond AI, your messages — including images
+          you attach for recognition — are sent to those providers to generate an answer. Your
+          in-app activity (pages visited, tests taken, lessons opened) may be summarized into a
+          study profile that personalizes AI answers; that summary is also processed by the AI
+          providers. Conversations are not used by us to advertise to you, but AI providers may
+          process the content under their own terms — avoid sharing anything in chat you wouldn't
+          share with a third-party service.
+        </p>
+      </MarketingSection>
+
       <MarketingSection title="Your choices">
         <p>
           You can update profile details in the app. For account deletion or other privacy requests,

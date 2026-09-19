@@ -1,4 +1,4 @@
-import { jsonResponse, requireStaff, restFetch } from "@/lib/vocab/rest";
+import { jsonResponse, requireAdmin, restFetch } from "@/lib/vocab/rest";
 import { hydrateServerEnv } from "@/lib/server-env";
 import { accountEmailFor, slugUsernameFromName } from "./login-email";
 
@@ -51,7 +51,8 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
     );
   }
 
-  const auth = await requireStaff(request, env);
+  // Matches /admin/users UI: provisioning is admin-only. Editors must not mint accounts.
+  const auth = await requireAdmin(request, env);
   if (!auth.ok) return auth.response;
 
   let body: {

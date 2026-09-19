@@ -119,3 +119,20 @@ export async function requireStaff(
   }
   return { ok: true, user: auth.user, token: auth.token, config: auth.config };
 }
+
+/** Admin-only gate. Editors pass requireStaff but must not reach user provisioning. */
+export async function requireAdmin(
+  request: Request,
+  env: unknown,
+): Promise<
+  | { ok: true; user: { id: string }; token: string; config: SupabaseConfig }
+  | { ok: false; response: Response }
+> {
+  const auth = await requireUser(request, env);
+  if (!auth.ok) return auth;
+  const admin = await restRpc<boolean>(auth.config, auth.token, "bs_is_admin", {});
+  if (!admin.data) {
+    return { ok: false, response: jsonResponse({ error: "Admin access required" }, 403) };
+  }
+  return { ok: true, user: auth.user, token: auth.token, config: auth.config };
+}

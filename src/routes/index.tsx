@@ -146,14 +146,30 @@ function Landing() {
   const [sections, setSections] = useState<Section[] | null>(null);
 
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("homepage_sections")
-        .select("*")
-        .eq("visible", true)
-        .order("position", { ascending: true });
-      setSections((data as Section[]) ?? []);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("homepage_sections")
+          .select("*")
+          .eq("visible", true)
+          .order("position", { ascending: true });
+        if (cancelled) return;
+        if (error) {
+          console.error("[homepage] sections load failed", error.message);
+          setSections([]);
+          return;
+        }
+        setSections((data as Section[]) ?? []);
+      } catch (e) {
+        if (cancelled) return;
+        console.error("[homepage] sections load failed", e);
+        setSections([]);
+      }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   /* `isolate` on the root is load-bearing: it makes this element a stacking

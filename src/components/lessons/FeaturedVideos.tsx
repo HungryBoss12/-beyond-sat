@@ -200,18 +200,18 @@ function VideoStripSkeleton({ heading }: { heading: string }) {
   );
 }
 
-export function ForYouVideos() {
+export function ForYouVideos({ section }: { section?: "rw" | "math" | null }) {
   const [videos, setVideos] = useState<RecommendedVideo[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void fetchYoutubeRecs().then((list) => {
+    void fetchYoutubeRecs(section ?? null).then((list) => {
       if (!cancelled) setVideos(list.slice(0, SECTION_REC_LIMIT));
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [section]);
 
   if (videos === null) return <VideoStripSkeleton heading="For you" />;
 

@@ -487,11 +487,14 @@ export async function deleteRecommended(id: string) {
   err("Could not delete recommended video", error);
 }
 
-export async function fetchYoutubeRecs(): Promise<RecommendedVideo[]> {
+export async function fetchYoutubeRecs(
+  section?: "rw" | "math" | null,
+): Promise<RecommendedVideo[]> {
   const token = (await supabase.auth.getSession()).data.session?.access_token;
   if (!token) return [];
   try {
-    const response = await fetch("/api/ai/youtube-recs", {
+    const qs = section ? `?section=${encodeURIComponent(section)}` : "";
+    const response = await fetch(`/api/ai/youtube-recs${qs}`, {
       headers: { authorization: `Bearer ${token}` },
     });
     if (!response.ok) return [];

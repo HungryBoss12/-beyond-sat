@@ -15,6 +15,7 @@ export type YoutubeRec = {
 
 type CacheRow = {
   query: string;
+  section: string | null;
   videos: YoutubeRec[];
   updated_at: string;
 };
@@ -88,12 +89,56 @@ const SKILL_QUERIES: [RegExp, string][] = [
   [/\bwriting\b|\bexpression of ideas\b/, "Digital SAT writing and language"],
 ];
 
-export function buildSearchQuery(uinfo: string, hint = ""): string {
+/** Section kind used to scope "For you" video recs. `null` = unscoped. */
+export type YoutubeSection = "rw" | "math" | null;
+
+export function parseYoutubeSection(value: string | null | undefined): YoutubeSection {
+  const v = (value ?? "").toLowerCase();
+  if (v === "rw" || v === "math") return v;
+  return null;
+}
+
+// Section-pinned fallback queries (used when uinfo has no in-section skill hit).
+const SECTION_FALLBACK: Exclude<YoutubeSection, null> extends never ? never : Record<"rw" | "math", string> = {
+  rw: "Digital SAT reading writing grammar lesson",
+  math: "Digital SAT math algebra practice lesson",
+};
+
+// Titles that betray an off-section video; used as a post-search safety net.
+const CROSS_SECTION_DENY: Record<"rw" | "math", RegExp[]> = {
+  rw: [/\balgebra\b/i, /\bgeometr/i, /\btrigonometr/i, /\bcalculus\b/i, /\b equation\b/i, /\bquadratic/i, /\bgraph/i],
+  math: [/\bgrammar\b/i, /\breading comprehension\b/i, /\bvocabulary\b/i, /\bwriting\b(?! skills? strategies?)/i, /\bsat essay\b/i],
+};
+
+export function buildSearchQuery(uinfo: string, hint = "", section: YoutubeSection = null): string {
   const blob = `${hint}\n${uinfo}`.toLowerCase();
+  if (section) {
+    // In-section skill match first…
+    for (const [re, query] of SKILL_QUERIES) {
+      if (re.test(blob) && sectionAllows(section, query)) return query;
+    }
+    // …then pinned section query (never falls through to the other section).
+    return SECTION_FALLBACK[section];
+  }
   for (const [re, query] of SKILL_QUERIES) {
     if (re.test(blob)) return query;
   }
   return "Digital SAT practice lesson";
+}
+
+function sectionAllows(section: "rw" | "math", query: string): boolean {
+  const q = query.toLowerCase();
+  if (section === "math") return /algebra|geometry|trigonometry|data analysis|advanced math/.test(q);
+  return /grammar|vocabulary|reading|writing/.test(q);
+}
+
+/** Drop videos whose title is clearly from the other section (safety net). */
+export function filterCrossSection(videos: YoutubeRec[], section: YoutubeSection): YoutubeRec[] {
+  if (!section) return videos;
+  const deny = CROSS_SECTION_DENY[section];
+  const kept = videos.filter((v) => !deny.some((re) => re.test(v.title)));
+  // Keep at least one result even if the deny-list eats everything.
+  return kept.length > 0 ? kept : videos.slice(0, 1);
 }
 
 export function formatYoutubePromptBlock(videos: YoutubeRec[]): string {
@@ -192,14 +237,20 @@ async function readCache(
   url: string,
   serviceKey: string,
   userId: string,
+  section: "rw" | "math" | null,
 ): Promise<CacheRow | null> {
+  const parts = [`user_id=eq.${encodeURIComponent(userId)}`];
+  // Explicit section match so a stale cross-section row can never leak.
+  // '' (empty string) marks unscoped legacy/chat rows.
+  parts.push(section ? `section=eq.${section}` : `section=eq.`);
   const res = await fetch(
-    `${url}/rest/v1/youtube_rec_cache?user_id=eq.${encodeURIComponent(userId)}&select=query,videos,updated_at`,
+    `${url}/rest/v1/youtube_rec_cache?${parts.join("&")}&select=query,section,videos,updated_at`,
     { headers: restHeaders(serviceKey) },
   );
   if (!res.ok) return null;
   const rows = (await res.json()) as {
     query?: string;
+    section?: string | null;
     videos?: YoutubeRec[];
     updated_at?: string;
   }[];
@@ -207,6 +258,7 @@ async function readCache(
   if (!row?.updated_at || !Array.isArray(row.videos)) return null;
   return {
     query: row.query ?? "",
+    section: row.section ?? null,
     videos: row.videos,
     updated_at: row.updated_at,
   };
@@ -224,14 +276,16 @@ async function writeCache(
   url: string,
   serviceKey: string,
   userId: string,
+  section: "rw" | "math" | null,
   query: string,
   videos: YoutubeRec[],
 ): Promise<void> {
-  await fetch(`${url}/rest/v1/youtube_rec_cache?on_conflict=user_id`, {
+  await fetch(`${url}/rest/v1/youtube_rec_cache?on_conflict=user_id,section`, {
     method: "POST",
     headers: { ...restHeaders(serviceKey), Prefer: "resolution=merge-duplicates" },
     body: JSON.stringify({
       user_id: userId,
+      section: section ?? "",
       query,
       videos,
       updated_at: new Date().toISOString(),
@@ -308,23 +362,23 @@ export async function loadYoutubeRecs(
   env: unknown,
   userId: string,
   uinfo: string,
-  opts?: { refresh?: boolean; hint?: string; allowSearch?: boolean },
+  opts?: { refresh?: boolean; hint?: string; allowSearch?: boolean; section?: YoutubeSection },
 ): Promise<YoutubeRec[]> {
   const url = readEnv(env, "SUPABASE_URL") ?? readEnv(env, "VITE_SUPABASE_URL");
   const serviceKey = readEnv(env, "SUPABASE_SERVICE_ROLE_KEY");
+  const section = opts?.section ?? null;
 
-  const query = buildSearchQuery(uinfo, opts?.hint ?? "");
-  const cached =
-    url && serviceKey ? await readCache(url, serviceKey, userId) : null;
+  const query = buildSearchQuery(uinfo, opts?.hint ?? "", section);
+  const cached = url && serviceKey ? await readCache(url, serviceKey, userId, section) : null;
 
   if (!opts?.refresh) {
     const exact = cacheFresh(cached, query);
-    if (exact) return exact.slice(0, MAX_RECS);
-    if (!opts?.allowSearch) return (cacheFresh(cached) ?? []).slice(0, MAX_RECS);
+    if (exact) return filterCrossSection(exact, section).slice(0, MAX_RECS);
+    if (!opts?.allowSearch) return filterCrossSection(cacheFresh(cached) ?? [], section).slice(0, MAX_RECS);
   }
 
   const apiKeys = await resolveApiKeys(env, url, serviceKey);
-  if (apiKeys.length === 0) return cacheFresh(cached) ?? [];
+  if (apiKeys.length === 0) return filterCrossSection(cacheFresh(cached) ?? [], section).slice(0, MAX_RECS);
 
   try {
     for (let i = 0; i < apiKeys.length; i++) {
@@ -334,27 +388,31 @@ export async function loadYoutubeRecs(
         if (outcome.retry) continue;
         break;
       }
-      const videos = outcome.videos.slice(0, MAX_RECS);
-      if (videos.length === 0) return cacheFresh(cached) ?? [];
+      const videos = filterCrossSection(outcome.videos, section).slice(0, MAX_RECS);
+      if (videos.length === 0) return filterCrossSection(cacheFresh(cached) ?? [], section).slice(0, MAX_RECS);
       if (url && serviceKey) {
-        await writeCache(url, serviceKey, userId, query, videos);
+        await writeCache(url, serviceKey, userId, section, query, videos);
       }
       return videos;
     }
-    return cacheFresh(cached) ?? [];
+    return filterCrossSection(cacheFresh(cached) ?? [], section).slice(0, MAX_RECS);
   } catch (error) {
     console.error("[youtube] search failed", error);
-    return cacheFresh(cached) ?? [];
+    return filterCrossSection(cacheFresh(cached) ?? [], section).slice(0, MAX_RECS);
   }
 }
 
 /** Warm cache only — never calls YouTube. */
-export async function loadCachedYoutubeRecs(env: unknown, userId: string): Promise<YoutubeRec[]> {
+export async function loadCachedYoutubeRecs(
+  env: unknown,
+  userId: string,
+  section: YoutubeSection = null,
+): Promise<YoutubeRec[]> {
   const url = readEnv(env, "SUPABASE_URL") ?? readEnv(env, "VITE_SUPABASE_URL");
   const serviceKey = readEnv(env, "SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !serviceKey) return [];
-  const cached = await readCache(url, serviceKey, userId);
-  return (cacheFresh(cached) ?? []).slice(0, MAX_RECS);
+  const cached = await readCache(url, serviceKey, userId, section);
+  return filterCrossSection(cacheFresh(cached) ?? [], section).slice(0, MAX_RECS);
 }
 
 export async function handleYoutubeRecs(request: Request, env: unknown): Promise<Response> {
@@ -369,8 +427,9 @@ export async function handleYoutubeRecs(request: Request, env: unknown): Promise
   if (!user) return json({ error: "Your session has expired. Sign in again." }, 401);
 
   try {
+    const section = parseYoutubeSection(new URL(request.url).searchParams.get("section"));
     const uinfo = await loadUinfoSummary(env, user.id);
-    const videos = await loadYoutubeRecs(env, user.id, uinfo, { allowSearch: true });
+    const videos = await loadYoutubeRecs(env, user.id, uinfo, { allowSearch: true, section });
     return json({ videos }, 200);
   } catch (error) {
     console.error("[youtube] recs endpoint failed", error);

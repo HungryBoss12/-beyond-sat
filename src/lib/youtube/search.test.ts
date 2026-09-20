@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSearchQuery,
+  filterCrossSection,
   formatYoutubePromptBlock,
   latestUserText,
   parseApiKeys,
   parseIsoDuration,
+  parseYoutubeSection,
   videoIntent,
 } from "./search";
 
@@ -43,6 +45,74 @@ describe("buildSearchQuery", () => {
 
   it("falls back to a generic SAT query", () => {
     expect(buildSearchQuery("")).toBe("Digital SAT practice lesson");
+  });
+});
+
+describe("parseYoutubeSection", () => {
+  it("accepts rw and math (case-insensitive)", () => {
+    expect(parseYoutubeSection("rw")).toBe("rw");
+    expect(parseYoutubeSection("MATH")).toBe("math");
+  });
+
+  it("rejects unknown or missing values", () => {
+    expect(parseYoutubeSection("english")).toBeNull();
+    expect(parseYoutubeSection(null)).toBeNull();
+    expect(parseYoutubeSection("")).toBeNull();
+  });
+});
+
+describe("buildSearchQuery with section", () => {
+  it("keeps in-section skill hits", () => {
+    expect(buildSearchQuery("weak in algebra", "", "math")).toBe("Digital SAT algebra practice");
+    expect(buildSearchQuery("", "grammar help", "rw")).toBe("Digital SAT grammar writing");
+  });
+
+  it("never crosses sections on out-of-section skill mentions", () => {
+    // uinfo mentions algebra but the page is RW → pinned RW query.
+    expect(buildSearchQuery("weak in algebra", "", "rw")).toBe(
+      "Digital SAT reading writing grammar lesson",
+    );
+    // uinfo mentions grammar but the page is Math → pinned Math query.
+    expect(buildSearchQuery("struggles with grammar", "", "math")).toBe(
+      "Digital SAT math algebra practice lesson",
+    );
+  });
+
+  it("falls back to the pinned section query with empty uinfo", () => {
+    expect(buildSearchQuery("", "", "math")).toBe("Digital SAT math algebra practice lesson");
+    expect(buildSearchQuery("", "", "rw")).toBe("Digital SAT reading writing grammar lesson");
+  });
+});
+
+describe("filterCrossSection", () => {
+  const algebraVideo = {
+    title: "Algebra basics",
+    url: "u1",
+    channel: "c",
+    videoId: "v1",
+    durationSeconds: null,
+  };
+  const grammarVideo = {
+    title: "SAT grammar tips",
+    url: "u2",
+    channel: "c",
+    videoId: "v2",
+    durationSeconds: null,
+  };
+
+  it("drops off-section titles on RW pages", () => {
+    const out = filterCrossSection([algebraVideo, grammarVideo], "rw");
+    expect(out.map((v) => v.videoId)).toEqual(["v2"]);
+  });
+
+  it("drops off-section titles on Math pages", () => {
+    const out = filterCrossSection([algebraVideo, grammarVideo], "math");
+    expect(out.map((v) => v.videoId)).toEqual(["v1"]);
+  });
+
+  it("is a no-op without a section and never returns empty", () => {
+    expect(filterCrossSection([algebraVideo, grammarVideo], null)).toHaveLength(2);
+    expect(filterCrossSection([algebraVideo], "rw")).toHaveLength(1); // fallback keeps 1
   });
 });
 

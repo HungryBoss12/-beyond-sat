@@ -89,7 +89,7 @@ function LessonSkills() {
           </Link>
         ))}
       </div>
-      <ForYouVideos />
+      <ForYouVideos section={sectionKind(subjectSlug)} />
       <FeaturedVideos videos={featured} />
     </div>
   );

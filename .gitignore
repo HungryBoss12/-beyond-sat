@@ -44,3 +44,55 @@ pnpm-lock.yaml
 **/__pycache__/
 *.pyc
 
+# Local import / OCR / dump scratch (not shipped)
+tmp-*/
+tmp-*.jpg
+tmp-*.png
+tmp-*.zip
+supabase/.temp/
+BeyondSAT_SQB_*.md
+ordinary-test-adder-setup.png
+policies-dump.txt
+*-dump.txt
+*-dump-full.txt
+
+# Generated page renders & import payloads under scripts/
+scripts/**/*-pages/
+scripts/.import-*-progress.json
+scripts/*-dump.txt
+scripts/*-dump-full.txt
+scripts/nov2024-gemini-raw.txt
+scripts/dec2024-c-answers.json
+scripts/dec2024-c-questions.json
+scripts/may2025-math-blocks.json
+scripts/int-answers-todo.json
+scripts/test-page1.jpg
+
+# One-off local scratch scripts (git add -f to promote)
+scripts/attach-dec2024-c-figures.mjs
+scripts/check-dec2024-figures.mjs
+scripts/check-dec2024-tests.mjs
+scripts/check-may2025-math.mjs
+scripts/check-rw-tests.mjs
+scripts/debug-*.mjs
+scripts/dump-may2025-math.mjs
+scripts/dump-profiles-cols.mjs
+scripts/dump-role-policies.mjs
+scripts/extract-dec2024-c-text.*
+scripts/fix-dec2024-*.mjs
+scripts/fix-may2025-answers.mjs
+scripts/import-dec2024-c-*.mjs
+scripts/import-may2025-math.mjs
+scripts/inspect-*.mjs
+scripts/list-may2025-order.mjs
+scripts/may2025-dims.mjs
+scripts/patch-sqb-*.mjs
+scripts/pentest/verify-create-user-admin.mjs
+scripts/recheck-dec2024*.mjs
+scripts/test-role-oracle.mjs
+scripts/ts-check/
+scripts/verify-dec2024-import.mjs
+scripts/apply-sqb-schema.mjs
+scripts/smoke-sqb-katex.mjs
+scripts/verify-sqb-cols.mjs
+

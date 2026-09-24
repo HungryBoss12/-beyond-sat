@@ -68,7 +68,9 @@ function SessionReview() {
         const chunk = ids.slice(i, i + chunkSize);
         const { data, error: qErr } = await supabase
           .from("questions")
-          .select("id,section,skill,difficulty,kind,prompt,question_text,choices,image_url")
+          .select(
+            "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,bank_format,external_id,domain,subskill,image_alt",
+          )
           .in("id", chunk);
         if (qErr) {
           setErr(qErr.message);

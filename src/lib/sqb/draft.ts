@@ -118,6 +118,6 @@ export function normalizeSqbDifficulty(raw: string, fallback = "C"): string {
   const mapped = mapSqbWordDifficulty(raw);
   if (mapped) return mapped;
   const t = raw.trim().toUpperCase();
-  if (["C", "D", "B", "A", "S"].includes(t)) return t;
+  if (["A", "B", "C"].includes(t)) return t;
   return fallback;
 }

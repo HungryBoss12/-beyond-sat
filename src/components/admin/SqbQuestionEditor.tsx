@@ -181,7 +181,7 @@ export function SqbQuestionEditor({
         time_limit_seconds: editing.time_limit_seconds,
         bank_format: "sqb" as const,
         external_id: (editing.external_id ?? "").trim() || null,
-        assessment: (editing.assessment ?? "").trim() || null,
+        assessment: (editing.assessment ?? "").trim() || "SAT",
         domain,
         subskill: (editing.subskill ?? "").trim() || null,
         image_alt: (editing.image_alt ?? "").trim() || null,
@@ -285,8 +285,6 @@ export function SqbQuestionEditor({
           }
         >
           <div className="flex flex-wrap gap-2 rounded-xl border border-brand-400/40 bg-brand-800/40 p-3 text-[11px] font-semibold uppercase tracking-wider text-brand-100">
-            <span>{editing.assessment || "Assessment"}</span>
-            <span>·</span>
             <span>{SECTION_LABEL[editing.section]}</span>
             <span>·</span>
             <span>{resolveDomain(editing) || "Domain"}</span>
@@ -297,20 +295,12 @@ export function SqbQuestionEditor({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Assessment">
-              <input
-                className={CONTROL}
-                value={editing.assessment ?? ""}
-                onChange={(e) => patch({ assessment: e.target.value })}
-                placeholder="SAT"
-              />
-            </Field>
-            <Field label="External ID">
+            <Field label="Question ID">
               <input
                 className={CONTROL + " font-mono"}
                 value={editing.external_id ?? ""}
                 onChange={(e) => patch({ external_id: e.target.value })}
-                placeholder="optional hex id"
+                placeholder="e.g. 84b5125b"
               />
             </Field>
             <Field label="Section">

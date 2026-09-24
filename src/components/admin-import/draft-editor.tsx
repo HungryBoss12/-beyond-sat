@@ -53,7 +53,7 @@ export function DraftEditor({
   /** Another draft already uses this module + number. */
   numberCollision?: boolean;
   onChange: (patch: DraftEditorPatch) => void;
-  /** SQB shows Assessment / Domain / Subskill / external_id / image_alt. */
+  /** SQB shows Question ID / Domain / Subskill / image_alt. */
   variant?: "ordinary" | "sqb";
 }) {
   const rec = draft.rec;
@@ -139,21 +139,12 @@ export function DraftEditor({
     <div className="space-y-3">
       {variant === "sqb" && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Assessment">
-            <input
-              value={rec.assessment ?? "SAT"}
-              disabled={disabled}
-              onChange={(e) => setField("assessment", e.target.value)}
-              className={CONTROL_CLASS + " disabled:opacity-40"}
-              placeholder="SAT"
-            />
-          </Field>
-          <Field label="External ID">
+          <Field label="Question ID">
             <input
               value={rec.external_id ?? ""}
               disabled={disabled}
               onChange={(e) => setField("external_id", e.target.value)}
-              className={CONTROL_CLASS + " disabled:opacity-40"}
+              className={CONTROL_CLASS + " disabled:opacity-40 font-mono"}
               placeholder="e.g. 858fd1cf"
             />
           </Field>
@@ -258,7 +249,7 @@ export function DraftEditor({
               value: d,
               label:
                 variant === "sqb"
-                  ? `${d}${d === "C" ? " (easiest)" : d === "S" ? " (hardest)" : ""}`
+                  ? `${d}${d === "A" ? " (hardest)" : d === "B" ? " (medium)" : d === "C" ? " (easiest)" : ""}`
                   : `${d}${d === "A" ? " (hardest)" : d === "C" ? " (easiest)" : ""}`,
             }))}
           />

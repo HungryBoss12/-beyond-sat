@@ -20,9 +20,9 @@ Ordinary `/admin/import?bank=sqb` and `/admin/questions?bank=sqb` redirect into 
 
 JSON only for questions and answers — no PDF / vision / sheet:
 
-1. **JSON** — Paste or drop a questions JSON array (`JSON_TEMPLATE` includes an SQB sample). Optional theme → title (`Math — Circles`), section, source date, Create a test set. Rights checkbox required. Parse forces `bank_format=sqb` and `published=false`.
-2. **Review** — SQB `DraftReviewer` / `DraftEditor` (metadata ribbon, figures). Continue to Answers (no save yet).
-3. **Answers** — Paste or drop answers JSON (`external_id` + `correct`, optional `explanation`). Apply by Question ID (fallback pack order). **Save** creates unpublished questions + optional theme pack (`tests.module = 1`). Answers step is skippable.
+1. **JSON** — Paste or drop a questions JSON array (`JSON_TEMPLATE` includes an SQB sample). Optional **Name** for the pack, section, source date, Create a test set. Rights checkbox required. Parse forces `bank_format=sqb` and `published=false`. Each row needs a **Question ID** (`question_id` / `external_id` / `sqb_id`).
+2. **Review** — SQB `DraftReviewer` / `DraftEditor` (Question ID, domain/skill, figures). Continue to Answers (no save yet).
+3. **Answers** — Paste or drop answers JSON (`external_id` / `question_id` + `correct`, optional `explanation`). Apply by Question ID (fallback pack order). **Save** creates unpublished questions + optional named pack (`tests.module = 1`). Answers step is skippable.
 
 Never auto-publishes. Do not seed College Board copyrighted stems from sample content.
 
@@ -42,16 +42,17 @@ Also accepted: `{ "answers": [ ... ] }`, aliases `question_id` / `sqb_id`, grid-
 
 `/admin/sqb/review/$testId` is the canonical QA surface before go-live:
 
-- Student chrome preview (`QuestionCard`) + navigator with ok/warn/error dots
-- Per-item QA from `validateSqbPublish` (+ duplicate `external_id` in pack)
+- Student chrome preview (`QuestionCard` with `ID: …` banner) + navigator with ok/warn/error dots
+- Per-item QA from `validateSqbPublish` (+ duplicate Question ID in pack)
 - **Publish** disabled until hard errors = 0 and every item is marked reviewed
 - Hub Eye button opens Review (not only a modal preview)
 - **Back to editor** restores the set into `/admin/sqb/import?testId=`
 
 ### Authoring (single question)
 
-- Metadata: Assessment · Section · Domain (`skill`) · Skill (`subskill`) · Difficulty **C → D → B → A → S**
+- Metadata: Section · Domain (`skill`) · Skill (`subskill`) · Difficulty **A → B → C** (A hardest, C easiest) · **Question ID** (required)
 - Figure + **image_alt** required to publish when an image is set
+- Assessment defaults to `SAT` on save (not shown in UI)
 - New SQB questions start **unpublished**
 
 ### Publishing a test
@@ -61,9 +62,9 @@ A published SQB test cannot include unpublished SQB questions (admin UI gate + D
 ## Student
 
 - Practice landing **SQB Tests** card → `/practice/sqb`
-- Browse `/practice/sqb/math` and `/practice/sqb/reading_writing` (published `bank_format=sqb` only) — **theme packs** (one Start row per title, not Module 1/2)
+- Browse `/practice/sqb/math` and `/practice/sqb/reading_writing` (published `bank_format=sqb` only) — named packs (one Start row per title, not Module 1/2)
 - Ordinary Math / Reading & Writing lists exclude SQB
-- Take path unchanged: session → existing `TestPlayer`
+- Take path unchanged: session → existing `TestPlayer` (SQB shows Question ID banner)
 
 ## Schema (additive)
 

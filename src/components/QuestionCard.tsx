@@ -520,16 +520,17 @@ function QuestionBody({
         )}
       </div>
 
-      {(q.bank_format === "sqb" || q.domain || q.subskill || q.external_id) && (
+      {q.bank_format === "sqb" && (q.external_id ?? "").trim() ? (
+        <div className="mb-2 rounded bg-[#1a365d] px-3 py-1.5 font-mono text-sm font-semibold text-white">
+          ID: {(q.external_id ?? "").trim()}
+        </div>
+      ) : null}
+
+      {(q.bank_format === "sqb" || q.domain || q.subskill) && (
         <div className="flex flex-wrap gap-1.5 pb-2 pt-1">
           {q.bank_format === "sqb" && (
             <span className="rounded bg-test-well px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-test-muted">
               SQB
-            </span>
-          )}
-          {q.external_id && (
-            <span className="rounded bg-test-well px-1.5 py-0.5 font-mono text-[10px] font-semibold text-test-muted">
-              {q.external_id}
             </span>
           )}
           {(q.domain || q.skill) && (

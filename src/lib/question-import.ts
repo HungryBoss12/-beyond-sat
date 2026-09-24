@@ -715,6 +715,9 @@ export function validateRecord(
   if (bank_format === "sqb" && !subskill) {
     warnings.push("SQB row missing subskill — required before publish.");
   }
+  if (bank_format === "sqb" && !external_id) {
+    errors.push("SQB row missing Question ID (question_id / external_id).");
+  }
 
   const figureErr = figureDependencyError(rec, opts);
   if (figureErr) errors.push(figureErr);
@@ -922,8 +925,7 @@ export const JSON_TEMPLATE = `[
     "difficulty": "B",
     "kind": "multiple_choice",
     "bank_format": "sqb",
-    "external_id": "demo01ab",
-    "assessment": "SAT",
+    "question_id": "demo01ab",
     "question_text": "In the figure above, what is the radius of circle $O$?",
     "choices": ["2", "3", "4", "5"],
     "correct": "C",

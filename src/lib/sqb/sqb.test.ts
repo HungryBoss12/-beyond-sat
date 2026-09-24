@@ -19,6 +19,7 @@ function completeMcq() {
   q.subskill = "Linear equations";
   q.difficulty = "B";
   q.assessment = "SAT";
+  q.external_id = "abc12345";
   q.explanation = "Because $2+2=4$.";
   q.choices = [
     { id: "A", text: "3", image_url: null },
@@ -108,6 +109,27 @@ describe("SQB publish gates", () => {
       true,
     );
   });
+
+  it("hard-blocks missing Question ID", () => {
+    const q = completeMcq();
+    q.external_id = "";
+    expect(sqbPublishBlocked(q)).toBe(true);
+    expect(
+      validateSqbPublish(q).some(
+        (i) => i.field === "external_id" && i.level === "error",
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects D and S as SQB difficulties", () => {
+    const q = completeMcq();
+    q.difficulty = "D";
+    expect(sqbPublishBlocked(q)).toBe(true);
+    q.difficulty = "S";
+    expect(sqbPublishBlocked(q)).toBe(true);
+    q.difficulty = "A";
+    expect(sqbPublishBlocked(q)).toBe(false);
+  });
 });
 
 describe("SQB pack external_id dupes", () => {
@@ -162,6 +184,47 @@ describe("SQB import", () => {
 
     const forced = forceBankFormat(parsed.rows, "sqb");
     expect(forced[0]?.question?.published).toBe(false);
+  });
+
+  it("errors when SQB row lacks Question ID", () => {
+    const raw = JSON.stringify([
+      {
+        section: "math",
+        skill: "Algebra",
+        subskill: "Linear",
+        difficulty: "C",
+        kind: "multiple_choice",
+        bank_format: "sqb",
+        question_text: "Solve $x=1$",
+        choices: ["0", "1", "2", "3"],
+        correct: "B",
+      },
+    ]);
+    const parsed = parseJson(raw);
+    expect(parsed.fatal).toBeNull();
+    expect(parsed.rows[0]?.question).toBeNull();
+    expect(
+      parsed.rows[0]?.errors.some((e) => /Question ID/i.test(e)),
+    ).toBe(true);
+  });
+
+  it("accepts question_id alias for SQB", () => {
+    const raw = JSON.stringify([
+      {
+        section: "math",
+        skill: "Algebra",
+        subskill: "Linear",
+        difficulty: "A",
+        kind: "multiple_choice",
+        bank_format: "sqb",
+        question_id: "deadbeef",
+        question_text: "Solve $x=1$",
+        choices: ["0", "1", "2", "3"],
+        correct: "B",
+      },
+    ]);
+    const parsed = parseJson(raw);
+    expect(parsed.rows[0]?.question?.external_id).toBe("deadbeef");
   });
 });
 

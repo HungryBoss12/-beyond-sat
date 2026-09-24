@@ -1,16 +1,14 @@
 import type { AdminQuestion } from "@/lib/admin/question";
 import type { Difficulty, Section } from "@/lib/sat";
 
-/** SQB letter scale: easiest → hardest. */
-export const SQB_DIFFICULTIES = ["C", "D", "B", "A", "S"] as const;
+/** SQB letter scale: hardest → easiest. */
+export const SQB_DIFFICULTIES = ["A", "B", "C"] as const;
 export type SqbDifficulty = (typeof SQB_DIFFICULTIES)[number];
 
 export const SQB_DIFFICULTY_HINT: Record<SqbDifficulty, string> = {
+  A: "hardest",
+  B: "medium",
   C: "easiest",
-  D: "",
-  B: "",
-  A: "",
-  S: "hardest",
 };
 
 /** Default pack title from section + theme (e.g. Math — Circles). */
@@ -85,11 +83,19 @@ export function validateSqbPublish(q: AdminQuestion): PublishIssue[] {
     issues.push({ level: "error", field: "subskill", message: "Skill (subskill) is required to publish." });
   }
 
+  if (!(q.external_id ?? "").trim()) {
+    issues.push({
+      level: "error",
+      field: "external_id",
+      message: "Question ID is required to publish.",
+    });
+  }
+
   if (!isSqbDifficulty(q.difficulty)) {
     issues.push({
       level: "error",
       field: "difficulty",
-      message: "Difficulty must be one of C, D, B, A, S.",
+      message: "Difficulty must be A, B, or C.",
     });
   }
 
@@ -159,14 +165,6 @@ export function validateSqbPublish(q: AdminQuestion): PublishIssue[] {
       level: "warning",
       field: "question_text",
       message: "Stem looks very short.",
-    });
-  }
-
-  if (!(q.assessment ?? "").trim()) {
-    issues.push({
-      level: "warning",
-      field: "assessment",
-      message: "Assessment is empty (e.g. SAT).",
     });
   }
 

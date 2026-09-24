@@ -35,9 +35,6 @@ import {
 import {
   SQB_DIFFICULTIES,
   SQB_DIFFICULTY_HINT,
-  isAutoSqbThemeTitle,
-  sqbThemeTitle,
-  themeFromSqbTitle,
   type SqbDifficulty,
 } from "@/lib/sqb";
 import { uploadQuestionImage } from "@/lib/import/upload-question-image";
@@ -102,12 +99,10 @@ function AdminSqbImportWizard() {
   const [step, setStep] = useState<ImportWizardStep>("source");
   const [makeSet, setMakeSet] = useState(true);
   const [title, setTitle] = useState("");
-  const [theme, setTheme] = useState("");
   const [section, setSection] = useState<Section>("math");
   const [difficulty, setDifficulty] = useState<SqbDifficulty>("C");
   const [month, setMonth] = useState<number | null>(null);
   const [year, setYear] = useState<number | null>(new Date().getFullYear());
-  const [assessment, setAssessment] = useState("SAT");
   const [defaultDomain, setDefaultDomain] = useState("");
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
 
@@ -155,16 +150,10 @@ function AdminSqbImportWizard() {
       source_month: month != null ? String(month) : "",
       source_year: year != null ? String(year) : "",
       module: "1",
-      assessment: assessment.trim() || "SAT",
+      assessment: "SAT",
       domain: skill,
-      subskill: theme.trim() || "",
+      subskill: "",
     };
-  }
-
-  function syncTitleFromTheme(nextSection: Section, nextTheme: string) {
-    setTitle((prev) =>
-      isAutoSqbThemeTitle(prev, section, theme) ? sqbThemeTitle(nextSection, nextTheme) : prev,
-    );
   }
 
   async function fetchExisting() {
@@ -177,16 +166,7 @@ function AdminSqbImportWizard() {
   }
 
   function commitDrafts(list: Draft[], extraNotes: string[] = []) {
-    let stamped = stampSqbDrafts(list, defaults());
-    if (theme.trim()) {
-      stamped = stamped.map((d) => ({
-        ...d,
-        rec: {
-          ...d.rec,
-          subskill: (d.rec.subskill ?? "").trim() || theme.trim(),
-        },
-      }));
-    }
+    const stamped = stampSqbDrafts(list, defaults());
     setDrafts(stamped);
     setNotes(extraNotes);
     if (stamped.length > 0) {
@@ -234,7 +214,7 @@ function AdminSqbImportWizard() {
           choice_D: r.question!.choices.find((c) => c.id === "D")?.text ?? "",
           image_url: r.question!.image_url ?? "",
           bank_format: "sqb",
-          assessment: r.question!.assessment ?? assessment,
+          assessment: r.question!.assessment || "SAT",
           domain: r.question!.domain || r.question!.skill,
           subskill: r.question!.subskill ?? "",
           external_id: r.question!.external_id ?? "",
@@ -246,10 +226,8 @@ function AdminSqbImportWizard() {
       setReadError("No valid rows to import.");
       return;
     }
-    if (!title.trim() && theme.trim()) {
-      setTitle(sqbThemeTitle(section, theme));
-    } else if (!title.trim()) {
-      setTitle(sqbThemeTitle(section, "Pack"));
+    if (!title.trim()) {
+      setTitle("SQB Pack");
     }
     commitDrafts(list, [`Parsed ${list.length} SQB row(s) from JSON.`]);
   }
@@ -300,7 +278,6 @@ function AdminSqbImportWizard() {
       setExistingTestId(id);
       setTitle(list.test.title);
       setSection(list.test.section);
-      setTheme(themeFromSqbTitle(list.test.title, list.test.section));
       setMakeSet(true);
       setRightsConfirmed(true);
       commitDrafts(
@@ -426,7 +403,7 @@ function AdminSqbImportWizard() {
             bank_format: "sqb",
             published: false,
             domain: q.domain || q.skill,
-            assessment: q.assessment || assessment || "SAT",
+            assessment: q.assessment || "SAT",
             created_by: uid,
           },
         });
@@ -595,9 +572,8 @@ function AdminSqbImportWizard() {
               <div>
                 <h2 className="text-sm font-bold text-white">1 · JSON</h2>
                 <p className="mt-1 max-w-2xl text-xs leading-relaxed text-brand-100">
-                  Paste a JSON array of SQB questions. Pack title defaults to{" "}
-                  <strong className="text-white">Math — Circles</strong>-style themes. Always saves
-                  unpublished.
+                  Paste a JSON array of SQB questions. Name the pack below when creating a test
+                  set. Always saves unpublished.
                 </p>
                 <p className="mt-2 rounded-lg bg-brand-800 px-3 py-2 text-xs font-semibold text-amber-100 ring-1 ring-brand-400/40">
                   Do not upload College Board copyrighted stems — format reference only.
@@ -615,44 +591,28 @@ function AdminSqbImportWizard() {
             </div>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <Field label="Theme">
-                <input
-                  value={theme}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    syncTitleFromTheme(section, next);
-                    setTheme(next);
-                  }}
-                  placeholder="Circles"
-                  className={CONTROL_CLASS}
-                />
-              </Field>
-              <Field label="Test name">
+              <Field label="Name">
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder={sqbThemeTitle(section, theme || "Circles")}
+                  placeholder="Circles"
                   disabled={!makeSet}
                   className={CONTROL_CLASS + " disabled:opacity-40"}
                 />
               </Field>
-            </div>
-
-            <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <Field label="Section">
                 <AdminSelect
                   value={section}
-                  onValueChange={(v) => {
-                    const next = v as Section;
-                    syncTitleFromTheme(next, theme);
-                    setSection(next);
-                  }}
+                  onValueChange={(v) => setSection(v as Section)}
                   options={[
                     { value: "reading_writing", label: "Reading & Writing" },
                     { value: "math", label: "Math" },
                   ]}
                 />
               </Field>
+            </div>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
               <Field label="Difficulty default">
                 <AdminSelect
                   value={difficulty}
@@ -685,14 +645,6 @@ function AdminSqbImportWizard() {
             </div>
 
             <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <Field label="Assessment">
-                <input
-                  value={assessment}
-                  onChange={(e) => setAssessment(e.target.value)}
-                  className={CONTROL_CLASS}
-                  placeholder="SAT"
-                />
-              </Field>
               <Field label="Default Domain (optional)">
                 <AdminSelect
                   value={defaultDomain}

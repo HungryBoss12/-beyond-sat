@@ -1,5 +1,6 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { Plus, Trash2, Edit3, ImageIcon, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   SECTION_LABEL,
@@ -7,15 +8,9 @@ import {
   difficultyColor,
   type Section,
 } from "@/lib/sat";
-import { Plus, Trash2, Edit3, ImageIcon, Upload, Copy } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
+import { loadQuestionWithAnswers } from "@/components/admin/question-edit-modal";
 import {
-  QuestionEditModal,
-  loadQuestionWithAnswers,
-} from "@/components/admin/question-edit-modal";
-import { BankFormatSegment } from "@/components/admin/BankFormatSegment";
-import {
-  emptyAdminQuestion,
   type AdminChoice,
   type AdminQuestion,
   type BankFormat,
@@ -23,26 +18,15 @@ import {
 import { QUESTION_SELECT_COLS } from "@/lib/sqb";
 import { applyResolvedImageUrls } from "@/lib/storage-url";
 
-type Search = { bank?: BankFormat };
-
-export const Route = createFileRoute("/_authenticated/admin/questions")({
-  validateSearch: (s: Record<string, unknown>): Search => ({
-    bank: s.bank === "sqb" ? "sqb" : "ordinary",
-  }),
-  beforeLoad: ({ search }) => {
-    if ((search as Search).bank === "sqb") {
-      throw redirect({ to: "/admin/sqb/questions" });
-    }
-  },
-  component: AdminQuestions,
+export const Route = createFileRoute("/_authenticated/admin/sqb/questions/")({
+  component: AdminSqbQuestions,
+  head: () => ({ meta: [{ title: "SQB Questions — BeyondSAT Admin" }] }),
 });
 
-function AdminQuestions() {
-  const { bank } = Route.useSearch();
+function AdminSqbQuestions() {
   const navigate = useNavigate();
   const [items, setItems] = useState<AdminQuestion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<AdminQuestion | null>(null);
   const [filter, setFilter] = useState<Section | "all">("all");
 
   const load = useCallback(async () => {
@@ -50,7 +34,7 @@ function AdminQuestions() {
     let q = supabase
       .from("questions")
       .select(QUESTION_SELECT_COLS)
-      .eq("bank_format", bank)
+      .eq("bank_format", "sqb")
       .order("created_at", { ascending: false })
       .limit(300);
     if (filter !== "all") q = q.eq("section", filter);
@@ -58,7 +42,7 @@ function AdminQuestions() {
     const mapped = (data ?? []).map((r) => ({
       ...r,
       choices: (r.choices ?? []) as AdminChoice[],
-      bank_format: (r.bank_format as BankFormat) ?? bank,
+      bank_format: "sqb" as BankFormat,
       external_id: r.external_id ?? null,
       assessment: r.assessment ?? null,
       domain: r.domain ?? null,
@@ -72,69 +56,42 @@ function AdminQuestions() {
     }));
     setItems(await applyResolvedImageUrls(mapped));
     setLoading(false);
-  }, [filter, bank]);
+  }, [filter]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   async function remove(id: string) {
-    if (!confirm("Delete this question?")) return;
+    if (!confirm("Delete this SQB question?")) return;
     await supabase.from("questions").delete().eq("id", id);
     void load();
   }
 
   async function duplicate(q: AdminQuestion) {
     const full = await loadQuestionWithAnswers(q);
-    if (bank === "sqb") {
-      void navigate({
-        to: "/admin/sqb/questions/$id",
-        params: { id: "new" },
-      });
-      // Open editor with duplicated content via sessionStorage bridge
-      sessionStorage.setItem(
-        "sqb-draft",
-        JSON.stringify({ ...full, id: "", published: false, bank_format: "sqb" }),
-      );
-      return;
-    }
-    setEditing({ ...full, id: "" });
-  }
-
-  function openNew() {
-    if (bank === "sqb") {
-      sessionStorage.removeItem("sqb-draft");
-      void navigate({ to: "/admin/sqb/questions/$id", params: { id: "new" } });
-      return;
-    }
-    setEditing(emptyAdminQuestion());
-  }
-
-  async function openEdit(q: AdminQuestion) {
-    if (bank === "sqb") {
-      void navigate({ to: "/admin/sqb/questions/$id", params: { id: q.id } });
-      return;
-    }
-    setEditing(await loadQuestionWithAnswers(q));
+    sessionStorage.setItem(
+      "sqb-draft",
+      JSON.stringify({ ...full, id: "", published: false, bank_format: "sqb" }),
+    );
+    void navigate({ to: "/admin/sqb/questions/$id", params: { id: "new" } });
   }
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <BankFormatSegment
-            value={bank}
-            onChange={(next) =>
-              void navigate({
-                to: "/admin/questions",
-                search: next === "sqb" ? { bank: "sqb" } : {},
-              })
-            }
-          />
+        <div>
+          <h1 className="text-xl font-black tracking-tight text-brand-900">SQB Questions</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Question Bank–format items. Publish from the editor before adding to a live test.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-2">
             {(["all", "reading_writing", "math"] as const).map((k) => (
               <button
                 key={k}
+                type="button"
                 onClick={() => setFilter(k)}
                 className={
                   "tap rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wider " +
@@ -147,19 +104,15 @@ function AdminQuestions() {
               </button>
             ))}
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            to="/admin/import"
-            className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-400"
-          >
-            <Upload className="h-4 w-4" /> Add tests
-          </Link>
           <button
-            onClick={openNew}
+            type="button"
+            onClick={() => {
+              sessionStorage.removeItem("sqb-draft");
+              void navigate({ to: "/admin/sqb/questions/$id", params: { id: "new" } });
+            }}
             className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
           >
-            <Plus className="h-4 w-4" /> {bank === "sqb" ? "New SQB question" : "New question"}
+            <Plus className="h-4 w-4" /> New SQB question
           </button>
         </div>
       </div>
@@ -171,9 +124,7 @@ function AdminQuestions() {
       ) : (
         <div className="rise-in mt-6 overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel">
           {items.length === 0 ? (
-            <div className="p-8 text-center text-sm text-brand-100">
-              No {bank === "sqb" ? "SQB " : ""}questions yet.
-            </div>
+            <div className="p-8 text-center text-sm text-brand-100">No SQB questions yet.</div>
           ) : (
             <ul className="divide-y divide-brand-400/30">
               {items.map((q) => (
@@ -197,11 +148,9 @@ function AdminQuestions() {
                       {q.question_text || q.prompt}
                     </div>
                     <div className="mt-1 flex flex-wrap gap-1.5">
-                      {bank === "sqb" && (
-                        <span className="rounded bg-brand-400 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider text-white">
-                          {q.external_id || q.id.slice(0, 8)}
-                        </span>
-                      )}
+                      <span className="rounded bg-brand-400 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider text-white">
+                        {q.external_id || q.id.slice(0, 8)}
+                      </span>
                       <span className="rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                         {SECTION_LABEL[q.section]}
                       </span>
@@ -220,16 +169,14 @@ function AdminQuestions() {
                       <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
                         {q.kind === "grid_in" ? "Grid-in" : "MCQ"}
                       </span>
-                      {bank === "sqb" && (
-                        <span
-                          className={
-                            "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
-                            (q.published ? "bg-emerald-600 text-white" : "bg-amber-700 text-white")
-                          }
-                        >
-                          {q.published ? "Published" : "Draft"}
-                        </span>
-                      )}
+                      <span
+                        className={
+                          "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
+                          (q.published ? "bg-emerald-600 text-white" : "bg-amber-700 text-white")
+                        }
+                      >
+                        {q.published ? "Published" : "Draft"}
+                      </span>
                       {formatSourceDate(q.source_month, q.source_year) && (
                         <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
                           {formatSourceDate(q.source_month, q.source_year)}
@@ -238,23 +185,25 @@ function AdminQuestions() {
                     </div>
                   </div>
                   <button
-                    onClick={() => void openEdit(q)}
+                    type="button"
+                    onClick={() =>
+                      void navigate({ to: "/admin/sqb/questions/$id", params: { id: q.id } })
+                    }
                     className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
                     aria-label="Edit question"
                   >
                     <Edit3 className="h-4 w-4" />
                   </button>
-
                   <button
+                    type="button"
                     onClick={() => void duplicate(q)}
                     className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
                     aria-label="Duplicate question"
-                    title="Duplicate — opens a copy you can edit before saving"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
-
                   <button
+                    type="button"
                     onClick={() => void remove(q.id)}
                     className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-900 hover:text-white"
                     aria-label="Delete question"
@@ -266,18 +215,6 @@ function AdminQuestions() {
             </ul>
           )}
         </div>
-      )}
-
-      {editing && bank === "ordinary" && (
-        <QuestionEditModal
-          initial={editing}
-          showAddAnother
-          onClose={() => setEditing(null)}
-          onSaved={(_saved, opts) => {
-            void load();
-            if (!opts.addAnother) setEditing(null);
-          }}
-        />
       )}
     </div>
   );

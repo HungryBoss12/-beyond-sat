@@ -1,6 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ImageIcon, Loader2, Trash2, Upload } from "lucide-react";
 import { MathText } from "@/components/MathText";
+import {
+  QuestionCard,
+  emptyAnswer,
+  type QuestionRow,
+} from "@/components/QuestionCard";
 import {
   LETTER_DIFFICULTIES,
   SECTION_LABEL,
@@ -8,6 +13,7 @@ import {
   type LetterDifficulty,
   type Section,
 } from "@/lib/sat";
+import { SQB_DIFFICULTIES } from "@/lib/sqb";
 import type { Draft } from "@/lib/import/parse";
 import { uploadQuestionImage } from "@/lib/import/upload-question-image";
 import { resolveDisplayUrl } from "@/lib/storage-url";
@@ -39,6 +45,7 @@ export function DraftEditor({
   showModule,
   numberCollision,
   onChange,
+  variant = "ordinary",
 }: {
   draft: Draft;
   disabled?: boolean;
@@ -46,6 +53,8 @@ export function DraftEditor({
   /** Another draft already uses this module + number. */
   numberCollision?: boolean;
   onChange: (patch: DraftEditorPatch) => void;
+  /** SQB shows Assessment / Domain / Subskill / external_id / image_alt. */
+  variant?: "ordinary" | "sqb";
 }) {
   const rec = draft.rec;
   const section: Section = rec.section === "math" ? "math" : "reading_writing";
@@ -57,6 +66,36 @@ export function DraftEditor({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [imageSrc, setImageSrc] = useState(imageUrl);
+
+  const studentPreview = useMemo((): QuestionRow | null => {
+    if (variant !== "sqb") return null;
+    const stem = (rec.question_text ?? "").trim();
+    const prompt = (rec.prompt ?? "").trim();
+    if (!stem && !prompt) return null;
+    return {
+      id: "draft-preview",
+      section,
+      skill: rec.skill || skills[0] || "",
+      difficulty: rec.difficulty || "C",
+      kind,
+      prompt: prompt || null,
+      question_text: stem || prompt,
+      choices:
+        kind === "multiple_choice"
+          ? CHOICE_IDS.map((id) => ({
+              id,
+              text: rec[`choice_${id}`] ?? "",
+              image_url: rec[`choice_${id}_image`] || null,
+            }))
+          : null,
+      image_url: imageUrl || null,
+      bank_format: "sqb",
+      external_id: rec.external_id || null,
+      domain: rec.domain || rec.skill || null,
+      subskill: rec.subskill || null,
+      image_alt: rec.image_alt || null,
+    };
+  }, [variant, section, skills, kind, rec, imageUrl]);
 
   useEffect(() => {
     let live = true;
@@ -98,6 +137,46 @@ export function DraftEditor({
 
   return (
     <div className="space-y-3">
+      {variant === "sqb" && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Assessment">
+            <input
+              value={rec.assessment ?? "SAT"}
+              disabled={disabled}
+              onChange={(e) => setField("assessment", e.target.value)}
+              className={CONTROL_CLASS + " disabled:opacity-40"}
+              placeholder="SAT"
+            />
+          </Field>
+          <Field label="External ID">
+            <input
+              value={rec.external_id ?? ""}
+              disabled={disabled}
+              onChange={(e) => setField("external_id", e.target.value)}
+              className={CONTROL_CLASS + " disabled:opacity-40"}
+              placeholder="e.g. 858fd1cf"
+            />
+          </Field>
+          <Field label="Domain (skill)">
+            <AdminSelect
+              value={skills.includes(rec.skill) ? rec.skill : skills[0]}
+              disabled={disabled}
+              onValueChange={(v) => onChange({ rec: patchRec(rec, { skill: v, domain: v }) })}
+              options={skills.map((s) => ({ value: s, label: s }))}
+            />
+          </Field>
+          <Field label="Skill (subskill)">
+            <input
+              value={rec.subskill ?? ""}
+              disabled={disabled}
+              onChange={(e) => setField("subskill", e.target.value)}
+              className={CONTROL_CLASS + " disabled:opacity-40"}
+              placeholder="e.g. Circles"
+            />
+          </Field>
+        </div>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Question number">
           <input
@@ -111,11 +190,13 @@ export function DraftEditor({
           />
           {numberCollision && (
             <p className="mt-1 text-xs font-semibold text-brand-200">
-              Another question already uses Module {draftModuleOf(rec)} · {draft.number}.
+              {variant === "sqb"
+                ? `Another question already uses number ${draft.number}.`
+                : `Another question already uses Module ${draftModuleOf(rec)} · ${draft.number}.`}
             </p>
           )}
         </Field>
-        {showModule && (
+        {showModule && variant !== "sqb" && (
           <Field label="Module">
             <AdminSelect
               value={rec.module === "2" ? "2" : "1"}
@@ -139,14 +220,16 @@ export function DraftEditor({
             ]}
           />
         </Field>
-        <Field label="Skill">
-          <AdminSelect
-            value={skills.includes(rec.skill) ? rec.skill : skills[0]}
-            disabled={disabled}
-            onValueChange={(v) => setField("skill", v)}
-            options={skills.map((s) => ({ value: s, label: s }))}
-          />
-        </Field>
+        {variant !== "sqb" && (
+          <Field label="Skill">
+            <AdminSelect
+              value={skills.includes(rec.skill) ? rec.skill : skills[0]}
+              disabled={disabled}
+              onValueChange={(v) => setField("skill", v)}
+              options={skills.map((s) => ({ value: s, label: s }))}
+            />
+          </Field>
+        )}
         <Field label="Type">
           <AdminSelect
             value={kind}
@@ -161,15 +244,22 @@ export function DraftEditor({
         <Field label="Difficulty">
           <AdminSelect
             value={
-              LETTER_DIFFICULTIES.includes(rec.difficulty as LetterDifficulty)
-                ? rec.difficulty
-                : "C"
+              variant === "sqb"
+                ? SQB_DIFFICULTIES.includes(rec.difficulty as (typeof SQB_DIFFICULTIES)[number])
+                  ? rec.difficulty
+                  : "C"
+                : LETTER_DIFFICULTIES.includes(rec.difficulty as LetterDifficulty)
+                  ? rec.difficulty
+                  : "C"
             }
             disabled={disabled}
             onValueChange={(v) => setField("difficulty", v)}
-            options={LETTER_DIFFICULTIES.map((d) => ({
+            options={(variant === "sqb" ? [...SQB_DIFFICULTIES] : LETTER_DIFFICULTIES).map((d) => ({
               value: d,
-              label: `${d}${d === "A" ? " (hardest)" : d === "C" ? " (easiest)" : ""}`,
+              label:
+                variant === "sqb"
+                  ? `${d}${d === "C" ? " (easiest)" : d === "S" ? " (hardest)" : ""}`
+                  : `${d}${d === "A" ? " (hardest)" : d === "C" ? " (easiest)" : ""}`,
             }))}
           />
         </Field>
@@ -232,6 +322,19 @@ export function DraftEditor({
           ) : null}
         </div>
         {uploadError && <p className="mt-1 text-xs font-semibold text-white">{uploadError}</p>}
+        {variant === "sqb" && (
+          <div className="mt-2">
+            <Field label="Image alt (required to publish when figure is set)">
+              <input
+                value={rec.image_alt ?? ""}
+                disabled={disabled}
+                onChange={(e) => setField("image_alt", e.target.value)}
+                className={CONTROL_CLASS + " disabled:opacity-40"}
+                placeholder="Describe the figure for accessibility"
+              />
+            </Field>
+          </div>
+        )}
       </div>
 
       <Field label="Passage / figure notes (optional)">
@@ -349,6 +452,24 @@ export function DraftEditor({
           className={CONTROL_CLASS + " min-h-[3rem] resize-y disabled:opacity-40"}
         />
       </Field>
+
+      {variant === "sqb" && studentPreview ? (
+        <div className="overflow-hidden rounded-xl border border-test-line bg-test-canvas">
+          <p className="border-b border-test-line bg-test-chrome px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-test-muted">
+            Student preview
+          </p>
+          <QuestionCard
+            q={studentPreview}
+            index={Math.max(0, draft.number - 1)}
+            answer={emptyAnswer()}
+            onChange={() => {}}
+            reveal={Boolean(answer)}
+            correctChoiceId={
+              kind === "multiple_choice" && /^[A-D]$/i.test(answer) ? answer.toUpperCase() : null
+            }
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

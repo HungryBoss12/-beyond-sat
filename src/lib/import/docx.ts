@@ -255,7 +255,11 @@ export function ommlBlockToLatex(xml: string): string {
 
   replaceAll(
     /<m:rad(?:\s[^>]*)?>[\s\S]*?<m:deg>([\s\S]*?)<\/m:deg>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<\/m:rad>/g,
-    (_m, _deg, body) => `\\sqrt{${ommlBlockToLatex(body)}}`,
+    (_m, deg, body) => {
+      const degTex = ommlBlockToLatex(deg).replace(/\s+/g, "");
+      const bodyTex = ommlBlockToLatex(body);
+      return degTex ? `\\sqrt[${degTex}]{${bodyTex}}` : `\\sqrt{${bodyTex}}`;
+    },
   );
   replaceAll(
     /<m:rad(?:\s[^>]*)?>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<\/m:rad>/g,

@@ -1,23 +1,37 @@
 export type ImportWizardStep = "setup" | "source" | "extract" | "editor";
 
-const STEPS = [
+export type WizardStepDef = {
+  id: ImportWizardStep;
+  label: string;
+  blurb: string;
+};
+
+const DEFAULT_STEPS: WizardStepDef[] = [
   { id: "setup", label: "Setup", blurb: "Name & defaults" },
   { id: "source", label: "Source", blurb: "Paper, sheet, or JSON" },
   { id: "extract", label: "Extract", blurb: "Read questions" },
   { id: "editor", label: "Editor", blurb: "Edit, figures & import" },
-] as const;
+];
+
+export const SQB_WIZARD_STEPS: WizardStepDef[] = [
+  { id: "source", label: "JSON", blurb: "Paste questions" },
+  { id: "editor", label: "Review", blurb: "Check stems" },
+  { id: "extract", label: "Answers", blurb: "Paste answers JSON" },
+];
 
 export function WizardSteps({
   step,
   onStepClick,
   unlocked,
+  steps = DEFAULT_STEPS,
 }: {
   step: ImportWizardStep;
   onStepClick?: (s: ImportWizardStep) => void;
   unlocked: Set<ImportWizardStep> | ImportWizardStep[];
+  steps?: WizardStepDef[];
 }) {
   const unlockedSet = unlocked instanceof Set ? unlocked : new Set(unlocked);
-  const activeIndex = STEPS.findIndex((s) => s.id === step);
+  const activeIndex = steps.findIndex((s) => s.id === step);
 
   return (
     <nav
@@ -25,7 +39,7 @@ export function WizardSteps({
       className="rise-in overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel"
     >
       <ol className="flex flex-col sm:flex-row">
-        {STEPS.map((s, i) => {
+        {steps.map((s, i) => {
           const isActive = s.id === step;
           const isDone = i < activeIndex;
           const isReachable = unlockedSet.has(s.id);

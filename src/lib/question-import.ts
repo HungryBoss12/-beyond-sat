@@ -29,6 +29,13 @@ export type ParsedQuestion = {
   source_month: number | null;
   source_year: number | null;
   time_limit_seconds: number | null;
+  bank_format: "ordinary" | "sqb";
+  external_id: string | null;
+  assessment: string | null;
+  domain: string | null;
+  subskill: string | null;
+  image_alt: string | null;
+  published: boolean;
 };
 
 export type RowResult = {
@@ -136,6 +143,19 @@ function canonicalField(header: string): string | null {
     time_limit_min: "time_limit_minutes",
     time_limit: "time_limit_minutes",
     minutes: "time_limit_minutes",
+    bank_format: "bank_format",
+    bank: "bank_format",
+    external_id: "external_id",
+    question_id: "external_id",
+    sqb_id: "external_id",
+    assessment: "assessment",
+    subskill: "subskill",
+    sqb_skill: "subskill",
+    fine_skill: "subskill",
+    image_alt: "image_alt",
+    alt: "image_alt",
+    alt_text: "image_alt",
+    published: "published",
   };
   if (direct[k]) return direct[k];
 
@@ -662,6 +682,40 @@ export function validateRecord(
     warnings.push("Image isn't a web URL, data URL, or storage path — it may not load.");
   }
 
+  const bankRaw = get("bank_format").toLowerCase();
+  let bank_format: "ordinary" | "sqb" = "ordinary";
+  if (bankRaw) {
+    if (bankRaw === "sqb" || bankRaw === "question_bank" || bankRaw === "questionbank") {
+      bank_format = "sqb";
+    } else if (bankRaw === "ordinary" || bankRaw === "standard" || bankRaw === "default") {
+      bank_format = "ordinary";
+    } else {
+      warnings.push(`bank_format "${get("bank_format")}" not recognised — defaulting to ordinary.`);
+    }
+  }
+
+  const external_id = get("external_id") || null;
+  const assessment = get("assessment") || null;
+  const subskill = get("subskill") || null;
+  const image_alt = get("image_alt") || null;
+
+  let published = bank_format !== "sqb";
+  const pubRaw = get("published").toLowerCase();
+  if (pubRaw) {
+    if (["true", "1", "yes", "y", "published"].includes(pubRaw)) published = true;
+    else if (["false", "0", "no", "n", "draft"].includes(pubRaw)) published = false;
+    else warnings.push(`published "${get("published")}" not recognised — using default.`);
+  }
+  /* SQB imports never auto-publish — authors must publish from the editor. */
+  if (bank_format === "sqb") published = false;
+
+  if (bank_format === "sqb" && image_url && !image_alt) {
+    warnings.push("SQB figure without image_alt — required before publish.");
+  }
+  if (bank_format === "sqb" && !subskill) {
+    warnings.push("SQB row missing subskill — required before publish.");
+  }
+
   const figureErr = figureDependencyError(rec, opts);
   if (figureErr) errors.push(figureErr);
 
@@ -677,6 +731,8 @@ export function validateRecord(
   }
 
   if (errors.length > 0) return { index, rec, question: null, errors, warnings };
+
+  const resolvedDomain = (skill || "").trim() || null;
 
   return {
     index,
@@ -696,6 +752,13 @@ export function validateRecord(
       source_month,
       source_year,
       time_limit_seconds,
+      bank_format,
+      external_id,
+      assessment,
+      domain: resolvedDomain,
+      subskill: subskill || null,
+      image_alt,
+      published,
     },
     errors,
     warnings,
@@ -756,6 +819,11 @@ export const TSV_COLUMNS = [
   "source_year",
   "time_limit_minutes",
   "image_url",
+  "bank_format",
+  "external_id",
+  "assessment",
+  "subskill",
+  "image_alt",
 ] as const;
 
 export const TSV_TEMPLATE = [
@@ -846,5 +914,82 @@ export const JSON_TEMPLATE = `[
     "choices": ["communicative", "friendly", "public", "fashionable"],
     "correct": "A",
     "explanation": "The displays convey information to other cuttlefish."
+  },
+  {
+    "section": "math",
+    "skill": "Geometry and Trigonometry",
+    "subskill": "Circles",
+    "difficulty": "B",
+    "kind": "multiple_choice",
+    "bank_format": "sqb",
+    "external_id": "demo01ab",
+    "assessment": "SAT",
+    "question_text": "In the figure above, what is the radius of circle $O$?",
+    "choices": ["2", "3", "4", "5"],
+    "correct": "C",
+    "image_alt": "Circle O with labeled radius",
+    "explanation": "Original authored item — not College Board content."
   }
 ]`;
+
+/** Preview stats before committing an import (especially JSON / SQB batches). */
+export type ImportDryRun = {
+  total: number;
+  valid: number;
+  invalid: number;
+  warnings: number;
+  duplicates: number;
+  sqb: number;
+  ordinary: number;
+  sampleErrors: string[];
+};
+
+export function dryRunImport(rows: RowResult[]): ImportDryRun {
+  const sampleErrors: string[] = [];
+  let valid = 0;
+  let invalid = 0;
+  let warnings = 0;
+  let duplicates = 0;
+  let sqb = 0;
+  let ordinary = 0;
+  for (const r of rows) {
+    if (!r.question) {
+      invalid++;
+      for (const e of r.errors) {
+        if (sampleErrors.length < 8) sampleErrors.push(`Row ${r.index}: ${e}`);
+      }
+      continue;
+    }
+    valid++;
+    if (r.warnings.length) warnings++;
+    if (r.duplicate) duplicates++;
+    if (r.question.bank_format === "sqb") sqb++;
+    else ordinary++;
+  }
+  return {
+    total: rows.length,
+    valid,
+    invalid,
+    warnings,
+    duplicates,
+    sqb,
+    ordinary,
+    sampleErrors,
+  };
+}
+
+/** Force bank_format on every valid row (e.g. Import SQB entry point). */
+export function forceBankFormat(rows: RowResult[], bank: "ordinary" | "sqb"): RowResult[] {
+  return rows.map((r) => {
+    if (!r.question) return r;
+    return {
+      ...r,
+      question: {
+        ...r.question,
+        bank_format: bank,
+        published: bank === "sqb" ? false : r.question.published,
+        domain: r.question.domain || r.question.skill,
+      },
+    };
+  });
+}

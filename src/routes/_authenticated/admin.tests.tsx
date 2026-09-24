@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -18,11 +18,12 @@ import { RevealCard } from "@/components/ui/reveal-card";
 import { AdminTestPreview } from "@/components/admin/AdminTestPreview";
 import { MockExamBuilderModal } from "@/components/admin/MockExamBuilderModal";
 import { AdminSelect } from "@/components/admin/AdminSelect";
+import { BankFormatSegment } from "@/components/admin/BankFormatSegment";
 import {
   QuestionEditModal,
   loadQuestionWithAnswers,
 } from "@/components/admin/question-edit-modal";
-import type { AdminChoice, AdminQuestion } from "@/lib/admin/question";
+import type { AdminChoice, AdminQuestion, BankFormat } from "@/lib/admin/question";
 import {
   SECTION_LABEL,
   LETTER_DIFFICULTIES,
@@ -46,6 +47,7 @@ type Test = {
   source_month: number | null;
   source_year: number | null;
   published: boolean;
+  bank_format: BankFormat;
 };
 
 type QRow = {
@@ -54,6 +56,10 @@ type QRow = {
   section: Section;
   difficulty: string;
   skill: string;
+  published?: boolean;
+  bank_format?: string;
+  external_id?: string | null;
+  subskill?: string | null;
 };
 
 type PaperGroup = {
@@ -66,7 +72,14 @@ type PaperGroup = {
   source_year: number | null;
 };
 
+type Search = { bank?: BankFormat; edit?: string; preview?: string };
+
 export const Route = createFileRoute("/_authenticated/admin/tests")({
+  validateSearch: (s: Record<string, unknown>): Search => ({
+    bank: s.bank === "sqb" ? "sqb" : "ordinary",
+    edit: typeof s.edit === "string" ? s.edit : undefined,
+    preview: typeof s.preview === "string" ? s.preview : undefined,
+  }),
   component: AdminTests,
 });
 
@@ -75,7 +88,7 @@ export const Route = createFileRoute("/_authenticated/admin/tests")({
 const CONTROL_CLASS =
   "w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none";
 
-const empty = (): Test => ({
+const empty = (bank: BankFormat = "ordinary"): Test => ({
   id: "",
   title: "",
   section: "math",
@@ -84,6 +97,7 @@ const empty = (): Test => ({
   source_month: null,
   source_year: new Date().getFullYear(),
   published: false,
+  bank_format: bank,
 });
 
 function sortGroups(a: PaperGroup, b: PaperGroup): number {
@@ -129,6 +143,8 @@ function groupTests(items: Test[]): { papers: PaperGroup[]; singles: PaperGroup[
 }
 
 function AdminTests() {
+  const { bank, edit: editId, preview: previewId } = Route.useSearch();
+  const navigate = useNavigate();
   const [items, setItems] = useState<Test[]>([]);
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
   const [editing, setEditing] = useState<Test | null>(null);
@@ -152,16 +168,17 @@ function AdminTests() {
       supabase
         .from("tests")
         .select("*")
+        .eq("bank_format", bank)
         .order("module")
         .order("created_at", { ascending: false }),
       supabase.from("test_questions").select("test_id"),
     ]);
-    setItems(
-      ((data ?? []) as Test[]).map((t) => ({
-        ...t,
-        published: t.published !== false,
-      })),
-    );
+    const mapped = ((data ?? []) as Test[]).map((t) => ({
+      ...t,
+      published: t.published !== false,
+      bank_format: (t.bank_format as BankFormat) || bank,
+    }));
+    setItems(mapped);
     const tally = new Map<string, number>();
     for (const l of (links ?? []) as { test_id: string }[]) {
       tally.set(l.test_id, (tally.get(l.test_id) ?? 0) + 1);
@@ -170,8 +187,25 @@ function AdminTests() {
     setLoading(false);
   }
   useEffect(() => {
-    load();
-  }, []);
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bank]);
+
+  useEffect(() => {
+    if (!editId || loading || items.length === 0) return;
+    const t = items.find((x) => x.id === editId);
+    if (t) void openEditor(t);
+    void navigate({ to: "/admin/tests", search: { bank }, replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId, loading]);
+
+  useEffect(() => {
+    if (!previewId || loading || items.length === 0) return;
+    const t = items.find((x) => x.id === previewId);
+    if (t) void openPreviewForTest(t);
+    void navigate({ to: "/admin/tests", search: { bank }, replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewId, loading]);
 
   const { papers, singles } = useMemo(() => groupTests(items), [items]);
 
@@ -193,8 +227,10 @@ function AdminTests() {
   }, [pairing, singles]);
 
   async function openEditor(t?: Test) {
-    const target = t ?? empty();
+    const target = t ?? empty(bank);
     setEditing(target);
+    const poolSelect =
+      "id,question_text,section,difficulty,skill,published,bank_format,external_id,subskill";
     if (target.id) {
       const [{ data: tq }, { data: p }] = await Promise.all([
         supabase
@@ -204,8 +240,9 @@ function AdminTests() {
           .order("position"),
         supabase
           .from("questions")
-          .select("id,question_text,section,difficulty,skill")
+          .select(poolSelect)
           .eq("section", target.section)
+          .eq("bank_format", bank)
           .order("created_at", { ascending: false })
           .limit(400),
       ]);
@@ -214,8 +251,9 @@ function AdminTests() {
     } else {
       const { data: p } = await supabase
         .from("questions")
-        .select("id,question_text,section,difficulty,skill")
+        .select(poolSelect)
         .eq("section", target.section)
+        .eq("bank_format", bank)
         .order("created_at", { ascending: false })
         .limit(400);
       setPool((p ?? []) as QRow[]);
@@ -227,13 +265,14 @@ function AdminTests() {
     const missing = t.module === 1 ? 2 : 1;
     const base = stripModuleSuffix(t.title);
     void openEditor({
-      ...empty(),
+      ...empty(bank),
       title: moduleTitle(base, missing),
       section: t.section,
       module: missing,
       difficulty: t.difficulty,
       source_month: t.source_month,
       source_year: t.source_year,
+      bank_format: bank,
     });
   }
 
@@ -256,8 +295,9 @@ function AdminTests() {
   async function reloadPool(section: Section) {
     const { data: p } = await supabase
       .from("questions")
-      .select("id,question_text,section,difficulty,skill")
+      .select("id,question_text,section,difficulty,skill,published,bank_format,external_id,subskill")
       .eq("section", section)
+      .eq("bank_format", bank)
       .order("created_at", { ascending: false })
       .limit(400);
     setPool((p ?? []) as QRow[]);
@@ -265,12 +305,16 @@ function AdminTests() {
 
   async function openQuestionEditor(qid: string) {
     if (openingQuestion) return;
+    if (bank === "sqb") {
+      void navigate({ to: "/admin/sqb/questions/$id", params: { id: qid } });
+      return;
+    }
     setOpeningQuestion(true);
     try {
       const { data, error } = await supabase
         .from("questions")
         .select(
-          "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,source_month,source_year,time_limit_seconds",
+          "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,source_month,source_year,time_limit_seconds,bank_format,external_id,assessment,domain,subskill,image_alt,published",
         )
         .eq("id", qid)
         .single();
@@ -282,6 +326,13 @@ function AdminTests() {
         ...data,
         choices: (data.choices ?? []) as AdminChoice[],
         time_limit_seconds: data.time_limit_seconds ?? null,
+        bank_format: (data.bank_format as BankFormat) ?? "ordinary",
+        external_id: data.external_id ?? null,
+        assessment: data.assessment ?? null,
+        domain: data.domain ?? null,
+        subskill: data.subskill ?? null,
+        image_alt: data.image_alt ?? null,
+        published: data.published !== false,
       });
       setEditingQuestion(full);
     } finally {
@@ -334,6 +385,17 @@ function AdminTests() {
       alert("A test must contain at least 1 question.");
       return;
     }
+    if (editing.published && bank === "sqb") {
+      const unpublished = pool.filter(
+        (q) => editingQs.includes(q.id) && q.published === false,
+      );
+      if (unpublished.length > 0) {
+        alert(
+          `Publish blocked: ${unpublished.length} selected SQB question(s) are still drafts. Publish those questions first.`,
+        );
+        return;
+      }
+    }
     const payload = {
       title: editing.title.trim(),
       section: editing.section,
@@ -342,6 +404,7 @@ function AdminTests() {
       source_month: editing.source_month,
       source_year: editing.source_year,
       published: editing.published,
+      bank_format: bank,
     };
     let testId = editing.id;
     if (testId) {
@@ -395,23 +458,42 @@ function AdminTests() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-slate-500">
-          Group questions into tests. Combine a complete EBRW paper with a Math paper to build full
-          mock exams.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="space-y-2">
+          <BankFormatSegment
+            value={bank}
+            onChange={(next) =>
+              void navigate({
+                to: "/admin/tests",
+                search: next === "sqb" ? { bank: "sqb" } : {},
+              })
+            }
+          />
+          <p className="text-sm text-slate-500">
+            {bank === "sqb"
+              ? "Build SQB-format practice sets. Question picker defaults to the SQB bank."
+              : "Group questions into tests. Combine a complete EBRW paper with a Math paper to build full mock exams."}
+          </p>
+          {bank === "sqb" && (
+            <Link to="/admin/sqb" className="text-sm font-semibold text-brand-600 hover:underline">
+              Open SQB hub →
+            </Link>
+          )}
+        </div>
         <div className="flex shrink-0 items-center gap-2">
-          <button
-            onClick={() => setMockBuilder({})}
-            className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-panel hover:bg-brand-500"
-          >
-            <ClipboardList className="h-4 w-4" /> Create mock exam
-          </button>
+          {bank === "ordinary" && (
+            <button
+              onClick={() => setMockBuilder({})}
+              className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-panel hover:bg-brand-500"
+            >
+              <ClipboardList className="h-4 w-4" /> Create mock exam
+            </button>
+          )}
           <button
             onClick={() => openEditor()}
             className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
           >
-            <Plus className="h-4 w-4" /> New test
+            <Plus className="h-4 w-4" /> {bank === "sqb" ? "New SQB test" : "New test"}
           </button>
         </div>
       </div>
@@ -764,7 +846,12 @@ function AdminTests() {
                               {q.question_text}
                             </div>
                             <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-brand-100">
-                              {q.skill} · {q.difficulty}
+                              {bank === "sqb" && q.external_id ? (
+                                <span className="mr-1 font-mono normal-case">{q.external_id}</span>
+                              ) : null}
+                              {q.skill}
+                              {q.subskill ? ` · ${q.subskill}` : ""} · {q.difficulty}
+                              {bank === "sqb" && q.published === false ? " · draft" : ""}
                             </div>
                           </div>
                           <button

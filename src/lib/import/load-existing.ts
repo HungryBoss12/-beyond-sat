@@ -95,7 +95,10 @@ export async function diagnoseMathPractice(): Promise<MathPracticeDiag> {
   };
 }
 
-export async function listExistingTests(preferSection?: Section): Promise<ExistingTestSummary[]> {
+export async function listExistingTests(
+  preferSection?: Section,
+  opts?: { bankFormat?: "ordinary" | "sqb" },
+): Promise<ExistingTestSummary[]> {
   let q = supabase
     .from("tests")
     .select("id,title,section,module,source_month,source_year")
@@ -103,6 +106,7 @@ export async function listExistingTests(preferSection?: Section): Promise<Existi
     .order("source_month", { ascending: false, nullsFirst: false })
     .order("title");
   if (preferSection) q = q.eq("section", preferSection);
+  if (opts?.bankFormat) q = q.eq("bank_format", opts.bankFormat);
 
   const { data, error } = await q.limit(200);
   if (error) throw new Error(error.message);
@@ -345,5 +349,21 @@ export function softFixHintsForDraft(draft: Draft): string[] {
   const blob = `${draft.rec.prompt ?? ""}\n${draft.rec.question_text ?? ""}`;
   const dollars = (blob.match(/\$/g) ?? []).length;
   if (dollars % 2 === 1) hints.push("Unbalanced $ in LaTeX.");
+  return hints;
+}
+
+/** Soft hints for SQB drafts — ordinary soft issues plus taxonomy / figure-alt. */
+export function softSqbFixHintsForDraft(draft: Draft): string[] {
+  const hints = softFixHintsForDraft(draft);
+  if (!(draft.rec.domain ?? "").trim() && !(draft.rec.skill ?? "").trim()) {
+    hints.push("Missing Domain (skill).");
+  }
+  if (!(draft.rec.subskill ?? "").trim()) hints.push("Missing Skill (subskill).");
+  if (!(draft.rec.explanation ?? "").trim()) hints.push("Missing explanation.");
+  const stem = (draft.rec.question_text ?? "").trim();
+  if (stem.length > 0 && stem.length < 12) hints.push("Stem looks very short.");
+  if ((draft.rec.image_url ?? "").trim() && !(draft.rec.image_alt ?? "").trim()) {
+    hints.push("Figure needs image alt text.");
+  }
   return hints;
 }

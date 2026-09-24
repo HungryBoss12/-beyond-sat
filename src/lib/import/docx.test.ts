@@ -16,4 +16,9 @@ describe("ommlBlockToLatex", () => {
     const xml = `<m:rad><m:e><m:r><m:t>9</m:t></m:r></m:e></m:rad>`;
     expect(ommlBlockToLatex(xml)).toBe("\\sqrt{9}");
   });
+
+  it("converts nth roots with degree", () => {
+    const xml = `<m:rad><m:deg><m:r><m:t>3</m:t></m:r></m:deg><m:e><m:r><m:t>117n</m:t></m:r></m:e></m:rad>`;
+    expect(ommlBlockToLatex(xml)).toBe("\\sqrt[3]{117n}");
+  });
 });

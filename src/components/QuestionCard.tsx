@@ -25,12 +25,17 @@ export type QuestionRow = {
   id: string;
   section: "reading_writing" | "math";
   skill: string;
-  difficulty: "easy" | "medium" | "hard";
+  difficulty: "easy" | "medium" | "hard" | string;
   kind: "multiple_choice" | "grid_in";
   prompt: string | null;
   question_text: string;
   choices: Choice[] | null;
   image_url: string | null;
+  bank_format?: "ordinary" | "sqb" | string | null;
+  external_id?: string | null;
+  domain?: string | null;
+  subskill?: string | null;
+  image_alt?: string | null;
 };
 
 export type Highlight = { id: string; text: string; note: string };
@@ -264,7 +269,7 @@ export function QuestionCard({
               {q.image_url ? (
                 <img
                   src={q.image_url}
-                  alt=""
+                  alt={q.image_alt ?? ""}
                   className="mt-5 max-w-full rounded border border-test-line"
                 />
               ) : null}
@@ -514,6 +519,31 @@ function QuestionBody({
           </button>
         )}
       </div>
+
+      {(q.bank_format === "sqb" || q.domain || q.subskill || q.external_id) && (
+        <div className="flex flex-wrap gap-1.5 pb-2 pt-1">
+          {q.bank_format === "sqb" && (
+            <span className="rounded bg-test-well px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-test-muted">
+              SQB
+            </span>
+          )}
+          {q.external_id && (
+            <span className="rounded bg-test-well px-1.5 py-0.5 font-mono text-[10px] font-semibold text-test-muted">
+              {q.external_id}
+            </span>
+          )}
+          {(q.domain || q.skill) && (
+            <span className="rounded bg-test-well px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-test-muted">
+              {q.domain || q.skill}
+            </span>
+          )}
+          {q.subskill && (
+            <span className="rounded bg-test-well px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-test-muted">
+              {q.subskill}
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="border-t border-test-line" />
 

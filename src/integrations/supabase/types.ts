@@ -740,62 +740,83 @@ export type Database = {
       };
       questions: {
         Row: {
+          assessment: string | null;
+          bank_format: string;
           choices: Json;
           correct_choice_id: string | null;
           correct_grid_answers: string[] | null;
           created_at: string;
           created_by: string | null;
           difficulty: Database["public"]["Enums"]["sat_difficulty"];
+          domain: string | null;
           explanation: string | null;
+          external_id: string | null;
           id: string;
+          image_alt: string | null;
           image_url: string | null;
           kind: Database["public"]["Enums"]["question_kind"];
           prompt: string | null;
+          published: boolean;
           question_text: string;
           section: Database["public"]["Enums"]["sat_section"];
           skill: string;
           source_month: number | null;
           source_year: number | null;
+          subskill: string | null;
           time_limit_seconds: number | null;
           updated_at: string;
         };
         Insert: {
+          assessment?: string | null;
+          bank_format?: string;
           choices?: Json;
           correct_choice_id?: string | null;
           correct_grid_answers?: string[] | null;
           created_at?: string;
           created_by?: string | null;
           difficulty: Database["public"]["Enums"]["sat_difficulty"];
+          domain?: string | null;
           explanation?: string | null;
+          external_id?: string | null;
           id?: string;
+          image_alt?: string | null;
           image_url?: string | null;
           kind?: Database["public"]["Enums"]["question_kind"];
           prompt?: string | null;
+          published?: boolean;
           question_text: string;
           section: Database["public"]["Enums"]["sat_section"];
           skill: string;
           source_month?: number | null;
           source_year?: number | null;
+          subskill?: string | null;
           time_limit_seconds?: number | null;
           updated_at?: string;
         };
         Update: {
+          assessment?: string | null;
+          bank_format?: string;
           choices?: Json;
           correct_choice_id?: string | null;
           correct_grid_answers?: string[] | null;
           created_at?: string;
           created_by?: string | null;
           difficulty?: Database["public"]["Enums"]["sat_difficulty"];
+          domain?: string | null;
           explanation?: string | null;
+          external_id?: string | null;
           id?: string;
+          image_alt?: string | null;
           image_url?: string | null;
           kind?: Database["public"]["Enums"]["question_kind"];
           prompt?: string | null;
+          published?: boolean;
           question_text?: string;
           section?: Database["public"]["Enums"]["sat_section"];
           skill?: string;
           source_month?: number | null;
           source_year?: number | null;
+          subskill?: string | null;
           time_limit_seconds?: number | null;
           updated_at?: string;
         };
@@ -965,6 +986,7 @@ export type Database = {
       };
       tests: {
         Row: {
+          bank_format: string;
           created_at: string;
           created_by: string | null;
           difficulty: Database["public"]["Enums"]["sat_difficulty"];
@@ -979,6 +1001,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          bank_format?: string;
           created_at?: string;
           created_by?: string | null;
           difficulty?: Database["public"]["Enums"]["sat_difficulty"];
@@ -993,6 +1016,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          bank_format?: string;
           created_at?: string;
           created_by?: string | null;
           difficulty?: Database["public"]["Enums"]["sat_difficulty"];

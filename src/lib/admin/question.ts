@@ -2,7 +2,9 @@ import type { Difficulty, Section } from "@/lib/sat";
 
 export type AdminChoice = { id: string; text: string; image_url?: string | null };
 
-/** Saved (or draft-new) question as edited in the admin modal. */
+export type BankFormat = "ordinary" | "sqb";
+
+/** Saved (or draft-new) question as edited in the admin modal / SQB editor. */
 export type AdminQuestion = {
   id: string;
   section: Section;
@@ -19,13 +21,23 @@ export type AdminQuestion = {
   source_month: number | null;
   source_year: number | null;
   time_limit_seconds: number | null;
+  bank_format: BankFormat;
+  external_id: string | null;
+  assessment: string | null;
+  domain: string | null;
+  subskill: string | null;
+  image_alt: string | null;
+  published: boolean;
 };
 
-export function emptyAdminQuestion(): AdminQuestion {
+export function emptyAdminQuestion(
+  section: Section = "math",
+  bankFormat: BankFormat = "ordinary",
+): AdminQuestion {
   return {
     id: "",
-    section: "math",
-    skill: "Algebra",
+    section,
+    skill: section === "math" ? "Algebra" : "Craft and Structure",
     difficulty: "C",
     kind: "multiple_choice",
     prompt: "",
@@ -43,6 +55,14 @@ export function emptyAdminQuestion(): AdminQuestion {
     source_month: null,
     source_year: new Date().getFullYear(),
     time_limit_seconds: null,
+    bank_format: bankFormat,
+    external_id: null,
+    assessment: null,
+    domain: null,
+    subskill: null,
+    image_alt: null,
+    // SQB drafts start unpublished; ordinary stays visible by default.
+    published: bankFormat !== "sqb",
   };
 }
 

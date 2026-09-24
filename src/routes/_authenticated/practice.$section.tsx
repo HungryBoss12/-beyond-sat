@@ -41,7 +41,7 @@ export const Route = createFileRoute("/_authenticated/practice/$section")({
     if (s !== "reading_writing" && s !== "math") throw notFound();
     return { section: s as Section };
   },
-  component: SectionBrowse,
+  component: OrdinarySectionBrowse,
   head: ({ params }) => ({
     meta: [
       {
@@ -50,6 +50,19 @@ export const Route = createFileRoute("/_authenticated/practice/$section")({
     ],
   }),
 });
+
+function OrdinarySectionBrowse() {
+  const { section } = Route.useParams() as { section: Section };
+  return (
+    <SectionPaperBrowse
+      section={section}
+      bankFormat="ordinary"
+      backTo="/practice"
+      emptyTitle="No practice sets yet"
+      emptyBody="Admins haven't published a paper for this section yet."
+    />
+  );
+}
 
 /**
  * Practice sets, listed by the date the paper was sat.
@@ -74,6 +87,7 @@ type TestSet = {
   source_month: number | null;
   source_year: number | null;
   created_at: string;
+  bank_format?: string | null;
   count: number;
   /** The student's own progress, from their sessions. Never another user's. */
   status: "new" | "in_progress" | "done";
@@ -266,8 +280,19 @@ function mergeSets(
     .filter((s) => s.count > 0);
 }
 
-function SectionBrowse() {
-  const { section } = Route.useParams() as { section: Section };
+export function SectionPaperBrowse({
+  section,
+  bankFormat,
+  backTo,
+  emptyTitle,
+  emptyBody,
+}: {
+  section: Section;
+  bankFormat: "ordinary" | "sqb";
+  backTo: string;
+  emptyTitle: string;
+  emptyBody: string;
+}) {
   const navigate = useNavigate();
 
   const [sets, setSets] = useState<TestSet[]>([]);
@@ -292,7 +317,7 @@ function SectionBrowse() {
     setSortOrder("shuffle");
     setGroupByDate(false);
     setDiffFilter("all");
-  }, [section]);
+  }, [section, bankFormat]);
 
   useEffect(() => {
     let cancelled = false;
@@ -305,9 +330,10 @@ function SectionBrowse() {
       try {
         const testsResult = await supabase
           .from("tests")
-          .select("id,title,module,difficulty,source_month,source_year,created_at")
+          .select("id,title,module,difficulty,source_month,source_year,created_at,bank_format")
           .eq("section", section)
           .eq("published", true)
+          .eq("bank_format", bankFormat)
           .order("source_year", { ascending: false, nullsFirst: false })
           .order("source_month", { ascending: false, nullsFirst: false })
           .order("created_at", { ascending: false });
@@ -332,7 +358,12 @@ function SectionBrowse() {
             .eq("type", "practice")
             .order("started_at", { ascending: false })
             .limit(300),
-          supabase.from("questions").select("difficulty").eq("section", section).limit(5000),
+          supabase
+            .from("questions")
+            .select("difficulty")
+            .eq("section", section)
+            .eq("bank_format", bankFormat)
+            .limit(5000),
         ]);
 
         const byTest = new Map<
@@ -383,7 +414,7 @@ function SectionBrowse() {
     return () => {
       cancelled = true;
     };
-  }, [section]);
+  }, [section, bankFormat]);
 
   const allPapers = useMemo(() => buildPaperGroups(sets, section), [sets, section]);
 
@@ -490,7 +521,7 @@ function SectionBrowse() {
       <div className="rise-in flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <button
-            onClick={() => navigate({ to: "/practice" })}
+            onClick={() => navigate({ to: backTo as "/practice" | "/practice/sqb" })}
             className="tap inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white shadow-panel hover:bg-brand-400"
             aria-label="Back"
           >
@@ -498,7 +529,7 @@ function SectionBrowse() {
           </button>
           <div className="min-w-0">
             <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
-              {SECTION_LABEL[section]}
+              {bankFormat === "sqb" ? `SQB · ${SECTION_LABEL[section]}` : SECTION_LABEL[section]}
             </h1>
             <p className="text-sm text-slate-500">
               {hasActiveFilters
@@ -707,11 +738,7 @@ function SectionBrowse() {
             ))}
           </div>
         ) : allPapers.length === 0 ? (
-          <EmptyState
-            title="No practice sets yet"
-            body="Admins haven't published a paper for this section yet."
-            className="py-14"
-          />
+          <EmptyState title={emptyTitle} body={emptyBody} className="py-14" />
         ) : showGrouped ? (
           groupedPapers.length === 0 ? (
             <EmptyState
@@ -883,29 +910,136 @@ function PaperCard({
 }) {
   const mod1 = primaryModuleSet(paper.modules.filter((s) => s.module === 1));
   const mod2 = primaryModuleSet(paper.modules.filter((s) => s.module === 2));
-  const progress = Math.round((moduleProgress(mod1) + moduleProgress(mod2)) / 2);
+  const isSqb = paper.modules.some((m) => m.bank_format === "sqb");
+  const sqbSet = isSqb
+    ? primaryModuleSet(paper.modules) ?? mod1 ?? paper.modules[0]
+    : undefined;
+  const progress = isSqb
+    ? Math.round(moduleProgress(sqbSet))
+    : Math.round((moduleProgress(mod1) + moduleProgress(mod2)) / 2);
 
   return (
     <RevealCard className="flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel lift">
       <div className="flex shrink-0 items-start justify-between gap-2 px-3.5 pt-3.5 pb-1.5">
-        <h3 className="line-clamp-2 text-sm font-black uppercase leading-tight tracking-wide text-white">
-          {paper.title}
-        </h3>
+        <div className="min-w-0">
+          <h3 className="line-clamp-2 text-sm font-black uppercase leading-tight tracking-wide text-white">
+            {paper.title}
+          </h3>
+          {isSqb && (
+            <span className="mt-1 inline-block rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+              SQB
+            </span>
+          )}
+        </div>
         <ProgressRing value={progress} />
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-2 px-3.5 pb-3.5 pt-1">
-        {([1, 2] as const).map((mod) => (
-          <ModuleRow
-            key={mod}
-            mod={mod}
-            set={mod === 1 ? mod1 : mod2}
+        {isSqb ? (
+          <ThemePackRow
+            set={sqbSet}
             starting={starting}
             onOpen={onOpen}
             onReview={onReview}
           />
-        ))}
+        ) : (
+          ([1, 2] as const).map((mod) => (
+            <ModuleRow
+              key={mod}
+              mod={mod}
+              set={mod === 1 ? mod1 : mod2}
+              starting={starting}
+              onOpen={onOpen}
+              onReview={onReview}
+            />
+          ))
+        )}
       </div>
     </RevealCard>
+  );
+}
+
+function ThemePackRow({
+  set,
+  starting,
+  onOpen,
+  onReview,
+}: {
+  set: TestSet | undefined;
+  starting: string | null;
+  onOpen: (set: TestSet) => void;
+  onReview: (sessionId: string) => void;
+}) {
+  return (
+    <div className="relative flex min-h-0 flex-1 items-stretch overflow-hidden rounded-xl border border-brand-400/30 bg-brand-800/70">
+      <div className="my-2.5 ml-2 w-1.5 shrink-0 rounded-full bg-brand-400" aria-hidden />
+      {!set ? (
+        <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">
+          <p className="text-sm font-bold text-white">Practice pack</p>
+          <span className="ml-auto text-xs text-brand-200">—</span>
+        </div>
+      ) : (
+        <ThemePackRowBody set={set} starting={starting} onOpen={onOpen} onReview={onReview} />
+      )}
+    </div>
+  );
+}
+
+function ThemePackRowBody({
+  set,
+  starting,
+  onOpen,
+  onReview,
+}: {
+  set: TestSet;
+  starting: string | null;
+  onOpen: (set: TestSet) => void;
+  onReview: (sessionId: string) => void;
+}) {
+  const busy = starting === set.id;
+  const disabled = starting != null && starting !== set.id;
+  const label =
+    set.status === "done" ? "Retake" : set.status === "in_progress" ? "Resume" : "Start";
+  const Icon = set.status === "done" ? RotateCcw : Play;
+  const pct = set.progressPct;
+
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2.5">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-sm font-bold text-white">Practice pack</p>
+          {pct > 0 && (
+            <span className="shrink-0 rounded-full bg-brand-400/25 px-2 py-0.5 text-xs font-bold tabular-nums text-brand-100">
+              {pct}%
+            </span>
+          )}
+        </div>
+        <p className="truncate text-xs font-medium text-brand-100">
+          {set.count}Q · {difficultyLabel(set.difficulty)}
+          {set.status === "in_progress" ? " · In progress" : ""}
+          {set.score ? ` · ${set.score.correct}/${set.score.total}` : ""}
+        </p>
+      </div>
+      <div className="flex shrink-0 flex-col gap-1.5">
+        {set.status === "done" && set.sessionId && (
+          <button
+            onClick={() => onReview(set.sessionId!)}
+            disabled={busy || disabled}
+            className="tap inline-flex items-center justify-center gap-1.5 rounded-full border border-brand-400/50 bg-brand-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-500 disabled:opacity-40"
+          >
+            <BookOpenCheck className="h-3.5 w-3.5" />
+            Review
+          </button>
+        )}
+        <button
+          onClick={() => onOpen(set)}
+          disabled={busy || disabled}
+          className="btn-brand inline-flex items-center justify-center gap-1.5 rounded-full bg-brand-400 px-3.5 py-1.5 text-xs font-bold text-white shadow-brand disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
+          {label}
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -212,6 +212,13 @@ export function QuestionEditModal({
         source_month: editing.source_month,
         source_year: editing.source_year,
         time_limit_seconds: editing.time_limit_seconds,
+        bank_format: editing.bank_format ?? "ordinary",
+        external_id: (editing.external_id ?? "").trim() || null,
+        assessment: (editing.assessment ?? "").trim() || null,
+        domain: (editing.domain ?? "").trim() || null,
+        subskill: (editing.subskill ?? "").trim() || null,
+        image_alt: (editing.image_alt ?? "").trim() || null,
+        published: editing.published ?? true,
       };
 
       let saved = editing;
@@ -230,7 +237,7 @@ export function QuestionEditModal({
       }
 
       if (opts.addAnother) {
-        const base = emptyAdminQuestion();
+        const base = emptyAdminQuestion(editing.section, editing.bank_format ?? "ordinary");
         const next = carryOver
           ? {
               ...base,
@@ -241,6 +248,10 @@ export function QuestionEditModal({
               source_month: editing.source_month,
               source_year: editing.source_year,
               time_limit_seconds: editing.time_limit_seconds,
+              bank_format: editing.bank_format,
+              assessment: editing.assessment,
+              domain: editing.domain,
+              subskill: editing.subskill,
             }
           : base;
         setEditing(next);
@@ -674,7 +685,19 @@ export async function loadQuestionWithAnswers(
     | "source_month"
     | "source_year"
     | "time_limit_seconds"
-  >,
+  > &
+    Partial<
+      Pick<
+        AdminQuestion,
+        | "bank_format"
+        | "external_id"
+        | "assessment"
+        | "domain"
+        | "subskill"
+        | "image_alt"
+        | "published"
+      >
+    >,
 ): Promise<AdminQuestion> {
   const { data } = await supabase.rpc("admin_get_question_answers", {
     p_question_id: q.id,
@@ -700,6 +723,13 @@ export async function loadQuestionWithAnswers(
     source_month: q.source_month,
     source_year: q.source_year,
     time_limit_seconds: q.time_limit_seconds ?? null,
+    bank_format: q.bank_format ?? "ordinary",
+    external_id: q.external_id ?? null,
+    assessment: q.assessment ?? null,
+    domain: q.domain ?? null,
+    subskill: q.subskill ?? null,
+    image_alt: q.image_alt ?? null,
+    published: q.published ?? true,
   };
 }
 

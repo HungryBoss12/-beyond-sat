@@ -61,6 +61,7 @@ const NAV = [
   { to: "/admin/questions", label: "Questions", anim: "questions", group: "Content" },
   { to: "/admin/import", label: "Add tests", anim: "import", group: "Content" },
   { to: "/admin/tests", label: "Tests", anim: "tests", group: "Content" },
+  { to: "/admin/sqb", label: "SQB Tests", anim: "tests", group: "Content" },
   { to: "/admin/daily", label: "Daily Tests", anim: "daily", group: "Content" },
   { to: "/admin/mocks", label: "Mock Exams", anim: "mocks", group: "Content" },
   {

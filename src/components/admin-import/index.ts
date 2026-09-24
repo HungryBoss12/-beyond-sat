@@ -18,4 +18,4 @@ export { PagePreview } from "./page-preview";
 export { DraftEditor, type DraftEditorPatch } from "./draft-editor";
 export { DraftReviewer } from "./draft-reviewer";
 export { mergeDrafts } from "./merge-drafts";
-export { WizardSteps, type ImportWizardStep } from "./wizard-steps";
+export { WizardSteps, SQB_WIZARD_STEPS, type ImportWizardStep, type WizardStepDef } from "./wizard-steps";

@@ -46,6 +46,7 @@ import { Route as AuthenticatedAdminNewsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAdminNotificationsRouteImport } from './routes/_authenticated/admin.notifications'
 import { Route as AuthenticatedAdminQuestionsRouteImport } from './routes/_authenticated/admin.questions'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
+import { Route as AuthenticatedAdminSqbRouteImport } from './routes/_authenticated/admin.sqb'
 import { Route as AuthenticatedAdminTestsRouteImport } from './routes/_authenticated/admin.tests'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminVocabRouteImport } from './routes/_authenticated/admin.vocab'
@@ -58,10 +59,14 @@ import { Route as AuthenticatedPracticeIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedPracticeSectionRouteImport } from './routes/_authenticated/practice.$section'
 import { Route as AuthenticatedPracticeDailyRouteImport } from './routes/_authenticated/practice.daily'
 import { Route as AuthenticatedPracticeMockRouteImport } from './routes/_authenticated/practice.mock'
+import { Route as AuthenticatedPracticeSqbRouteImport } from './routes/_authenticated/practice.sqb'
 import { Route as AuthenticatedVocabIndexRouteImport } from './routes/_authenticated/vocab.index'
 import { Route as AuthenticatedVocabDeckRouteImport } from './routes/_authenticated/vocab.deck'
 import { Route as AuthenticatedVocabDecksRouteImport } from './routes/_authenticated/vocab.decks'
 import { Route as AuthenticatedVocabTestsRouteImport } from './routes/_authenticated/vocab.tests'
+import { Route as AuthenticatedAdminSqbIndexRouteImport } from './routes/_authenticated/admin.sqb.index'
+import { Route as AuthenticatedAdminSqbImportRouteImport } from './routes/_authenticated/admin.sqb.import'
+import { Route as AuthenticatedAdminSqbQuestionsRouteImport } from './routes/_authenticated/admin.sqb.questions'
 import { Route as AuthenticatedAdminUsersIndexRouteImport } from './routes/_authenticated/admin.users.index'
 import { Route as AuthenticatedAdminUsersUserIdRouteImport } from './routes/_authenticated/admin.users.$userId'
 import { Route as AuthenticatedAdminVocabIndexRouteImport } from './routes/_authenticated/admin.vocab.index'
@@ -71,9 +76,14 @@ import { Route as AuthenticatedAnalysisSessionIdRouteImport } from './routes/_au
 import { Route as AuthenticatedLessonsSubjectSlugIndexRouteImport } from './routes/_authenticated/lessons.$subjectSlug.index'
 import { Route as AuthenticatedLessonsSubjectSlugTopicIdRouteImport } from './routes/_authenticated/lessons.$subjectSlug.$topicId'
 import { Route as AuthenticatedPracticeSessionIdRouteImport } from './routes/_authenticated/practice.session.$id'
+import { Route as AuthenticatedPracticeSqbIndexRouteImport } from './routes/_authenticated/practice.sqb.index'
+import { Route as AuthenticatedPracticeSqbSectionRouteImport } from './routes/_authenticated/practice.sqb.$section'
 import { Route as AuthenticatedVocabDeckDeckIdRouteImport } from './routes/_authenticated/vocab.deck.$deckId'
 import { Route as AuthenticatedVocabTestsIndexRouteImport } from './routes/_authenticated/vocab.tests.index'
 import { Route as AuthenticatedVocabTestsIdRouteImport } from './routes/_authenticated/vocab.tests.$id'
+import { Route as AuthenticatedAdminSqbQuestionsIndexRouteImport } from './routes/_authenticated/admin.sqb.questions.index'
+import { Route as AuthenticatedAdminSqbQuestionsIdRouteImport } from './routes/_authenticated/admin.sqb.questions.$id'
+import { Route as AuthenticatedAdminSqbReviewTestIdRouteImport } from './routes/_authenticated/admin.sqb.review.$testId'
 import { Route as AuthenticatedAdminVocabDeckDeckIdRouteImport } from './routes/_authenticated/admin.vocab.deck.$deckId'
 import { Route as AuthenticatedLessonsSubjectSlugTopicIdIndexRouteImport } from './routes/_authenticated/lessons.$subjectSlug.$topicId.index'
 import { Route as AuthenticatedLessonsSubjectSlugTopicIdLessonIdRouteImport } from './routes/_authenticated/lessons.$subjectSlug.$topicId.$lessonId'
@@ -270,6 +280,11 @@ const AuthenticatedAdminSettingsRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminSqbRoute = AuthenticatedAdminSqbRouteImport.update({
+  id: '/sqb',
+  path: '/sqb',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminTestsRoute = AuthenticatedAdminTestsRouteImport.update({
   id: '/tests',
   path: '/tests',
@@ -337,6 +352,12 @@ const AuthenticatedPracticeMockRoute =
     path: '/mock',
     getParentRoute: () => AuthenticatedPracticeRoute,
   } as any)
+const AuthenticatedPracticeSqbRoute =
+  AuthenticatedPracticeSqbRouteImport.update({
+    id: '/sqb',
+    path: '/sqb',
+    getParentRoute: () => AuthenticatedPracticeRoute,
+  } as any)
 const AuthenticatedVocabIndexRoute = AuthenticatedVocabIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -357,6 +378,24 @@ const AuthenticatedVocabTestsRoute = AuthenticatedVocabTestsRouteImport.update({
   path: '/tests',
   getParentRoute: () => AuthenticatedVocabRoute,
 } as any)
+const AuthenticatedAdminSqbIndexRoute =
+  AuthenticatedAdminSqbIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminSqbRoute,
+  } as any)
+const AuthenticatedAdminSqbImportRoute =
+  AuthenticatedAdminSqbImportRouteImport.update({
+    id: '/import',
+    path: '/import',
+    getParentRoute: () => AuthenticatedAdminSqbRoute,
+  } as any)
+const AuthenticatedAdminSqbQuestionsRoute =
+  AuthenticatedAdminSqbQuestionsRouteImport.update({
+    id: '/questions',
+    path: '/questions',
+    getParentRoute: () => AuthenticatedAdminSqbRoute,
+  } as any)
 const AuthenticatedAdminUsersIndexRoute =
   AuthenticatedAdminUsersIndexRouteImport.update({
     id: '/',
@@ -411,6 +450,18 @@ const AuthenticatedPracticeSessionIdRoute =
     path: '/session/$id',
     getParentRoute: () => AuthenticatedPracticeRoute,
   } as any)
+const AuthenticatedPracticeSqbIndexRoute =
+  AuthenticatedPracticeSqbIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedPracticeSqbRoute,
+  } as any)
+const AuthenticatedPracticeSqbSectionRoute =
+  AuthenticatedPracticeSqbSectionRouteImport.update({
+    id: '/$section',
+    path: '/$section',
+    getParentRoute: () => AuthenticatedPracticeSqbRoute,
+  } as any)
 const AuthenticatedVocabDeckDeckIdRoute =
   AuthenticatedVocabDeckDeckIdRouteImport.update({
     id: '/$deckId',
@@ -428,6 +479,24 @@ const AuthenticatedVocabTestsIdRoute =
     id: '/$id',
     path: '/$id',
     getParentRoute: () => AuthenticatedVocabTestsRoute,
+  } as any)
+const AuthenticatedAdminSqbQuestionsIndexRoute =
+  AuthenticatedAdminSqbQuestionsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminSqbQuestionsRoute,
+  } as any)
+const AuthenticatedAdminSqbQuestionsIdRoute =
+  AuthenticatedAdminSqbQuestionsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedAdminSqbQuestionsRoute,
+  } as any)
+const AuthenticatedAdminSqbReviewTestIdRoute =
+  AuthenticatedAdminSqbReviewTestIdRouteImport.update({
+    id: '/review/$testId',
+    path: '/review/$testId',
+    getParentRoute: () => AuthenticatedAdminSqbRoute,
   } as any)
 const AuthenticatedAdminVocabDeckDeckIdRoute =
   AuthenticatedAdminVocabDeckDeckIdRouteImport.update({
@@ -484,6 +553,7 @@ export interface FileRoutesByFullPath {
   '/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
   '/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/sqb': typeof AuthenticatedAdminSqbRouteWithChildren
   '/admin/tests': typeof AuthenticatedAdminTestsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/admin/vocab': typeof AuthenticatedAdminVocabRouteWithChildren
@@ -492,6 +562,7 @@ export interface FileRoutesByFullPath {
   '/practice/$section': typeof AuthenticatedPracticeSectionRoute
   '/practice/daily': typeof AuthenticatedPracticeDailyRoute
   '/practice/mock': typeof AuthenticatedPracticeMockRoute
+  '/practice/sqb': typeof AuthenticatedPracticeSqbRouteWithChildren
   '/vocab/deck': typeof AuthenticatedVocabDeckRouteWithChildren
   '/vocab/decks': typeof AuthenticatedVocabDecksRoute
   '/vocab/tests': typeof AuthenticatedVocabTestsRouteWithChildren
@@ -501,20 +572,28 @@ export interface FileRoutesByFullPath {
   '/news/': typeof AuthenticatedNewsIndexRoute
   '/practice/': typeof AuthenticatedPracticeIndexRoute
   '/vocab/': typeof AuthenticatedVocabIndexRoute
+  '/admin/sqb/import': typeof AuthenticatedAdminSqbImportRoute
+  '/admin/sqb/questions': typeof AuthenticatedAdminSqbQuestionsRouteWithChildren
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/admin/vocab/assignments': typeof AuthenticatedAdminVocabAssignmentsRoute
   '/admin/vocab/decks': typeof AuthenticatedAdminVocabDecksRoute
   '/analysis/session/$id': typeof AuthenticatedAnalysisSessionIdRoute
   '/lessons/$subjectSlug/$topicId': typeof AuthenticatedLessonsSubjectSlugTopicIdRouteWithChildren
   '/practice/session/$id': typeof AuthenticatedPracticeSessionIdRoute
+  '/practice/sqb/$section': typeof AuthenticatedPracticeSqbSectionRoute
   '/vocab/deck/$deckId': typeof AuthenticatedVocabDeckDeckIdRoute
   '/vocab/tests/$id': typeof AuthenticatedVocabTestsIdRoute
+  '/admin/sqb/': typeof AuthenticatedAdminSqbIndexRoute
   '/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
   '/admin/vocab/': typeof AuthenticatedAdminVocabIndexRoute
   '/lessons/$subjectSlug/': typeof AuthenticatedLessonsSubjectSlugIndexRoute
+  '/practice/sqb/': typeof AuthenticatedPracticeSqbIndexRoute
   '/vocab/tests/': typeof AuthenticatedVocabTestsIndexRoute
+  '/admin/sqb/questions/$id': typeof AuthenticatedAdminSqbQuestionsIdRoute
+  '/admin/sqb/review/$testId': typeof AuthenticatedAdminSqbReviewTestIdRoute
   '/admin/vocab/deck/$deckId': typeof AuthenticatedAdminVocabDeckDeckIdRoute
   '/lessons/$subjectSlug/$topicId/$lessonId': typeof AuthenticatedLessonsSubjectSlugTopicIdLessonIdRoute
+  '/admin/sqb/questions/': typeof AuthenticatedAdminSqbQuestionsIndexRoute
   '/lessons/$subjectSlug/$topicId/': typeof AuthenticatedLessonsSubjectSlugTopicIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -560,19 +639,26 @@ export interface FileRoutesByTo {
   '/news': typeof AuthenticatedNewsIndexRoute
   '/practice': typeof AuthenticatedPracticeIndexRoute
   '/vocab': typeof AuthenticatedVocabIndexRoute
+  '/admin/sqb/import': typeof AuthenticatedAdminSqbImportRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/admin/vocab/assignments': typeof AuthenticatedAdminVocabAssignmentsRoute
   '/admin/vocab/decks': typeof AuthenticatedAdminVocabDecksRoute
   '/analysis/session/$id': typeof AuthenticatedAnalysisSessionIdRoute
   '/practice/session/$id': typeof AuthenticatedPracticeSessionIdRoute
+  '/practice/sqb/$section': typeof AuthenticatedPracticeSqbSectionRoute
   '/vocab/deck/$deckId': typeof AuthenticatedVocabDeckDeckIdRoute
   '/vocab/tests/$id': typeof AuthenticatedVocabTestsIdRoute
+  '/admin/sqb': typeof AuthenticatedAdminSqbIndexRoute
   '/admin/users': typeof AuthenticatedAdminUsersIndexRoute
   '/admin/vocab': typeof AuthenticatedAdminVocabIndexRoute
   '/lessons/$subjectSlug': typeof AuthenticatedLessonsSubjectSlugIndexRoute
+  '/practice/sqb': typeof AuthenticatedPracticeSqbIndexRoute
   '/vocab/tests': typeof AuthenticatedVocabTestsIndexRoute
+  '/admin/sqb/questions/$id': typeof AuthenticatedAdminSqbQuestionsIdRoute
+  '/admin/sqb/review/$testId': typeof AuthenticatedAdminSqbReviewTestIdRoute
   '/admin/vocab/deck/$deckId': typeof AuthenticatedAdminVocabDeckDeckIdRoute
   '/lessons/$subjectSlug/$topicId/$lessonId': typeof AuthenticatedLessonsSubjectSlugTopicIdLessonIdRoute
+  '/admin/sqb/questions': typeof AuthenticatedAdminSqbQuestionsIndexRoute
   '/lessons/$subjectSlug/$topicId': typeof AuthenticatedLessonsSubjectSlugTopicIdIndexRoute
 }
 export interface FileRoutesById {
@@ -613,6 +699,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
   '/_authenticated/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/_authenticated/admin/sqb': typeof AuthenticatedAdminSqbRouteWithChildren
   '/_authenticated/admin/tests': typeof AuthenticatedAdminTestsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/_authenticated/admin/vocab': typeof AuthenticatedAdminVocabRouteWithChildren
@@ -621,6 +708,7 @@ export interface FileRoutesById {
   '/_authenticated/practice/$section': typeof AuthenticatedPracticeSectionRoute
   '/_authenticated/practice/daily': typeof AuthenticatedPracticeDailyRoute
   '/_authenticated/practice/mock': typeof AuthenticatedPracticeMockRoute
+  '/_authenticated/practice/sqb': typeof AuthenticatedPracticeSqbRouteWithChildren
   '/_authenticated/vocab/deck': typeof AuthenticatedVocabDeckRouteWithChildren
   '/_authenticated/vocab/decks': typeof AuthenticatedVocabDecksRoute
   '/_authenticated/vocab/tests': typeof AuthenticatedVocabTestsRouteWithChildren
@@ -630,20 +718,28 @@ export interface FileRoutesById {
   '/_authenticated/news/': typeof AuthenticatedNewsIndexRoute
   '/_authenticated/practice/': typeof AuthenticatedPracticeIndexRoute
   '/_authenticated/vocab/': typeof AuthenticatedVocabIndexRoute
+  '/_authenticated/admin/sqb/import': typeof AuthenticatedAdminSqbImportRoute
+  '/_authenticated/admin/sqb/questions': typeof AuthenticatedAdminSqbQuestionsRouteWithChildren
   '/_authenticated/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/_authenticated/admin/vocab/assignments': typeof AuthenticatedAdminVocabAssignmentsRoute
   '/_authenticated/admin/vocab/decks': typeof AuthenticatedAdminVocabDecksRoute
   '/_authenticated/analysis/session/$id': typeof AuthenticatedAnalysisSessionIdRoute
   '/_authenticated/lessons/$subjectSlug/$topicId': typeof AuthenticatedLessonsSubjectSlugTopicIdRouteWithChildren
   '/_authenticated/practice/session/$id': typeof AuthenticatedPracticeSessionIdRoute
+  '/_authenticated/practice/sqb/$section': typeof AuthenticatedPracticeSqbSectionRoute
   '/_authenticated/vocab/deck/$deckId': typeof AuthenticatedVocabDeckDeckIdRoute
   '/_authenticated/vocab/tests/$id': typeof AuthenticatedVocabTestsIdRoute
+  '/_authenticated/admin/sqb/': typeof AuthenticatedAdminSqbIndexRoute
   '/_authenticated/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
   '/_authenticated/admin/vocab/': typeof AuthenticatedAdminVocabIndexRoute
   '/_authenticated/lessons/$subjectSlug/': typeof AuthenticatedLessonsSubjectSlugIndexRoute
+  '/_authenticated/practice/sqb/': typeof AuthenticatedPracticeSqbIndexRoute
   '/_authenticated/vocab/tests/': typeof AuthenticatedVocabTestsIndexRoute
+  '/_authenticated/admin/sqb/questions/$id': typeof AuthenticatedAdminSqbQuestionsIdRoute
+  '/_authenticated/admin/sqb/review/$testId': typeof AuthenticatedAdminSqbReviewTestIdRoute
   '/_authenticated/admin/vocab/deck/$deckId': typeof AuthenticatedAdminVocabDeckDeckIdRoute
   '/_authenticated/lessons/$subjectSlug/$topicId/$lessonId': typeof AuthenticatedLessonsSubjectSlugTopicIdLessonIdRoute
+  '/_authenticated/admin/sqb/questions/': typeof AuthenticatedAdminSqbQuestionsIndexRoute
   '/_authenticated/lessons/$subjectSlug/$topicId/': typeof AuthenticatedLessonsSubjectSlugTopicIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -684,6 +780,7 @@ export interface FileRouteTypes {
     | '/admin/notifications'
     | '/admin/questions'
     | '/admin/settings'
+    | '/admin/sqb'
     | '/admin/tests'
     | '/admin/users'
     | '/admin/vocab'
@@ -692,6 +789,7 @@ export interface FileRouteTypes {
     | '/practice/$section'
     | '/practice/daily'
     | '/practice/mock'
+    | '/practice/sqb'
     | '/vocab/deck'
     | '/vocab/decks'
     | '/vocab/tests'
@@ -701,20 +799,28 @@ export interface FileRouteTypes {
     | '/news/'
     | '/practice/'
     | '/vocab/'
+    | '/admin/sqb/import'
+    | '/admin/sqb/questions'
     | '/admin/users/$userId'
     | '/admin/vocab/assignments'
     | '/admin/vocab/decks'
     | '/analysis/session/$id'
     | '/lessons/$subjectSlug/$topicId'
     | '/practice/session/$id'
+    | '/practice/sqb/$section'
     | '/vocab/deck/$deckId'
     | '/vocab/tests/$id'
+    | '/admin/sqb/'
     | '/admin/users/'
     | '/admin/vocab/'
     | '/lessons/$subjectSlug/'
+    | '/practice/sqb/'
     | '/vocab/tests/'
+    | '/admin/sqb/questions/$id'
+    | '/admin/sqb/review/$testId'
     | '/admin/vocab/deck/$deckId'
     | '/lessons/$subjectSlug/$topicId/$lessonId'
+    | '/admin/sqb/questions/'
     | '/lessons/$subjectSlug/$topicId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -760,19 +866,26 @@ export interface FileRouteTypes {
     | '/news'
     | '/practice'
     | '/vocab'
+    | '/admin/sqb/import'
     | '/admin/users/$userId'
     | '/admin/vocab/assignments'
     | '/admin/vocab/decks'
     | '/analysis/session/$id'
     | '/practice/session/$id'
+    | '/practice/sqb/$section'
     | '/vocab/deck/$deckId'
     | '/vocab/tests/$id'
+    | '/admin/sqb'
     | '/admin/users'
     | '/admin/vocab'
     | '/lessons/$subjectSlug'
+    | '/practice/sqb'
     | '/vocab/tests'
+    | '/admin/sqb/questions/$id'
+    | '/admin/sqb/review/$testId'
     | '/admin/vocab/deck/$deckId'
     | '/lessons/$subjectSlug/$topicId/$lessonId'
+    | '/admin/sqb/questions'
     | '/lessons/$subjectSlug/$topicId'
   id:
     | '__root__'
@@ -812,6 +925,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/notifications'
     | '/_authenticated/admin/questions'
     | '/_authenticated/admin/settings'
+    | '/_authenticated/admin/sqb'
     | '/_authenticated/admin/tests'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/vocab'
@@ -820,6 +934,7 @@ export interface FileRouteTypes {
     | '/_authenticated/practice/$section'
     | '/_authenticated/practice/daily'
     | '/_authenticated/practice/mock'
+    | '/_authenticated/practice/sqb'
     | '/_authenticated/vocab/deck'
     | '/_authenticated/vocab/decks'
     | '/_authenticated/vocab/tests'
@@ -829,20 +944,28 @@ export interface FileRouteTypes {
     | '/_authenticated/news/'
     | '/_authenticated/practice/'
     | '/_authenticated/vocab/'
+    | '/_authenticated/admin/sqb/import'
+    | '/_authenticated/admin/sqb/questions'
     | '/_authenticated/admin/users/$userId'
     | '/_authenticated/admin/vocab/assignments'
     | '/_authenticated/admin/vocab/decks'
     | '/_authenticated/analysis/session/$id'
     | '/_authenticated/lessons/$subjectSlug/$topicId'
     | '/_authenticated/practice/session/$id'
+    | '/_authenticated/practice/sqb/$section'
     | '/_authenticated/vocab/deck/$deckId'
     | '/_authenticated/vocab/tests/$id'
+    | '/_authenticated/admin/sqb/'
     | '/_authenticated/admin/users/'
     | '/_authenticated/admin/vocab/'
     | '/_authenticated/lessons/$subjectSlug/'
+    | '/_authenticated/practice/sqb/'
     | '/_authenticated/vocab/tests/'
+    | '/_authenticated/admin/sqb/questions/$id'
+    | '/_authenticated/admin/sqb/review/$testId'
     | '/_authenticated/admin/vocab/deck/$deckId'
     | '/_authenticated/lessons/$subjectSlug/$topicId/$lessonId'
+    | '/_authenticated/admin/sqb/questions/'
     | '/_authenticated/lessons/$subjectSlug/$topicId/'
   fileRoutesById: FileRoutesById
 }
@@ -1123,6 +1246,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/sqb': {
+      id: '/_authenticated/admin/sqb'
+      path: '/sqb'
+      fullPath: '/admin/sqb'
+      preLoaderRoute: typeof AuthenticatedAdminSqbRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/tests': {
       id: '/_authenticated/admin/tests'
       path: '/tests'
@@ -1207,6 +1337,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPracticeMockRouteImport
       parentRoute: typeof AuthenticatedPracticeRoute
     }
+    '/_authenticated/practice/sqb': {
+      id: '/_authenticated/practice/sqb'
+      path: '/sqb'
+      fullPath: '/practice/sqb'
+      preLoaderRoute: typeof AuthenticatedPracticeSqbRouteImport
+      parentRoute: typeof AuthenticatedPracticeRoute
+    }
     '/_authenticated/vocab/': {
       id: '/_authenticated/vocab/'
       path: '/'
@@ -1234,6 +1371,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/vocab/tests'
       preLoaderRoute: typeof AuthenticatedVocabTestsRouteImport
       parentRoute: typeof AuthenticatedVocabRoute
+    }
+    '/_authenticated/admin/sqb/': {
+      id: '/_authenticated/admin/sqb/'
+      path: '/'
+      fullPath: '/admin/sqb/'
+      preLoaderRoute: typeof AuthenticatedAdminSqbIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminSqbRoute
+    }
+    '/_authenticated/admin/sqb/import': {
+      id: '/_authenticated/admin/sqb/import'
+      path: '/import'
+      fullPath: '/admin/sqb/import'
+      preLoaderRoute: typeof AuthenticatedAdminSqbImportRouteImport
+      parentRoute: typeof AuthenticatedAdminSqbRoute
+    }
+    '/_authenticated/admin/sqb/questions': {
+      id: '/_authenticated/admin/sqb/questions'
+      path: '/questions'
+      fullPath: '/admin/sqb/questions'
+      preLoaderRoute: typeof AuthenticatedAdminSqbQuestionsRouteImport
+      parentRoute: typeof AuthenticatedAdminSqbRoute
     }
     '/_authenticated/admin/users/': {
       id: '/_authenticated/admin/users/'
@@ -1298,6 +1456,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPracticeSessionIdRouteImport
       parentRoute: typeof AuthenticatedPracticeRoute
     }
+    '/_authenticated/practice/sqb/': {
+      id: '/_authenticated/practice/sqb/'
+      path: '/'
+      fullPath: '/practice/sqb/'
+      preLoaderRoute: typeof AuthenticatedPracticeSqbIndexRouteImport
+      parentRoute: typeof AuthenticatedPracticeSqbRoute
+    }
+    '/_authenticated/practice/sqb/$section': {
+      id: '/_authenticated/practice/sqb/$section'
+      path: '/$section'
+      fullPath: '/practice/sqb/$section'
+      preLoaderRoute: typeof AuthenticatedPracticeSqbSectionRouteImport
+      parentRoute: typeof AuthenticatedPracticeSqbRoute
+    }
     '/_authenticated/vocab/deck/$deckId': {
       id: '/_authenticated/vocab/deck/$deckId'
       path: '/$deckId'
@@ -1318,6 +1490,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/vocab/tests/$id'
       preLoaderRoute: typeof AuthenticatedVocabTestsIdRouteImport
       parentRoute: typeof AuthenticatedVocabTestsRoute
+    }
+    '/_authenticated/admin/sqb/questions/': {
+      id: '/_authenticated/admin/sqb/questions/'
+      path: '/'
+      fullPath: '/admin/sqb/questions/'
+      preLoaderRoute: typeof AuthenticatedAdminSqbQuestionsIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminSqbQuestionsRoute
+    }
+    '/_authenticated/admin/sqb/questions/$id': {
+      id: '/_authenticated/admin/sqb/questions/$id'
+      path: '/$id'
+      fullPath: '/admin/sqb/questions/$id'
+      preLoaderRoute: typeof AuthenticatedAdminSqbQuestionsIdRouteImport
+      parentRoute: typeof AuthenticatedAdminSqbQuestionsRoute
+    }
+    '/_authenticated/admin/sqb/review/$testId': {
+      id: '/_authenticated/admin/sqb/review/$testId'
+      path: '/review/$testId'
+      fullPath: '/admin/sqb/review/$testId'
+      preLoaderRoute: typeof AuthenticatedAdminSqbReviewTestIdRouteImport
+      parentRoute: typeof AuthenticatedAdminSqbRoute
     }
     '/_authenticated/admin/vocab/deck/$deckId': {
       id: '/_authenticated/admin/vocab/deck/$deckId'
@@ -1342,6 +1535,45 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AuthenticatedAdminSqbQuestionsRouteChildren {
+  AuthenticatedAdminSqbQuestionsIdRoute: typeof AuthenticatedAdminSqbQuestionsIdRoute
+  AuthenticatedAdminSqbQuestionsIndexRoute: typeof AuthenticatedAdminSqbQuestionsIndexRoute
+}
+
+const AuthenticatedAdminSqbQuestionsRouteChildren: AuthenticatedAdminSqbQuestionsRouteChildren =
+  {
+    AuthenticatedAdminSqbQuestionsIdRoute:
+      AuthenticatedAdminSqbQuestionsIdRoute,
+    AuthenticatedAdminSqbQuestionsIndexRoute:
+      AuthenticatedAdminSqbQuestionsIndexRoute,
+  }
+
+const AuthenticatedAdminSqbQuestionsRouteWithChildren =
+  AuthenticatedAdminSqbQuestionsRoute._addFileChildren(
+    AuthenticatedAdminSqbQuestionsRouteChildren,
+  )
+
+interface AuthenticatedAdminSqbRouteChildren {
+  AuthenticatedAdminSqbImportRoute: typeof AuthenticatedAdminSqbImportRoute
+  AuthenticatedAdminSqbQuestionsRoute: typeof AuthenticatedAdminSqbQuestionsRouteWithChildren
+  AuthenticatedAdminSqbIndexRoute: typeof AuthenticatedAdminSqbIndexRoute
+  AuthenticatedAdminSqbReviewTestIdRoute: typeof AuthenticatedAdminSqbReviewTestIdRoute
+}
+
+const AuthenticatedAdminSqbRouteChildren: AuthenticatedAdminSqbRouteChildren = {
+  AuthenticatedAdminSqbImportRoute: AuthenticatedAdminSqbImportRoute,
+  AuthenticatedAdminSqbQuestionsRoute:
+    AuthenticatedAdminSqbQuestionsRouteWithChildren,
+  AuthenticatedAdminSqbIndexRoute: AuthenticatedAdminSqbIndexRoute,
+  AuthenticatedAdminSqbReviewTestIdRoute:
+    AuthenticatedAdminSqbReviewTestIdRoute,
+}
+
+const AuthenticatedAdminSqbRouteWithChildren =
+  AuthenticatedAdminSqbRoute._addFileChildren(
+    AuthenticatedAdminSqbRouteChildren,
+  )
 
 interface AuthenticatedAdminUsersRouteChildren {
   AuthenticatedAdminUsersUserIdRoute: typeof AuthenticatedAdminUsersUserIdRoute
@@ -1393,6 +1625,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminNotificationsRoute: typeof AuthenticatedAdminNotificationsRoute
   AuthenticatedAdminQuestionsRoute: typeof AuthenticatedAdminQuestionsRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
+  AuthenticatedAdminSqbRoute: typeof AuthenticatedAdminSqbRouteWithChildren
   AuthenticatedAdminTestsRoute: typeof AuthenticatedAdminTestsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRouteWithChildren
   AuthenticatedAdminVocabRoute: typeof AuthenticatedAdminVocabRouteWithChildren
@@ -1411,6 +1644,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminNotificationsRoute: AuthenticatedAdminNotificationsRoute,
   AuthenticatedAdminQuestionsRoute: AuthenticatedAdminQuestionsRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
+  AuthenticatedAdminSqbRoute: AuthenticatedAdminSqbRouteWithChildren,
   AuthenticatedAdminTestsRoute: AuthenticatedAdminTestsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRouteWithChildren,
   AuthenticatedAdminVocabRoute: AuthenticatedAdminVocabRouteWithChildren,
@@ -1498,10 +1732,27 @@ const AuthenticatedNewsRouteChildren: AuthenticatedNewsRouteChildren = {
 const AuthenticatedNewsRouteWithChildren =
   AuthenticatedNewsRoute._addFileChildren(AuthenticatedNewsRouteChildren)
 
+interface AuthenticatedPracticeSqbRouteChildren {
+  AuthenticatedPracticeSqbSectionRoute: typeof AuthenticatedPracticeSqbSectionRoute
+  AuthenticatedPracticeSqbIndexRoute: typeof AuthenticatedPracticeSqbIndexRoute
+}
+
+const AuthenticatedPracticeSqbRouteChildren: AuthenticatedPracticeSqbRouteChildren =
+  {
+    AuthenticatedPracticeSqbSectionRoute: AuthenticatedPracticeSqbSectionRoute,
+    AuthenticatedPracticeSqbIndexRoute: AuthenticatedPracticeSqbIndexRoute,
+  }
+
+const AuthenticatedPracticeSqbRouteWithChildren =
+  AuthenticatedPracticeSqbRoute._addFileChildren(
+    AuthenticatedPracticeSqbRouteChildren,
+  )
+
 interface AuthenticatedPracticeRouteChildren {
   AuthenticatedPracticeSectionRoute: typeof AuthenticatedPracticeSectionRoute
   AuthenticatedPracticeDailyRoute: typeof AuthenticatedPracticeDailyRoute
   AuthenticatedPracticeMockRoute: typeof AuthenticatedPracticeMockRoute
+  AuthenticatedPracticeSqbRoute: typeof AuthenticatedPracticeSqbRouteWithChildren
   AuthenticatedPracticeIndexRoute: typeof AuthenticatedPracticeIndexRoute
   AuthenticatedPracticeSessionIdRoute: typeof AuthenticatedPracticeSessionIdRoute
 }
@@ -1510,6 +1761,7 @@ const AuthenticatedPracticeRouteChildren: AuthenticatedPracticeRouteChildren = {
   AuthenticatedPracticeSectionRoute: AuthenticatedPracticeSectionRoute,
   AuthenticatedPracticeDailyRoute: AuthenticatedPracticeDailyRoute,
   AuthenticatedPracticeMockRoute: AuthenticatedPracticeMockRoute,
+  AuthenticatedPracticeSqbRoute: AuthenticatedPracticeSqbRouteWithChildren,
   AuthenticatedPracticeIndexRoute: AuthenticatedPracticeIndexRoute,
   AuthenticatedPracticeSessionIdRoute: AuthenticatedPracticeSessionIdRoute,
 }

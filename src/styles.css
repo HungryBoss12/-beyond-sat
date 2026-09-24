@@ -314,7 +314,9 @@
     text-underline-offset: 0.15em;
   }
 
-  /* Keep KaTeX radicals/stretchy SVGs intact (preflight svg rules collapse them). */
+  /* Keep KaTeX radicals/stretchy SVGs intact (preflight svg rules collapse them).
+     Do NOT force width:100% / height:inherit on all KaTeX SVGs — that breaks
+     radical glyphs (.hide-tail in KaTeX 0.18; .sqrt-sign in older builds). */
   .math-text {
     color: inherit;
   }
@@ -328,19 +330,33 @@
   }
   .katex svg,
   .math-text .katex svg {
-    display: block !important;
+    display: inline-block;
     max-width: none !important;
     max-height: none !important;
-    width: 100% !important;
-    height: inherit !important;
     overflow: visible !important;
     fill: currentColor;
     stroke: currentColor;
     vertical-align: baseline;
   }
+  /* Stretchy delimiters only — not .hide-tail (radicals use that class). */
+  .katex .stretchy:not(.hide-tail) svg,
+  .math-text .katex .stretchy:not(.hide-tail) svg {
+    width: 100%;
+    height: inherit;
+  }
   .katex .sqrt > .sqrt-sign,
-  .math-text .katex .sqrt > .sqrt-sign {
+  .math-text .katex .sqrt > .sqrt-sign,
+  .katex .mord.sqrt .hide-tail,
+  .math-text .katex .mord.sqrt .hide-tail {
     color: inherit;
+  }
+  .katex .sqrt > .sqrt-sign svg,
+  .math-text .katex .sqrt > .sqrt-sign svg,
+  .katex .mord.sqrt .hide-tail svg,
+  .math-text .katex .mord.sqrt .hide-tail svg {
+    width: auto !important;
+    height: auto !important;
+    display: block;
   }
 
   /* Prefer bundled public fonts when the CSS-relative font URLs 404 in the Worker. */

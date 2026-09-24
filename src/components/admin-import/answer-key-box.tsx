@@ -4,9 +4,8 @@ import { CONTROL_CLASS } from "./types";
 /**
  * The answer-key paste box.
  *
- * A whole paper is two modules that both start at question 1, so the useful
- * paste is a module block, not a flat numbered list. Numbered lines still work
- * for a single module.
+ * Ordinary papers: two modules that both start at question 1, so the useful
+ * paste is a module block. SQB theme packs use a flat key (or answers PDF).
  */
 export function AnswerKeyBox({
   value,
@@ -14,20 +13,32 @@ export function AnswerKeyBox({
   onApply,
   summary,
   bothModules,
+  flat,
 }: {
   value: string;
   onChange: (v: string) => void;
   onApply: () => void;
   summary: string | null;
   bothModules?: boolean;
+  /** SQB theme packs — no Module 1/2 headings. */
+  flat?: boolean;
 }) {
+  const mode = flat ? "flat" : bothModules ? "both" : "single";
+
   return (
     <div className="space-y-2 rounded-xl border border-brand-400/40 bg-brand-800 p-4">
       <div className="flex items-start gap-2.5">
         <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
         <div className="text-xs leading-relaxed text-brand-100">
           <strong className="text-white">Answer key.</strong>{" "}
-          {bothModules ? (
+          {mode === "flat" ? (
+            <>
+              Paste numbered lines (<code className="text-white">1. A</code>) or a letter run (
+              <code className="text-white">A D C B …</code>). Prefer uploading the SQB answers PDF
+              on Extract — it matches by Question ID. Grid-ins like{" "}
+              <code className="text-white">3/4</code> are fine.
+            </>
+          ) : mode === "both" ? (
             <>
               Paste each module under its heading — <code className="text-white">Module 1:</code>{" "}
               then the answers, then <code className="text-white">Module 2:</code>.{" "}
@@ -41,7 +52,8 @@ export function AnswerKeyBox({
             <>
               Paste numbered lines (<code className="text-white">1. A</code>,{" "}
               <code className="text-white">1) A</code>) or a letter run. For a whole paper use{" "}
-              <code className="text-white">Module 1:</code> / <code className="text-white">Module 2:</code>{" "}
+              <code className="text-white">Module 1:</code> /{" "}
+              <code className="text-white">Module 2:</code>{" "}
               blocks (<code className="text-white">Section 1:</code> /{" "}
               <code className="text-white">Section 2:</code> also accepted).
             </>
@@ -51,12 +63,14 @@ export function AnswerKeyBox({
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        rows={bothModules ? 7 : 4}
+        rows={mode === "both" ? 7 : 4}
         spellCheck={false}
         placeholder={
-          bothModules
-            ? "Module 1: A D C B A C D B …\nModule 2: B A D C A B …"
-            : "1. A\n2. D\n3. C"
+          mode === "flat"
+            ? "1. A\n2. D\n3. C"
+            : mode === "both"
+              ? "Module 1: A D C B A C D B …\nModule 2: B A D C A B …"
+              : "1. A\n2. D\n3. C"
         }
         className={CONTROL_CLASS + " resize-y font-mono text-xs leading-relaxed"}
       />

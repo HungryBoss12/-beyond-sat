@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -7,10 +7,13 @@ import {
   validateRecord,
   flagDuplicates,
   dedupeKey,
+  dryRunImport,
+  forceBankFormat,
   JSON_TEMPLATE,
   TSV_TEMPLATE,
   TSV_COLUMNS,
   type ParseResult,
+  type ImportDryRun,
 } from "@/lib/question-import";
 import { readDocx } from "@/lib/import/docx";
 import {
@@ -86,6 +89,14 @@ import { uploadQuestionImage } from "@/lib/import/upload-question-image";
 import { toPersistableImageRef } from "@/lib/storage-url";
 
 export const Route = createFileRoute("/_authenticated/admin/import")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    bank: s.bank === "sqb" ? ("sqb" as const) : ("ordinary" as const),
+  }),
+  beforeLoad: ({ search }) => {
+    if ((search as { bank?: string }).bank === "sqb") {
+      throw redirect({ to: "/admin/sqb/import" });
+    }
+  },
   component: AdminImport,
   head: () => ({ meta: [{ title: "Add tests — BeyondSAT" }] }),
 });
@@ -139,6 +150,7 @@ async function persistQuestionImage(
 }
 
 function AdminImport() {
+  const { bank: defaultBank } = Route.useSearch();
   const [step, setStep] = useState<ImportWizardStep>("setup");
   const [mode, setMode] = useState<Mode>("upload");
 
@@ -149,6 +161,8 @@ function AdminImport() {
   const [difficulty, setDifficulty] = useState<LetterDifficulty>("C");
   const [month, setMonth] = useState<number | null>(null);
   const [year, setYear] = useState<number | null>(new Date().getFullYear());
+  const [rightsConfirmed, setRightsConfirmed] = useState(false);
+  const [dryRun, setDryRun] = useState<ImportDryRun | null>(null);
 
   const [text, setText] = useState("");
   const [checking, setChecking] = useState(false);
@@ -429,17 +443,27 @@ function AdminImport() {
     setChecking(true);
     setResult(null);
     setDrafts(null);
-    const base = mode === "sheet" ? parseDelimited(text) : parseJson(text);
+    setDryRun(null);
+    let base = mode === "sheet" ? parseDelimited(text) : parseJson(text);
+    if (defaultBank === "sqb" && !base.fatal) {
+      base = { ...base, rows: forceBankFormat(base.rows, "sqb") };
+    }
     if (base.fatal) {
       setParsed(base);
       setChecking(false);
       return;
     }
+    if (mode === "json") {
+      setDryRun(dryRunImport(base.rows));
+    }
     await fetchExisting();
     const next = stampDraftModules(
       base.rows.map((r) => ({
         number: r.index,
-        rec: r.rec ? { ...r.rec } : {},
+        rec: {
+          ...(r.rec ? { ...r.rec } : {}),
+          ...(defaultBank === "sqb" ? { bank_format: "sqb" } : {}),
+        },
         warnings: r.warnings.filter(
           (w) => !w.includes("Duplicate") && !w.includes("already exists"),
         ),
@@ -1024,6 +1048,13 @@ function AdminImport() {
         image_url: img.path,
         source_month: q.source_month ?? month ?? null,
         source_year: q.source_year ?? year ?? null,
+        bank_format: q.bank_format,
+        external_id: q.external_id,
+        assessment: q.assessment,
+        domain: q.domain || q.skill,
+        subskill: q.subskill,
+        image_alt: q.image_alt,
+        published: q.published,
       };
 
       if (!t.existingId) {
@@ -1072,6 +1103,8 @@ function AdminImport() {
             source_month: month,
             source_year: year,
             created_by: uid,
+            bank_format: defaultBank,
+            published: false,
           })
           .select("id")
           .single();
@@ -1210,6 +1243,12 @@ function AdminImport() {
       await runSaveExisting();
       return;
     }
+    if (defaultBank === "sqb" && !rightsConfirmed) {
+      alert(
+        "Confirm you have rights to import this content (original or licensed). College Board SQB stems must not be uploaded.",
+      );
+      return;
+    }
     const tagged = previewRows
       .filter((p) => p.row.question && (!skipDuplicates || !p.row.duplicate))
       .map((p) => ({
@@ -1261,6 +1300,9 @@ function AdminImport() {
           image_url: img.path,
           source_month: t.row.question!.source_month ?? month ?? null,
           source_year: t.row.question!.source_year ?? year ?? null,
+          bank_format: defaultBank === "sqb" ? "sqb" : t.row.question!.bank_format,
+          published: defaultBank === "sqb" ? false : t.row.question!.published,
+          domain: t.row.question!.domain || t.row.question!.skill,
           created_by: uid,
         },
       });
@@ -1271,23 +1313,23 @@ function AdminImport() {
       try {
         const { data, error } = await withWriteTimeout(
           supabase
-            .from("questions")
+        .from("questions")
             .insert(slice.map((t) => t.payload))
             .select("id"),
           `Insert ${slice.length} questions`,
         );
-        if (error) {
+      if (error) {
           for (const t of slice) {
             try {
               const { data: one, error: e2 } = await withWriteTimeout(
                 supabase.from("questions").insert(t.payload).select("id").single(),
                 `Row ${t.row.index} insert`,
               );
-              if (e2) {
-                failed++;
+          if (e2) {
+            failed++;
                 if (errors.length < 10) errors.push(`Row ${t.row.index}: ${e2.message}`);
-              } else {
-                inserted++;
+          } else {
+            inserted++;
                 if (one?.id) insertedItems.push({ id: one.id as string, module: t.module });
               }
             } catch (err) {
@@ -1295,11 +1337,11 @@ function AdminImport() {
               if (errors.length < 10) {
                 errors.push(`Row ${t.row.index}: ${(err as Error).message}`);
               }
-            }
-            setProgress((p) => ({ ...p, done: p.done + 1 }));
           }
-        } else {
-          inserted += slice.length;
+          setProgress((p) => ({ ...p, done: p.done + 1 }));
+        }
+      } else {
+        inserted += slice.length;
           const ids = (data ?? []) as { id: string }[];
           for (let j = 0; j < ids.length; j++) {
             insertedItems.push({ id: ids[j].id, module: slice[j]?.module ?? 1 });
@@ -1322,23 +1364,25 @@ function AdminImport() {
       const base = title.trim();
       const createSet = async (label: string, mod: 1 | 2, ids: string[]) => {
         if (ids.length === 0) return null;
-        const { data: t, error: te } = await supabase
-          .from("tests")
-          .insert({
+      const { data: t, error: te } = await supabase
+        .from("tests")
+        .insert({
             title: label,
-            section,
+          section,
             module: mod,
-            difficulty,
-            source_month: month,
-            source_year: year,
-            created_by: uid,
-          })
-          .select("id")
-          .single();
-        if (te) {
-          errors.push(
+          difficulty,
+          source_month: month,
+          source_year: year,
+          created_by: uid,
+          bank_format: defaultBank,
+          published: false,
+        })
+        .select("id")
+        .single();
+      if (te) {
+        errors.push(
             `The questions imported, but "${label}" couldn't be created: ${te.message}. Open Tests to build it by hand.`,
-          );
+        );
           return null;
         }
         const { error: le } = await supabase.from("test_questions").insert(
@@ -1373,7 +1417,7 @@ function AdminImport() {
           ])
         ).filter((n): n is string => Boolean(n));
         createdSet = names.length ? names.join(" + ") : undefined;
-      } else {
+        } else {
         createdSet =
           (await createSet(
             moduleTitle(base, module),
@@ -1429,13 +1473,13 @@ function AdminImport() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link
-            to="/admin/questions"
-            className="group inline-flex items-center gap-2 text-xs font-bold text-brand-600 hover:text-brand-800"
-          >
-            <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
-            Back to questions
-          </Link>
+        <Link
+          to="/admin/questions"
+          className="group inline-flex items-center gap-2 text-xs font-bold text-brand-600 hover:text-brand-800"
+        >
+          <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
+          Back to questions
+        </Link>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-brand-900">Add a test</h1>
           <p className="mt-1 max-w-2xl text-sm text-brand-600">
             One path from paper or paste → extract → editor → bank
@@ -1455,39 +1499,44 @@ function AdminImport() {
       <WizardSteps step={step} unlocked={unlocked} onStepClick={setStep} />
 
       {step === "setup" && (
-        <div className="rise-in rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
+      <div className="rise-in rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel md:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
               <h2 className="text-sm font-bold text-white">1 · Setup</h2>
-              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-brand-100">
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-brand-100">
                 Label the batch and optionally create a dated test set students can open in Practice
                 — <strong className="text-white">{sourceLabel ?? "set a month and year"}</strong>.
                 One file can cover both modules; that creates two sets.
+            </p>
+            {defaultBank === "sqb" && (
+              <p className="mt-2 rounded-lg bg-brand-800 px-3 py-2 text-xs font-semibold text-amber-100 ring-1 ring-brand-400/40">
+                SQB import mode: questions save as unpublished drafts. Do not upload College Board copyrighted stems.
               </p>
-            </div>
-            <label className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-brand-100">
-              <input
-                type="checkbox"
-                checked={makeSet}
-                onChange={(e) => setMakeSet(e.target.checked)}
-                className="h-4 w-4 accent-brand-200 [color-scheme:dark]"
-              />
-              Create a test set
-            </label>
+            )}
           </div>
+          <label className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-brand-100">
+            <input
+              type="checkbox"
+              checked={makeSet}
+              onChange={(e) => setMakeSet(e.target.checked)}
+              className="h-4 w-4 accent-brand-200 [color-scheme:dark]"
+            />
+            Create a test set
+          </label>
+        </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <Field label="Test name">
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="June 2025 · Reading & Writing"
-                disabled={!makeSet}
-                className={CONTROL_CLASS + " disabled:opacity-40"}
-              />
-            </Field>
-            <Field label="Source date">
-              <div className="flex gap-1">
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <Field label="Test name">
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="June 2025 · Reading & Writing"
+              disabled={!makeSet}
+              className={CONTROL_CLASS + " disabled:opacity-40"}
+            />
+          </Field>
+          <Field label="Source date">
+            <div className="flex gap-1">
                 <AdminSelect
                   value={month != null ? String(month) : ""}
                   onValueChange={(v) => setMonth(v ? Number(v) : null)}
@@ -1496,55 +1545,55 @@ function AdminImport() {
                   triggerClassName="px-2"
                   options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
                 />
-                <input
-                  type="number"
-                  min={2000}
-                  max={2099}
-                  value={year ?? ""}
-                  onChange={(e) => setYear(e.target.value ? Number(e.target.value) : null)}
-                  placeholder="Year"
-                  className={CONTROL_CLASS + " w-24 px-2"}
-                />
-              </div>
-            </Field>
-          </div>
+              <input
+                type="number"
+                min={2000}
+                max={2099}
+                value={year ?? ""}
+                onChange={(e) => setYear(e.target.value ? Number(e.target.value) : null)}
+                placeholder="Year"
+                className={CONTROL_CLASS + " w-24 px-2"}
+              />
+            </div>
+          </Field>
+        </div>
 
           <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
-            <Field label="Section">
+          <Field label="Section">
               <AdminSelect
-                value={section}
+              value={section}
                 onValueChange={(v) => setSection(v as Section)}
                 options={[
                   { value: "reading_writing", label: "Reading & Writing" },
                   { value: "math", label: "Math" },
                 ]}
               />
-            </Field>
-            <Field label="Module">
+          </Field>
+          <Field label="Module">
               <AdminSelect
                 value={module === "both" ? "both" : String(module)}
                 onValueChange={(v) => {
                   setModuleChoice(v === "both" ? "both" : (Number(v) as 1 | 2));
                 }}
-                disabled={!makeSet}
+              disabled={!makeSet}
                 options={[
                   { value: "1", label: "Module 1" },
                   { value: "2", label: "Module 2" },
                   { value: "both", label: "Both modules (one file)" },
                 ]}
               />
-            </Field>
-            <Field label="Difficulty">
+          </Field>
+          <Field label="Difficulty">
               <AdminSelect
-                value={difficulty}
+              value={difficulty}
                 onValueChange={(v) => setDifficulty(v as LetterDifficulty)}
                 options={LETTER_DIFFICULTIES.map((d) => ({
                   value: d,
                   label: `${d}${d === "A" ? " (hardest)" : d === "C" ? " (easiest)" : ""}`,
                 }))}
               />
-            </Field>
-          </div>
+          </Field>
+        </div>
           {module === "both" && makeSet && (
             <p className="mt-2 text-[11px] leading-relaxed text-brand-100">
               Numbering that restarts (or a full 27+27 / 22+22 paper) is split into two practice
@@ -1560,7 +1609,7 @@ function AdminImport() {
             >
               Continue <ArrowRight className="h-4 w-4" />
             </button>
-          </div>
+      </div>
         </div>
       )}
 
@@ -1574,21 +1623,21 @@ function AdminImport() {
             </p>
             <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <SourceCard
-                active={mode === "upload"}
+            active={mode === "upload"}
                 icon={<FileText className="h-5 w-5" />}
                 title="Exam paper"
                 body="DOCX, PDF, or text. Scans use Gemini extract + recheck."
                 onClick={() => chooseSource("upload")}
               />
               <SourceCard
-                active={mode === "sheet"}
+            active={mode === "sheet"}
                 icon={<Table2 className="h-5 w-5" />}
                 title="Spreadsheet"
                 body="Paste TSV/CSV with headers matching the bank columns."
                 onClick={() => chooseSource("sheet")}
               />
               <SourceCard
-                active={mode === "json"}
+            active={mode === "json"}
                 icon={<Braces className="h-5 w-5" />}
                 title="JSON"
                 body="Paste an array of question objects from an external model."
@@ -1612,7 +1661,7 @@ function AdminImport() {
               </button>
               <button
                 type="button"
-                onClick={() => {
+            onClick={() => {
                   if (mode === "fixExisting") void beginFixExisting();
                   else setStep("extract");
                 }}
@@ -1621,7 +1670,7 @@ function AdminImport() {
                 Continue to {mode === "fixExisting" ? "picker" : "extract"}{" "}
                 <ArrowRight className="h-4 w-4" />
               </button>
-            </div>
+        </div>
           </div>
         </div>
       )}
@@ -1773,18 +1822,18 @@ function AdminImport() {
                   Numbered paragraphs become questions;{" "}
                   <code className="text-white">A) B) C) D)</code> become choices.
                 </p>
-                <input
-                  ref={docRef}
-                  type="file"
-                  accept=".docx,.pdf,.txt,.md"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
+              <input
+                ref={docRef}
+                type="file"
+                accept=".docx,.pdf,.txt,.md"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
                     if (f) void loadDocument(f);
-                    e.target.value = "";
-                  }}
-                />
-                <div
+                  e.target.value = "";
+                }}
+              />
+              <div
                   onDragEnter={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -1800,26 +1849,26 @@ function AdminImport() {
                     if (e.currentTarget.contains(e.relatedTarget as Node)) return;
                     setDocDragOver(false);
                   }}
-                  onDrop={(e) => {
-                    e.preventDefault();
+                onDrop={(e) => {
+                  e.preventDefault();
                     e.stopPropagation();
                     setDocDragOver(false);
                     if (reading != null || vision?.running || fixing) return;
-                    const f = e.dataTransfer.files?.[0];
+                  const f = e.dataTransfer.files?.[0];
                     if (f) void loadDocument(f);
-                  }}
-                >
-                  <button
+                }}
+              >
+                <button
                     type="button"
-                    onClick={() => docRef.current?.click()}
+                  onClick={() => docRef.current?.click()}
                     disabled={reading != null || vision?.running || fixing}
                     className={`tap flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-brand-800 px-4 py-10 text-sm font-semibold text-brand-100 transition hover:border-brand-200 hover:text-white disabled:opacity-40 ${
                       docDragOver
                         ? "border-brand-200 bg-brand-700 text-white"
                         : "border-brand-300/50"
                     }`}
-                  >
-                    {reading ? (
+                >
+                  {reading ? (
                       <>
                         <Loader2 className="h-6 w-6 animate-spin text-brand-200" />
                         {reading}
@@ -1835,19 +1884,19 @@ function AdminImport() {
                         ) : null}
                       </>
                     )}
-                  </button>
-                </div>
-                {vision && (
-                  <VisionPanel
-                    state={vision}
-                    onChange={(patch) => setVision({ ...vision, ...patch })}
+                </button>
+              </div>
+              {vision && (
+                <VisionPanel
+                  state={vision}
+                  onChange={(patch) => setVision({ ...vision, ...patch })}
                     onStart={() => void runVision()}
-                    onStop={() => {
-                      stopRef.current = true;
-                      abortRef.current?.abort();
-                    }}
-                  />
-                )}
+                  onStop={() => {
+                    stopRef.current = true;
+                    abortRef.current?.abort();
+                  }}
+                />
+              )}
               </div>
             )}
 
@@ -1883,8 +1932,8 @@ function AdminImport() {
                     >
                       <ClipboardPaste className="h-3.5 w-3.5" /> Template
                     </button>
-                  </div>
-                </div>
+                      </div>
+                    </div>
                 {mode === "sheet" && (
                   <p className="text-[11px] text-brand-200">Columns: {TSV_COLUMNS.join(", ")}</p>
                 )}
@@ -1914,33 +1963,33 @@ function AdminImport() {
                     sheetDragOver ? "ring-2 ring-brand-200 ring-offset-2 ring-offset-brand-600" : ""
                   }`}
                 >
-                  <textarea
-                    value={text}
+              <textarea
+                value={text}
                     onChange={(e) => setText(e.target.value)}
-                    rows={12}
-                    spellCheck={false}
+                rows={12}
+                spellCheck={false}
                     className={CONTROL_CLASS + " resize-y font-mono text-xs leading-relaxed"}
-                    placeholder={
-                      mode === "sheet"
+                placeholder={
+                  mode === "sheet"
                         ? `${TSV_TEMPLATE}\n\nOr drop a .tsv / .csv / .txt here`
                         : `${JSON_TEMPLATE}\n\nOr drop a .json file here`
                     }
                   />
                 </div>
                 <div className="flex justify-end">
-                  <button
+                <button
                     type="button"
                     onClick={() => void checkPaste()}
-                    disabled={!text.trim() || checking}
-                    className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-                  >
-                    {checking ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
+                  disabled={!text.trim() || checking}
+                  className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                >
+                  {checking ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
                       <Check className="h-4 w-4" />
-                    )}
+                  )}
                     Check &amp; continue
-                  </button>
+                </button>
                 </div>
                 <CopyBox text={mode === "sheet" ? TSV_TEMPLATE : JSON_TEMPLATE} />
               </div>
@@ -1965,23 +2014,23 @@ function AdminImport() {
             )}
 
             <div className="mt-5 flex flex-wrap justify-between gap-2">
-              <button
+                <button
                 type="button"
                 onClick={() => setStep("source")}
                 className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-4 py-2 text-sm font-semibold text-white"
-              >
+                >
                 <ArrowLeft className="h-4 w-4" /> Source
-              </button>
+                </button>
               {hasRows && (
-                <button
+                  <button
                   type="button"
                   onClick={() => setStep("editor")}
                   className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
                 >
                   Editor <ArrowRight className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+                  </button>
+                )}
+              </div>
           </div>
         </div>
       )}
@@ -1993,8 +2042,8 @@ function AdminImport() {
               <div className="flex items-start gap-2.5">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-brand-200" />
                 <span>{parsed.fatal}</span>
-              </div>
-            </div>
+        </div>
+      </div>
           )}
 
           {drafts && (
@@ -2025,28 +2074,60 @@ function AdminImport() {
                   {readError ?? parsed?.fatal}
                 </div>
               )}
-              {notes.length > 0 && (
+      {notes.length > 0 && (
                 <ul className="mt-3 space-y-1 rounded-xl border border-brand-400/40 bg-brand-800 p-3 text-xs text-brand-100">
-                  {notes.map((n, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand-200" />
-                      {n}
-                    </li>
+          {notes.map((n, i) => (
+            <li key={i} className="flex items-start gap-2">
+              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand-200" />
+              {n}
+            </li>
+          ))}
+        </ul>
+      )}
+        </div>
+      )}
+
+          {dryRun && (
+            <div className="rounded-2xl border border-brand-400/40 bg-brand-800 p-4 text-xs text-brand-100 shadow-panel">
+              <div className="font-bold uppercase tracking-wider text-white">JSON dry-run</div>
+              <p className="mt-1">
+                {dryRun.valid}/{dryRun.total} valid · {dryRun.invalid} invalid · {dryRun.warnings} with
+                warnings · {dryRun.duplicates} duplicates · {dryRun.sqb} SQB · {dryRun.ordinary} ordinary
+              </p>
+              {dryRun.sampleErrors.length > 0 && (
+                <ul className="mt-2 space-y-0.5 text-red-200">
+                  {dryRun.sampleErrors.map((e, i) => (
+                    <li key={i}>{e}</li>
                   ))}
                 </ul>
               )}
             </div>
           )}
 
+          {defaultBank === "sqb" && mode !== "fixExisting" && (
+            <label className="flex items-start gap-2 rounded-2xl border border-amber-500/40 bg-brand-900/80 p-4 text-xs font-semibold text-amber-50">
+              <input
+                type="checkbox"
+                checked={rightsConfirmed}
+                onChange={(e) => setRightsConfirmed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-brand-200"
+              />
+              <span>
+                I confirm these items are original or rights-cleared. College Board SQB content must not be
+                imported. Imports stay as unpublished drafts.
+              </span>
+            </label>
+          )}
+
           {previewRows.length > 0 ? (
-            <PreviewPanel
-              rows={previewRows}
-              ignoredColumns={parsed?.ignoredColumns ?? []}
-              stats={stats}
-              skipDuplicates={skipDuplicates}
-              setSkipDuplicates={setSkipDuplicates}
-              importing={importing}
-              progress={progress}
+        <PreviewPanel
+          rows={previewRows}
+          ignoredColumns={parsed?.ignoredColumns ?? []}
+          stats={stats}
+          skipDuplicates={skipDuplicates}
+          setSkipDuplicates={setSkipDuplicates}
+          importing={importing}
+          progress={progress}
               onImport={() => void runImport()}
               primaryActionLabel={
                 mode === "fixExisting"
@@ -2055,10 +2136,10 @@ function AdminImport() {
               }
               hideSkipDuplicates={mode === "fixExisting"}
               fixableCount={mode === "fixExisting" ? fixableCount : undefined}
-              onAnswerChange={drafts ? setDraftAnswer : undefined}
+          onAnswerChange={drafts ? setDraftAnswer : undefined}
               onChangeDraft={drafts ? updateDraft : undefined}
               onSetReviewed={drafts ? setDraftReviewed : undefined}
-              drafts={drafts}
+          drafts={drafts}
               sourcePdf={sourcePdf ?? vision?.file ?? null}
               setLabel={
                 makeSet && title.trim()
@@ -2143,20 +2224,20 @@ function AdminImport() {
             }}
           />
 
-          {result && (
+      {result && (
             <div className="rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-panel">
-              <div className="flex items-center gap-2.5">
-                {result.failed === 0 && result.errors.length === 0 ? (
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-400">
-                    <Check className="h-4 w-4 text-white" />
-                  </span>
-                ) : (
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-900">
-                    <AlertTriangle className="h-4 w-4 text-brand-200" />
-                  </span>
-                )}
-                <div>
-                  <div className="text-sm font-bold text-white">
+          <div className="flex items-center gap-2.5">
+            {result.failed === 0 && result.errors.length === 0 ? (
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-400">
+                <Check className="h-4 w-4 text-white" />
+              </span>
+            ) : (
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-900">
+                <AlertTriangle className="h-4 w-4 text-brand-200" />
+              </span>
+            )}
+            <div>
+              <div className="text-sm font-bold text-white">
                     {result.kind === "update"
                       ? `Updated ${result.inserted} question${result.inserted === 1 ? "" : "s"}${
                           result.setTitle ? " · Practice set ready" : ""
@@ -2169,19 +2250,19 @@ function AdminImport() {
                         “{result.setTitle}”
                       </span>
                     ) : null}
-                  </div>
+              </div>
                   {result.failed > 0 && (
                     <div className="text-xs text-brand-100">{result.failed} failed</div>
                   )}
-                </div>
-              </div>
-              {result.errors.length > 0 && (
+            </div>
+          </div>
+          {result.errors.length > 0 && (
                 <ul className="mt-3 space-y-1 text-xs text-brand-100">
-                  {result.errors.map((e, i) => (
-                    <li key={i}>{e}</li>
-                  ))}
-                </ul>
-              )}
+              {result.errors.map((e, i) => (
+                <li key={i}>{e}</li>
+              ))}
+            </ul>
+          )}
               {result.setTitle && (
                 <div className="mt-4 flex flex-wrap gap-3">
                   <Link
@@ -2198,29 +2279,29 @@ function AdminImport() {
                     >
                       Open Practice · Math <ArrowRight className="h-4 w-4" />
                     </Link>
-                  )}
-                </div>
+          )}
+        </div>
               )}
-              <button
+        <button
                 type="button"
-                onClick={() => {
+        onClick={() => {
                   setResult(null);
                   setStep("setup");
-                }}
+        }}
                 className="mt-4 flex items-center gap-1 text-xs font-semibold text-brand-100 hover:text-white"
-              >
+      >
                 <X className="h-3.5 w-3.5" /> Start another test
-              </button>
-            </div>
-          )}
+      </button>
+        </div>
+      )}
 
-          <button
+        <button
             type="button"
             onClick={() => setStep("extract")}
             className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/40 bg-white px-4 py-2 text-sm font-semibold text-brand-800"
           >
             <ArrowLeft className="h-4 w-4" /> Back
-          </button>
+        </button>
         </div>
       )}
     </div>
@@ -2241,10 +2322,10 @@ function SourceCard({
   onClick: () => void;
 }) {
   return (
-    <button
+                  <button
       type="button"
       onClick={onClick}
-      className={
+                    className={
         "tap flex flex-col gap-2 rounded-xl border p-4 text-left transition-colors " +
         (active
           ? "border-brand-200 bg-brand-500 text-white shadow-brand"
@@ -2254,6 +2335,6 @@ function SourceCard({
       <span className={active ? "text-brand-200" : "text-brand-200"}>{icon}</span>
       <span className="text-sm font-bold text-white">{title}</span>
       <span className="text-[11px] leading-relaxed opacity-90">{body}</span>
-    </button>
+                  </button>
   );
 }

@@ -28,7 +28,7 @@ export async function loadTestPreviewQuestions(questionIds: string[]): Promise<Q
     supabase
       .from("questions")
       .select(
-        "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,time_limit_seconds",
+        "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,time_limit_seconds,bank_format,external_id,domain,subskill,image_alt",
       )
       .in("id", questionIds),
     supabase.rpc("get_answers_for_review", { p_question_ids: questionIds }),

@@ -1,6 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BookText, Calculator, ClipboardList, CalendarClock, ArrowRight } from "lucide-react";
+import {
+  BookText,
+  Calculator,
+  ClipboardList,
+  CalendarClock,
+  ArrowRight,
+  Layers,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { PageHead, Panel } from "@/components/ui/panel";
@@ -17,6 +24,7 @@ function PracticeLanding() {
   const [rwCount, setRwCount] = useState<number | null>(null);
   const [mathCount, setMathCount] = useState<number | null>(null);
   const [mockCount, setMockCount] = useState<number | null>(null);
+  const [sqbCount, setSqbCount] = useState<number | null>(null);
   const [dailyExists, setDailyExists] = useState<boolean>(false);
   const [dailyDone, setDailyDone] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
@@ -37,25 +45,22 @@ function PracticeLanding() {
           { data: rwRows },
           { data: mRows },
           { data: mockRows },
+          { data: sqbRows },
           { data: dt },
           { data: sess },
         ] = await Promise.all([
-          supabase.from("questions").select("id").eq("section", "reading_writing"),
-          supabase.from("questions").select("id").eq("section", "math"),
+          supabase.from("questions").select("id").eq("section", "reading_writing").neq("bank_format", "sqb"),
+          supabase.from("questions").select("id").eq("section", "math").neq("bank_format", "sqb"),
           supabase.from("mock_exams").select("id").eq("published", true),
+          supabase.from("tests").select("id").eq("bank_format", "sqb").eq("published", true),
           supabase.from("daily_tests").select("id").eq("date", today).maybeSingle(),
-          /* `getSession()` reads the token from localStorage — it never makes a
-               network call. `getUser()` hits the auth API, so putting it inside
-               Promise.all blocked the counts from rendering until the auth server
-               responded. We only need the user id to check whether today's daily
-               is already completed; that's a single cheap request after the counts
-               are already on screen. */
           supabase.auth.getSession(),
         ]);
 
         setRwCount((rwRows ?? []).length);
         setMathCount((mRows ?? []).length);
         setMockCount((mockRows ?? []).length);
+        setSqbCount((sqbRows ?? []).length);
         setDailyExists(!!dt);
 
         /* `getSession()` resolves to `{ data: { session }, error }`, so the user
@@ -131,6 +136,28 @@ function PracticeLanding() {
           count={mathCount}
         />
       </div>
+
+      <RevealLink
+        to="/practice/sqb"
+        className="group lift relative block overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 p-6 text-white shadow-panel"
+      >
+        <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-brand-400/40 blur-2xl" />
+        <div className="relative flex flex-wrap items-center gap-4">
+          <div className="tile-invert grid h-12 w-12 place-items-center rounded-xl bg-brand-800 text-white">
+            <Layers className="h-6 w-6" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-2xl font-black text-white">SQB Tests</h2>
+            <div className="mt-1 text-sm text-brand-100">
+              <span className="font-black tabular-nums text-white">{sqbCount ?? 0}</span> Question
+              Bank–format pack{(sqbCount ?? 0) === 1 ? "" : "s"} available
+            </div>
+          </div>
+          <div className="inline-flex items-center gap-1.5 text-sm font-bold text-white">
+            Browse SQB <ArrowRight className="arrow-slide h-4 w-4" />
+          </div>
+        </div>
+      </RevealLink>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <Panel>

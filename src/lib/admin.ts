@@ -13,6 +13,7 @@ export const EDITOR_SECTIONS = [
   "/admin/questions",
   "/admin/import",
   "/admin/tests",
+  "/admin/sqb",
   "/admin/daily",
   "/admin/mocks",
   "/admin/news",

@@ -29,6 +29,7 @@ export function DraftReviewer({
   onDelete,
   onAttachFigure,
   onManualCrop,
+  variant = "ordinary",
 }: {
   rows: PreviewRow[];
   drafts: Draft[];
@@ -46,6 +47,7 @@ export function DraftReviewer({
   onDelete?: (index: number) => void;
   onAttachFigure?: (index: number) => void;
   onManualCrop?: (index: number) => void;
+  variant?: "ordinary" | "sqb";
 }) {
   const [selected, setSelected] = useState(0);
   const last = Math.max(0, rows.length - 1);
@@ -140,9 +142,18 @@ export function DraftReviewer({
                   onClick={() => go(i)}
                   aria-current={i === index ? "true" : undefined}
                   title={
-                    showModule
-                      ? `Question ${p.row.index} · Module ${d?.rec.module === "2" ? "2" : "1"}`
-                      : `Question ${p.row.index}`
+                    variant === "sqb"
+                      ? [
+                          `Q${p.row.index}`,
+                          d?.rec.external_id?.trim() || null,
+                          d?.rec.subskill || d?.rec.skill || null,
+                          d?.rec.difficulty || null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")
+                      : showModule
+                        ? `Question ${p.row.index} · Module ${d?.rec.module === "2" ? "2" : "1"}`
+                        : `Question ${p.row.index}`
                   }
                   className={
                     "tap h-8 min-w-8 rounded-md px-2 text-[11px] font-bold tabular-nums transition-colors " +
@@ -155,9 +166,11 @@ export function DraftReviewer({
                           : "bg-brand-900 text-white ring-1 ring-brand-300/60 hover:bg-brand-700")
                   }
                 >
-                  {showModule
-                    ? `${d?.rec.module === "2" ? "M2" : "M1"}·${p.row.index}`
-                    : p.row.index}
+                  {variant === "sqb"
+                    ? p.row.index
+                    : showModule
+                      ? `${d?.rec.module === "2" ? "M2" : "M1"}·${p.row.index}`
+                      : p.row.index}
                 </button>
               </li>
             );
@@ -201,7 +214,25 @@ export function DraftReviewer({
               )}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-white">Question {row.index}</p>
+              <p className="text-sm font-bold text-white">
+                Question {row.index}
+                {variant === "sqb" && (draft.rec.external_id ?? "").trim() ? (
+                  <span className="ml-2 rounded bg-brand-900 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-200">
+                    {(draft.rec.external_id ?? "").trim()}
+                  </span>
+                ) : null}
+              </p>
+              {variant === "sqb" && (
+                <p className="mt-0.5 truncate text-[11px] text-brand-100">
+                  {(draft.rec.domain || draft.rec.skill || "—") +
+                    " · " +
+                    (draft.rec.subskill || "—") +
+                    " · " +
+                    (draft.rec.difficulty || "C") +
+                    " · " +
+                    (draft.rec.kind === "grid_in" ? "Grid-in" : "MCQ")}
+                </p>
+              )}
               {draft.reviewed && (
                 <p className="text-[11px] font-semibold text-brand-200">Checked against the page</p>
               )}
@@ -270,13 +301,15 @@ export function DraftReviewer({
             draft={draft}
             disabled={busy}
             showModule={showModule}
+            variant={variant}
             numberCollision={
               !!drafts &&
               drafts.some(
                 (d, i) =>
                   i !== draftIndex &&
                   d.number === draft.number &&
-                  (d.rec.module === "2" ? 2 : 1) === (draft.rec.module === "2" ? 2 : 1),
+                  (variant === "sqb" ||
+                    (d.rec.module === "2" ? 2 : 1) === (draft.rec.module === "2" ? 2 : 1)),
               )
             }
             onChange={(patch) => onChangeDraft(draftIndex, patch)}

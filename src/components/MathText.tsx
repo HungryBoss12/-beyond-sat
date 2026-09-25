@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { cn } from "@/lib/utils";
+import { latexifyAsciiMath } from "@/lib/math/latexify-ascii";
 
 /**
  * Renders text that may contain LaTeX segments and a small HTML allowlist.
@@ -60,7 +61,7 @@ function normalizeUnderlineMarkup(input: string): string {
  * Exported for unit tests.
  */
 export function normalizeMathInput(input: string): string {
-  let s = input;
+  let s = latexifyAsciiMath(input);
   // `\3{,}270` / `\3,270` — broken money tokens (not LaTeX)
   s = s.replace(/\\(\d)\{,\}(\d)/g, "$$$1{,}$2");
   s = s.replace(/\\(\d),(\d)/g, "$$$1,$2");

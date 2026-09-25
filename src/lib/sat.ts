@@ -276,3 +276,19 @@ export function difficultyColor(d: Difficulty | string | null | undefined): stri
       return "bg-brand-800 text-brand-100";
   }
 }
+
+/** Filled bar count: easy/C/D=1, medium/B=2, hard/A/S=3. Order is C < D < B < A < S. */
+export function difficultyBarsFilled(d: Difficulty | string | null | undefined): 1 | 2 | 3 {
+  const raw = (d ?? "").toString().trim().toLowerCase();
+  if (raw === "easy" || raw === "c" || raw === "d") return 1;
+  if (raw === "medium" || raw === "b") return 2;
+  return 3; // hard / A / S / unknown → hardest visual
+}
+
+/** Word label for CB difficulty chrome. */
+export function difficultyWord(d: Difficulty | string | null | undefined): "Easy" | "Medium" | "Hard" {
+  const n = difficultyBarsFilled(d);
+  if (n === 1) return "Easy";
+  if (n === 2) return "Medium";
+  return "Hard";
+}

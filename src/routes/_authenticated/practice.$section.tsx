@@ -506,6 +506,13 @@ export function SectionPaperBrowse({
   }
 
   const totalQuestions = Object.values(diffCounts).reduce((a, b) => a + b, 0);
+  /** SQB packs are wider (2-up); ordinary papers stay 3-up on large screens. */
+  const paperGridClass =
+    bankFormat === "sqb"
+      ? "stagger-fast grid grid-cols-1 gap-3 sm:grid-cols-2"
+      : "stagger-fast grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3";
+  const paperSkeletonClass =
+    bankFormat === "sqb" ? "aspect-[5/3] rounded-2xl" : "aspect-[4/3] rounded-2xl";
 
   function clearFilters() {
     setDateFilter("all");
@@ -534,7 +541,9 @@ export function SectionPaperBrowse({
             <p className="text-sm text-slate-500">
               {hasActiveFilters
                 ? "Filtered view — adjust or clear filters below."
-                : "Browse all papers in three columns. Open filters to sort by date or progress."}
+                : bankFormat === "sqb"
+                  ? "Browse practice packs in two columns. Open filters to sort by date or progress."
+                  : "Browse all papers in three columns. Open filters to sort by date or progress."}
             </p>
           </div>
         </div>
@@ -732,9 +741,9 @@ export function SectionPaperBrowse({
             className="py-14"
           />
         ) : loading ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-[4/3] rounded-2xl" />
+          <div className={paperGridClass}>
+            {Array.from({ length: bankFormat === "sqb" ? 4 : 6 }).map((_, i) => (
+              <Skeleton key={i} className={paperSkeletonClass} />
             ))}
           </div>
         ) : allPapers.length === 0 ? (
@@ -757,7 +766,7 @@ export function SectionPaperBrowse({
                       · {g.papers.length} paper{g.papers.length === 1 ? "" : "s"}
                     </span>
                   </h2>
-                  <div className="stagger-fast grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className={paperGridClass}>
                     {g.papers.map((paper) => (
                       <PaperCard
                         key={paper.key}
@@ -781,7 +790,7 @@ export function SectionPaperBrowse({
             className="py-14"
           />
         ) : (
-          <div className="stagger-fast grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={paperGridClass}>
             {flatPapers.map((paper) => (
               <PaperCard
                 key={paper.key}
@@ -919,10 +928,27 @@ function PaperCard({
     : Math.round((moduleProgress(mod1) + moduleProgress(mod2)) / 2);
 
   return (
-    <RevealCard className="flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel lift">
-      <div className="flex shrink-0 items-start justify-between gap-2 px-3.5 pt-3.5 pb-1.5">
+    <RevealCard
+      className={
+        "flex flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel lift " +
+        (isSqb ? "aspect-[5/3]" : "aspect-[4/3]")
+      }
+    >
+      <div
+        className={
+          "flex shrink-0 items-start justify-between gap-2 " +
+          (isSqb ? "px-4 pt-3 pb-1" : "px-3.5 pt-3.5 pb-1.5")
+        }
+      >
         <div className="min-w-0">
-          <h3 className="line-clamp-2 text-sm font-black uppercase leading-tight tracking-wide text-white">
+          <h3
+            className={
+              "font-black uppercase leading-tight tracking-wide text-white " +
+              (isSqb
+                ? "line-clamp-2 text-[13px] md:text-sm"
+                : "line-clamp-2 text-sm")
+            }
+          >
             {paper.title}
           </h3>
           {isSqb && (
@@ -933,7 +959,12 @@ function PaperCard({
         </div>
         <ProgressRing value={progress} />
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-2 px-3.5 pb-3.5 pt-1">
+      <div
+        className={
+          "flex min-h-0 flex-1 flex-col gap-2 " +
+          (isSqb ? "px-4 pb-3 pt-0.5" : "px-3.5 pb-3.5 pt-1")
+        }
+      >
         {isSqb ? (
           <ThemePackRow
             set={sqbSet}
@@ -971,11 +1002,11 @@ function ThemePackRow({
 }) {
   return (
     <div className="relative flex min-h-0 flex-1 items-stretch overflow-hidden rounded-xl border border-brand-400/30 bg-brand-800/70">
-      <div className="my-2.5 ml-2 w-1.5 shrink-0 rounded-full bg-brand-400" aria-hidden />
+      <div className="my-2.5 ml-2.5 w-1.5 shrink-0 rounded-full bg-brand-400" aria-hidden />
       {!set ? (
-        <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">
-          <p className="text-sm font-bold text-white">Practice pack</p>
-          <span className="ml-auto text-xs text-brand-200">—</span>
+        <div className="flex min-w-0 flex-1 flex-col justify-center px-4 py-3">
+          <p className="text-lg font-black text-white">Practice pack</p>
+          <span className="mt-1 text-sm text-brand-200">—</span>
         </div>
       ) : (
         <ThemePackRowBody set={set} starting={starting} onOpen={onOpen} onReview={onReview} />
@@ -1001,41 +1032,50 @@ function ThemePackRowBody({
     set.status === "done" ? "Retake" : set.status === "in_progress" ? "Resume" : "Start";
   const Icon = set.status === "done" ? RotateCcw : Play;
   const pct = set.progressPct;
+  const statusLine =
+    set.status === "in_progress"
+      ? "In progress"
+      : set.status === "done"
+        ? set.score
+          ? `${set.score.correct}/${set.score.total} correct`
+          : "Completed"
+        : "Not started";
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2.5">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-bold text-white">Practice pack</p>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col px-3.5 py-3 sm:px-4">
+      <div className="flex min-h-0 flex-1 flex-col justify-center gap-1.5">
+        <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+          <p className="text-lg font-black leading-tight text-white sm:text-xl">Practice pack</p>
           {pct > 0 && (
-            <span className="shrink-0 rounded-full bg-brand-400/25 px-2 py-0.5 text-xs font-bold tabular-nums text-brand-100">
+            <span className="shrink-0 rounded-full bg-brand-400/25 px-2.5 py-0.5 text-xs font-bold tabular-nums text-brand-100 sm:text-sm">
               {pct}%
             </span>
           )}
         </div>
-        <p className="truncate text-xs font-medium text-brand-100">
-          {set.count}Q · {difficultyLabel(set.difficulty)}
-          {set.status === "in_progress" ? " · In progress" : ""}
-          {set.score ? ` · ${set.score.correct}/${set.score.total}` : ""}
+        <p className="text-base font-bold tabular-nums leading-snug text-brand-50 sm:text-lg">
+          {set.count}Q
+          <span className="mx-1.5 font-semibold text-brand-200/80">·</span>
+          {difficultyLabel(set.difficulty)}
         </p>
+        <p className="text-sm font-medium text-brand-100/90 sm:text-[15px]">{statusLine}</p>
       </div>
-      <div className="flex shrink-0 flex-col gap-1.5">
+      <div className="mt-3 flex shrink-0 flex-wrap items-center gap-2">
         {set.status === "done" && set.sessionId && (
           <button
             onClick={() => onReview(set.sessionId!)}
             disabled={busy || disabled}
-            className="tap inline-flex items-center justify-center gap-1.5 rounded-full border border-brand-400/50 bg-brand-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-500 disabled:opacity-40"
+            className="tap inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-brand-400/50 bg-brand-700 px-3.5 py-2 text-sm font-bold text-white hover:bg-brand-500 disabled:opacity-40 sm:flex-none"
           >
-            <BookOpenCheck className="h-3.5 w-3.5" />
+            <BookOpenCheck className="h-4 w-4" />
             Review
           </button>
         )}
         <button
           onClick={() => onOpen(set)}
           disabled={busy || disabled}
-          className="btn-brand inline-flex items-center justify-center gap-1.5 rounded-full bg-brand-400 px-3.5 py-1.5 text-xs font-bold text-white shadow-brand disabled:opacity-40"
+          className="btn-brand inline-flex min-w-[7.5rem] flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white shadow-brand disabled:opacity-40 sm:flex-none"
         >
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
           {label}
         </button>
       </div>

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { MathText } from "@/components/MathText";
 import { sanitizeGridInput } from "@/lib/grid-answer";
+import { difficultyBarsFilled, difficultyWord } from "@/lib/sat";
 import {
   DEFAULT_HIGHLIGHT_BINDINGS,
   formatBinding,
@@ -36,6 +37,7 @@ export type QuestionRow = {
   domain?: string | null;
   subskill?: string | null;
   image_alt?: string | null;
+  explanation?: string | null;
 };
 
 export type Highlight = { id: string; text: string; note: string };
@@ -64,6 +66,33 @@ export function isAnswered(a: AnswerState, kind: QuestionRow["kind"]) {
 
 const LETTERS = ["A", "B", "C", "D", "E", "F"];
 
+/** CB-style difficulty: word + three short bars (filled count = hard/medium/easy). */
+function DifficultyBars({ difficulty }: { difficulty: string | null | undefined }) {
+  if (!difficulty?.toString().trim()) return null;
+  const filled = difficultyBarsFilled(difficulty);
+  const word = difficultyWord(difficulty);
+  return (
+    <span
+      className="inline-flex flex-col items-start gap-0.5"
+      title={`Difficulty: ${word}`}
+      aria-label={`Difficulty ${word}`}
+    >
+      <span className="text-[10px] font-semibold leading-none text-test-muted">{word}</span>
+      <span className="flex items-center gap-0.5" aria-hidden="true">
+        {[1, 2, 3].map((n) => (
+          <span
+            key={n}
+            className={
+              "h-[3px] w-3 rounded-[1px] " +
+              (n <= filled ? "bg-test-ink" : "bg-test-edge")
+            }
+          />
+        ))}
+      </span>
+    </span>
+  );
+}
+
 export function QuestionCard({
   q,
   index,
@@ -71,6 +100,7 @@ export function QuestionCard({
   onChange,
   reveal,
   correctChoiceId,
+  correctGridAnswers,
   showNotes,
   onCloseNotes,
 }: {
@@ -80,6 +110,7 @@ export function QuestionCard({
   onChange: (a: AnswerState) => void;
   reveal?: boolean;
   correctChoiceId?: string | null;
+  correctGridAnswers?: string[] | null;
   /* Bluebook keeps highlights and notes behind a header control rather than
      listing them under the passage, and that control lives in the chrome — so
      the open state is owned by the caller and passed down. Omitting it (the
@@ -232,9 +263,7 @@ export function QuestionCard({
         <mark
           key={`h-${i}`}
           title={r.note || "Highlighted"}
-          // On the light surface a highlight can behave like a real highlight
-          // again: a soft blue wash under navy text.
-          className="rounded bg-test-tint px-0.5 text-test-ink ring-1 ring-test-edge"
+          className="rounded bg-[#ffe566] px-0.5 text-test-ink"
         >
           <MathText>{text.slice(r.start, r.end)}</MathText>
         </mark>,
@@ -263,7 +292,7 @@ export function QuestionCard({
               ref={passageRef}
               onMouseUp={handlePassageMouseUp}
               onContextMenu={handlePassageContextMenu}
-              className="whitespace-pre-wrap px-6 py-6 text-[18px] leading-[1.7] text-test-ink selection:bg-test-tint md:px-10 md:py-8 md:text-[19px]"
+              className="whitespace-pre-wrap px-6 py-6 text-[18px] leading-[1.7] text-test-ink selection:bg-[#ffe566] md:px-10 md:py-8 md:text-[19px]"
             >
               {renderedPassage}
               {q.image_url ? (
@@ -336,6 +365,7 @@ export function QuestionCard({
               onChange={onChange}
               reveal={reveal}
               correctChoiceId={correctChoiceId}
+              correctGridAnswers={correctGridAnswers}
               crossOut={crossOut}
               onToggleCrossOut={() => setCrossOut((v) => !v)}
             />
@@ -355,6 +385,7 @@ export function QuestionCard({
               onChange={onChange}
               reveal={reveal}
               correctChoiceId={correctChoiceId}
+              correctGridAnswers={correctGridAnswers}
               crossOut={crossOut}
               onToggleCrossOut={() => setCrossOut((v) => !v)}
             />
@@ -448,6 +479,7 @@ function QuestionBody({
   onChange,
   reveal,
   correctChoiceId,
+  correctGridAnswers,
   crossOut,
   onToggleCrossOut,
 }: {
@@ -459,6 +491,7 @@ function QuestionBody({
   onChange: (a: AnswerState) => void;
   reveal?: boolean;
   correctChoiceId?: string | null;
+  correctGridAnswers?: string[] | null;
   crossOut: boolean;
   onToggleCrossOut: () => void;
 }) {
@@ -502,9 +535,17 @@ function QuestionBody({
           )}
           Mark for Review
         </button>
-        <span className="ml-auto hidden truncate text-xs font-semibold uppercase tracking-wider text-test-muted lg:inline">
-          {q.skill}
+        <span className="ml-auto hidden items-center gap-3 truncate lg:inline-flex">
+          <span className="text-xs font-semibold uppercase tracking-wider text-test-muted">
+            {q.skill}
+          </span>
+          {q.bank_format !== "sqb" ? <DifficultyBars difficulty={q.difficulty} /> : null}
         </span>
+        {q.bank_format !== "sqb" ? (
+          <span className="ml-auto inline-flex lg:hidden">
+            <DifficultyBars difficulty={q.difficulty} />
+          </span>
+        ) : null}
         {!reveal && q.kind !== "grid_in" && (
           <button
             onClick={onToggleCrossOut}
@@ -527,7 +568,7 @@ function QuestionBody({
       ) : null}
 
       {(q.bank_format === "sqb" || q.domain || q.subskill) && (
-        <div className="flex flex-wrap gap-1.5 pb-2 pt-1">
+        <div className="flex flex-wrap items-center gap-1.5 pb-2 pt-1">
           {q.bank_format === "sqb" && (
             <span className="rounded bg-test-well px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-test-muted">
               SQB
@@ -543,6 +584,9 @@ function QuestionBody({
               {q.subskill}
             </span>
           )}
+          {q.bank_format === "sqb" ? (
+            <DifficultyBars difficulty={q.difficulty} />
+          ) : null}
         </div>
       )}
 
@@ -669,6 +713,32 @@ function QuestionBody({
           })}
         </ul>
       )}
+
+      {reveal ? (
+        <div className="mt-8 space-y-3 border-t border-test-line pt-6">
+          <p className="text-sm font-bold text-test-ink">
+            Correct Answer:{" "}
+            <span className="font-black text-test-accent">
+              {q.kind === "grid_in"
+                ? (correctGridAnswers ?? []).filter(Boolean).join(" or ") || "—"
+                : correctChoiceId || "—"}
+            </span>
+          </p>
+          {(q.explanation ?? "").trim() ? (
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-test-muted">
+                Rationale
+              </p>
+              <MathText
+                block
+                className="whitespace-pre-wrap text-[16px] leading-[1.65] text-test-ink"
+              >
+                {(q.explanation ?? "").trim()}
+              </MathText>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

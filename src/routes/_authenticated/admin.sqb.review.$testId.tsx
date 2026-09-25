@@ -384,6 +384,7 @@ function AdminSqbReviewPage() {
                 onChange={() => {}}
                 reveal={showAnswers}
                 correctChoiceId={showAnswers ? (q.correct_choice_id ?? null) : null}
+                correctGridAnswers={showAnswers ? (q.correct_grid_answers ?? null) : null}
               />
             ) : null}
             <div className="flex h-14 items-center justify-between border-t border-test-line bg-test-chrome px-4">

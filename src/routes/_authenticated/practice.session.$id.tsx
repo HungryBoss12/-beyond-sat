@@ -79,7 +79,7 @@ function SessionRunner() {
         const { data, error: qErr } = await supabase
           .from("questions")
           .select(
-            "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,time_limit_seconds,bank_format,external_id,domain,subskill,image_alt",
+            "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,time_limit_seconds,bank_format,external_id,domain,subskill,image_alt,explanation",
           )
           .in("id", chunk);
         if (qErr) {

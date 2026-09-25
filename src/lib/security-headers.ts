@@ -15,6 +15,7 @@
  *  - img-src supabase.co         : signed storage URLs (question images,
  *    notification images); pravatar (landing avatars); img.youtube.com thumbs.
  *  - frame-src youtube-nocookie  : FeaturedVideos embeds.
+ *    www.desmos.com              : Desmos calculator iframe fallback.
  *  - worker-src 'self' blob:     : pdf.js worker (same-origin via Vite ?url,
  *    blob: fallback).
  *  - connect-src supabase.co     : the browser only ever talks to this origin
@@ -33,7 +34,7 @@ const CSP_POLICY = [
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: blob: https://i.pravatar.cc https://img.youtube.com https://*.supabase.co https://www.desmos.com",
   "connect-src 'self' https://*.supabase.co",
-  "frame-src https://www.youtube-nocookie.com",
+  "frame-src https://www.youtube-nocookie.com https://www.desmos.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

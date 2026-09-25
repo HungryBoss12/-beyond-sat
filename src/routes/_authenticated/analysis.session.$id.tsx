@@ -69,7 +69,7 @@ function SessionReview() {
         const { data, error: qErr } = await supabase
           .from("questions")
           .select(
-            "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,bank_format,external_id,domain,subskill,image_alt",
+            "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,bank_format,external_id,domain,subskill,image_alt,explanation",
           )
           .in("id", chunk);
         if (qErr) {
@@ -213,6 +213,7 @@ function SessionReview() {
           onChange={() => {}}
           reveal
           correctChoiceId={q.correct_choice_id ?? null}
+          correctGridAnswers={q.correct_grid_answers ?? null}
         />
       )}
 

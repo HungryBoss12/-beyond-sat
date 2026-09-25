@@ -79,4 +79,12 @@ describe("MathText", () => {
   it("still escapes unsafe markup", () => {
     expect(renderMathText("<script>alert(1)</script>")).not.toContain("<script>");
   });
+
+  it("latexifies plain slash fractions for display", () => {
+    const html = renderMathText(
+      "If 2a/b = 5.8 and a/(bn) = 23.2, what is the value of 1/n?",
+    );
+    expect(html).toContain("katex");
+    expect(html).not.toMatch(/2a\/b/);
+  });
 });

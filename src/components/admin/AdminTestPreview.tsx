@@ -24,20 +24,34 @@ type Props = {
 export async function loadTestPreviewQuestions(questionIds: string[]): Promise<QuestionFull[]> {
   if (questionIds.length === 0) return [];
 
-  const [{ data: qs, error: qErr }, { data: ans, error: aErr }] = await Promise.all([
-    supabase
-      .from("questions")
-      .select(
-        "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,time_limit_seconds,bank_format,external_id,domain,subskill,image_alt,explanation",
-      )
-      .in("id", questionIds),
-    supabase.rpc("get_answers_for_review", { p_question_ids: questionIds }),
-  ]);
+  const { data: qs, error: qErr } = await supabase
+    .from("questions")
+    .select(
+      "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,time_limit_seconds,bank_format,external_id,domain,subskill,image_alt",
+    )
+    .in("id", questionIds);
 
   if (qErr) throw new Error(qErr.message);
-  if (aErr) throw new Error(aErr.message);
 
-  const ansById = new Map((ans ?? []).map((r) => [r.question_id, r]));
+  const answerRows = await Promise.all(
+    questionIds.map(async (id) => {
+      const { data, error } = await supabase.rpc("admin_get_question_answers", {
+        p_question_id: id,
+      });
+      if (error) throw new Error(error.message);
+      const row = data?.[0];
+      return [
+        id,
+        {
+          correct_choice_id: row?.correct_choice_id ?? null,
+          correct_grid_answers: row?.correct_grid_answers ?? null,
+          explanation: row?.explanation ?? null,
+        },
+      ] as const;
+    }),
+  );
+  const ansById = new Map(answerRows);
+
   const byId = new Map(
     (qs ?? []).map((q) => {
       const row = ansById.get(q.id);
@@ -48,6 +62,7 @@ export async function loadTestPreviewQuestions(questionIds: string[]): Promise<Q
           choices: (q.choices ?? []) as QuestionRow["choices"],
           correct_choice_id: row?.correct_choice_id ?? null,
           correct_grid_answers: row?.correct_grid_answers ?? null,
+          explanation: row?.explanation ?? null,
         } as QuestionFull,
       ];
     }),

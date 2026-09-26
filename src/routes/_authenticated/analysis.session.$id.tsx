@@ -69,7 +69,7 @@ function SessionReview() {
         const { data, error: qErr } = await supabase
           .from("questions")
           .select(
-            "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,bank_format,external_id,domain,subskill,image_alt,explanation",
+            "id,section,skill,difficulty,kind,prompt,question_text,choices,image_url,bank_format,external_id,domain,subskill,image_alt",
           )
           .in("id", chunk);
         if (qErr) {
@@ -89,6 +89,7 @@ function SessionReview() {
           ...q,
           correct_choice_id: a?.correct_choice_id ?? null,
           correct_grid_answers: a?.correct_grid_answers ?? null,
+          explanation: a?.explanation ?? null,
         } as QuestionFull;
       });
       const byId = new Map(merged.map((q) => [q.id, q]));

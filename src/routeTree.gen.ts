@@ -15,6 +15,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as BannedRouteImport } from './routes/banned'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProgramsRouteImport } from './routes/programs'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ResourcesRouteImport } from './routes/resources'
 import { Route as ResultsRouteImport } from './routes/results'
 import { Route as SigninRouteImport } from './routes/signin'
@@ -115,6 +116,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const ProgramsRoute = ProgramsRouteImport.update({
   id: '/programs',
   path: '/programs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResourcesRoute = ResourcesRouteImport.update({
@@ -523,6 +529,7 @@ export interface FileRoutesByFullPath {
   '/banned': typeof BannedRoute
   '/privacy': typeof PrivacyRoute
   '/programs': typeof ProgramsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/resources': typeof ResourcesRoute
   '/results': typeof ResultsRoute
   '/signin': typeof SigninRoute
@@ -602,6 +609,7 @@ export interface FileRoutesByTo {
   '/banned': typeof BannedRoute
   '/privacy': typeof PrivacyRoute
   '/programs': typeof ProgramsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/resources': typeof ResourcesRoute
   '/results': typeof ResultsRoute
   '/signin': typeof SigninRoute
@@ -669,6 +677,7 @@ export interface FileRoutesById {
   '/banned': typeof BannedRoute
   '/privacy': typeof PrivacyRoute
   '/programs': typeof ProgramsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/resources': typeof ResourcesRoute
   '/results': typeof ResultsRoute
   '/signin': typeof SigninRoute
@@ -750,6 +759,7 @@ export interface FileRouteTypes {
     | '/banned'
     | '/privacy'
     | '/programs'
+    | '/reset-password'
     | '/resources'
     | '/results'
     | '/signin'
@@ -829,6 +839,7 @@ export interface FileRouteTypes {
     | '/banned'
     | '/privacy'
     | '/programs'
+    | '/reset-password'
     | '/resources'
     | '/results'
     | '/signin'
@@ -895,6 +906,7 @@ export interface FileRouteTypes {
     | '/banned'
     | '/privacy'
     | '/programs'
+    | '/reset-password'
     | '/resources'
     | '/results'
     | '/signin'
@@ -976,6 +988,7 @@ export interface RootRouteChildren {
   BannedRoute: typeof BannedRoute
   PrivacyRoute: typeof PrivacyRoute
   ProgramsRoute: typeof ProgramsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ResourcesRoute: typeof ResourcesRoute
   ResultsRoute: typeof ResultsRoute
   SigninRoute: typeof SigninRoute
@@ -1027,6 +1040,13 @@ declare module '@tanstack/react-router' {
       path: '/programs'
       fullPath: '/programs'
       preLoaderRoute: typeof ProgramsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/resources': {
@@ -1858,6 +1878,7 @@ const rootRouteChildren: RootRouteChildren = {
   BannedRoute: BannedRoute,
   PrivacyRoute: PrivacyRoute,
   ProgramsRoute: ProgramsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ResourcesRoute: ResourcesRoute,
   ResultsRoute: ResultsRoute,
   SigninRoute: SigninRoute,

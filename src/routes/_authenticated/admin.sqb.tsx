@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { ClipboardList, FileQuestion, Upload } from "lucide-react";
+import { Archive, ClipboardList, FileQuestion, Upload } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/sqb")({
   component: AdminSqbLayout,
@@ -7,12 +7,13 @@ export const Route = createFileRoute("/_authenticated/admin/sqb")({
 });
 
 const SUB_NAV: Array<{
-  to: "/admin/sqb" | "/admin/sqb/questions" | "/admin/sqb/import";
+  to: "/admin/sqb" | "/admin/sqb/base" | "/admin/sqb/questions" | "/admin/sqb/import";
   label: string;
   icon: typeof ClipboardList;
   exact?: boolean;
 }> = [
   { to: "/admin/sqb", label: "Tests", icon: ClipboardList, exact: true },
+  { to: "/admin/sqb/base", label: "Test Base", icon: Archive },
   { to: "/admin/sqb/questions", label: "Questions", icon: FileQuestion },
   { to: "/admin/sqb/import", label: "Import", icon: Upload },
 ];

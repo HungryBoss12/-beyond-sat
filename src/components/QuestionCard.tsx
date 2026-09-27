@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bookmark,
   BookmarkCheck,
-  Check,
   Highlighter,
   StickyNote,
   Trash2,
@@ -101,6 +100,7 @@ export function QuestionCard({
   reveal,
   correctChoiceId,
   correctGridAnswers,
+  showRationale = true,
   showNotes,
   onCloseNotes,
 }: {
@@ -111,6 +111,8 @@ export function QuestionCard({
   reveal?: boolean;
   correctChoiceId?: string | null;
   correctGridAnswers?: string[] | null;
+  /** Hide rationale when the student got the item right. Default on for review. */
+  showRationale?: boolean;
   /* Bluebook keeps highlights and notes behind a header control rather than
      listing them under the passage, and that control lives in the chrome — so
      the open state is owned by the caller and passed down. Omitting it (the
@@ -366,6 +368,7 @@ export function QuestionCard({
               reveal={reveal}
               correctChoiceId={correctChoiceId}
               correctGridAnswers={correctGridAnswers}
+              showRationale={showRationale}
               crossOut={crossOut}
               onToggleCrossOut={() => setCrossOut((v) => !v)}
             />
@@ -386,6 +389,7 @@ export function QuestionCard({
               reveal={reveal}
               correctChoiceId={correctChoiceId}
               correctGridAnswers={correctGridAnswers}
+              showRationale={showRationale}
               crossOut={crossOut}
               onToggleCrossOut={() => setCrossOut((v) => !v)}
             />
@@ -480,6 +484,7 @@ function QuestionBody({
   reveal,
   correctChoiceId,
   correctGridAnswers,
+  showRationale = true,
   crossOut,
   onToggleCrossOut,
 }: {
@@ -492,6 +497,7 @@ function QuestionBody({
   reveal?: boolean;
   correctChoiceId?: string | null;
   correctGridAnswers?: string[] | null;
+  showRationale?: boolean;
   crossOut: boolean;
   onToggleCrossOut: () => void;
 }) {
@@ -611,7 +617,8 @@ function QuestionBody({
             autoComplete="off"
             spellCheck={false}
             maxLength={6}
-            className="mt-2 block w-full max-w-xs rounded border-2 border-test-edge bg-white px-4 py-3 text-xl font-bold tabular-nums text-test-ink placeholder:text-test-muted/60 focus:border-test-accent focus:outline-none"
+            disabled={!!reveal}
+            className="mt-2 block w-full max-w-xs rounded border-2 border-test-edge bg-white px-4 py-3 text-xl font-bold tabular-nums text-test-ink placeholder:text-test-muted/60 focus:border-test-accent focus:outline-none disabled:cursor-default"
             placeholder="e.g. 3.14 or 5/8"
           />
         </div>
@@ -620,24 +627,22 @@ function QuestionBody({
           {choices.map((c, i) => {
             const eliminated = answer.eliminated.includes(c.id);
             const selected = answer.selectedChoiceId === c.id;
-            const isCorrect = reveal && correctChoiceId === c.id;
-            const isWrong = reveal && selected && correctChoiceId !== c.id;
+            const showKey = reveal && !!correctChoiceId;
+            const isCorrect = showKey && correctChoiceId === c.id;
+            const isWrongPick = showKey && selected && !isCorrect;
             return (
               <li key={i} className="flex items-stretch gap-2">
-                {/* The option itself. Bluebook fills only the letter circle on
-                    selection and leaves the option white with a 2px blue rule —
-                    a fully filled row would invert the text and cost contrast on
-                    the thing the student is actually reading. Review mode keeps
-                    hue out of correct/wrong; the ✓/✗ on the circle carries it. */}
+                {/* Only the choice the student got wrong turns red: a filled
+                    letter and red answer text. Other choices stay plain. */}
                 <button
                   disabled={reveal}
                   onClick={() => select(c.id)}
                   className={
                     "flex flex-1 items-start gap-3 rounded-lg border-2 bg-white px-4 py-3 text-left transition disabled:cursor-default " +
                     (isCorrect
-                      ? "border-test-accent"
-                      : isWrong
-                        ? "border-test-muted"
+                      ? "border-emerald-600"
+                      : isWrongPick
+                        ? "border-red-600"
                         : selected
                           ? "border-test-accent"
                           : eliminated
@@ -649,26 +654,24 @@ function QuestionBody({
                     className={
                       "mt-0.5 grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full border text-sm font-bold " +
                       (isCorrect
-                        ? "border-test-accent bg-test-accent text-white"
-                        : isWrong
-                          ? "border-test-muted bg-test-muted text-white"
+                        ? "border-emerald-600 bg-white text-emerald-700"
+                        : isWrongPick
+                          ? "border-red-600 bg-red-600 text-white"
                           : selected
                             ? "border-test-accent bg-test-accent text-white"
                             : "border-test-ink text-test-ink")
                     }
                   >
-                    {isCorrect ? (
-                      <Check className="h-4 w-4" />
-                    ) : isWrong ? (
-                      <XIcon className="h-4 w-4" />
-                    ) : (
-                      LETTERS[i]
-                    )}
+                    {LETTERS[i]}
                   </span>
                   <span
                     className={
                       "flex min-w-0 flex-1 flex-col gap-2 text-[17px] leading-[1.6] md:text-[18px] " +
-                      (eliminated ? "text-test-muted line-through" : "text-test-ink")
+                      (isWrongPick
+                        ? "text-red-600"
+                        : eliminated
+                          ? "text-test-muted line-through"
+                          : "text-test-ink")
                     }
                   >
                     {c.text?.trim() ? <MathText>{c.text}</MathText> : null}
@@ -714,17 +717,22 @@ function QuestionBody({
         </ul>
       )}
 
-      {reveal ? (
+      {reveal &&
+      (correctChoiceId ||
+        (correctGridAnswers ?? []).some(Boolean) ||
+        (showRationale && (q.explanation ?? "").trim())) ? (
         <div className="mt-8 space-y-3 border-t border-test-line pt-6">
-          <p className="text-sm font-bold text-test-ink">
-            Correct Answer:{" "}
-            <span className="font-black text-test-accent">
-              {q.kind === "grid_in"
-                ? (correctGridAnswers ?? []).filter(Boolean).join(" or ") || "—"
-                : correctChoiceId || "—"}
-            </span>
-          </p>
-          {(q.explanation ?? "").trim() ? (
+          {correctChoiceId || (correctGridAnswers ?? []).some(Boolean) ? (
+            <p className="text-sm font-bold text-test-ink">
+              Correct Answer:{" "}
+              <span className="font-black text-test-accent">
+                {q.kind === "grid_in"
+                  ? (correctGridAnswers ?? []).filter(Boolean).join(" or ") || "—"
+                  : correctChoiceId}
+              </span>
+            </p>
+          ) : null}
+          {showRationale && (q.explanation ?? "").trim() ? (
             <div>
               <p className="mb-2 text-xs font-bold uppercase tracking-wider text-test-muted">
                 Rationale

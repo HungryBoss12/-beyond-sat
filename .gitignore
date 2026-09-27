@@ -95,4 +95,5 @@ scripts/verify-dec2024-import.mjs
 scripts/apply-sqb-schema.mjs
 scripts/smoke-sqb-katex.mjs
 scripts/verify-sqb-cols.mjs
+scripts/tmp-*.txt
 

@@ -991,6 +991,7 @@ export type Database = {
           created_by: string | null;
           difficulty: Database["public"]["Enums"]["sat_difficulty"];
           id: string;
+          in_test_base: boolean;
           module: number;
           published: boolean;
           section: Database["public"]["Enums"]["sat_section"];
@@ -1006,6 +1007,7 @@ export type Database = {
           created_by?: string | null;
           difficulty?: Database["public"]["Enums"]["sat_difficulty"];
           id?: string;
+          in_test_base?: boolean;
           module: number;
           published?: boolean;
           section: Database["public"]["Enums"]["sat_section"];
@@ -1021,6 +1023,7 @@ export type Database = {
           created_by?: string | null;
           difficulty?: Database["public"]["Enums"]["sat_difficulty"];
           id?: string;
+          in_test_base?: boolean;
           module?: number;
           published?: boolean;
           section?: Database["public"]["Enums"]["sat_section"];
@@ -1453,6 +1456,14 @@ export type Database = {
           explanation: string;
         }[];
       };
+      get_attempt_feedback: {
+        Args: { p_session_id: string; p_question_id: string };
+        Returns: {
+          correct_choice_id: string;
+          correct_grid_answers: string[];
+          explanation: string;
+        }[];
+      };
       get_answers_for_review: {
         Args: { p_question_ids: string[] };
         Returns: {
@@ -1487,6 +1498,23 @@ export type Database = {
       start_mock_session: {
         Args: { p_mock_exam_id: string };
         Returns: string;
+      };
+      start_filtered_practice: {
+        Args: {
+          p_section: string;
+          p_skill?: string;
+          p_difficulty?: string;
+          p_limit?: number;
+        };
+        Returns: string;
+      };
+      start_published_test_session: {
+        Args: { p_test_id: string };
+        Returns: { id: string; resumed: boolean };
+      };
+      start_daily_session: {
+        Args: { p_date?: string };
+        Returns: { id: string; resumed: boolean };
       };
       complete_session: {
         Args: { p_session_id: string };

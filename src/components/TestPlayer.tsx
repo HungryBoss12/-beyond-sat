@@ -22,6 +22,7 @@ import {
 } from "@/components/QuestionCard";
 import { DesmosCalculator } from "@/components/DesmosCalculator";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { AmbientGlow } from "@/components/ui/reveal-card";
 import { bumpDailyStreak, scaledScore, type TestType } from "@/lib/session";
 import { draftsByQuestionId } from "@/lib/draft-answers";
 import {
@@ -47,6 +48,10 @@ type Props = {
   mockSchedule?: MockSchedule;
   /** Hydrated from test_sessions.metadata.draft_answers on Resume. */
   initialAnswers?: AnswerState[];
+  /** Stored attempts already graded by submit_attempt. Locks those items. */
+  initialGrades?: { questionId: string; isCorrect: boolean }[];
+  /** test_sessions.started_at — results time is measured from this, not page open. */
+  sessionStartedAt?: string | null;
   /** Current session metadata (question_ids, etc.) — drafts are merged into this. */
   sessionMetadata?: Record<string, unknown>;
   onExit?: () => void;
@@ -71,6 +76,16 @@ type Result = {
   mathCorrect: number;
   mathTotal: number;
   scaled: { rw: number | null; math: number | null; total: number } | null;
+  missed: number;
+  unanswered: number;
+  seconds: number;
+};
+
+type GradeRec = {
+  isCorrect: boolean;
+  correctChoiceId: string | null;
+  correctGridAnswers: string[] | null;
+  explanation: string | null;
 };
 
 export function TestPlayer({
@@ -81,6 +96,8 @@ export function TestPlayer({
   durationSeconds = 0,
   mockSchedule,
   initialAnswers,
+  initialGrades,
+  sessionStartedAt,
   sessionMetadata,
   onExit,
 }: Props) {
@@ -121,6 +138,21 @@ export function TestPlayer({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const resultRef = useRef<Result | null>(null);
+  const [grades, setGrades] = useState<Record<string, GradeRec>>(() => {
+    const out: Record<string, GradeRec> = {};
+    for (const row of initialGrades ?? []) {
+      out[row.questionId] = {
+        isCorrect: row.isCorrect,
+        correctChoiceId: null,
+        correctGridAnswers: null,
+        explanation: null,
+      };
+    }
+    return out;
+  });
+  const gradesRef = useRef(grades);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number>(() => {
     if (!useSections || !mockSchedule) return durationSeconds;
     const p = readMockPhase(sessionMetadata) ?? firstPhase;
@@ -141,7 +173,11 @@ export function TestPlayer({
   const [showMore, setShowMore] = useState(false);
   const [hideTimer, setHideTimer] = useState(false);
   const [studentName, setStudentName] = useState("");
-  const startedRef = useRef<number>(Date.now());
+  const startedRef = useRef<number>(
+    sessionStartedAt && Number.isFinite(Date.parse(sessionStartedAt))
+      ? Date.parse(sessionStartedAt)
+      : Date.now(),
+  );
   const questionStartRef = useRef<number>(Date.now());
   const timePerQ = useRef<number[]>(questions.map(() => 0));
   const metaRef = useRef<Record<string, unknown>>(sessionMetadata ?? {});
@@ -356,6 +392,7 @@ export function TestPlayer({
     questionStartRef.current = Date.now();
     setIdx(i);
     setShowReview(false);
+    setFeedbackOpen(false);
     if (useSections) persistMockProgress({ idx: i, phase, timeLeft });
   }
 
@@ -383,6 +420,7 @@ export function TestPlayer({
          them from the session total. */
       await Promise.all(
         questions.map(async (q, i) => {
+          if (gradesRef.current[q.id]) return;
           const a = currentAnswers[i] ?? emptyAnswer();
           const hasAnswer = q.kind === "grid_in" ? !!a.gridAnswer.trim() : !!a.selectedChoiceId;
           if (!hasAnswer) return;
@@ -399,6 +437,12 @@ export function TestPlayer({
             gradeFailures.push(gradeErr.message || `Question ${i + 1} could not be graded`);
           } else {
             const ok = (data as boolean | null) ?? false;
+            gradesRef.current[q.id] = {
+              isCorrect: ok,
+              correctChoiceId: null,
+              correctGridAnswers: null,
+              explanation: null,
+            };
             if (q.section === "reading_writing") {
               rwT += 1;
               if (ok) rwC += 1;
@@ -477,14 +521,37 @@ export function TestPlayer({
             : `p${correct}`;
       logUinfo("t", code);
 
+      const gradedList = Object.values(gradesRef.current);
+      const solvedCorrect = gradedList.filter((g) => g.isCorrect).length;
+      const practiceScore = type !== "mock";
+      let rwSolved = 0;
+      let rwSolvedCorrect = 0;
+      let mathSolved = 0;
+      let mathSolvedCorrect = 0;
+      if (practiceScore) {
+        for (const question of questions) {
+          const grade = gradesRef.current[question.id];
+          if (!grade) continue;
+          if (question.section === "reading_writing") {
+            rwSolved += 1;
+            if (grade.isCorrect) rwSolvedCorrect += 1;
+          } else {
+            mathSolved += 1;
+            if (grade.isCorrect) mathSolvedCorrect += 1;
+          }
+        }
+      }
       const nextResult: Result = {
-        correct,
-        total: questions.length,
-        rwCorrect: rwC,
-        rwTotal: rwT,
-        mathCorrect: mC,
-        mathTotal: mT,
+        correct: practiceScore ? solvedCorrect : correct,
+        total: practiceScore ? gradedList.length : questions.length,
+        rwCorrect: practiceScore ? rwSolvedCorrect : rwC,
+        rwTotal: practiceScore ? rwSolved : rwT,
+        mathCorrect: practiceScore ? mathSolvedCorrect : mC,
+        mathTotal: practiceScore ? mathSolved : mT,
         scaled: finalScaled,
+        missed: practiceScore ? gradedList.length - solvedCorrect : gradedList.filter((g) => !g.isCorrect).length,
+        unanswered: Math.max(0, questions.length - gradedList.length),
+        seconds: Math.max(0, Math.round((Date.now() - startedRef.current) / 1000)),
       };
       resultRef.current = nextResult;
       setResult(nextResult);
@@ -495,6 +562,115 @@ export function TestPlayer({
     }
   }
   submitRef.current = submit;
+
+  const instantCheck = type === "practice" || type === "daily";
+
+  function advanceAfterFeedback(current: number) {
+    setFeedbackOpen(false);
+    if (useSections) {
+      const active = indicesForPhase(phase);
+      const pos = active.indexOf(current);
+      if (pos >= 0 && pos < active.length - 1) goto(active[pos + 1]!);
+      else setShowReview(true);
+    } else if (current < questions.length - 1) {
+      goto(current + 1);
+    } else {
+      setShowReview(true);
+    }
+  }
+
+  async function handlePracticeNext() {
+    if (checking || submittingRef.current) return;
+    const qq = questions[idx];
+    if (!qq) return;
+    const a = answersRef.current[idx] ?? emptyAnswer();
+    const has = isAnswered(a, qq.kind);
+    const sectionIndices = useSections ? indicesForPhase(phase) : questions.map((_, i) => i);
+    const atEnd = sectionIndices.indexOf(idx) >= sectionIndices.length - 1;
+    const finishesExam = atEnd && (!useSections || !nextPhase(phaseOrder, phase));
+
+    if (!has) {
+      advanceAfterFeedback(idx);
+      return;
+    }
+
+    const existing = gradesRef.current[qq.id];
+    if (existing) {
+      if (!feedbackOpen) {
+        if (!existing.isCorrect && !existing.explanation) {
+          const { data: rows } = await supabase.rpc("get_attempt_feedback", {
+            p_session_id: sessionId,
+            p_question_id: qq.id,
+          });
+          const row = rows?.[0];
+          if (row) {
+            const filled: GradeRec = {
+              ...existing,
+              correctChoiceId: row.correct_choice_id ?? null,
+              correctGridAnswers: row.correct_grid_answers ?? null,
+              explanation: row.explanation ?? null,
+            };
+            gradesRef.current = { ...gradesRef.current, [qq.id]: filled };
+            setGrades(gradesRef.current);
+          }
+        }
+        setFeedbackOpen(true);
+        return;
+      }
+      if (finishesExam) {
+        setFeedbackOpen(false);
+        void submit();
+        return;
+      }
+      advanceAfterFeedback(idx);
+      return;
+    }
+
+    setChecking(true);
+    setSubmitError(null);
+    try {
+      const elapsed = Math.round((Date.now() - questionStartRef.current) / 1000);
+      timePerQ.current[idx] = (timePerQ.current[idx] ?? 0) + elapsed;
+      questionStartRef.current = Date.now();
+      const { data, error } = await supabase.rpc("submit_attempt", {
+        p_session_id: sessionId,
+        p_question_id: qq.id,
+        p_choice_id: a.selectedChoiceId ?? "",
+        p_grid_answer: a.gridAnswer || "",
+        p_marked_for_review: a.markedForReview,
+        p_eliminated: a.eliminated,
+        p_time_spent: timePerQ.current[idx] ?? 0,
+      });
+      if (error) throw new Error(error.message);
+      const ok = data === true;
+      const rec: GradeRec = {
+        isCorrect: ok,
+        correctChoiceId: null,
+        correctGridAnswers: null,
+        explanation: null,
+      };
+      gradesRef.current = { ...gradesRef.current, [qq.id]: rec };
+      setGrades(gradesRef.current);
+      if (!ok) {
+        const { data: rows, error: fErr } = await supabase.rpc("get_attempt_feedback", {
+          p_session_id: sessionId,
+          p_question_id: qq.id,
+        });
+        if (!fErr && rows?.[0]) {
+          rec.correctChoiceId = rows[0].correct_choice_id ?? null;
+          rec.correctGridAnswers = rows[0].correct_grid_answers ?? null;
+          rec.explanation = rows[0].explanation ?? null;
+          gradesRef.current = { ...gradesRef.current, [qq.id]: rec };
+          setGrades(gradesRef.current);
+        }
+      }
+      setFeedbackOpen(true);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Could not check this answer.");
+    } finally {
+      setChecking(false);
+    }
+  }
 
   /* Clamped rather than indexed straight: `idx` can outrun the array if the
      question list ever shrinks, and an out-of-range read here reaches
@@ -513,7 +689,14 @@ export function TestPlayer({
   const marked = questions.map((_, i) => answers[i]?.markedForReview ?? false);
 
   if (result)
-    return <ResultsView result={result} type={type} onExit={() => navigate({ to: "/practice" })} />;
+    return (
+      <ResultsView
+        result={result}
+        type={type}
+        onExit={() => navigate({ to: "/practice" })}
+        onReview={() => navigate({ to: `/analysis/session/${sessionId}` })}
+      />
+    );
 
   if (!q || questions.length === 0) {
     return (
@@ -812,14 +995,55 @@ export function TestPlayer({
           />
         </div>
       ) : (
-        <QuestionCard
-          q={q}
-          index={idx}
-          answer={answers[idx] ?? emptyAnswer()}
-          onChange={(a) => updateAnswer(idx, a)}
-          showNotes={showNotes}
-          onCloseNotes={() => setShowNotes(false)}
-        />
+        <>
+          {instantCheck && feedbackOpen && grades[q.id] ? (
+            <div
+              className={
+                "rise-in mx-4 mt-3 shrink-0 rounded-xl px-4 py-3 text-white shadow-brand ring-1 sm:mx-6 " +
+                (grades[q.id]!.isCorrect
+                  ? "bg-brand-600 ring-brand-300/50"
+                  : "bg-brand-800 ring-brand-400/60")
+              }
+            >
+              <p className="pop-in text-sm font-black">
+                {grades[q.id]!.isCorrect ? "Correct" : "Incorrect"}
+              </p>
+              <p className="mt-0.5 text-xs text-brand-100">
+                {grades[q.id]!.isCorrect
+                  ? "Keep going — tap Next when you're ready."
+                  : "The rationale is below. Tap Next when you're ready."}
+              </p>
+            </div>
+          ) : null}
+          {submitError && instantCheck && !showReview ? (
+            <p className="mx-4 mt-2 text-sm font-semibold text-red-600 sm:mx-6">{submitError}</p>
+          ) : null}
+          <QuestionCard
+            q={{
+              ...q,
+              explanation:
+                instantCheck && feedbackOpen ? (grades[q.id]?.explanation ?? null) : null,
+            }}
+            index={idx}
+            answer={answers[idx] ?? emptyAnswer()}
+            onChange={(a) => {
+              /* submit_attempt is one-shot, so a graded item cannot be re-scored.
+                 Lock the answer instead of showing a stale cached result. */
+              if (feedbackOpen || grades[q.id]) return;
+              updateAnswer(idx, a);
+            }}
+            reveal={instantCheck && !!grades[q.id]}
+            correctChoiceId={
+              instantCheck && feedbackOpen ? (grades[q.id]?.correctChoiceId ?? null) : null
+            }
+            correctGridAnswers={
+              instantCheck && feedbackOpen ? (grades[q.id]?.correctGridAnswers ?? null) : null
+            }
+            showRationale={instantCheck && feedbackOpen ? !grades[q.id]?.isCorrect : false}
+            showNotes={showNotes}
+            onCloseNotes={() => setShowNotes(false)}
+          />
+        </>
       )}
 
       {/* bottom bar with centered question navigator popover */}
@@ -874,6 +1098,15 @@ export function TestPlayer({
               setShowReview(true);
             }
           }}
+          nextLabel={isLastInSection ? (instantCheck ? "See results" : "Review") : "Next"}
+          nextBusy={checking}
+          onCheckAll={
+            instantCheck &&
+            questions.filter((qq, i) => answered[i] && !grades[qq.id]).length > 1
+              ? () => void submit()
+              : undefined
+          }
+          checkAllBusy={submitting}
           onGoto={(i) => goto(i)}
           isFirst={isFirstInSection}
           isLast={isLastInSection}
@@ -989,6 +1222,10 @@ function BottomBar({
   onGoto,
   isFirst,
   isLast,
+  nextLabel,
+  nextBusy,
+  onCheckAll,
+  checkAllBusy,
 }: {
   displayNum: number;
   displayTotal: number;
@@ -1006,6 +1243,10 @@ function BottomBar({
   onGoto: (i: number) => void;
   isFirst: boolean;
   isLast: boolean;
+  nextLabel?: string;
+  nextBusy?: boolean;
+  onCheckAll?: () => void;
+  checkAllBusy?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const split = Boolean(rwIndices && mathIndices);
@@ -1120,12 +1361,25 @@ function BottomBar({
           <ChevronLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
           Back
         </button>
+        {onCheckAll ? (
+          <button
+            type="button"
+            onClick={onCheckAll}
+            disabled={showReview || checkAllBusy}
+            className="tap inline-flex items-center gap-1.5 rounded-full border border-test-accent bg-white px-4 py-2 text-sm font-bold text-test-accent hover:bg-test-tint disabled:pointer-events-none disabled:opacity-40"
+          >
+            {checkAllBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Check all
+          </button>
+        ) : null}
         <button
           onClick={onNext}
-          disabled={showReview}
+          disabled={showReview || nextBusy}
           className="btn-test group inline-flex items-center gap-1.5 rounded-full bg-test-accent px-5 py-2 text-sm font-bold text-white hover:bg-test-accent-deep disabled:pointer-events-none disabled:opacity-40"
         >
-          {isLast ? "Review" : "Next"} <ChevronRight className="arrow-slide h-4 w-4" />
+          {nextBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {nextLabel ?? (isLast ? "Review" : "Next")}{" "}
+          {!nextBusy ? <ChevronRight className="arrow-slide h-4 w-4" /> : null}
         </button>
       </div>
     </div>
@@ -1276,15 +1530,25 @@ function ResultsView({
   result,
   type,
   onExit,
+  onReview,
 }: {
   result: Result;
   type: TestType;
   onExit: () => void;
+  onReview: () => void;
 }) {
   const pct = Math.round((result.correct / Math.max(1, result.total)) * 100);
+  const mins = Math.floor(result.seconds / 60);
+  const secs = result.seconds % 60;
+  const showSections = result.rwTotal > 0 || result.mathTotal > 0;
+  // Practice and daily set `total` to the graded count, so the pack size is
+  // graded plus skipped. Mocks keep the full pack in `total`.
+  const packSize = type === "mock" ? result.total : result.total + result.unanswered;
+  const answeredCount = type === "mock" ? result.total - result.unanswered : result.total;
+
   return (
     <div className="relative h-[100dvh] w-full overflow-y-auto bg-grad-brand text-white">
-      {/* Ambient decoration so the full-bleed gradient isn't a flat wall. */}
+      <AmbientGlow />
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="drift absolute -right-24 -top-32 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
         <div
@@ -1292,10 +1556,8 @@ function ResultsView({
           style={{ animationDelay: "-7s" }}
         />
       </div>
-      <div className="relative mx-auto max-w-2xl space-y-6 px-6 py-12">
+      <div className="relative mx-auto max-w-2xl space-y-5 px-6 py-12">
         <div className="rise-in text-center">
-          {/* Labels are the light brand step at full opacity rather than faded
-              white, so nothing on the gradient reads as dimmed. */}
           <div className="text-xs font-bold uppercase tracking-widest text-brand-100">
             {type === "mock" ? "Mock exam" : type === "daily" ? "Daily test" : "Practice"} complete
           </div>
@@ -1310,67 +1572,115 @@ function ResultsView({
           </div>
           <p className="mt-2 text-brand-100">
             {result.scaled
-              ? "Approximate scaled score. Not official Bluebook curve."
+              ? "Approximate scaled score. Not an official Bluebook curve."
               : `${pct}% correct`}
           </p>
         </div>
-        {result.scaled && (
-          <div
-            className={
-              (result.rwTotal > 0 && result.mathTotal > 0 ? "grid-cols-2" : "grid-cols-1") +
-              " grid gap-4 stagger"
-            }
-          >
-            {result.rwTotal > 0 && (
-            <div className="rounded-2xl bg-brand-800 p-5 ring-1 ring-brand-300/40">
-              <div className="text-xs font-bold uppercase tracking-wider text-brand-100">
-                R&amp;W
-              </div>
-              <div className="mt-2 text-4xl font-black">
-                <AnimatedNumber value={result.scaled.rw ?? 0} duration={1100} />
-              </div>
-              <div className="mt-1 text-xs text-brand-100">
-                {result.rwCorrect}/{result.rwTotal} correct
-              </div>
-            </div>
-            )}
-            {result.mathTotal > 0 && (
-            <div className="rounded-2xl bg-brand-800 p-5 ring-1 ring-brand-300/40">
-              <div className="text-xs font-bold uppercase tracking-wider text-brand-100">Math</div>
-              <div className="mt-2 text-4xl font-black">
-                <AnimatedNumber value={result.scaled.math ?? 0} duration={1100} />
-              </div>
-              <div className="mt-1 text-xs text-brand-100">
-                {result.mathCorrect}/{result.mathTotal} correct
-              </div>
-            </div>
-            )}
-          </div>
-        )}
-        <div className="rise-in flex items-center justify-between rounded-2xl bg-brand-800 p-5 ring-1 ring-brand-300/40">
+
+        <div className="stagger grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatTile label="Accuracy" value={`${pct}%`} />
+          <StatTile label="Correct" value={`${result.correct}/${result.total}`} />
+          <StatTile label="Missed" value={String(result.missed)} />
+          <StatTile label="Skipped" value={String(result.unanswered)} />
+        </div>
+
+        <div className="rise-in flex items-center justify-between rounded-2xl bg-brand-800 p-5 shadow-brand ring-1 ring-brand-300/40">
           <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-brand-100">
-              Accuracy
-            </div>
-            <div className="mt-1 text-2xl font-black">
-              <AnimatedNumber value={pct} suffix="%" duration={900} />
+            <div className="text-xs font-bold uppercase tracking-wider text-brand-100">Time</div>
+            <div className="mt-1 text-2xl font-black tabular-nums">
+              {mins}m {String(secs).padStart(2, "0")}s
             </div>
           </div>
           <div className="text-right">
             <div className="text-xs font-bold uppercase tracking-wider text-brand-100">
-              Correct
+              Answered
             </div>
             <div className="mt-1 text-2xl font-black tabular-nums">
-              {result.correct}/{result.total}
+              {answeredCount}/{packSize}
             </div>
           </div>
         </div>
-        <button
-          onClick={onExit}
-          className="tap w-full rounded-xl bg-brand-400 px-6 py-3.5 text-sm font-bold text-white ring-1 ring-brand-200/50 hover:bg-brand-300"
-        >
-          Back to practice
-        </button>
+
+        {showSections && (
+          <div
+            className={
+              (result.rwTotal > 0 && result.mathTotal > 0 ? "grid-cols-2" : "grid-cols-1") +
+              " stagger grid gap-3"
+            }
+          >
+            {result.rwTotal > 0 && (
+              <SectionTile
+                label="Reading & Writing"
+                correct={result.rwCorrect}
+                total={result.rwTotal}
+                scaled={result.scaled?.rw ?? null}
+              />
+            )}
+            {result.mathTotal > 0 && (
+              <SectionTile
+                label="Math"
+                correct={result.mathCorrect}
+                total={result.mathTotal}
+                scaled={result.scaled?.math ?? null}
+              />
+            )}
+          </div>
+        )}
+
+        <div className="rise-in grid gap-2 sm:grid-cols-2">
+          <button
+            onClick={onReview}
+            className="tap rounded-xl bg-brand-400 px-6 py-3.5 text-sm font-bold text-white shadow-brand ring-1 ring-brand-200/50 hover:bg-brand-300"
+          >
+            Review answers
+          </button>
+          <button
+            onClick={onExit}
+            className="tap rounded-xl bg-brand-800 px-6 py-3.5 text-sm font-bold text-white ring-1 ring-brand-300/40 hover:bg-brand-700"
+          >
+            Back to practice
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-brand-800 p-4 shadow-brand ring-1 ring-brand-300/40">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-brand-100">{label}</div>
+      <div className="mt-1 text-xl font-black tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+function SectionTile({
+  label,
+  correct,
+  total,
+  scaled,
+}: {
+  label: string;
+  correct: number;
+  total: number;
+  scaled: number | null;
+}) {
+  const pct = Math.round((correct / Math.max(1, total)) * 100);
+  return (
+    <div className="rounded-2xl bg-brand-800 p-5 shadow-brand ring-1 ring-brand-300/40">
+      <div className="text-xs font-bold uppercase tracking-wider text-brand-100">{label}</div>
+      {scaled != null ? (
+        <div className="mt-2 text-4xl font-black">
+          <AnimatedNumber value={scaled} duration={1100} />
+        </div>
+      ) : (
+        <div className="mt-2 text-4xl font-black tabular-nums">
+          {correct}/{total}
+        </div>
+      )}
+      <div className="mt-1 text-xs text-brand-100">
+        {correct}/{total} correct · {pct}%
       </div>
     </div>
   );

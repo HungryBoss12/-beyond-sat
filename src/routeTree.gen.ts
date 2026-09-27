@@ -65,6 +65,7 @@ import { Route as AuthenticatedVocabDeckRouteImport } from './routes/_authentica
 import { Route as AuthenticatedVocabDecksRouteImport } from './routes/_authenticated/vocab.decks'
 import { Route as AuthenticatedVocabTestsRouteImport } from './routes/_authenticated/vocab.tests'
 import { Route as AuthenticatedAdminSqbIndexRouteImport } from './routes/_authenticated/admin.sqb.index'
+import { Route as AuthenticatedAdminSqbBaseRouteImport } from './routes/_authenticated/admin.sqb.base'
 import { Route as AuthenticatedAdminSqbImportRouteImport } from './routes/_authenticated/admin.sqb.import'
 import { Route as AuthenticatedAdminSqbQuestionsRouteImport } from './routes/_authenticated/admin.sqb.questions'
 import { Route as AuthenticatedAdminUsersIndexRouteImport } from './routes/_authenticated/admin.users.index'
@@ -384,6 +385,12 @@ const AuthenticatedAdminSqbIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedAdminSqbRoute,
   } as any)
+const AuthenticatedAdminSqbBaseRoute =
+  AuthenticatedAdminSqbBaseRouteImport.update({
+    id: '/base',
+    path: '/base',
+    getParentRoute: () => AuthenticatedAdminSqbRoute,
+  } as any)
 const AuthenticatedAdminSqbImportRoute =
   AuthenticatedAdminSqbImportRouteImport.update({
     id: '/import',
@@ -572,6 +579,7 @@ export interface FileRoutesByFullPath {
   '/news/': typeof AuthenticatedNewsIndexRoute
   '/practice/': typeof AuthenticatedPracticeIndexRoute
   '/vocab/': typeof AuthenticatedVocabIndexRoute
+  '/admin/sqb/base': typeof AuthenticatedAdminSqbBaseRoute
   '/admin/sqb/import': typeof AuthenticatedAdminSqbImportRoute
   '/admin/sqb/questions': typeof AuthenticatedAdminSqbQuestionsRouteWithChildren
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
@@ -639,6 +647,7 @@ export interface FileRoutesByTo {
   '/news': typeof AuthenticatedNewsIndexRoute
   '/practice': typeof AuthenticatedPracticeIndexRoute
   '/vocab': typeof AuthenticatedVocabIndexRoute
+  '/admin/sqb/base': typeof AuthenticatedAdminSqbBaseRoute
   '/admin/sqb/import': typeof AuthenticatedAdminSqbImportRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/admin/vocab/assignments': typeof AuthenticatedAdminVocabAssignmentsRoute
@@ -718,6 +727,7 @@ export interface FileRoutesById {
   '/_authenticated/news/': typeof AuthenticatedNewsIndexRoute
   '/_authenticated/practice/': typeof AuthenticatedPracticeIndexRoute
   '/_authenticated/vocab/': typeof AuthenticatedVocabIndexRoute
+  '/_authenticated/admin/sqb/base': typeof AuthenticatedAdminSqbBaseRoute
   '/_authenticated/admin/sqb/import': typeof AuthenticatedAdminSqbImportRoute
   '/_authenticated/admin/sqb/questions': typeof AuthenticatedAdminSqbQuestionsRouteWithChildren
   '/_authenticated/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
@@ -799,6 +809,7 @@ export interface FileRouteTypes {
     | '/news/'
     | '/practice/'
     | '/vocab/'
+    | '/admin/sqb/base'
     | '/admin/sqb/import'
     | '/admin/sqb/questions'
     | '/admin/users/$userId'
@@ -866,6 +877,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/practice'
     | '/vocab'
+    | '/admin/sqb/base'
     | '/admin/sqb/import'
     | '/admin/users/$userId'
     | '/admin/vocab/assignments'
@@ -944,6 +956,7 @@ export interface FileRouteTypes {
     | '/_authenticated/news/'
     | '/_authenticated/practice/'
     | '/_authenticated/vocab/'
+    | '/_authenticated/admin/sqb/base'
     | '/_authenticated/admin/sqb/import'
     | '/_authenticated/admin/sqb/questions'
     | '/_authenticated/admin/users/$userId'
@@ -1379,6 +1392,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminSqbIndexRouteImport
       parentRoute: typeof AuthenticatedAdminSqbRoute
     }
+    '/_authenticated/admin/sqb/base': {
+      id: '/_authenticated/admin/sqb/base'
+      path: '/base'
+      fullPath: '/admin/sqb/base'
+      preLoaderRoute: typeof AuthenticatedAdminSqbBaseRouteImport
+      parentRoute: typeof AuthenticatedAdminSqbRoute
+    }
     '/_authenticated/admin/sqb/import': {
       id: '/_authenticated/admin/sqb/import'
       path: '/import'
@@ -1555,6 +1575,7 @@ const AuthenticatedAdminSqbQuestionsRouteWithChildren =
   )
 
 interface AuthenticatedAdminSqbRouteChildren {
+  AuthenticatedAdminSqbBaseRoute: typeof AuthenticatedAdminSqbBaseRoute
   AuthenticatedAdminSqbImportRoute: typeof AuthenticatedAdminSqbImportRoute
   AuthenticatedAdminSqbQuestionsRoute: typeof AuthenticatedAdminSqbQuestionsRouteWithChildren
   AuthenticatedAdminSqbIndexRoute: typeof AuthenticatedAdminSqbIndexRoute
@@ -1562,6 +1583,7 @@ interface AuthenticatedAdminSqbRouteChildren {
 }
 
 const AuthenticatedAdminSqbRouteChildren: AuthenticatedAdminSqbRouteChildren = {
+  AuthenticatedAdminSqbBaseRoute: AuthenticatedAdminSqbBaseRoute,
   AuthenticatedAdminSqbImportRoute: AuthenticatedAdminSqbImportRoute,
   AuthenticatedAdminSqbQuestionsRoute:
     AuthenticatedAdminSqbQuestionsRouteWithChildren,

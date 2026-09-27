@@ -52,7 +52,7 @@ function PracticeLanding() {
           supabase.from("questions").select("id").eq("section", "reading_writing").neq("bank_format", "sqb"),
           supabase.from("questions").select("id").eq("section", "math").neq("bank_format", "sqb"),
           supabase.from("mock_exams").select("id").eq("published", true),
-          supabase.from("tests").select("id").eq("bank_format", "sqb").eq("published", true),
+          supabase.from("tests").select("id").eq("bank_format", "sqb").eq("published", true).eq("in_test_base", false),
           supabase.from("daily_tests").select("id").eq("date", today).maybeSingle(),
           supabase.auth.getSession(),
         ]);

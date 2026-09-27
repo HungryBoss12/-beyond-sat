@@ -492,6 +492,7 @@ function AdminSqbImportWizard() {
               created_by: uid,
               bank_format: "sqb",
               published: false,
+              in_test_base: true,
             })
             .select("id")
             .single();

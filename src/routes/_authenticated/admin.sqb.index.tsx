@@ -4,9 +4,9 @@ import { Plus, Edit3, Eye, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { RevealCard } from "@/components/ui/reveal-card";
+import { SqbTestDeleteDialog } from "@/components/admin/SqbTestDeleteDialog";
 import {
   SECTION_LABEL,
-  difficultyColor,
   formatSourceDate,
   type Section,
 } from "@/lib/sat";
@@ -34,6 +34,7 @@ function AdminSqbHub() {
   const [loading, setLoading] = useState(true);
   const [section, setSection] = useState<Section | "all">("all");
   const [publishedOnly, setPublishedOnly] = useState<"all" | "yes" | "no">("all");
+  const [pendingDelete, setPendingDelete] = useState<SqbTest | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,6 +42,7 @@ function AdminSqbHub() {
       .from("tests")
       .select("id,title,section,module,difficulty,published,source_month,source_year")
       .eq("bank_format", "sqb")
+      .eq("in_test_base", false)
       .order("created_at", { ascending: false });
     if (section !== "all") tq = tq.eq("section", section);
     if (publishedOnly === "yes") tq = tq.eq("published", true);
@@ -62,12 +64,6 @@ function AdminSqbHub() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  async function remove(id: string) {
-    if (!confirm("Delete this SQB test?")) return;
-    await supabase.from("tests").delete().eq("id", id);
-    void load();
-  }
 
   function newQuestion() {
     sessionStorage.removeItem("sqb-draft");
@@ -180,13 +176,14 @@ function AdminSqbHub() {
                     <span
                       className={
                         "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
-                        difficultyColor(t.difficulty)
+                        ((counts.get(t.id) ?? 0) === 0
+                          ? "bg-amber-700 text-white"
+                          : "bg-brand-800 text-brand-100")
                       }
                     >
-                      {t.difficulty}
-                    </span>
-                    <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
-                      {counts.get(t.id) ?? 0} Q
+                      {(counts.get(t.id) ?? 0) === 0
+                        ? "No questions yet"
+                        : `${counts.get(t.id)} Q`}
                     </span>
                     {formatSourceDate(t.source_month, t.source_year) && (
                       <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
@@ -207,8 +204,8 @@ function AdminSqbHub() {
                   type="button"
                   onClick={() =>
                     void navigate({
-                      to: "/admin/tests",
-                      search: { edit: t.id, bank: "sqb" } as never,
+                      to: "/admin/sqb/import",
+                      search: { testId: t.id },
                     })
                   }
                   className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
@@ -231,7 +228,7 @@ function AdminSqbHub() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => void remove(t.id)}
+                  onClick={() => setPendingDelete(t)}
                   className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-900 hover:text-white"
                   aria-label="Delete"
                 >
@@ -241,6 +238,18 @@ function AdminSqbHub() {
             ))}
           </ul>
         </div>
+      )}
+      {pendingDelete && (
+        <SqbTestDeleteDialog
+          testId={pendingDelete.id}
+          title={pendingDelete.title}
+          mode="list"
+          onClose={() => setPendingDelete(null)}
+          onDone={() => {
+            setPendingDelete(null);
+            void load();
+          }}
+        />
       )}
     </div>
   );

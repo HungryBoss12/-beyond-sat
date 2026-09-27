@@ -54,6 +54,8 @@ function AdminSqbReviewPage() {
   const [idx, setIdx] = useState(0);
   const [showAnswers, setShowAnswers] = useState(true);
   const [reviewed, setReviewed] = useState<Record<string, boolean>>({});
+  const [skipped, setSkipped] = useState<Record<string, boolean>>({});
+  const [addedErrors, setAddedErrors] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
   const [confirmPublish, setConfirmPublish] = useState(false);
 
@@ -134,23 +136,35 @@ function AdminSqbReviewPage() {
   // Duplicate external_id within pack
   const dupExternals = useMemo(() => findPackExternalIdDupes(adminQs), [adminQs]);
 
+  const kept = useMemo(
+    () => adminQs.filter((q) => !skipped[q.id]),
+    [adminQs, skipped],
+  );
+
   const packErrors = useMemo(() => {
-    let n = statuses.reduce((a, s) => a + s.errors.length, 0);
-    for (const q of adminQs) {
+    let n = 0;
+    for (let i = 0; i < adminQs.length; i++) {
+      const q = adminQs[i]!;
+      if (skipped[q.id] || addedErrors[q.id]) continue;
+      n += statuses[i]?.errors.length ?? 0;
       const eid = (q.external_id ?? "").trim();
       if (eid && dupExternals.has(eid)) n += 1;
     }
-    if (adminQs.length === 0) n += 1;
     return n;
-  }, [statuses, adminQs, dupExternals]);
+  }, [statuses, adminQs, dupExternals, skipped, addedErrors]);
 
-  const packWarnings = useMemo(
-    () => statuses.reduce((a, s) => a + s.warnings.length, 0),
-    [statuses],
-  );
+  const packWarnings = useMemo(() => {
+    let n = 0;
+    for (let i = 0; i < adminQs.length; i++) {
+      if (skipped[adminQs[i]!.id]) continue;
+      n += statuses[i]?.warnings.length ?? 0;
+    }
+    return n;
+  }, [statuses, adminQs, skipped]);
 
-  const allReviewed = adminQs.length > 0 && adminQs.every((q) => reviewed[q.id]);
-  const canPublish = packErrors === 0 && allReviewed && !published;
+  const skippedCount = adminQs.filter((q) => skipped[q.id]).length;
+  const allReviewed = kept.length > 0 && kept.every((q) => reviewed[q.id]);
+  const canPublish = kept.length > 0 && packErrors === 0 && allReviewed && !published;
 
   const q = questions[idx];
   const adminQ = adminQs[idx];
@@ -166,27 +180,80 @@ function AdminSqbReviewPage() {
     setReviewed(next);
   }
 
+  function itemIsHardError(i: number): boolean {
+    const q = adminQs[i];
+    const s = statuses[i];
+    if (!q || !s) return false;
+    const eid = (q.external_id ?? "").trim();
+    return s.errors.length > 0 || (!!eid && dupExternals.has(eid));
+  }
+
+  function skipItem(id: string) {
+    setSkipped((s) => ({ ...s, [id]: true }));
+    setAddedErrors((a) => ({ ...a, [id]: false }));
+    setIdx((i) => Math.min(questions.length - 1, i + 1));
+  }
+
+  function skipHardErrors() {
+    const next = { ...skipped };
+    const added = { ...addedErrors };
+    adminQs.forEach((q, i) => {
+      if (itemIsHardError(i)) {
+        next[q.id] = true;
+        added[q.id] = false;
+      }
+    });
+    setSkipped(next);
+    setAddedErrors(added);
+  }
+
+  function addHardErrors() {
+    const nextSkip = { ...skipped };
+    const added = { ...addedErrors };
+    adminQs.forEach((q, i) => {
+      if (itemIsHardError(i)) {
+        nextSkip[q.id] = false;
+        added[q.id] = true;
+      }
+    });
+    setSkipped(nextSkip);
+    setAddedErrors(added);
+  }
+
   async function setPublishedState(next: boolean) {
     if (busy) return;
+    if (next && kept.length === 0) {
+      alert("Every item is skipped. Keep at least one question to publish.");
+      return;
+    }
     if (next && !canPublish) {
       alert(
         packErrors > 0
-          ? `Fix ${packErrors} hard error(s) before publishing.`
-          : "Mark every item as reviewed before publishing.",
+          ? `Fix or skip ${packErrors} hard error(s) before publishing.`
+          : "Mark every kept item as reviewed before publishing.",
       );
       return;
     }
     if (next) {
       const ok = confirm(
-        `Publish “${title}”?\n\nHard errors: ${packErrors}\nSoft warnings: ${packWarnings}\nReviewed: ${Object.values(reviewed).filter(Boolean).length}/${adminQs.length}`,
+        `Publish “${title}”?\n\nKeeping ${kept.length} question${kept.length === 1 ? "" : "s"}.\nSkipping ${skippedCount} (removed from this pack).\nHard errors: ${packErrors}\nSoft warnings: ${packWarnings}`,
       );
       if (!ok) return;
     }
     setBusy(true);
     setConfirmPublish(false);
     try {
-      // Also publish/unpublish linked SQB questions with the test
-      const ids = adminQs.map((q) => q.id);
+      const skipIds = adminQs.filter((item) => skipped[item.id]).map((item) => item.id);
+      const keepIds = adminQs.filter((item) => !skipped[item.id]).map((item) => item.id);
+      if (next && skipIds.length > 0) {
+        const { error: unlinkErr } = await supabase
+          .from("test_questions")
+          .delete()
+          .eq("test_id", testId)
+          .in("question_id", skipIds);
+        if (unlinkErr) throw new Error(unlinkErr.message);
+      }
+      const ids = next ? keepIds : adminQs.map((item) => item.id);
       if (ids.length > 0) {
         const { error: qe } = await supabase
           .from("questions")
@@ -197,10 +264,17 @@ function AdminSqbReviewPage() {
       }
       const { error: te } = await supabase
         .from("tests")
-        .update({ published: next })
+        .update(next ? { published: true, in_test_base: false } : { published: false })
         .eq("id", testId)
         .eq("bank_format", "sqb");
       if (te) throw new Error(te.message);
+      if (next && skipIds.length > 0) {
+        const drop = new Set(skipIds);
+        setAdminQs((prev) => prev.filter((item) => !drop.has(item.id)));
+        setQuestions((prev) => prev.filter((item) => !drop.has(item.id)));
+        setSkipped({});
+        setIdx(0);
+      }
       setPublished(next);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Publish failed.");
@@ -258,6 +332,24 @@ function AdminSqbReviewPage() {
           >
             Mark all reviewed
           </button>
+          {packErrors > 0 && !published && (
+            <button
+              type="button"
+              onClick={skipHardErrors}
+              className="tap rounded-lg border border-rose-400/60 bg-rose-700 px-3 py-2 text-sm font-semibold text-white"
+            >
+              Skip hard errors
+            </button>
+          )}
+          {!published && adminQs.some((_, i) => itemIsHardError(i) && !addedErrors[adminQs[i]!.id]) && (
+            <button
+              type="button"
+              onClick={addHardErrors}
+              className="tap rounded-lg border border-emerald-400/60 bg-emerald-700 px-3 py-2 text-sm font-semibold text-white"
+            >
+              Add hard errors
+            </button>
+          )}
           {published ? (
             <button
               type="button"
@@ -273,11 +365,13 @@ function AdminSqbReviewPage() {
               disabled={busy || !canPublish}
               onClick={() => setConfirmPublish(true)}
               title={
-                canPublish
-                  ? "Publish to Practice → SQB"
-                  : packErrors > 0
-                    ? "Fix hard errors first"
-                    : "Review every item first"
+                kept.length === 0
+                  ? "Keep at least one question"
+                  : canPublish
+                    ? "Publish to Practice → SQB"
+                    : packErrors > 0
+                      ? "Fix or skip hard errors first"
+                      : "Review every kept item first"
               }
               className="btn-brand rounded-lg bg-brand-400 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
             >
@@ -302,10 +396,23 @@ function AdminSqbReviewPage() {
         <span className="text-brand-200">·</span>
         <span>
           <strong className="tabular-nums">
-            {Object.values(reviewed).filter(Boolean).length}/{adminQs.length}
+            {kept.filter((item) => reviewed[item.id]).length}/{kept.length}
           </strong>{" "}
           reviewed
         </span>
+        {skippedCount > 0 && (
+          <>
+            <span className="text-brand-200">·</span>
+            <span>
+              <strong className="tabular-nums">{skippedCount}</strong> skipped
+            </span>
+          </>
+        )}
+        {!published && packErrors > 0 && (
+          <span className="text-amber-100">
+            Publish stays off until those hard errors are fixed, skipped, or added.
+          </span>
+        )}
         <span className="text-brand-200">·</span>
         <span
           className={
@@ -324,8 +431,8 @@ function AdminSqbReviewPage() {
             Publish this SQB pack to Practice?
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            Hard errors: {packErrors} · Warnings: {packWarnings} · Reviewed:{" "}
-            {Object.values(reviewed).filter(Boolean).length}/{adminQs.length}
+            Keeping {kept.length}. Skipping {skippedCount} (removed from this pack). Hard errors:{" "}
+            {packErrors} · Warnings: {packWarnings}
           </p>
           <div className="mt-3 flex gap-2">
             <button
@@ -354,9 +461,18 @@ function AdminSqbReviewPage() {
       ) : err && questions.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-brand-300 bg-white p-10 text-center">
           <p className="font-semibold text-slate-800">{err}</p>
-          <Link to="/admin/sqb" className="mt-4 inline-block text-sm font-bold text-brand-600">
-            Back to hub
-          </Link>
+          <div className="mt-4 flex flex-wrap justify-center gap-3">
+            <Link
+              to="/admin/sqb/import"
+              search={{ testId }}
+              className="text-sm font-bold text-brand-600"
+            >
+              Attach questions
+            </Link>
+            <Link to="/admin/sqb" className="text-sm font-bold text-slate-500">
+              Back to hub
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
@@ -399,14 +515,29 @@ function AdminSqbReviewPage() {
               <span className="text-xs font-bold tabular-nums text-test-muted">
                 {idx + 1} / {questions.length}
               </span>
-              <button
-                type="button"
-                onClick={() => setIdx((i) => Math.min(questions.length - 1, i + 1))}
-                disabled={idx >= questions.length - 1}
-                className="tap inline-flex items-center gap-1 rounded-full bg-test-accent px-4 py-1.5 text-sm font-bold text-white disabled:opacity-40"
-              >
-                Next <ChevronRight className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                {adminQ && !published && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      skipped[adminQ.id]
+                        ? setSkipped((s) => ({ ...s, [adminQ.id]: false }))
+                        : skipItem(adminQ.id)
+                    }
+                    className="tap rounded-full border border-test-edge bg-white px-3 py-1.5 text-sm font-bold text-test-muted hover:text-test-ink"
+                  >
+                    {skipped[adminQ.id] ? "Keep" : "Skip"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIdx((i) => Math.min(questions.length - 1, i + 1))}
+                  disabled={idx >= questions.length - 1}
+                  className="tap inline-flex items-center gap-1 rounded-full bg-test-accent px-4 py-1.5 text-sm font-bold text-white disabled:opacity-40"
+                >
+                  Next <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -417,11 +548,13 @@ function AdminSqbReviewPage() {
               </p>
               <ol className="flex flex-wrap gap-1.5">
                 {statuses.map((s, i) => {
-                  const tone =
-                    s.errors.length > 0 ||
-                    (adminQs[i] &&
-                      (adminQs[i].external_id ?? "").trim() &&
-                      dupExternals.has((adminQs[i].external_id ?? "").trim()))
+                  const isSkipped = !!skipped[s.id];
+                  const tone = isSkipped
+                    ? "bg-slate-300 text-slate-500 line-through"
+                    : s.errors.length > 0 ||
+                        (adminQs[i] &&
+                          (adminQs[i].external_id ?? "").trim() &&
+                          dupExternals.has((adminQs[i].external_id ?? "").trim()))
                       ? "bg-rose-500 text-white"
                       : s.warnings.length > 0
                         ? "bg-amber-500 text-white"
@@ -501,6 +634,12 @@ function AdminSqbReviewPage() {
                     </li>
                   )}
               </ul>
+
+              {adminQ && skipped[adminQ.id] && (
+                <p className="mt-3 text-xs font-semibold text-slate-500">
+                  Skipped. It will be removed from this pack when you publish.
+                </p>
+              )}
 
               {adminQ && (
                 <label className="mt-4 flex items-center gap-2 text-sm font-semibold text-slate-700">

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TestPlayer } from "@/components/TestPlayer";
-import { type AnswerState, type QuestionRow } from "@/components/QuestionCard";
+import { emptyAnswer, type AnswerState, type QuestionRow } from "@/components/QuestionCard";
 import type { TestType } from "@/lib/session";
 import { applyResolvedImageUrls } from "@/lib/storage-url";
 import { hydrateDraftAnswers } from "@/lib/draft-answers";
@@ -37,6 +37,10 @@ function SessionRunner() {
   const [mockSchedule, setMockSchedule] = useState<MockSchedule | undefined>();
   const [initialAnswers, setInitialAnswers] = useState<AnswerState[] | undefined>();
   const [sessionMeta, setSessionMeta] = useState<SessionMeta>({});
+  const [initialGrades, setInitialGrades] = useState<{ questionId: string; isCorrect: boolean }[]>(
+    [],
+  );
+  const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -49,7 +53,7 @@ function SessionRunner() {
       setUserId(uid);
       const { data: sess, error } = await supabase
         .from("test_sessions")
-        .select("id,type,metadata,mock_exam_id,daily_test_id,completed_at")
+        .select("id,type,metadata,mock_exam_id,daily_test_id,completed_at,started_at")
         .eq("id", id)
         .eq("user_id", uid)
         .maybeSingle();
@@ -159,7 +163,35 @@ function SessionRunner() {
         }
       }
 
-      setInitialAnswers(hydrateDraftAnswers(ordered, meta.draft_answers));
+      const { data: attemptRows } = await supabase
+        .from("attempts")
+        .select("question_id,is_correct,selected_choice_id,grid_answer")
+        .eq("session_id", id);
+      const attemptById = new Map(
+        (attemptRows ?? []).map((row) => [row.question_id, row]),
+      );
+      const drafts = hydrateDraftAnswers(ordered, meta.draft_answers);
+      setInitialAnswers(
+        ordered.map((q, i) => {
+          const stored = q.id ? attemptById.get(q.id) : undefined;
+          const base = drafts[i] ?? emptyAnswer();
+          if (!stored) return base;
+          return {
+            ...base,
+            selectedChoiceId: stored.selected_choice_id,
+            gridAnswer: stored.grid_answer ?? "",
+          };
+        }),
+      );
+      setInitialGrades(
+        (attemptRows ?? [])
+          .filter((row) => row.question_id)
+          .map((row) => ({
+            questionId: row.question_id as string,
+            isCorrect: !!row.is_correct,
+          })),
+      );
+      setSessionStartedAt(sess.started_at ?? null);
       setSessionMeta(meta);
       setLoading(false);
     })();
@@ -227,6 +259,8 @@ function SessionRunner() {
       durationSeconds={duration}
       mockSchedule={mockSchedule}
       initialAnswers={initialAnswers}
+      initialGrades={initialGrades}
+      sessionStartedAt={sessionStartedAt}
       sessionMetadata={sessionMeta}
       onExit={() => navigate({ to: "/practice" })}
     />

@@ -8,7 +8,18 @@ import {
   CalendarDays,
   RotateCcw,
   Layers,
+  BookOpen,
   BookOpenCheck,
+  Calculator,
+  Lightbulb,
+  Target,
+  PenLine,
+  SpellCheck,
+  MessageSquare,
+  Sigma,
+  Radical,
+  Triangle,
+  BarChart3,
   ArrowDownWideNarrow,
   ArrowUpWideNarrow,
   Shuffle,
@@ -333,6 +344,7 @@ export function SectionPaperBrowse({
           .select("id,title,module,difficulty,source_month,source_year,created_at,bank_format")
           .eq("section", section)
           .eq("published", true)
+          .eq("in_test_base", false)
           .eq("bank_format", bankFormat)
           .order("source_year", { ascending: false, nullsFirst: false })
           .order("source_month", { ascending: false, nullsFirst: false })
@@ -512,7 +524,7 @@ export function SectionPaperBrowse({
       ? "stagger-fast grid grid-cols-1 gap-3 sm:grid-cols-2"
       : "stagger-fast grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3";
   const paperSkeletonClass =
-    bankFormat === "sqb" ? "aspect-[5/3] rounded-2xl" : "aspect-[4/3] rounded-2xl";
+    bankFormat === "sqb" ? "aspect-[5/2] rounded-2xl" : "aspect-[4/3] rounded-2xl";
 
   function clearFilters() {
     setDateFilter("all");
@@ -771,6 +783,7 @@ export function SectionPaperBrowse({
                       <PaperCard
                         key={paper.key}
                         paper={paper}
+                        section={section}
                         starting={starting}
                         onOpen={openSet}
                         onReview={(sessionId) =>
@@ -795,6 +808,7 @@ export function SectionPaperBrowse({
               <PaperCard
                 key={paper.key}
                 paper={paper}
+                section={section}
                 starting={starting}
                 onOpen={openSet}
                 onReview={(sessionId) => navigate({ to: `/analysis/session/${sessionId}` })}
@@ -847,11 +861,16 @@ function FilterChip({
   );
 }
 
-function moduleProgress(set: TestSet | undefined): number {
-  return set?.progressPct ?? 0;
+/** In progress, this is how much of the pack is answered. Once finished, it is accuracy. */
+function displayedPct(set: TestSet | undefined): number {
+  if (!set) return 0;
+  if (set.status === "done" && set.score && set.score.total > 0) {
+    return Math.round((set.score.correct / set.score.total) * 100);
+  }
+  return set.progressPct;
 }
 
-function ProgressRing({ value }: { value: number }) {
+function ProgressRing({ value, label }: { value: number; label?: string }) {
   const r = 15;
   const size = 44;
   const c = 2 * Math.PI * r;
@@ -860,7 +879,7 @@ function ProgressRing({ value }: { value: number }) {
     <div
       className="relative shrink-0"
       style={{ width: size, height: size }}
-      aria-label={`${value}% complete`}
+      aria-label={label ?? `${value}%`}
     >
       <svg
         className="-rotate-90"
@@ -906,13 +925,32 @@ function primaryModuleSet(rows: TestSet[]): TestSet | undefined {
   );
 }
 
+function packIcon(title: string, section: Section) {
+  const t = title.toLowerCase();
+  if (t.includes("infer")) return Lightbulb;
+  if (t.includes("central")) return Target;
+  if (t.includes("craft")) return PenLine;
+  if (t.includes("convention")) return SpellCheck;
+  if (t.includes("expression")) return MessageSquare;
+  if (t.includes("algebra")) return Sigma;
+  if (t.includes("advanced")) return Radical;
+  if (t.includes("geometr") || t.includes("trig")) return Triangle;
+  if (t.includes("data") || t.includes("problem")) return BarChart3;
+  if (t.includes("circle")) return Circle;
+  if (section === "math") return Calculator;
+  if (section === "reading_writing") return BookOpen;
+  return Layers;
+}
+
 function PaperCard({
   paper,
+  section,
   starting,
   onOpen,
   onReview,
 }: {
   paper: PaperGroup;
+  section: Section;
   starting: string | null;
   onOpen: (set: TestSet) => void;
   onReview: (sessionId: string) => void;
@@ -924,20 +962,24 @@ function PaperCard({
     ? primaryModuleSet(paper.modules) ?? mod1 ?? paper.modules[0]
     : undefined;
   const progress = isSqb
-    ? Math.round(moduleProgress(sqbSet))
-    : Math.round((moduleProgress(mod1) + moduleProgress(mod2)) / 2);
+    ? displayedPct(sqbSet)
+    : Math.round((displayedPct(mod1) + displayedPct(mod2)) / 2);
+  const finished = isSqb
+    ? sqbSet?.status === "done"
+    : mod1?.status === "done" || mod2?.status === "done";
+  const progressLabel = finished ? `${progress}% correct` : `${progress}% complete`;
 
   return (
     <RevealCard
       className={
         "flex flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel lift " +
-        (isSqb ? "aspect-[5/3]" : "aspect-[4/3]")
+        (isSqb ? "aspect-[5/2]" : "aspect-[4/3]")
       }
     >
       <div
         className={
           "flex shrink-0 items-start justify-between gap-2 " +
-          (isSqb ? "px-4 pt-3 pb-1" : "px-3.5 pt-3.5 pb-1.5")
+          (isSqb ? "px-3 pt-2.5 pb-0.5" : "px-3.5 pt-3.5 pb-1.5")
         }
       >
         <div className="min-w-0">
@@ -957,17 +999,19 @@ function PaperCard({
             </span>
           )}
         </div>
-        <ProgressRing value={progress} />
+        <ProgressRing value={progress} label={progressLabel} />
       </div>
       <div
         className={
           "flex min-h-0 flex-1 flex-col gap-2 " +
-          (isSqb ? "px-4 pb-3 pt-0.5" : "px-3.5 pb-3.5 pt-1")
+          (isSqb ? "px-3 pb-2.5 pt-0.5" : "px-3.5 pb-3.5 pt-1")
         }
       >
         {isSqb ? (
           <ThemePackRow
             set={sqbSet}
+            title={paper.title}
+            section={section}
             starting={starting}
             onOpen={onOpen}
             onReview={onReview}
@@ -991,25 +1035,39 @@ function PaperCard({
 
 function ThemePackRow({
   set,
+  title,
+  section,
   starting,
   onOpen,
   onReview,
 }: {
   set: TestSet | undefined;
+  title: string;
+  section: Section;
   starting: string | null;
   onOpen: (set: TestSet) => void;
   onReview: (sessionId: string) => void;
 }) {
+  const Icon = packIcon(title, section);
   return (
     <div className="relative flex min-h-0 flex-1 items-stretch overflow-hidden rounded-xl border border-brand-400/30 bg-brand-800/70">
-      <div className="my-2.5 ml-2.5 w-1.5 shrink-0 rounded-full bg-brand-400" aria-hidden />
+      <div className="my-2 ml-2 w-1 shrink-0 rounded-full bg-brand-400" aria-hidden />
       {!set ? (
-        <div className="flex min-w-0 flex-1 flex-col justify-center px-4 py-3">
-          <p className="text-lg font-black text-white">Practice pack</p>
-          <span className="mt-1 text-sm text-brand-200">—</span>
+        <div className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-400/30 text-white">
+            <Icon className="h-5 w-5" aria-hidden />
+          </span>
+          <span className="text-sm text-brand-200">—</span>
         </div>
       ) : (
-        <ThemePackRowBody set={set} starting={starting} onOpen={onOpen} onReview={onReview} />
+        <ThemePackRowBody
+          set={set}
+          title={title}
+          section={section}
+          starting={starting}
+          onOpen={onOpen}
+          onReview={onReview}
+        />
       )}
     </div>
   );
@@ -1017,11 +1075,15 @@ function ThemePackRow({
 
 function ThemePackRowBody({
   set,
+  title,
+  section,
   starting,
   onOpen,
   onReview,
 }: {
   set: TestSet;
+  title: string;
+  section: Section;
   starting: string | null;
   onOpen: (set: TestSet) => void;
   onReview: (sessionId: string) => void;
@@ -1031,7 +1093,8 @@ function ThemePackRowBody({
   const label =
     set.status === "done" ? "Retake" : set.status === "in_progress" ? "Resume" : "Start";
   const Icon = set.status === "done" ? RotateCcw : Play;
-  const pct = set.progressPct;
+  const pct = displayedPct(set);
+  const PackIcon = packIcon(title, section);
   const statusLine =
     set.status === "in_progress"
       ? "In progress"
@@ -1042,29 +1105,33 @@ function ThemePackRowBody({
         : "Not started";
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col px-3.5 py-3 sm:px-4">
-      <div className="flex min-h-0 flex-1 flex-col justify-center gap-1.5">
-        <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-          <p className="text-lg font-black leading-tight text-white sm:text-xl">Practice pack</p>
-          {pct > 0 && (
-            <span className="shrink-0 rounded-full bg-brand-400/25 px-2.5 py-0.5 text-xs font-bold tabular-nums text-brand-100 sm:text-sm">
-              {pct}%
-            </span>
-          )}
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col px-2.5 py-2 sm:px-3">
+      <div className="flex min-h-0 flex-1 items-center gap-2.5">
+        <span
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-400/30 text-white"
+          title={title}
+          aria-label={title}
+        >
+          <PackIcon className="h-5 w-5" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-bold tabular-nums leading-snug text-white">
+            {set.count}
+            {(set.status === "done" || pct > 0) && (
+              <span className="ml-2 rounded-full bg-brand-400/25 px-2 py-0.5 text-[11px] font-bold text-brand-100">
+                {pct}%
+              </span>
+            )}
+          </p>
+          <p className="text-xs font-medium text-brand-100/90">{statusLine}</p>
         </div>
-        <p className="text-base font-bold tabular-nums leading-snug text-brand-50 sm:text-lg">
-          {set.count}Q
-          <span className="mx-1.5 font-semibold text-brand-200/80">·</span>
-          {difficultyLabel(set.difficulty)}
-        </p>
-        <p className="text-sm font-medium text-brand-100/90 sm:text-[15px]">{statusLine}</p>
       </div>
-      <div className="mt-3 flex shrink-0 flex-wrap items-center gap-2">
+      <div className="mt-2 flex shrink-0 flex-wrap items-center gap-2">
         {set.status === "done" && set.sessionId && (
           <button
             onClick={() => onReview(set.sessionId!)}
             disabled={busy || disabled}
-            className="tap inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-brand-400/50 bg-brand-700 px-3.5 py-2 text-sm font-bold text-white hover:bg-brand-500 disabled:opacity-40 sm:flex-none"
+            className="tap inline-flex items-center justify-center gap-1 rounded-full border border-brand-400/50 bg-brand-700 px-3 py-1 text-xs font-bold text-white hover:bg-brand-500 disabled:opacity-40"
           >
             <BookOpenCheck className="h-4 w-4" />
             Review
@@ -1073,7 +1140,7 @@ function ThemePackRowBody({
         <button
           onClick={() => onOpen(set)}
           disabled={busy || disabled}
-          className="btn-brand inline-flex min-w-[7.5rem] flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white shadow-brand disabled:opacity-40 sm:flex-none"
+          className="btn-brand inline-flex items-center justify-center gap-1 rounded-full bg-brand-400 px-3 py-1 text-xs font-bold text-white shadow-brand disabled:opacity-40"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
           {label}
@@ -1130,14 +1197,14 @@ function ModuleRowBody({
     set.status === "done" ? "Retake" : set.status === "in_progress" ? "Resume" : "Start";
   const Icon = set.status === "done" ? RotateCcw : Play;
 
-  const pct = set.progressPct;
+  const pct = displayedPct(set);
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2.5">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <p className="truncate text-sm font-bold text-white">Module {mod}</p>
-          {pct > 0 && (
+          {(set.status === "done" || pct > 0) && (
             <span className="shrink-0 rounded-full bg-brand-400/25 px-2 py-0.5 text-xs font-bold tabular-nums text-brand-100">
               {pct}%
             </span>

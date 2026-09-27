@@ -18,7 +18,6 @@ import { RevealCard } from "@/components/ui/reveal-card";
 import { AdminTestPreview } from "@/components/admin/AdminTestPreview";
 import { MockExamBuilderModal } from "@/components/admin/MockExamBuilderModal";
 import { AdminSelect } from "@/components/admin/AdminSelect";
-import { BankFormatSegment } from "@/components/admin/BankFormatSegment";
 import {
   QuestionEditModal,
   loadQuestionWithAnswers,
@@ -168,7 +167,7 @@ function AdminTests() {
       supabase
         .from("tests")
         .select("*")
-        .eq("bank_format", bank)
+        .eq("bank_format", "ordinary")
         .order("module")
         .order("created_at", { ascending: false }),
       supabase.from("test_questions").select("test_id"),
@@ -187,6 +186,10 @@ function AdminTests() {
     setLoading(false);
   }
   useEffect(() => {
+    if (bank === "sqb") {
+      void navigate({ to: "/admin/sqb", replace: true });
+      return;
+    }
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bank]);
@@ -456,29 +459,21 @@ function AdminTests() {
     setEditingQs(next);
   }
 
+  if (bank === "sqb") return null;
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="space-y-2">
-          <BankFormatSegment
-            value={bank}
-            onChange={(next) =>
-              void navigate({
-                to: "/admin/tests",
-                search: next === "sqb" ? { bank: "sqb" } : {},
-              })
-            }
-          />
+          <h1 className="text-2xl font-black tracking-tight text-brand-900">Tests</h1>
           <p className="text-sm text-slate-500">
-            {bank === "sqb"
-              ? "Build SQB-format practice sets. Question picker defaults to the SQB bank."
-              : "Group questions into tests. Combine a complete EBRW paper with a Math paper to build full mock exams."}
-          </p>
-          {bank === "sqb" && (
-            <Link to="/admin/sqb" className="text-sm font-semibold text-brand-600 hover:underline">
-              Open SQB hub →
+            Group questions into tests. Combine a complete EBRW paper with a Math paper to build full
+            mock exams. Question Bank packs are edited in the{" "}
+            <Link to="/admin/sqb" className="font-semibold text-brand-600 hover:underline">
+              SQB hub
             </Link>
-          )}
+            .
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {bank === "ordinary" && (

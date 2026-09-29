@@ -6,9 +6,10 @@ describe("latexifyAsciiMath", () => {
     const out = latexifyAsciiMath(
       "If 2a/b = 5.8 and a/(bn) = 23.2, what is the value of 1/n?",
     );
-    expect(out).toContain("$\\frac{2a}{b}$");
-    expect(out).toContain("$\\frac{a}{bn}$");
-    expect(out).toContain("$\\frac{1}{n}$");
+    // Fractions merge with trailing `= value` into one math span (see latexifyProse).
+    expect(out).toContain("\\frac{2a}{b} = 5.8");
+    expect(out).toContain("\\frac{a}{bn} = 23.2");
+    expect(out).toContain("\\frac{1}{n}");
   });
 
   it("leaves existing $ math alone", () => {

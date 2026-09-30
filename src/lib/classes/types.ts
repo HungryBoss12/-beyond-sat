@@ -9,12 +9,29 @@ export type HomeworkSubmissionStatus =
   | "accepted"
   | "needs_revision";
 
+export type MemberStatus = "active" | "trial" | "frozen" | "left";
+export type VarKind = "vocab" | "assignment" | "article";
+export type VarSource = "manual" | "auto";
+
 export type ClassRow = {
   id: string;
   name: string;
   description: string | null;
   active: boolean;
   created_at: string;
+  schedule_days?: number[] | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  math_schedule_days?: number[] | null;
+  math_start_time?: string | null;
+  math_end_time?: string | null;
+  ebrw_schedule_days?: number[] | null;
+  ebrw_start_time?: string | null;
+  ebrw_end_time?: string | null;
+  room?: string | null;
+  level?: string | null;
+  teacher_id?: string | null;
+  starts_on?: string | null;
 };
 
 export type ChatProfile = {
@@ -29,6 +46,7 @@ export type ChatProfile = {
   first_name: string | null;
   last_name: string | null;
   email: string | null;
+  last_seen_at?: string | null;
 };
 
 export type ChatThread = {
@@ -70,6 +88,9 @@ export type HomeworkAssignment = {
   due_at: string | null;
   created_at: string;
   created_by: string | null;
+  var_kind?: VarKind | null;
+  lesson_id?: string | null;
+  max_score?: number | null;
 };
 
 export type HomeworkFile = {
@@ -90,6 +111,8 @@ export type HomeworkSubmission = {
   reviewed_by: string | null;
   reviewed_at: string | null;
   review_note: string | null;
+  score?: number | null;
+  graded_at?: string | null;
   created_at: string;
 };
 

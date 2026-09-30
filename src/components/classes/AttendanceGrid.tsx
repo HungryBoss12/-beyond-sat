@@ -92,7 +92,10 @@ export function AttendanceGrid({
         <div className="flex shrink-0 items-center gap-1 text-[10px] text-brand-200">
           Less
           {[0, 1, 2, 3, 4].map((l) => (
-            <span key={l} className={`h-2.5 w-2.5 rounded-sm ${levelClass(l as DayCell["level"])}`} />
+            <span
+              key={l}
+              className={`h-2.5 w-2.5 rounded-sm ${levelClass(l as DayCell["level"])}`}
+            />
           ))}
           More
         </div>

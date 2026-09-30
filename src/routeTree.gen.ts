@@ -44,6 +44,7 @@ import { Route as AuthenticatedAdminLessonsRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminMocksRouteImport } from './routes/_authenticated/admin.mocks'
 import { Route as AuthenticatedAdminNewsRouteImport } from './routes/_authenticated/admin.news'
 import { Route as AuthenticatedAdminNotificationsRouteImport } from './routes/_authenticated/admin.notifications'
+import { Route as AuthenticatedAdminPaymentsRouteImport } from './routes/_authenticated/admin.payments'
 import { Route as AuthenticatedAdminQuestionsRouteImport } from './routes/_authenticated/admin.questions'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminSqbRouteImport } from './routes/_authenticated/admin.sqb'
@@ -64,6 +65,10 @@ import { Route as AuthenticatedVocabIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedVocabDeckRouteImport } from './routes/_authenticated/vocab.deck'
 import { Route as AuthenticatedVocabDecksRouteImport } from './routes/_authenticated/vocab.decks'
 import { Route as AuthenticatedVocabTestsRouteImport } from './routes/_authenticated/vocab.tests'
+import { Route as AuthenticatedAdminClassesIndexRouteImport } from './routes/_authenticated/admin.classes.index'
+import { Route as AuthenticatedAdminClassesClassIdRouteImport } from './routes/_authenticated/admin.classes.$classId'
+import { Route as AuthenticatedAdminPaymentsIndexRouteImport } from './routes/_authenticated/admin.payments.index'
+import { Route as AuthenticatedAdminPaymentsLedgerRouteImport } from './routes/_authenticated/admin.payments.ledger'
 import { Route as AuthenticatedAdminSqbIndexRouteImport } from './routes/_authenticated/admin.sqb.index'
 import { Route as AuthenticatedAdminSqbBaseRouteImport } from './routes/_authenticated/admin.sqb.base'
 import { Route as AuthenticatedAdminSqbImportRouteImport } from './routes/_authenticated/admin.sqb.import'
@@ -88,6 +93,7 @@ import { Route as AuthenticatedAdminSqbReviewTestIdRouteImport } from './routes/
 import { Route as AuthenticatedAdminVocabDeckDeckIdRouteImport } from './routes/_authenticated/admin.vocab.deck.$deckId'
 import { Route as AuthenticatedLessonsSubjectSlugTopicIdIndexRouteImport } from './routes/_authenticated/lessons.$subjectSlug.$topicId.index'
 import { Route as AuthenticatedLessonsSubjectSlugTopicIdLessonIdRouteImport } from './routes/_authenticated/lessons.$subjectSlug.$topicId.$lessonId'
+import { Route as AuthenticatedAdminClassesClassIdStudentsUserIdRouteImport } from './routes/_authenticated/admin.classes.$classId.students.$userId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -269,6 +275,12 @@ const AuthenticatedAdminNotificationsRoute =
     path: '/notifications',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminPaymentsRoute =
+  AuthenticatedAdminPaymentsRouteImport.update({
+    id: '/payments',
+    path: '/payments',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminQuestionsRoute =
   AuthenticatedAdminQuestionsRouteImport.update({
     id: '/questions',
@@ -379,6 +391,30 @@ const AuthenticatedVocabTestsRoute = AuthenticatedVocabTestsRouteImport.update({
   path: '/tests',
   getParentRoute: () => AuthenticatedVocabRoute,
 } as any)
+const AuthenticatedAdminClassesIndexRoute =
+  AuthenticatedAdminClassesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminClassesRoute,
+  } as any)
+const AuthenticatedAdminClassesClassIdRoute =
+  AuthenticatedAdminClassesClassIdRouteImport.update({
+    id: '/$classId',
+    path: '/$classId',
+    getParentRoute: () => AuthenticatedAdminClassesRoute,
+  } as any)
+const AuthenticatedAdminPaymentsIndexRoute =
+  AuthenticatedAdminPaymentsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminPaymentsRoute,
+  } as any)
+const AuthenticatedAdminPaymentsLedgerRoute =
+  AuthenticatedAdminPaymentsLedgerRouteImport.update({
+    id: '/ledger',
+    path: '/ledger',
+    getParentRoute: () => AuthenticatedAdminPaymentsRoute,
+  } as any)
 const AuthenticatedAdminSqbIndexRoute =
   AuthenticatedAdminSqbIndexRouteImport.update({
     id: '/',
@@ -523,6 +559,12 @@ const AuthenticatedLessonsSubjectSlugTopicIdLessonIdRoute =
     path: '/$lessonId',
     getParentRoute: () => AuthenticatedLessonsSubjectSlugTopicIdRoute,
   } as any)
+const AuthenticatedAdminClassesClassIdStudentsUserIdRoute =
+  AuthenticatedAdminClassesClassIdStudentsUserIdRouteImport.update({
+    id: '/students/$userId',
+    path: '/students/$userId',
+    getParentRoute: () => AuthenticatedAdminClassesClassIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -549,7 +591,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AuthenticatedProfileRoute
   '/vocab': typeof AuthenticatedVocabRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
-  '/admin/classes': typeof AuthenticatedAdminClassesRoute
+  '/admin/classes': typeof AuthenticatedAdminClassesRouteWithChildren
   '/admin/daily': typeof AuthenticatedAdminDailyRoute
   '/admin/examdates': typeof AuthenticatedAdminExamdatesRoute
   '/admin/homepage': typeof AuthenticatedAdminHomepageRoute
@@ -558,6 +600,7 @@ export interface FileRoutesByFullPath {
   '/admin/mocks': typeof AuthenticatedAdminMocksRoute
   '/admin/news': typeof AuthenticatedAdminNewsRoute
   '/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
+  '/admin/payments': typeof AuthenticatedAdminPaymentsRouteWithChildren
   '/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/sqb': typeof AuthenticatedAdminSqbRouteWithChildren
@@ -579,6 +622,8 @@ export interface FileRoutesByFullPath {
   '/news/': typeof AuthenticatedNewsIndexRoute
   '/practice/': typeof AuthenticatedPracticeIndexRoute
   '/vocab/': typeof AuthenticatedVocabIndexRoute
+  '/admin/classes/$classId': typeof AuthenticatedAdminClassesClassIdRouteWithChildren
+  '/admin/payments/ledger': typeof AuthenticatedAdminPaymentsLedgerRoute
   '/admin/sqb/base': typeof AuthenticatedAdminSqbBaseRoute
   '/admin/sqb/import': typeof AuthenticatedAdminSqbImportRoute
   '/admin/sqb/questions': typeof AuthenticatedAdminSqbQuestionsRouteWithChildren
@@ -591,6 +636,8 @@ export interface FileRoutesByFullPath {
   '/practice/sqb/$section': typeof AuthenticatedPracticeSqbSectionRoute
   '/vocab/deck/$deckId': typeof AuthenticatedVocabDeckDeckIdRoute
   '/vocab/tests/$id': typeof AuthenticatedVocabTestsIdRoute
+  '/admin/classes/': typeof AuthenticatedAdminClassesIndexRoute
+  '/admin/payments/': typeof AuthenticatedAdminPaymentsIndexRoute
   '/admin/sqb/': typeof AuthenticatedAdminSqbIndexRoute
   '/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
   '/admin/vocab/': typeof AuthenticatedAdminVocabIndexRoute
@@ -603,6 +650,7 @@ export interface FileRoutesByFullPath {
   '/lessons/$subjectSlug/$topicId/$lessonId': typeof AuthenticatedLessonsSubjectSlugTopicIdLessonIdRoute
   '/admin/sqb/questions/': typeof AuthenticatedAdminSqbQuestionsIndexRoute
   '/lessons/$subjectSlug/$topicId/': typeof AuthenticatedLessonsSubjectSlugTopicIdIndexRoute
+  '/admin/classes/$classId/students/$userId': typeof AuthenticatedAdminClassesClassIdStudentsUserIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -623,7 +671,6 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/admin/classes': typeof AuthenticatedAdminClassesRoute
   '/admin/daily': typeof AuthenticatedAdminDailyRoute
   '/admin/examdates': typeof AuthenticatedAdminExamdatesRoute
   '/admin/homepage': typeof AuthenticatedAdminHomepageRoute
@@ -647,6 +694,8 @@ export interface FileRoutesByTo {
   '/news': typeof AuthenticatedNewsIndexRoute
   '/practice': typeof AuthenticatedPracticeIndexRoute
   '/vocab': typeof AuthenticatedVocabIndexRoute
+  '/admin/classes/$classId': typeof AuthenticatedAdminClassesClassIdRouteWithChildren
+  '/admin/payments/ledger': typeof AuthenticatedAdminPaymentsLedgerRoute
   '/admin/sqb/base': typeof AuthenticatedAdminSqbBaseRoute
   '/admin/sqb/import': typeof AuthenticatedAdminSqbImportRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
@@ -657,6 +706,8 @@ export interface FileRoutesByTo {
   '/practice/sqb/$section': typeof AuthenticatedPracticeSqbSectionRoute
   '/vocab/deck/$deckId': typeof AuthenticatedVocabDeckDeckIdRoute
   '/vocab/tests/$id': typeof AuthenticatedVocabTestsIdRoute
+  '/admin/classes': typeof AuthenticatedAdminClassesIndexRoute
+  '/admin/payments': typeof AuthenticatedAdminPaymentsIndexRoute
   '/admin/sqb': typeof AuthenticatedAdminSqbIndexRoute
   '/admin/users': typeof AuthenticatedAdminUsersIndexRoute
   '/admin/vocab': typeof AuthenticatedAdminVocabIndexRoute
@@ -669,6 +720,7 @@ export interface FileRoutesByTo {
   '/lessons/$subjectSlug/$topicId/$lessonId': typeof AuthenticatedLessonsSubjectSlugTopicIdLessonIdRoute
   '/admin/sqb/questions': typeof AuthenticatedAdminSqbQuestionsIndexRoute
   '/lessons/$subjectSlug/$topicId': typeof AuthenticatedLessonsSubjectSlugTopicIdIndexRoute
+  '/admin/classes/$classId/students/$userId': typeof AuthenticatedAdminClassesClassIdStudentsUserIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -697,7 +749,7 @@ export interface FileRoutesById {
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/vocab': typeof AuthenticatedVocabRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
-  '/_authenticated/admin/classes': typeof AuthenticatedAdminClassesRoute
+  '/_authenticated/admin/classes': typeof AuthenticatedAdminClassesRouteWithChildren
   '/_authenticated/admin/daily': typeof AuthenticatedAdminDailyRoute
   '/_authenticated/admin/examdates': typeof AuthenticatedAdminExamdatesRoute
   '/_authenticated/admin/homepage': typeof AuthenticatedAdminHomepageRoute
@@ -706,6 +758,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/mocks': typeof AuthenticatedAdminMocksRoute
   '/_authenticated/admin/news': typeof AuthenticatedAdminNewsRoute
   '/_authenticated/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
+  '/_authenticated/admin/payments': typeof AuthenticatedAdminPaymentsRouteWithChildren
   '/_authenticated/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/sqb': typeof AuthenticatedAdminSqbRouteWithChildren
@@ -727,6 +780,8 @@ export interface FileRoutesById {
   '/_authenticated/news/': typeof AuthenticatedNewsIndexRoute
   '/_authenticated/practice/': typeof AuthenticatedPracticeIndexRoute
   '/_authenticated/vocab/': typeof AuthenticatedVocabIndexRoute
+  '/_authenticated/admin/classes/$classId': typeof AuthenticatedAdminClassesClassIdRouteWithChildren
+  '/_authenticated/admin/payments/ledger': typeof AuthenticatedAdminPaymentsLedgerRoute
   '/_authenticated/admin/sqb/base': typeof AuthenticatedAdminSqbBaseRoute
   '/_authenticated/admin/sqb/import': typeof AuthenticatedAdminSqbImportRoute
   '/_authenticated/admin/sqb/questions': typeof AuthenticatedAdminSqbQuestionsRouteWithChildren
@@ -739,6 +794,8 @@ export interface FileRoutesById {
   '/_authenticated/practice/sqb/$section': typeof AuthenticatedPracticeSqbSectionRoute
   '/_authenticated/vocab/deck/$deckId': typeof AuthenticatedVocabDeckDeckIdRoute
   '/_authenticated/vocab/tests/$id': typeof AuthenticatedVocabTestsIdRoute
+  '/_authenticated/admin/classes/': typeof AuthenticatedAdminClassesIndexRoute
+  '/_authenticated/admin/payments/': typeof AuthenticatedAdminPaymentsIndexRoute
   '/_authenticated/admin/sqb/': typeof AuthenticatedAdminSqbIndexRoute
   '/_authenticated/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
   '/_authenticated/admin/vocab/': typeof AuthenticatedAdminVocabIndexRoute
@@ -751,6 +808,7 @@ export interface FileRoutesById {
   '/_authenticated/lessons/$subjectSlug/$topicId/$lessonId': typeof AuthenticatedLessonsSubjectSlugTopicIdLessonIdRoute
   '/_authenticated/admin/sqb/questions/': typeof AuthenticatedAdminSqbQuestionsIndexRoute
   '/_authenticated/lessons/$subjectSlug/$topicId/': typeof AuthenticatedLessonsSubjectSlugTopicIdIndexRoute
+  '/_authenticated/admin/classes/$classId/students/$userId': typeof AuthenticatedAdminClassesClassIdStudentsUserIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -788,6 +846,7 @@ export interface FileRouteTypes {
     | '/admin/mocks'
     | '/admin/news'
     | '/admin/notifications'
+    | '/admin/payments'
     | '/admin/questions'
     | '/admin/settings'
     | '/admin/sqb'
@@ -809,6 +868,8 @@ export interface FileRouteTypes {
     | '/news/'
     | '/practice/'
     | '/vocab/'
+    | '/admin/classes/$classId'
+    | '/admin/payments/ledger'
     | '/admin/sqb/base'
     | '/admin/sqb/import'
     | '/admin/sqb/questions'
@@ -821,6 +882,8 @@ export interface FileRouteTypes {
     | '/practice/sqb/$section'
     | '/vocab/deck/$deckId'
     | '/vocab/tests/$id'
+    | '/admin/classes/'
+    | '/admin/payments/'
     | '/admin/sqb/'
     | '/admin/users/'
     | '/admin/vocab/'
@@ -833,6 +896,7 @@ export interface FileRouteTypes {
     | '/lessons/$subjectSlug/$topicId/$lessonId'
     | '/admin/sqb/questions/'
     | '/lessons/$subjectSlug/$topicId/'
+    | '/admin/classes/$classId/students/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -853,7 +917,6 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/profile'
     | '/auth/callback'
-    | '/admin/classes'
     | '/admin/daily'
     | '/admin/examdates'
     | '/admin/homepage'
@@ -877,6 +940,8 @@ export interface FileRouteTypes {
     | '/news'
     | '/practice'
     | '/vocab'
+    | '/admin/classes/$classId'
+    | '/admin/payments/ledger'
     | '/admin/sqb/base'
     | '/admin/sqb/import'
     | '/admin/users/$userId'
@@ -887,6 +952,8 @@ export interface FileRouteTypes {
     | '/practice/sqb/$section'
     | '/vocab/deck/$deckId'
     | '/vocab/tests/$id'
+    | '/admin/classes'
+    | '/admin/payments'
     | '/admin/sqb'
     | '/admin/users'
     | '/admin/vocab'
@@ -899,6 +966,7 @@ export interface FileRouteTypes {
     | '/lessons/$subjectSlug/$topicId/$lessonId'
     | '/admin/sqb/questions'
     | '/lessons/$subjectSlug/$topicId'
+    | '/admin/classes/$classId/students/$userId'
   id:
     | '__root__'
     | '/'
@@ -935,6 +1003,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/mocks'
     | '/_authenticated/admin/news'
     | '/_authenticated/admin/notifications'
+    | '/_authenticated/admin/payments'
     | '/_authenticated/admin/questions'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/sqb'
@@ -956,6 +1025,8 @@ export interface FileRouteTypes {
     | '/_authenticated/news/'
     | '/_authenticated/practice/'
     | '/_authenticated/vocab/'
+    | '/_authenticated/admin/classes/$classId'
+    | '/_authenticated/admin/payments/ledger'
     | '/_authenticated/admin/sqb/base'
     | '/_authenticated/admin/sqb/import'
     | '/_authenticated/admin/sqb/questions'
@@ -968,6 +1039,8 @@ export interface FileRouteTypes {
     | '/_authenticated/practice/sqb/$section'
     | '/_authenticated/vocab/deck/$deckId'
     | '/_authenticated/vocab/tests/$id'
+    | '/_authenticated/admin/classes/'
+    | '/_authenticated/admin/payments/'
     | '/_authenticated/admin/sqb/'
     | '/_authenticated/admin/users/'
     | '/_authenticated/admin/vocab/'
@@ -980,6 +1053,7 @@ export interface FileRouteTypes {
     | '/_authenticated/lessons/$subjectSlug/$topicId/$lessonId'
     | '/_authenticated/admin/sqb/questions/'
     | '/_authenticated/lessons/$subjectSlug/$topicId/'
+    | '/_authenticated/admin/classes/$classId/students/$userId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1245,6 +1319,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminNotificationsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/payments': {
+      id: '/_authenticated/admin/payments'
+      path: '/payments'
+      fullPath: '/admin/payments'
+      preLoaderRoute: typeof AuthenticatedAdminPaymentsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/questions': {
       id: '/_authenticated/admin/questions'
       path: '/questions'
@@ -1384,6 +1465,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/vocab/tests'
       preLoaderRoute: typeof AuthenticatedVocabTestsRouteImport
       parentRoute: typeof AuthenticatedVocabRoute
+    }
+    '/_authenticated/admin/classes/': {
+      id: '/_authenticated/admin/classes/'
+      path: '/'
+      fullPath: '/admin/classes/'
+      preLoaderRoute: typeof AuthenticatedAdminClassesIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminClassesRoute
+    }
+    '/_authenticated/admin/classes/$classId': {
+      id: '/_authenticated/admin/classes/$classId'
+      path: '/$classId'
+      fullPath: '/admin/classes/$classId'
+      preLoaderRoute: typeof AuthenticatedAdminClassesClassIdRouteImport
+      parentRoute: typeof AuthenticatedAdminClassesRoute
+    }
+    '/_authenticated/admin/payments/': {
+      id: '/_authenticated/admin/payments/'
+      path: '/'
+      fullPath: '/admin/payments/'
+      preLoaderRoute: typeof AuthenticatedAdminPaymentsIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminPaymentsRoute
+    }
+    '/_authenticated/admin/payments/ledger': {
+      id: '/_authenticated/admin/payments/ledger'
+      path: '/ledger'
+      fullPath: '/admin/payments/ledger'
+      preLoaderRoute: typeof AuthenticatedAdminPaymentsLedgerRouteImport
+      parentRoute: typeof AuthenticatedAdminPaymentsRoute
     }
     '/_authenticated/admin/sqb/': {
       id: '/_authenticated/admin/sqb/'
@@ -1553,8 +1662,64 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLessonsSubjectSlugTopicIdLessonIdRouteImport
       parentRoute: typeof AuthenticatedLessonsSubjectSlugTopicIdRoute
     }
+    '/_authenticated/admin/classes/$classId/students/$userId': {
+      id: '/_authenticated/admin/classes/$classId/students/$userId'
+      path: '/students/$userId'
+      fullPath: '/admin/classes/$classId/students/$userId'
+      preLoaderRoute: typeof AuthenticatedAdminClassesClassIdStudentsUserIdRouteImport
+      parentRoute: typeof AuthenticatedAdminClassesClassIdRoute
+    }
   }
 }
+
+interface AuthenticatedAdminClassesClassIdRouteChildren {
+  AuthenticatedAdminClassesClassIdStudentsUserIdRoute: typeof AuthenticatedAdminClassesClassIdStudentsUserIdRoute
+}
+
+const AuthenticatedAdminClassesClassIdRouteChildren: AuthenticatedAdminClassesClassIdRouteChildren =
+  {
+    AuthenticatedAdminClassesClassIdStudentsUserIdRoute:
+      AuthenticatedAdminClassesClassIdStudentsUserIdRoute,
+  }
+
+const AuthenticatedAdminClassesClassIdRouteWithChildren =
+  AuthenticatedAdminClassesClassIdRoute._addFileChildren(
+    AuthenticatedAdminClassesClassIdRouteChildren,
+  )
+
+interface AuthenticatedAdminClassesRouteChildren {
+  AuthenticatedAdminClassesClassIdRoute: typeof AuthenticatedAdminClassesClassIdRouteWithChildren
+  AuthenticatedAdminClassesIndexRoute: typeof AuthenticatedAdminClassesIndexRoute
+}
+
+const AuthenticatedAdminClassesRouteChildren: AuthenticatedAdminClassesRouteChildren =
+  {
+    AuthenticatedAdminClassesClassIdRoute:
+      AuthenticatedAdminClassesClassIdRouteWithChildren,
+    AuthenticatedAdminClassesIndexRoute: AuthenticatedAdminClassesIndexRoute,
+  }
+
+const AuthenticatedAdminClassesRouteWithChildren =
+  AuthenticatedAdminClassesRoute._addFileChildren(
+    AuthenticatedAdminClassesRouteChildren,
+  )
+
+interface AuthenticatedAdminPaymentsRouteChildren {
+  AuthenticatedAdminPaymentsLedgerRoute: typeof AuthenticatedAdminPaymentsLedgerRoute
+  AuthenticatedAdminPaymentsIndexRoute: typeof AuthenticatedAdminPaymentsIndexRoute
+}
+
+const AuthenticatedAdminPaymentsRouteChildren: AuthenticatedAdminPaymentsRouteChildren =
+  {
+    AuthenticatedAdminPaymentsLedgerRoute:
+      AuthenticatedAdminPaymentsLedgerRoute,
+    AuthenticatedAdminPaymentsIndexRoute: AuthenticatedAdminPaymentsIndexRoute,
+  }
+
+const AuthenticatedAdminPaymentsRouteWithChildren =
+  AuthenticatedAdminPaymentsRoute._addFileChildren(
+    AuthenticatedAdminPaymentsRouteChildren,
+  )
 
 interface AuthenticatedAdminSqbQuestionsRouteChildren {
   AuthenticatedAdminSqbQuestionsIdRoute: typeof AuthenticatedAdminSqbQuestionsIdRoute
@@ -1636,7 +1801,7 @@ const AuthenticatedAdminVocabRouteWithChildren =
   )
 
 interface AuthenticatedAdminRouteChildren {
-  AuthenticatedAdminClassesRoute: typeof AuthenticatedAdminClassesRoute
+  AuthenticatedAdminClassesRoute: typeof AuthenticatedAdminClassesRouteWithChildren
   AuthenticatedAdminDailyRoute: typeof AuthenticatedAdminDailyRoute
   AuthenticatedAdminExamdatesRoute: typeof AuthenticatedAdminExamdatesRoute
   AuthenticatedAdminHomepageRoute: typeof AuthenticatedAdminHomepageRoute
@@ -1645,6 +1810,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminMocksRoute: typeof AuthenticatedAdminMocksRoute
   AuthenticatedAdminNewsRoute: typeof AuthenticatedAdminNewsRoute
   AuthenticatedAdminNotificationsRoute: typeof AuthenticatedAdminNotificationsRoute
+  AuthenticatedAdminPaymentsRoute: typeof AuthenticatedAdminPaymentsRouteWithChildren
   AuthenticatedAdminQuestionsRoute: typeof AuthenticatedAdminQuestionsRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminSqbRoute: typeof AuthenticatedAdminSqbRouteWithChildren
@@ -1655,7 +1821,7 @@ interface AuthenticatedAdminRouteChildren {
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
-  AuthenticatedAdminClassesRoute: AuthenticatedAdminClassesRoute,
+  AuthenticatedAdminClassesRoute: AuthenticatedAdminClassesRouteWithChildren,
   AuthenticatedAdminDailyRoute: AuthenticatedAdminDailyRoute,
   AuthenticatedAdminExamdatesRoute: AuthenticatedAdminExamdatesRoute,
   AuthenticatedAdminHomepageRoute: AuthenticatedAdminHomepageRoute,
@@ -1664,6 +1830,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminMocksRoute: AuthenticatedAdminMocksRoute,
   AuthenticatedAdminNewsRoute: AuthenticatedAdminNewsRoute,
   AuthenticatedAdminNotificationsRoute: AuthenticatedAdminNotificationsRoute,
+  AuthenticatedAdminPaymentsRoute: AuthenticatedAdminPaymentsRouteWithChildren,
   AuthenticatedAdminQuestionsRoute: AuthenticatedAdminQuestionsRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminSqbRoute: AuthenticatedAdminSqbRouteWithChildren,

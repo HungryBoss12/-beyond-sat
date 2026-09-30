@@ -24,7 +24,9 @@ const db = supabase as unknown as AnyClient;
 export async function listActiveClasses(): Promise<ClassRow[]> {
   const { data, error } = await db
     .from("classes")
-    .select("id,name,description,active,created_at")
+    .select(
+      "id,name,description,active,created_at,schedule_days,start_time,end_time,room,level,teacher_id,starts_on,math_schedule_days,math_start_time,math_end_time,ebrw_schedule_days,ebrw_start_time,ebrw_end_time",
+    )
     .eq("active", true)
     .order("name");
   if (error) throw error;
@@ -34,7 +36,9 @@ export async function listActiveClasses(): Promise<ClassRow[]> {
 export async function listAllClasses(): Promise<ClassRow[]> {
   const { data, error } = await db
     .from("classes")
-    .select("id,name,description,active,created_at")
+    .select(
+      "id,name,description,active,created_at,schedule_days,start_time,end_time,room,level,teacher_id,starts_on,math_schedule_days,math_start_time,math_end_time,ebrw_schedule_days,ebrw_start_time,ebrw_end_time",
+    )
     .order("name");
   if (error) throw error;
   return (data ?? []) as ClassRow[];
@@ -52,7 +56,9 @@ export async function createClass(input: {
       description: input.description?.trim() || null,
       created_by: u.user?.id ?? null,
     })
-    .select("id,name,description,active,created_at")
+    .select(
+      "id,name,description,active,created_at,schedule_days,start_time,end_time,room,level,teacher_id,starts_on,math_schedule_days,math_start_time,math_end_time,ebrw_schedule_days,ebrw_start_time,ebrw_end_time",
+    )
     .single();
   if (error) throw error;
   return data as ClassRow;
@@ -60,7 +66,27 @@ export async function createClass(input: {
 
 export async function updateClass(
   id: string,
-  patch: Partial<Pick<ClassRow, "name" | "description" | "active">>,
+  patch: Partial<
+    Pick<
+      ClassRow,
+      | "name"
+      | "description"
+      | "active"
+      | "schedule_days"
+      | "start_time"
+      | "end_time"
+      | "math_schedule_days"
+      | "math_start_time"
+      | "math_end_time"
+      | "ebrw_schedule_days"
+      | "ebrw_start_time"
+      | "ebrw_end_time"
+      | "room"
+      | "level"
+      | "teacher_id"
+      | "starts_on"
+    >
+  >,
 ): Promise<void> {
   const next = { ...patch };
   if (typeof next.name === "string") next.name = next.name.trim();
@@ -88,7 +114,9 @@ export async function joinClass(classId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function listClassMembers(classId: string): Promise<{ user_id: string; joined_at: string }[]> {
+export async function listClassMembers(
+  classId: string,
+): Promise<{ user_id: string; joined_at: string }[]> {
   const { data, error } = await db
     .from("class_memberships")
     .select("user_id,joined_at")
@@ -99,10 +127,16 @@ export async function listClassMembers(classId: string): Promise<{ user_id: stri
 }
 
 /** Staff: add a user to a class (moves them if they already belong elsewhere). */
-export async function addClassMember(classId: string, userId: string): Promise<void> {
+export async function addClassMember(
+  classId: string,
+  userId: string,
+  opts?: { status?: "active" | "trial" | "frozen" | "left"; enrolledOn?: string | null },
+): Promise<void> {
   const { error } = await db.rpc("admin_set_class_member", {
     p_class_id: classId,
     p_user_id: userId,
+    p_status: opts?.status ?? "active",
+    p_enrolled_on: opts?.enrolledOn ?? null,
   });
   if (error) throw error;
 }
@@ -184,7 +218,7 @@ export async function searchUsersByUsername(q: string, limit = 20): Promise<Chat
 }
 
 const ADMIN_PROFILE_COLS =
-  "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,email";
+  "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,email,last_seen_at";
 
 function sanitizeSearchNeedle(q: string): string {
   return q
@@ -336,7 +370,12 @@ export async function listThreadMessages(
 export async function sendMessage(
   threadId: string,
   body: string,
-  attachments?: { storage_path: string; file_name: string; mime_type?: string | null; byte_size?: number | null }[],
+  attachments?: {
+    storage_path: string;
+    file_name: string;
+    mime_type?: string | null;
+    byte_size?: number | null;
+  }[],
 ): Promise<ChatMessage> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Not signed in");
@@ -368,7 +407,9 @@ export async function openDirectThread(otherUserId: string): Promise<string> {
   return data as string;
 }
 
-export async function getDirectPeerProfiles(threadIds: string[]): Promise<Map<string, ChatProfile>> {
+export async function getDirectPeerProfiles(
+  threadIds: string[],
+): Promise<Map<string, ChatProfile>> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user || threadIds.length === 0) return new Map();
   const { data: members, error } = await db
@@ -398,10 +439,15 @@ export async function getDirectPeerProfiles(threadIds: string[]): Promise<Map<st
   return out;
 }
 
-export async function listHomework(classId: string, subject?: ClassSubject): Promise<HomeworkAssignment[]> {
+export async function listHomework(
+  classId: string,
+  subject?: ClassSubject,
+): Promise<HomeworkAssignment[]> {
   let q = db
     .from("homework_assignments")
-    .select("id,class_id,subject,title,body,due_at,created_at,created_by")
+    .select(
+      "id,class_id,subject,title,body,due_at,created_at,created_by,var_kind,lesson_id,max_score",
+    )
     .eq("class_id", classId)
     .order("created_at", { ascending: false });
   if (subject) q = q.eq("subject", subject);
@@ -416,6 +462,9 @@ export async function createHomework(input: {
   title: string;
   body: string;
   due_at?: string | null;
+  var_kind?: "vocab" | "assignment" | "article" | null;
+  lesson_id?: string | null;
+  max_score?: number | null;
 }): Promise<HomeworkAssignment> {
   const { data: u } = await supabase.auth.getUser();
   const { data, error } = await db
@@ -427,8 +476,13 @@ export async function createHomework(input: {
       body: input.body.trim(),
       due_at: input.due_at || null,
       created_by: u.user?.id ?? null,
+      var_kind: input.var_kind ?? null,
+      lesson_id: input.lesson_id ?? null,
+      max_score: input.max_score ?? null,
     })
-    .select("id,class_id,subject,title,body,due_at,created_at,created_by")
+    .select(
+      "id,class_id,subject,title,body,due_at,created_at,created_by,var_kind,lesson_id,max_score",
+    )
     .single();
   if (error) throw error;
   return data as HomeworkAssignment;
@@ -446,7 +500,12 @@ export async function listHomeworkFiles(assignmentIds: string[]): Promise<Homewo
 
 export async function addHomeworkFiles(
   assignmentId: string,
-  files: { storage_path: string; file_name: string; mime_type?: string | null; byte_size?: number | null }[],
+  files: {
+    storage_path: string;
+    file_name: string;
+    mime_type?: string | null;
+    byte_size?: number | null;
+  }[],
 ): Promise<void> {
   if (files.length === 0) return;
   const { error } = await db.from("homework_files").insert(
@@ -466,7 +525,9 @@ export async function getMySubmission(assignmentId: string): Promise<HomeworkSub
   if (!u.user) return null;
   const { data, error } = await db
     .from("homework_submissions")
-    .select("id,assignment_id,student_id,note,status,reviewed_by,reviewed_at,review_note,created_at")
+    .select(
+      "id,assignment_id,student_id,note,status,reviewed_by,reviewed_at,review_note,score,graded_at,created_at",
+    )
     .eq("assignment_id", assignmentId)
     .eq("student_id", u.user.id)
     .maybeSingle();
@@ -496,7 +557,9 @@ export async function upsertSubmission(input: {
       },
       { onConflict: "assignment_id,student_id" },
     )
-    .select("id,assignment_id,student_id,note,status,reviewed_by,reviewed_at,review_note,created_at")
+    .select(
+      "id,assignment_id,student_id,note,status,reviewed_by,reviewed_at,review_note,score,graded_at,created_at",
+    )
     .single();
   if (error) throw error;
   return data as HomeworkSubmission;
@@ -504,7 +567,12 @@ export async function upsertSubmission(input: {
 
 export async function addSubmissionFiles(
   submissionId: string,
-  files: { storage_path: string; file_name: string; mime_type?: string | null; byte_size?: number | null }[],
+  files: {
+    storage_path: string;
+    file_name: string;
+    mime_type?: string | null;
+    byte_size?: number | null;
+  }[],
 ): Promise<void> {
   if (files.length === 0) return;
   const { error } = await db.from("homework_submission_files").insert(
@@ -519,10 +587,14 @@ export async function addSubmissionFiles(
   if (error) throw error;
 }
 
-export async function listSubmissionsForAssignment(assignmentId: string): Promise<HomeworkSubmission[]> {
+export async function listSubmissionsForAssignment(
+  assignmentId: string,
+): Promise<HomeworkSubmission[]> {
   const { data, error } = await db
     .from("homework_submissions")
-    .select("id,assignment_id,student_id,note,status,reviewed_by,reviewed_at,review_note,created_at")
+    .select(
+      "id,assignment_id,student_id,note,status,reviewed_by,reviewed_at,review_note,score,graded_at,created_at",
+    )
     .eq("assignment_id", assignmentId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -533,17 +605,20 @@ export async function reviewSubmission(
   id: string,
   status: HomeworkSubmissionStatus,
   review_note?: string | null,
+  score?: number | null,
 ): Promise<void> {
   const { data: u } = await supabase.auth.getUser();
-  const { error } = await db
-    .from("homework_submissions")
-    .update({
-      status,
-      review_note: review_note ?? null,
-      reviewed_by: u.user?.id ?? null,
-      reviewed_at: new Date().toISOString(),
-    })
-    .eq("id", id);
+  const patch: Record<string, unknown> = {
+    status,
+    review_note: review_note ?? null,
+    reviewed_by: u.user?.id ?? null,
+    reviewed_at: new Date().toISOString(),
+  };
+  if (typeof score === "number" && Number.isFinite(score)) {
+    patch.score = score;
+    patch.graded_at = new Date().toISOString();
+  }
+  const { error } = await db.from("homework_submissions").update(patch).eq("id", id);
   if (error) throw error;
 }
 
@@ -610,10 +685,7 @@ export async function markAttendance(input: {
 }
 
 export async function editMessage(id: string, body: string): Promise<void> {
-  const { error } = await db
-    .from("chat_messages")
-    .update({ body: body.trim() })
-    .eq("id", id);
+  const { error } = await db.from("chat_messages").update({ body: body.trim() }).eq("id", id);
   if (error) throw error;
 }
 

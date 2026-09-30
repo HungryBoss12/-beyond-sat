@@ -76,6 +76,7 @@ const NAV = [
   { to: "/admin/lessons", label: "Lessons", anim: "lessons", group: "Content" },
   { to: "/admin/classes", label: "Classes", anim: "classes", group: "Content" },
   { to: "/admin/users", label: "Students", anim: "users", group: "Students", adminOnly: true },
+  { to: "/admin/payments", label: "Payments", anim: "users", group: "Students", adminOnly: true },
   { to: "/admin/notifications", label: "Notifications", anim: "notifications", group: "Manage" },
   {
     to: "/admin/settings",
@@ -110,7 +111,7 @@ function AdminLayout() {
     <div className="relative isolate min-h-screen bg-white text-brand-900">
       <AmbientGlow />
       <div className="lg:grid lg:grid-cols-[260px_1fr]">
-      <aside className="sticky top-0 hidden h-screen flex-col border-r border-brand-400/30 bg-brand-600 lg:flex">
+      <aside className="sticky top-0 hidden h-screen flex-col border-r border-brand-400/30 bg-brand-600 text-white lg:flex">
         <SidebarBody pathname={pathname} role={staffRole} />
       </aside>
 
@@ -121,7 +122,7 @@ function AdminLayout() {
             aria-label="Close menu"
             onClick={() => setOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-[min(100%,280px)] flex-col bg-brand-600 shadow-float">
+          <aside className="absolute inset-y-0 left-0 flex w-[min(100%,280px)] flex-col bg-brand-600 text-white shadow-float">
             <SidebarBody
               pathname={pathname}
               role={staffRole}
@@ -132,7 +133,7 @@ function AdminLayout() {
       )}
 
       <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur lg:px-8">
+        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 text-brand-900 backdrop-blur lg:px-8">
           <button
             onClick={() => setOpen(true)}
             className="tap grid h-9 w-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden"
@@ -152,7 +153,7 @@ function AdminLayout() {
             </div>
           </div>
         </header>
-        <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
+        <main className="flex-1 px-4 py-6 text-brand-900 lg:px-8 lg:py-8">
           <Outlet />
         </main>
       </div>
@@ -215,7 +216,7 @@ function SidebarBody({
             if (items.length === 0) return null;
             return (
               <div key={group}>
-                <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-brand-200">
+                <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white">
                   {group}
                 </div>
                 <div className="space-y-0.5">
@@ -233,7 +234,7 @@ function SidebarBody({
                           "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold " +
                           (active
                             ? "bg-brand-400 text-white shadow-brand"
-                            : "text-brand-100 nudge hover:text-white")
+                            : "text-white nudge hover:text-white")
                         }
                       >
                         {!active && hovered && (

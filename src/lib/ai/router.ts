@@ -169,8 +169,12 @@ export function resolveModel(
   // An empty-string setting means "unset" — the admin form saves "" when a field
   // is cleared, and sending that to OpenRouter would be a 400.
   const value = override && override.trim() ? override.trim() : DEFAULT_MODELS[task];
-  if (task !== "vision" && WITHDRAWN_OPENROUTER_MODELS.has(value)) {
-    return DEFAULT_MODELS[task];
+  if (task !== "vision") {
+    const unusable =
+      WITHDRAWN_OPENROUTER_MODELS.has(value) ||
+      !value.includes("/") ||
+      value.toLowerCase().includes("embed");
+    if (unusable) return DEFAULT_MODELS[task];
   }
   return value;
 }

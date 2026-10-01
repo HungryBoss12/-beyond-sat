@@ -32,6 +32,8 @@ describe("money", () => {
     expect(parseUzsInput("-5")).toBeNull();
     expect(parseUzsInput("0")).toBeNull();
     expect(parseUzsInput("")).toBeNull();
+    expect(parseUzsInput("1e5")).toBeNull();
+    expect(parseUzsInput("1,000")).toBeNull();
   });
 
   it("caps at the configured maximum", () => {
@@ -65,6 +67,8 @@ describe("money", () => {
     expect(needsPaymentConfirm(15000000n, -20000000)).toBe(true);
     expect(needsPaymentConfirm(9000000n, -1000000)).toBe(true);
     expect(needsPaymentConfirm(3000000n, -1000000)).toBe(false);
+    expect(needsPaymentConfirm(4000000n, "-1000000")).toBe(true);
+    expect(needsPaymentConfirm(10000000n, 0)).toBe(true);
     expect(needsPaymentConfirm(500000n, 0)).toBe(false);
   });
 });

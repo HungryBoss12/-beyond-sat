@@ -12,10 +12,12 @@ import {
   type ChatMessage,
   type ChatProfile,
   type ChatThread,
+  type ClassSubject,
 } from "@/lib/classes";
 import { CLASS_CONTROL } from "./control";
 
-export function ChatPanel({ classId }: { classId: string }) {
+/** The sub-class chat (subject thread) plus the class-wide thread. */
+export function ChatPanel({ classId, subject }: { classId: string; subject: ClassSubject }) {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -30,14 +32,21 @@ export function ChatPanel({ classId }: { classId: string }) {
       setLoading(true);
       setActiveId(null);
       try {
-        const rows = await listClassThreads(classId);
+        const rows = (await listClassThreads(classId))
+          .filter(
+            (t) =>
+              t.kind === "class_group" || (t.kind === "subject_group" && t.subject === subject),
+          )
+          .sort(
+            (a, b) => (a.kind === "subject_group" ? -1 : 0) - (b.kind === "subject_group" ? -1 : 0),
+          );
         setThreads(rows);
         if (rows.length) setActiveId(rows[0]!.id);
       } finally {
         setLoading(false);
       }
     })();
-  }, [classId]);
+  }, [classId, subject]);
 
   const reloadMessages = useCallback(async (threadId: string) => {
     const { messages: msgs, attachments: files } = await listThreadMessages(threadId, 120, {
@@ -87,9 +96,9 @@ export function ChatPanel({ classId }: { classId: string }) {
             >
               <MessageSquare className="h-3.5 w-3.5 shrink-0 text-brand-100" />
               {thread.kind === "subject_group" && thread.subject
-                ? SUBJECT_LABEL[thread.subject]
+                ? `${SUBJECT_LABEL[thread.subject]} sub-class`
                 : thread.kind === "class_group"
-                  ? "Class"
+                  ? "Whole class"
                   : thread.title}
             </button>
           </li>

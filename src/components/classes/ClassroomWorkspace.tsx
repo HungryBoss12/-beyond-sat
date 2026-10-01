@@ -1,456 +1,499 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Plus, UserPlus } from "lucide-react";
-import { toast } from "sonner";
-import { Panel, PanelGlow } from "@/components/ui/panel";
+import { Link, useNavigate } from "@tanstack/react-router";
+import {
+  BookOpen,
+  Calculator,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardCheck,
+  Gauge,
+  ListChecks,
+  MessageSquare,
+  NotebookPen,
+  type LucideIcon,
+} from "lucide-react";
+import { Panel } from "@/components/ui/panel";
 import { ListSkeleton } from "@/components/ui/skeletons";
-import { RankBadge } from "@/components/classes/RankBadge";
+import { IconButton } from "@/components/ui/icon-button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChatPanel } from "@/components/classes/ChatPanel";
 import { HomeworkPanel } from "@/components/classes/HomeworkPanel";
 import { AddStudentDialog } from "@/components/classes/AddStudentDialog";
-import { AttendanceLessonGrid, VarLessonGrid } from "@/components/classes/LessonGrids";
-import { RankingTable } from "@/components/classes/RankingTable";
 import {
-  deleteClass,
-  displayName,
-  getChatProfile,
-  updateClass,
-  type ClassRow,
-  type MemberStatus,
-} from "@/lib/classes";
-import { rankFor, totalScore } from "@/lib/classes/ranking";
+  AttendanceGrid,
+  DateStrip,
+  MarksGrid,
+  type GridPerson,
+} from "@/components/classes/LessonGrids";
+import { ResultsGrid } from "@/components/classes/ResultsGrid";
+import { LevelTab } from "@/components/classes/LevelTab";
+import { LevelModal } from "@/components/classes/LevelModal";
+import { LevelHistorySheet } from "@/components/classes/LevelHistorySheet";
+import { GroupRail, type RailFilter, type RailPerson } from "@/components/classes/GroupRail";
+import { ActivationDateDialog } from "@/components/billing/ActivationDateDialog";
+import type { ClassRow } from "@/lib/classes/types";
+import { shiftMonth } from "@/lib/classes/classroom";
 import {
-  DAY_LABELS,
-  ensureClassLessons,
-  listClassLessons,
-  listMemberships,
-  listScores,
-  listVarMarks,
-  monthKey,
-  shiftMonth,
-  type ClassLesson,
-} from "@/lib/classes/classroom";
-import { listClassAttendanceOnDate } from "@/lib/classes";
-import { CLASS_CONTROL } from "./control";
+  ensureGroupLessons,
+  levelBoard,
+  listGroupAttendance,
+  listGroupLessons,
+  listGroupMembers,
+  listHwMarks,
+  listLevelSections,
+  listProfiles,
+  listResults,
+  personName,
+  type AttendanceRow,
+  type ClassGroup,
+  type GroupLesson,
+  type GroupMember,
+  type HwMark,
+  type LevelBoardRow,
+  type LevelSection,
+  type PersonProfile,
+  type ResultRow,
+} from "@/lib/classes/groups";
+import { schemeFor, subjectToSlug } from "@/lib/classes/schemes";
+import { groupFees, listBalances } from "@/lib/billing/api";
+import { tashkentToday } from "@/lib/billing/dates";
+import { balanceKind, type BalanceKind } from "@/lib/billing/money";
+import { cn } from "@/lib/utils";
 
-const TABS = ["attendance", "var", "ranking", "homework", "chat"] as const;
-type Tab = (typeof TABS)[number];
+export const WORKSPACE_TABS = [
+  "attendance",
+  "marks",
+  "level",
+  "results",
+  "homework",
+  "chat",
+] as const;
+export type WorkspaceTab = (typeof WORKSPACE_TABS)[number];
 
-export function ClassroomWorkspace({
-  classRow,
-  tab,
-  month,
-  lesson,
-  isAdmin,
-  onNavigate,
-  onChanged,
-}: {
-  classRow: ClassRow;
-  tab: Tab;
+export type WorkspaceSearch = {
+  tab: WorkspaceTab;
   month: string;
   lesson: string;
+  q: string;
+  status: RailFilter;
+  sections: 0 | 1;
+};
+
+const TAB_ICON: Record<WorkspaceTab, LucideIcon> = {
+  attendance: CalendarDays,
+  marks: ListChecks,
+  level: Gauge,
+  results: ClipboardCheck,
+  homework: NotebookPen,
+  chat: MessageSquare,
+};
+
+export function ClassroomWorkspace({
+  klass,
+  group,
+  sibling,
+  allClasses,
+  isAdmin,
+  search,
+  onNavigate,
+  onReload,
+}: {
+  klass: ClassRow;
+  group: ClassGroup;
+  sibling: ClassGroup | null;
+  allClasses: ClassRow[];
   isAdmin: boolean;
-  onNavigate: (patch: { tab?: Tab; month?: string; lesson?: string }) => void;
-  onChanged: () => Promise<void>;
+  search: WorkspaceSearch;
+  onNavigate: (patch: Partial<WorkspaceSearch>) => void;
+  onReload: () => Promise<void>;
 }) {
-  const [people, setPeople] = useState<
-    { userId: string; name: string; status: MemberStatus; phone: string }[]
-  >([]);
-  const [scores, setScores] = useState<Map<string, { rw: number; math: number }>>(new Map());
-  const [lessons, setLessons] = useState<ClassLesson[]>([]);
-  const [present, setPresent] = useState<Set<string>>(new Set());
-  const [absent, setAbsent] = useState<Set<string>>(new Set());
-  const [marks, setMarks] = useState<Awaited<ReturnType<typeof listVarMarks>>>([]);
-  const [query, setQuery] = useState("");
+  const navigate = useNavigate();
+  const [members, setMembers] = useState<GroupMember[]>([]);
+  const [siblingIds, setSiblingIds] = useState<Set<string>>(new Set());
+  const [profiles, setProfiles] = useState<Map<string, PersonProfile>>(new Map());
+  const [lessons, setLessons] = useState<GroupLesson[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRow[]>([]);
+  const [marks, setMarks] = useState<HwMark[]>([]);
+  const [results, setResults] = useState<ResultRow[]>([]);
+  const [board, setBoard] = useState<Map<string, LevelBoardRow>>(new Map());
+  const [sections, setSections] = useState<LevelSection[]>([]);
+  const [balances, setBalances] = useState<Map<string, BalanceKind>>(new Map());
+  const [fee, setFee] = useState<bigint | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [levelFor, setLevelFor] = useState<string | null>(null);
+  const [historyFor, setHistoryFor] = useState<string | null>(null);
+  const [activationFor, setActivationFor] = useState<string | null>(null);
+  const [query, setQuery] = useState(search.q);
+
+  useEffect(() => setQuery(search.q), [search.q]);
+  useEffect(() => {
+    if (query === search.q) return;
+    const handle = window.setTimeout(() => onNavigate({ q: query }), 250);
+    return () => window.clearTimeout(handle);
+  }, [query, search.q, onNavigate]);
+
+  const loadBoard = useCallback(async () => {
+    const rows = await levelBoard(group.id);
+    setBoard(new Map(rows.map((r) => [r.user_id, r])));
+  }, [group.id]);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
-      await ensureClassLessons(classRow.id, month).catch(() => 0);
-      const memberships = await listMemberships(classRow.id);
-      const nextPeople = [];
-      for (const member of memberships) {
-        const profile = await getChatProfile(member.user_id).catch(() => null);
-        nextPeople.push({
-          userId: member.user_id,
-          name: profile ? displayName(profile) : member.user_id.slice(0, 8),
-          status: member.status,
-          phone: "",
-        });
-      }
-      setPeople(nextPeople);
-      const scoreRows = await listScores(memberships.map((member) => member.user_id));
-      setScores(new Map(scoreRows.map((row) => [row.user_id, { rw: row.rw, math: row.math }])));
-      const lessonRows = await listClassLessons(classRow.id, month);
+      await ensureGroupLessons(group.id, search.month).catch(() => 0);
+      const [memberRows, siblingRows, lessonRows, attendanceRows, sectionRows] = await Promise.all([
+        listGroupMembers(group.id),
+        sibling ? listGroupMembers(sibling.id) : Promise.resolve([]),
+        listGroupLessons(group.id, search.month),
+        listGroupAttendance(group.id, search.month),
+        listLevelSections(group.subject),
+      ]);
+      const lessonIds = lessonRows.map((l) => l.id);
+      const [people, markRows, resultRows] = await Promise.all([
+        listProfiles([
+          ...memberRows.map((m) => m.user_id),
+          ...(group.teacher_id ? [group.teacher_id] : []),
+        ]),
+        listHwMarks(lessonIds),
+        listResults(lessonIds),
+        loadBoard(),
+      ]);
+      setMembers(memberRows);
+      setSiblingIds(new Set(siblingRows.map((m) => m.user_id)));
       setLessons(lessonRows);
-      const here = new Set<string>();
-      const gone = new Set<string>();
-      for (const item of lessonRows) {
-        const rows = await listClassAttendanceOnDate(classRow.id, item.lesson_date, item.subject);
-        for (const row of rows) {
-          const key = `${row.user_id}:${item.lesson_date}:${item.subject ?? ""}`;
-          if (row.participated) here.add(key);
-          else gone.add(key);
-        }
+      setAttendance(attendanceRows);
+      setSections(sectionRows);
+      setProfiles(people);
+      setMarks(markRows);
+      setResults(resultRows);
+      if (isAdmin) {
+        const [money, fees] = await Promise.all([
+          listBalances({ groupId: group.id }).catch(() => []),
+          groupFees().catch(() => []),
+        ]);
+        setBalances(new Map(money.map((m) => [m.user_id, balanceKind(m.balance)])));
+        setFee(fees.find((f) => f.group_id === group.id)?.monthly_fee_uzs ?? null);
       }
-      setPresent(here);
-      setAbsent(gone);
-      setMarks(await listVarMarks(lessonRows.map((item) => item.id)));
     } finally {
       setLoading(false);
     }
-  }, [classRow.id, month]);
+  }, [group.id, group.subject, group.teacher_id, sibling, search.month, isAdmin, loadBoard]);
 
   useEffect(() => {
+    setLoading(true);
     void load();
   }, [load]);
 
-  const filtered = people.filter((person) =>
-    person.name.toLowerCase().includes(query.trim().toLowerCase()),
-  );
-  function scheduleLine(
-    label: string,
-    days: number[] | null | undefined,
-    start?: string | null,
-    end?: string | null,
-  ) {
-    const names = (days ?? [])
-      .map((day) => DAY_LABELS[day - 1])
-      .filter(Boolean)
-      .join(" ");
-    const time = [start, end].filter(Boolean).join("–");
-    if (!names && !time) return `${label} NOT SET`;
-    return `${label} ${names} ${time}`.trim();
-  }
-
-  const rankRows = useMemo(
+  const railPeople = useMemo<RailPerson[]>(
     () =>
-      filtered.map((person) => {
-        const score = scores.get(person.userId);
-        return {
-          userId: person.userId,
-          name: person.name,
-          rw: score?.rw ?? null,
-          math: score?.math ?? null,
-        };
-      }),
-    [filtered, scores],
+      members
+        .map((m) => ({
+          userId: m.user_id,
+          name: personName(profiles.get(m.user_id), m.user_id),
+          status: m.status,
+          inSibling: siblingIds.has(m.user_id),
+          balanceKind: isAdmin ? balances.get(m.user_id) : undefined,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [members, profiles, siblingIds, balances, isAdmin],
   );
 
-  function daysFrom(form: FormData, prefix: string) {
-    return DAY_LABELS.map((_, index) =>
-      form.get(`${prefix}-${index + 1}`) ? index + 1 : null,
-    ).filter((day): day is number => day != null);
-  }
-
-  async function saveClass(form: FormData) {
-    const mathDays = daysFrom(form, "math-day");
-    const englishDays = daysFrom(form, "eng-day");
-    await updateClass(classRow.id, {
-      name: String(form.get("name") || classRow.name),
-      description: String(form.get("description") || "") || null,
-      room: String(form.get("room") || "") || null,
-      level: String(form.get("level") || "") || null,
-      math_schedule_days: mathDays,
-      math_start_time: String(form.get("math-start") || "") || null,
-      math_end_time: String(form.get("math-end") || "") || null,
-      ebrw_schedule_days: englishDays,
-      ebrw_start_time: String(form.get("eng-start") || "") || null,
-      ebrw_end_time: String(form.get("eng-end") || "") || null,
-      schedule_days: [...new Set([...mathDays, ...englishDays])],
+  const filtered = useMemo(() => {
+    const needle = search.q.trim().toLowerCase();
+    return railPeople.filter((p) => {
+      if (needle && !p.name.toLowerCase().includes(needle)) return false;
+      if (search.status === "debt") return p.balanceKind === "debt";
+      if (search.status) return p.status === search.status;
+      return true;
     });
-    toast.success("Class saved");
-    setEditing(false);
-    await onChanged();
-  }
+  }, [railPeople, search.q, search.status]);
+
+  const gridPeople = useMemo<GridPerson[]>(
+    () => filtered.map((p) => ({ userId: p.userId, name: p.name, status: p.status })),
+    [filtered],
+  );
+
+  const today = tashkentToday();
+  const selectedId = useMemo(() => {
+    if (lessons.some((l) => l.id === search.lesson)) return search.lesson;
+    const past = lessons.filter((l) => l.lesson_date <= today);
+    return (past[past.length - 1] ?? lessons[0])?.id ?? null;
+  }, [lessons, search.lesson, today]);
+
+  const scheme = schemeFor(group.subject);
+  const tabLabel: Record<WorkspaceTab, string> = {
+    attendance: "Attendance",
+    marks: scheme,
+    level: "Level",
+    results: "Results",
+    homework: "Homework",
+    chat: "Chat",
+  };
+  const tabIndex = WORKSPACE_TABS.indexOf(search.tab);
+  const nameOf = (userId: string | null) =>
+    userId ? { userId, name: personName(profiles.get(userId), userId) } : null;
+  const activationMember = members.find((m) => m.user_id === activationFor);
+  const otherParents = allClasses.filter((c) => c.id !== klass.id);
 
   return (
     <div className="space-y-4 text-brand-900">
-      <Link
-        to="/admin/classes"
-        className="tap text-sm font-bold uppercase text-brand-900"
-      >
-        ← BACK
-      </Link>
-      <Panel tone="brand" className="relative overflow-hidden p-5 text-white">
-        <PanelGlow />
-        <div className="relative flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-black uppercase text-white">{classRow.name}</h1>
-            <p className="mt-1 text-sm font-bold uppercase text-white">
-              {scheduleLine(
-                "MATH",
-                classRow.math_schedule_days ?? classRow.schedule_days,
-                classRow.math_start_time ?? classRow.start_time,
-                classRow.math_end_time ?? classRow.end_time,
-              )}
-            </p>
-            <p className="text-sm font-bold uppercase text-white">
-              {scheduleLine(
-                "ENGLISH",
-                classRow.ebrw_schedule_days ?? classRow.schedule_days,
-                classRow.ebrw_start_time ?? classRow.start_time,
-                classRow.ebrw_end_time ?? classRow.end_time,
-              )}
-            </p>
-          </div>
-          <div className="flex flex-wrap justify-end gap-2">
-            <button
-              type="button"
-              className="btn-brand rounded-full bg-brand-400 px-3 py-1.5 text-xs font-bold uppercase text-white"
-              onClick={() => setEditing(true)}
-            >
-              ADD MATH AND ENGLISH
-            </button>
-            <button
-              type="button"
-              className="tap rounded-full bg-brand-800 px-3 py-1.5 text-xs font-bold uppercase text-white"
-              onClick={() => setEditing((value) => !value)}
-            >
-              EDIT CLASS
-            </button>
-            <button
-              type="button"
-              className="tap rounded-full bg-brand-800 px-3 py-1.5 text-xs font-bold uppercase text-white"
-              onClick={() =>
-                void updateClass(classRow.id, { active: !classRow.active }).then(onChanged)
-              }
-            >
-              {classRow.active ? "DEACTIVATE" : "ACTIVATE"}
-            </button>
-            <button
-              type="button"
-              className="tap rounded-full bg-brand-900 px-3 py-1.5 text-xs font-bold uppercase text-white"
-              onClick={() => {
-                if (confirm(`Delete group "${classRow.name}"?`))
-                  void deleteClass(classRow.id).then(() => onChanged());
-              }}
-            >
-              DELETE
-            </button>
-          </div>
-        </div>
-        {editing && (
-          <form
-            className="relative mt-4 grid gap-2 md:grid-cols-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void saveClass(new FormData(event.currentTarget));
-            }}
-          >
-            <input name="name" defaultValue={classRow.name} className={CLASS_CONTROL} />
-            <input
-              name="room"
-              defaultValue={classRow.room ?? ""}
-              placeholder="Room"
-              className={CLASS_CONTROL}
-            />
-            <input
-              name="level"
-              defaultValue={classRow.level ?? ""}
-              placeholder="Level"
-              className={CLASS_CONTROL}
-            />
-            <input
-              name="description"
-              defaultValue={classRow.description ?? ""}
-              placeholder="Description"
-              className={CLASS_CONTROL}
-            />
-            <ScheduleFields
-              title="MATH"
-              prefix="math"
-              days={classRow.math_schedule_days ?? classRow.schedule_days}
-              start={classRow.math_start_time ?? classRow.start_time}
-              end={classRow.math_end_time ?? classRow.end_time}
-            />
-            <ScheduleFields
-              title="ENGLISH"
-              prefix="eng"
-              days={classRow.ebrw_schedule_days ?? classRow.schedule_days}
-              start={classRow.ebrw_start_time ?? classRow.start_time}
-              end={classRow.ebrw_end_time ?? classRow.end_time}
-            />
-            <button
-              className="btn-brand w-fit rounded-full bg-brand-400 px-4 py-2 text-xs font-bold uppercase text-white"
-              type="submit"
-            >
-              SAVE
-            </button>
-          </form>
-        )}
-      </Panel>
-
-      <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
-        <aside className="rounded-2xl border border-brand-400/40 bg-brand-600 p-3 text-white">
-          <div className="flex items-center justify-between gap-2">
-            <input
-              className={CLASS_CONTROL}
-              placeholder="Search roster"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <button
-              type="button"
-              className="tap grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-400"
-              onClick={() => setAddOpen(true)}
-              aria-label="Add student"
-            >
-              <UserPlus className="h-4 w-4" />
-            </button>
-          </div>
-          <ul className="stagger mt-3 space-y-1">
-            {filtered.map((person) => {
-              const score = scores.get(person.userId);
-              const total = score ? totalScore(score.rw, score.math) : null;
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          to="/admin/classes/$classId"
+          params={{ classId: klass.id }}
+          search={{ tab: "roster" }}
+          className="tap inline-flex items-center gap-1 text-sm font-bold text-brand-700"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          {klass.name}
+        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-full bg-brand-25 p-1" role="group" aria-label="Sub-class">
+            {(
+              [
+                ["math", "Maths", Calculator],
+                ["ebrw", "Eng", BookOpen],
+              ] as const
+            ).map(([subject, label, Icon]) => {
+              const current = group.subject === subject;
               return (
-                <li key={person.userId}>
-                  <Link
-                    to="/admin/classes/$classId/students/$userId"
-                    params={{ classId: classRow.id, userId: person.userId }}
-                    className="tap flex items-center justify-between gap-2 rounded-lg px-2 py-2 hover:bg-brand-500"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-bold">{person.name}</span>
-                      <span className="text-[11px] text-brand-100">{person.status}</span>
-                    </span>
-                    {total != null && <RankBadge letter={rankFor(total).letter} />}
-                  </Link>
-                </li>
+                <Link
+                  key={subject}
+                  to="/admin/classes/$classId/$subject"
+                  params={{ classId: klass.id, subject: subjectToSlug(subject) }}
+                  search={{ ...search, lesson: "", q: "", status: "" }}
+                  aria-current={current ? "page" : undefined}
+                  className={cn(
+                    "tap inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold transition-colors duration-200",
+                    current ? "bg-brand-500 text-white" : "text-brand-700",
+                  )}
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  {label}
+                </Link>
               );
             })}
-          </ul>
-        </aside>
+          </div>
+          {otherParents.length > 0 && (
+            <select
+              aria-label="Active group"
+              className="h-10 rounded-full border border-brand-200 bg-white px-3 text-sm font-bold text-brand-700"
+              value={klass.id}
+              onChange={(e) =>
+                void navigate({
+                  to: "/admin/classes/$classId/$subject",
+                  params: { classId: e.target.value, subject: subjectToSlug(group.subject) },
+                  search: { ...search, lesson: "", q: "", status: "" },
+                })
+              }
+            >
+              {allClasses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      </div>
 
-        <section className="min-w-0 rounded-2xl border border-brand-400/40 bg-brand-600 p-4 text-white">
-          <div className="relative mb-4 flex gap-1 overflow-x-auto rounded-lg bg-brand-800 p-1">
+      <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <GroupRail
+          klass={klass}
+          group={group}
+          sibling={sibling}
+          people={filtered}
+          teacherName={
+            group.teacher_id ? personName(profiles.get(group.teacher_id), group.teacher_id) : null
+          }
+          fee={isAdmin ? fee : undefined}
+          isAdmin={isAdmin}
+          query={query}
+          filter={search.status}
+          allClasses={allClasses}
+          onQuery={setQuery}
+          onFilter={(status) => onNavigate({ status })}
+          onAdd={() => setAddOpen(true)}
+          onActivation={setActivationFor}
+          onChanged={async () => {
+            await load();
+            await onReload();
+          }}
+        />
+
+        <Panel className="min-w-0 space-y-4 p-3 md:p-4">
+          <div
+            className="relative isolate flex rounded-xl bg-brand-800 p-1"
+            role="tablist"
+            aria-label={`${group.name} sections`}
+          >
             <span
-              className="nav-tab-pill pointer-events-none absolute bottom-1 top-1 rounded-md bg-brand-400"
+              aria-hidden="true"
+              className="nav-tab-pill pointer-events-none absolute inset-y-1 left-1 rounded-lg bg-brand-400"
               style={{
-                width: `calc(${100 / TABS.length}% - 0.25rem)`,
-                transform: `translateX(calc(${TABS.indexOf(tab)} * (100% + 0.25rem)))`,
+                width: `calc((100% - 0.5rem) / ${WORKSPACE_TABS.length})`,
+                transform: `translateX(calc(${tabIndex} * 100%))`,
               }}
             />
-            {TABS.map((id) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => onNavigate({ tab: id })}
-                className={
-                  "relative z-10 flex-1 rounded-md px-2 py-1.5 text-xs font-bold uppercase " +
-                  (tab === id ? "text-white" : "text-white/80")
-                }
-              >
-                {id}
-              </button>
-            ))}
+            {WORKSPACE_TABS.map((id) => {
+              const Icon = TAB_ICON[id];
+              return (
+                <Tooltip key={id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={search.tab === id}
+                      aria-label={tabLabel[id]}
+                      onClick={() => onNavigate({ tab: id })}
+                      className={cn(
+                        "tap relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-lg px-1 py-2 text-xs font-bold transition-colors duration-200",
+                        search.tab === id ? "text-white" : "text-brand-100",
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span className="hidden lg:inline">{tabLabel[id]}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-brand-800 text-white lg:hidden">
+                    {tabLabel[id]}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
           </div>
-          <div className="mb-3 flex items-center gap-2">
-            <button
-              type="button"
-              className="tap"
-              onClick={() => onNavigate({ month: shiftMonth(month, -1) })}
-              aria-label="Previous month"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="text-sm font-bold">{month}</span>
-            <button
-              type="button"
-              className="tap"
-              onClick={() => onNavigate({ month: shiftMonth(month, 1) })}
-              aria-label="Next month"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              className="tap ml-auto inline-flex items-center gap-1 text-xs font-bold uppercase text-white"
-              onClick={() => void ensureClassLessons(classRow.id, month).then(() => load())}
-            >
-              <Plus className="h-3.5 w-3.5" /> GENERATE FROM SCHEDULE
-            </button>
-          </div>
-          {loading ? (
-            <ListSkeleton rows={4} />
-          ) : tab === "attendance" ? (
-            <AttendanceLessonGrid
-              classId={classRow.id}
-              lessons={lessons}
-              people={filtered}
-              present={present}
-              absent={absent}
-              onChange={load}
-            />
-          ) : tab === "var" ? (
-            <VarLessonGrid
-              classId={classRow.id}
-              lessons={lessons}
-              people={filtered}
-              marks={marks}
-              selectedLessonId={lesson || lessons[0]?.id || null}
-              onSelectLesson={(id) => onNavigate({ lesson: id })}
-              onChange={load}
-            />
-          ) : tab === "ranking" ? (
-            <RankingTable students={rankRows} onSaved={load} />
-          ) : tab === "homework" ? (
-            <HomeworkPanel classId={classRow.id} month={month} />
-          ) : (
-            <ChatPanel classId={classRow.id} />
+
+          {search.tab !== "chat" && search.tab !== "level" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <IconButton
+                icon={ChevronLeft}
+                label="Previous month"
+                className="text-white hover:bg-brand-500"
+                onClick={() => onNavigate({ month: shiftMonth(search.month, -1), lesson: "" })}
+              />
+              <span className="min-w-24 text-center text-sm font-bold tabular-nums">
+                {search.month}
+              </span>
+              <IconButton
+                icon={ChevronRight}
+                label="Next month"
+                className="text-white hover:bg-brand-500"
+                onClick={() => onNavigate({ month: shiftMonth(search.month, 1), lesson: "" })}
+              />
+            </div>
           )}
-        </section>
+          {["attendance", "marks", "results"].includes(search.tab) && !loading && (
+            <DateStrip
+              groupId={group.id}
+              lessons={lessons}
+              selectedId={selectedId}
+              onSelect={(lesson) => onNavigate({ lesson })}
+              onAdded={load}
+            />
+          )}
+
+          {loading ? (
+            <ListSkeleton rows={5} />
+          ) : search.tab === "attendance" ? (
+            <AttendanceGrid
+              groupId={group.id}
+              lessons={lessons}
+              people={gridPeople}
+              attendance={attendance}
+              selectedId={selectedId}
+              onSelect={(lesson) => onNavigate({ lesson })}
+              onChanged={load}
+            />
+          ) : search.tab === "marks" ? (
+            <MarksGrid
+              subject={group.subject}
+              lessons={lessons}
+              people={gridPeople}
+              marks={marks}
+              board={board}
+              selectedId={selectedId}
+              onSelect={(lesson) => onNavigate({ lesson })}
+              onOpenLevel={setLevelFor}
+              onChanged={load}
+            />
+          ) : search.tab === "level" ? (
+            <LevelTab
+              people={gridPeople}
+              sections={sections}
+              board={board}
+              expanded={search.sections === 1}
+              onToggle={() => onNavigate({ sections: search.sections === 1 ? 0 : 1 })}
+              onEdit={setLevelFor}
+              onHistory={setHistoryFor}
+            />
+          ) : search.tab === "results" ? (
+            <ResultsGrid
+              lessons={lessons}
+              people={gridPeople}
+              results={results}
+              selectedId={selectedId}
+              onSelect={(lesson) => onNavigate({ lesson })}
+            />
+          ) : search.tab === "homework" ? (
+            <HomeworkPanel group={group} month={search.month} people={gridPeople} />
+          ) : (
+            <ChatPanel classId={klass.id} subject={group.subject} />
+          )}
+        </Panel>
       </div>
+
       <AddStudentDialog
-        classId={classRow.id}
         open={addOpen}
+        klass={klass}
+        groups={sibling ? [group, sibling] : [group]}
+        defaultSubject={group.subject}
         isAdmin={isAdmin}
         onClose={() => setAddOpen(false)}
-        onAdded={load}
+        onAdded={async () => {
+          await load();
+          await onReload();
+        }}
       />
-    </div>
-  );
-}
-
-function ScheduleFields({
-  title,
-  prefix,
-  days,
-  start,
-  end,
-}: {
-  title: string;
-  prefix: string;
-  days?: number[] | null;
-  start?: string | null;
-  end?: string | null;
-}) {
-  const startName = prefix === "math" ? "math-start" : "eng-start";
-  const endName = prefix === "math" ? "math-end" : "eng-end";
-  const dayPrefix = prefix === "math" ? "math-day" : "eng-day";
-  return (
-    <div className="rounded-xl border border-white/20 p-3 md:col-span-2">
-      <p className="text-xs font-black uppercase text-white">{title}</p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {DAY_LABELS.map((label, index) => (
-          <label key={label} className="text-xs font-bold uppercase text-white">
-            <input
-              type="checkbox"
-              name={`${dayPrefix}-${index + 1}`}
-              defaultChecked={(days ?? []).includes(index + 1)}
-              className="mr-1"
-            />
-            {label}
-          </label>
-        ))}
-      </div>
-      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        <input name={startName} type="time" defaultValue={start ?? ""} className={CLASS_CONTROL} />
-        <input name={endName} type="time" defaultValue={end ?? ""} className={CLASS_CONTROL} />
-      </div>
+      <LevelModal
+        open={levelFor != null}
+        group={group}
+        sections={sections}
+        student={nameOf(levelFor)}
+        board={levelFor ? (board.get(levelFor) ?? null) : null}
+        lessons={lessons}
+        defaultLessonId={selectedId}
+        onClose={() => setLevelFor(null)}
+        onSaved={loadBoard}
+      />
+      <LevelHistorySheet
+        open={historyFor != null}
+        group={group}
+        sections={sections}
+        student={nameOf(historyFor)}
+        onClose={() => setHistoryFor(null)}
+        onChanged={loadBoard}
+      />
+      {isAdmin && (
+        <ActivationDateDialog
+          open={activationFor != null}
+          userId={activationFor ?? ""}
+          name={nameOf(activationFor)?.name ?? ""}
+          groups={
+            activationMember
+              ? [
+                  {
+                    groupId: group.id,
+                    groupName: group.name,
+                    activatedOn: activationMember.activated_on,
+                  },
+                ]
+              : []
+          }
+          onClose={() => setActivationFor(null)}
+          onSaved={load}
+        />
+      )}
     </div>
   );
 }

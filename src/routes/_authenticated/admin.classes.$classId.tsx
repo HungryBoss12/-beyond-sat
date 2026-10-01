@@ -1,60 +1,62 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
-import { z } from "zod";
-import { getRouteApi } from "@tanstack/react-router";
-import { ClassroomWorkspace } from "@/components/classes/ClassroomWorkspace";
+import { createFileRoute, getRouteApi, Outlet } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ListSkeleton } from "@/components/ui/skeletons";
+import { EmptyState } from "@/components/ui/panel";
+import { ClassContext, type ClassContextValue } from "@/components/classes/ClassContext";
 import { listAllClasses, type ClassRow } from "@/lib/classes";
-import { monthKey } from "@/lib/classes/classroom";
-
-const searchSchema = z.object({
-  tab: z.enum(["attendance", "var", "ranking", "homework", "chat"]).catch("attendance"),
-  month: z
-    .string()
-    .regex(/^\d{4}-\d{2}$/)
-    .catch(monthKey()),
-  lesson: z.string().catch(""),
-});
+import { listGroups, type ClassGroup } from "@/lib/classes/groups";
 
 export const Route = createFileRoute("/_authenticated/admin/classes/$classId")({
-  validateSearch: (search) => searchSchema.parse(search),
-  component: AdminClassPage,
+  component: ClassLayout,
 });
 
 const adminRoute = getRouteApi("/_authenticated/admin");
 
-function AdminClassPage() {
+/** Loads the parent class and its two sub-classes once for the overview, workspace and profile. */
+function ClassLayout() {
   const { classId } = Route.useParams();
-  const search = Route.useSearch();
-  const navigate = useNavigate();
   const { staffRole } = adminRoute.useRouteContext();
-  const [row, setRow] = useState<ClassRow | null>(null);
+  const [allClasses, setAllClasses] = useState<ClassRow[]>([]);
+  const [groups, setGroups] = useState<ClassGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const rows = await listAllClasses();
-    setRow(rows.find((item) => item.id === classId) ?? null);
+  const reload = useCallback(async () => {
+    try {
+      const [classes, groupRows] = await Promise.all([listAllClasses(), listGroups(classId)]);
+      setAllClasses(classes);
+      setGroups(groupRows);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load the class");
+    } finally {
+      setLoading(false);
+    }
   }, [classId]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    setLoading(true);
+    void reload();
+  }, [reload]);
 
-  if (!row) return <p className="text-sm text-brand-100">Class not found.</p>;
+  const klass = allClasses.find((row) => row.id === classId) ?? null;
+  const value = useMemo<ClassContextValue | null>(
+    () => (klass ? { klass, groups, allClasses, isAdmin: staffRole === "admin", reload } : null),
+    [klass, groups, allClasses, staffRole, reload],
+  );
 
+  if (loading) return <ListSkeleton rows={5} />;
+  if (error || !value) {
+    return (
+      <EmptyState
+        title={error ? "Could not load the class" : "Class not found"}
+        body={error ?? "It may have been deleted."}
+      />
+    );
+  }
   return (
-    <ClassroomWorkspace
-      classRow={row}
-      tab={search.tab}
-      month={search.month}
-      lesson={search.lesson}
-      isAdmin={staffRole === "admin"}
-      onChanged={load}
-      onNavigate={(patch) => {
-        void navigate({
-          to: "/admin/classes/$classId",
-          params: { classId },
-          search: { ...search, ...patch },
-        });
-      }}
-    />
+    <ClassContext.Provider value={value}>
+      <Outlet />
+    </ClassContext.Provider>
   );
 }

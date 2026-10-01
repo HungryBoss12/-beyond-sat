@@ -87,6 +87,8 @@ import { Route as AuthenticatedPracticeSqbSectionRouteImport } from './routes/_a
 import { Route as AuthenticatedVocabDeckDeckIdRouteImport } from './routes/_authenticated/vocab.deck.$deckId'
 import { Route as AuthenticatedVocabTestsIndexRouteImport } from './routes/_authenticated/vocab.tests.index'
 import { Route as AuthenticatedVocabTestsIdRouteImport } from './routes/_authenticated/vocab.tests.$id'
+import { Route as AuthenticatedAdminClassesClassIdIndexRouteImport } from './routes/_authenticated/admin.classes.$classId.index'
+import { Route as AuthenticatedAdminClassesClassIdSubjectRouteImport } from './routes/_authenticated/admin.classes.$classId.$subject'
 import { Route as AuthenticatedAdminSqbQuestionsIndexRouteImport } from './routes/_authenticated/admin.sqb.questions.index'
 import { Route as AuthenticatedAdminSqbQuestionsIdRouteImport } from './routes/_authenticated/admin.sqb.questions.$id'
 import { Route as AuthenticatedAdminSqbReviewTestIdRouteImport } from './routes/_authenticated/admin.sqb.review.$testId'
@@ -523,6 +525,18 @@ const AuthenticatedVocabTestsIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedVocabTestsRoute,
   } as any)
+const AuthenticatedAdminClassesClassIdIndexRoute =
+  AuthenticatedAdminClassesClassIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminClassesClassIdRoute,
+  } as any)
+const AuthenticatedAdminClassesClassIdSubjectRoute =
+  AuthenticatedAdminClassesClassIdSubjectRouteImport.update({
+    id: '/$subject',
+    path: '/$subject',
+    getParentRoute: () => AuthenticatedAdminClassesClassIdRoute,
+  } as any)
 const AuthenticatedAdminSqbQuestionsIndexRoute =
   AuthenticatedAdminSqbQuestionsIndexRouteImport.update({
     id: '/',
@@ -644,10 +658,12 @@ export interface FileRoutesByFullPath {
   '/lessons/$subjectSlug/': typeof AuthenticatedLessonsSubjectSlugIndexRoute
   '/practice/sqb/': typeof AuthenticatedPracticeSqbIndexRoute
   '/vocab/tests/': typeof AuthenticatedVocabTestsIndexRoute
+  '/admin/classes/$classId/$subject': typeof AuthenticatedAdminClassesClassIdSubjectRoute
   '/admin/sqb/questions/$id': typeof AuthenticatedAdminSqbQuestionsIdRoute
   '/admin/sqb/review/$testId': typeof AuthenticatedAdminSqbReviewTestIdRoute
   '/admin/vocab/deck/$deckId': typeof AuthenticatedAdminVocabDeckDeckIdRoute
   '/lessons/$subjectSlug/$topicId/$lessonId': typeof AuthenticatedLessonsSubjectSlugTopicIdLessonIdRoute
+  '/admin/classes/$classId/': typeof AuthenticatedAdminClassesClassIdIndexRoute
   '/admin/sqb/questions/': typeof AuthenticatedAdminSqbQuestionsIndexRoute
   '/lessons/$subjectSlug/$topicId/': typeof AuthenticatedLessonsSubjectSlugTopicIdIndexRoute
   '/admin/classes/$classId/students/$userId': typeof AuthenticatedAdminClassesClassIdStudentsUserIdRoute
@@ -694,7 +710,6 @@ export interface FileRoutesByTo {
   '/news': typeof AuthenticatedNewsIndexRoute
   '/practice': typeof AuthenticatedPracticeIndexRoute
   '/vocab': typeof AuthenticatedVocabIndexRoute
-  '/admin/classes/$classId': typeof AuthenticatedAdminClassesClassIdRouteWithChildren
   '/admin/payments/ledger': typeof AuthenticatedAdminPaymentsLedgerRoute
   '/admin/sqb/base': typeof AuthenticatedAdminSqbBaseRoute
   '/admin/sqb/import': typeof AuthenticatedAdminSqbImportRoute
@@ -714,10 +729,12 @@ export interface FileRoutesByTo {
   '/lessons/$subjectSlug': typeof AuthenticatedLessonsSubjectSlugIndexRoute
   '/practice/sqb': typeof AuthenticatedPracticeSqbIndexRoute
   '/vocab/tests': typeof AuthenticatedVocabTestsIndexRoute
+  '/admin/classes/$classId/$subject': typeof AuthenticatedAdminClassesClassIdSubjectRoute
   '/admin/sqb/questions/$id': typeof AuthenticatedAdminSqbQuestionsIdRoute
   '/admin/sqb/review/$testId': typeof AuthenticatedAdminSqbReviewTestIdRoute
   '/admin/vocab/deck/$deckId': typeof AuthenticatedAdminVocabDeckDeckIdRoute
   '/lessons/$subjectSlug/$topicId/$lessonId': typeof AuthenticatedLessonsSubjectSlugTopicIdLessonIdRoute
+  '/admin/classes/$classId': typeof AuthenticatedAdminClassesClassIdIndexRoute
   '/admin/sqb/questions': typeof AuthenticatedAdminSqbQuestionsIndexRoute
   '/lessons/$subjectSlug/$topicId': typeof AuthenticatedLessonsSubjectSlugTopicIdIndexRoute
   '/admin/classes/$classId/students/$userId': typeof AuthenticatedAdminClassesClassIdStudentsUserIdRoute
@@ -802,10 +819,12 @@ export interface FileRoutesById {
   '/_authenticated/lessons/$subjectSlug/': typeof AuthenticatedLessonsSubjectSlugIndexRoute
   '/_authenticated/practice/sqb/': typeof AuthenticatedPracticeSqbIndexRoute
   '/_authenticated/vocab/tests/': typeof AuthenticatedVocabTestsIndexRoute
+  '/_authenticated/admin/classes/$classId/$subject': typeof AuthenticatedAdminClassesClassIdSubjectRoute
   '/_authenticated/admin/sqb/questions/$id': typeof AuthenticatedAdminSqbQuestionsIdRoute
   '/_authenticated/admin/sqb/review/$testId': typeof AuthenticatedAdminSqbReviewTestIdRoute
   '/_authenticated/admin/vocab/deck/$deckId': typeof AuthenticatedAdminVocabDeckDeckIdRoute
   '/_authenticated/lessons/$subjectSlug/$topicId/$lessonId': typeof AuthenticatedLessonsSubjectSlugTopicIdLessonIdRoute
+  '/_authenticated/admin/classes/$classId/': typeof AuthenticatedAdminClassesClassIdIndexRoute
   '/_authenticated/admin/sqb/questions/': typeof AuthenticatedAdminSqbQuestionsIndexRoute
   '/_authenticated/lessons/$subjectSlug/$topicId/': typeof AuthenticatedLessonsSubjectSlugTopicIdIndexRoute
   '/_authenticated/admin/classes/$classId/students/$userId': typeof AuthenticatedAdminClassesClassIdStudentsUserIdRoute
@@ -890,10 +909,12 @@ export interface FileRouteTypes {
     | '/lessons/$subjectSlug/'
     | '/practice/sqb/'
     | '/vocab/tests/'
+    | '/admin/classes/$classId/$subject'
     | '/admin/sqb/questions/$id'
     | '/admin/sqb/review/$testId'
     | '/admin/vocab/deck/$deckId'
     | '/lessons/$subjectSlug/$topicId/$lessonId'
+    | '/admin/classes/$classId/'
     | '/admin/sqb/questions/'
     | '/lessons/$subjectSlug/$topicId/'
     | '/admin/classes/$classId/students/$userId'
@@ -940,7 +961,6 @@ export interface FileRouteTypes {
     | '/news'
     | '/practice'
     | '/vocab'
-    | '/admin/classes/$classId'
     | '/admin/payments/ledger'
     | '/admin/sqb/base'
     | '/admin/sqb/import'
@@ -960,10 +980,12 @@ export interface FileRouteTypes {
     | '/lessons/$subjectSlug'
     | '/practice/sqb'
     | '/vocab/tests'
+    | '/admin/classes/$classId/$subject'
     | '/admin/sqb/questions/$id'
     | '/admin/sqb/review/$testId'
     | '/admin/vocab/deck/$deckId'
     | '/lessons/$subjectSlug/$topicId/$lessonId'
+    | '/admin/classes/$classId'
     | '/admin/sqb/questions'
     | '/lessons/$subjectSlug/$topicId'
     | '/admin/classes/$classId/students/$userId'
@@ -1047,10 +1069,12 @@ export interface FileRouteTypes {
     | '/_authenticated/lessons/$subjectSlug/'
     | '/_authenticated/practice/sqb/'
     | '/_authenticated/vocab/tests/'
+    | '/_authenticated/admin/classes/$classId/$subject'
     | '/_authenticated/admin/sqb/questions/$id'
     | '/_authenticated/admin/sqb/review/$testId'
     | '/_authenticated/admin/vocab/deck/$deckId'
     | '/_authenticated/lessons/$subjectSlug/$topicId/$lessonId'
+    | '/_authenticated/admin/classes/$classId/'
     | '/_authenticated/admin/sqb/questions/'
     | '/_authenticated/lessons/$subjectSlug/$topicId/'
     | '/_authenticated/admin/classes/$classId/students/$userId'
@@ -1620,6 +1644,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVocabTestsIdRouteImport
       parentRoute: typeof AuthenticatedVocabTestsRoute
     }
+    '/_authenticated/admin/classes/$classId/': {
+      id: '/_authenticated/admin/classes/$classId/'
+      path: '/'
+      fullPath: '/admin/classes/$classId/'
+      preLoaderRoute: typeof AuthenticatedAdminClassesClassIdIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminClassesClassIdRoute
+    }
+    '/_authenticated/admin/classes/$classId/$subject': {
+      id: '/_authenticated/admin/classes/$classId/$subject'
+      path: '/$subject'
+      fullPath: '/admin/classes/$classId/$subject'
+      preLoaderRoute: typeof AuthenticatedAdminClassesClassIdSubjectRouteImport
+      parentRoute: typeof AuthenticatedAdminClassesClassIdRoute
+    }
     '/_authenticated/admin/sqb/questions/': {
       id: '/_authenticated/admin/sqb/questions/'
       path: '/'
@@ -1673,11 +1711,17 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminClassesClassIdRouteChildren {
+  AuthenticatedAdminClassesClassIdSubjectRoute: typeof AuthenticatedAdminClassesClassIdSubjectRoute
+  AuthenticatedAdminClassesClassIdIndexRoute: typeof AuthenticatedAdminClassesClassIdIndexRoute
   AuthenticatedAdminClassesClassIdStudentsUserIdRoute: typeof AuthenticatedAdminClassesClassIdStudentsUserIdRoute
 }
 
 const AuthenticatedAdminClassesClassIdRouteChildren: AuthenticatedAdminClassesClassIdRouteChildren =
   {
+    AuthenticatedAdminClassesClassIdSubjectRoute:
+      AuthenticatedAdminClassesClassIdSubjectRoute,
+    AuthenticatedAdminClassesClassIdIndexRoute:
+      AuthenticatedAdminClassesClassIdIndexRoute,
     AuthenticatedAdminClassesClassIdStudentsUserIdRoute:
       AuthenticatedAdminClassesClassIdStudentsUserIdRoute,
   }

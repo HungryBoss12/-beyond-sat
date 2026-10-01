@@ -1,258 +1,307 @@
-import { useMemo, useState } from "react";
-import { Check, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CalendarPlus, Check, CheckCheck, Eraser, Gauge, X } from "lucide-react";
 import { toast } from "sonner";
-import type { ClassLesson, VarMark } from "@/lib/classes/classroom";
-import { setAttendanceState, setVarFlag, tickAllComplete } from "@/lib/classes/classroom";
-import type { VarKind } from "@/lib/classes/types";
+import { IconButton } from "@/components/ui/icon-button";
+import type { MemberStatus } from "@/lib/classes/types";
+import {
+  addGroupLesson,
+  setGroupAttendance,
+  setHwMarks,
+  tickAllComplete,
+  untickAll,
+  type AttendanceRow,
+  type GroupLesson,
+  type HwMark,
+  type LevelBoardRow,
+} from "@/lib/classes/groups";
+import {
+  HW_ITEM_LABEL,
+  HW_ITEM_LETTER,
+  doneSummary,
+  itemsFor,
+  type HwItem,
+  type Subject,
+} from "@/lib/classes/schemes";
+import { shortDate } from "@/lib/classes/schedule";
+import { cn } from "@/lib/utils";
+import { CLASS_CONTROL } from "./control";
 
-type Person = { userId: string; name: string };
+export type GridPerson = { userId: string; name: string; status: MemberStatus };
 
-const FLAGS: { key: VarKind; label: string; title: string }[] = [
-  { key: "vocab", label: "V", title: "VOCABULARY" },
-  { key: "assignment", label: "A", title: "ASSIGNMENT" },
-  { key: "article", label: "R", title: "ARTICLE" },
-];
+const NAME_COL = "minmax(150px, 200px)";
 
-function cycle(state: "present" | "absent" | "empty"): "present" | "absent" | "empty" {
+/** Date pills for the month; the selected lesson drives tick-all, results and level dates. */
+export function DateStrip({
+  groupId,
+  lessons,
+  selectedId,
+  onSelect,
+  onAdded,
+}: {
+  groupId: string;
+  lessons: GroupLesson[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onAdded: () => Promise<void>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [date, setDate] = useState("");
+  const selected = lessons.find((l) => l.id === selectedId) ?? null;
+  return (
+    <div className="space-y-2">
+      <div
+        className="flex flex-wrap items-center gap-1.5"
+        role="listbox"
+        aria-label="Lessons this month"
+      >
+        {lessons.map((lesson) => (
+          <button
+            key={lesson.id}
+            type="button"
+            role="option"
+            aria-selected={lesson.id === selectedId}
+            onClick={() => onSelect(lesson.id)}
+            className={cn(
+              "tap rounded-full px-2.5 py-1 text-xs font-bold tabular-nums transition-colors duration-200",
+              lesson.id === selectedId
+                ? "bg-brand-25 text-brand-900"
+                : "bg-brand-800 text-brand-100",
+            )}
+          >
+            {shortDate(lesson.lesson_date)}
+          </button>
+        ))}
+        {lessons.length === 0 && (
+          <span className="text-xs text-brand-100">
+            No lessons this month. Set the days in Edit class, or add a date.
+          </span>
+        )}
+        <IconButton
+          icon={CalendarPlus}
+          label="Add a lesson date"
+          className="h-8 min-w-8 w-8 text-white hover:bg-brand-500"
+          pressed={adding}
+          onClick={() => setAdding((v) => !v)}
+        />
+        {selected && (
+          <span className="ml-auto rounded-full border border-brand-300 px-2.5 py-1 text-xs font-bold">
+            Lesson: {shortDate(selected.lesson_date)}
+          </span>
+        )}
+      </div>
+      {adding && (
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!date) return;
+            void addGroupLesson(groupId, date)
+              .then(async () => {
+                toast.success(`Lesson added · ${shortDate(date)}`);
+                setAdding(false);
+                setDate("");
+                await onAdded();
+              })
+              .catch((err) =>
+                toast.error(err instanceof Error ? err.message : "Could not add the lesson"),
+              );
+          }}
+        >
+          <input
+            type="date"
+            aria-label="Lesson date"
+            className={CLASS_CONTROL + " w-auto"}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+          <button
+            type="submit"
+            className="btn-brand rounded-full bg-brand-400 px-3 py-1.5 text-xs font-bold"
+          >
+            Add
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+type AttendanceState = "present" | "absent" | "empty";
+
+function nextState(state: AttendanceState): AttendanceState {
   if (state === "present") return "absent";
   if (state === "absent") return "empty";
   return "present";
 }
 
-export function AttendanceLessonGrid({
-  classId,
+/** Roving-tabindex grid: arrows move, Enter/Space cycles present → absent → clear. */
+function useGridFocus(rows: number, cols: number) {
+  const [pos, setPos] = useState({ r: 0, c: 0 });
+  const refs = useRef(new Map<string, HTMLButtonElement>());
+  function onKey(event: React.KeyboardEvent, r: number, c: number) {
+    const moves: Record<string, [number, number]> = {
+      ArrowRight: [0, 1],
+      ArrowLeft: [0, -1],
+      ArrowDown: [1, 0],
+      ArrowUp: [-1, 0],
+    };
+    const move = moves[event.key];
+    if (!move) return;
+    event.preventDefault();
+    const next = {
+      r: Math.max(0, Math.min(rows - 1, r + move[0])),
+      c: Math.max(0, Math.min(cols - 1, c + move[1])),
+    };
+    setPos(next);
+    refs.current.get(`${next.r}:${next.c}`)?.focus();
+  }
+  return { pos, setPos, refs, onKey };
+}
+
+export function AttendanceGrid({
+  groupId,
   lessons,
   people,
-  present,
-  absent,
-  onChange,
+  attendance,
+  selectedId,
+  onSelect,
+  onChanged,
 }: {
-  classId: string;
-  lessons: ClassLesson[];
-  people: Person[];
-  present: Set<string>;
-  absent: Set<string>;
-  onChange: () => Promise<void>;
+  groupId: string;
+  lessons: GroupLesson[];
+  people: GridPerson[];
+  attendance: AttendanceRow[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onChanged: () => Promise<void>;
 }) {
-  const [focus, setFocus] = useState(0);
-  const cells = people.length * Math.max(lessons.length, 1);
+  const [local, setLocal] = useState<Map<string, AttendanceState>>(new Map());
+  useEffect(() => {
+    setLocal(
+      new Map(
+        attendance.map((row) => [
+          `${row.user_id}:${row.lesson_date}`,
+          row.participated ? "present" : "absent",
+        ]),
+      ),
+    );
+  }, [attendance]);
+  const grid = useGridFocus(people.length, lessons.length);
 
-  async function toggle(person: Person, lesson: ClassLesson) {
-    const key = `${person.userId}:${lesson.lesson_date}:${lesson.subject ?? ""}`;
-    const state = present.has(key) ? "present" : absent.has(key) ? "absent" : "empty";
-    const next = cycle(state);
+  async function cycle(person: GridPerson, lesson: GroupLesson) {
+    const key = `${person.userId}:${lesson.lesson_date}`;
+    const before = local.get(key) ?? "empty";
+    const after = nextState(before);
+    setLocal((cur) => {
+      const copy = new Map(cur);
+      if (after === "empty") copy.delete(key);
+      else copy.set(key, after);
+      return copy;
+    });
     try {
-      await setAttendanceState({
-        classId,
+      await setGroupAttendance({
+        groupId,
         userId: person.userId,
         lessonDate: lesson.lesson_date,
-        subject: lesson.subject,
-        state: next,
+        state: after,
       });
-      await onChange();
     } catch (err) {
+      setLocal((cur) => {
+        const copy = new Map(cur);
+        if (before === "empty") copy.delete(key);
+        else copy.set(key, before);
+        return copy;
+      });
       toast.error(err instanceof Error ? err.message : "Could not save attendance");
     }
   }
 
-  const marked = present.size + absent.size;
+  const selected = lessons.find((l) => l.id === selectedId);
+  const counts = { present: 0, absent: 0 };
+  if (selected) {
+    for (const person of people) {
+      const state = local.get(`${person.userId}:${selected.lesson_date}`);
+      if (state === "present") counts.present += 1;
+      if (state === "absent") counts.absent += 1;
+    }
+  }
+  const columns = `${NAME_COL} repeat(${Math.max(lessons.length, 1)}, minmax(52px, 1fr))`;
+
   return (
-    <div>
+    <div className="space-y-2">
+      <p className="text-xs text-brand-100">Click a cell: present → absent → clear</p>
       <div className="overflow-x-auto">
-        <div role="grid" aria-label="Attendance" className="min-w-[640px]">
-          <div
-            role="row"
-            className="grid"
-            style={{
-              gridTemplateColumns: `180px repeat(${lessons.length || 1}, minmax(72px, 1fr))`,
-            }}
-          >
-            <div className="sticky left-0 bg-brand-600 px-2 py-2 text-xs font-bold uppercase text-white">
-              STUDENT
+        <div role="grid" aria-label="Attendance" className="min-w-max">
+          <div role="row" className="grid" style={{ gridTemplateColumns: columns }}>
+            <div
+              role="columnheader"
+              className="sticky left-0 z-10 bg-brand-600 px-2 py-2 text-xs font-bold"
+            >
+              Student
             </div>
             {lessons.map((lesson) => (
-              <div
+              <button
                 key={lesson.id}
-                className="px-1 py-2 text-center text-[11px] font-bold text-white"
+                type="button"
+                role="columnheader"
+                aria-pressed={lesson.id === selectedId}
+                onClick={() => onSelect(lesson.id)}
+                className={cn(
+                  "tap px-1 py-2 text-center text-[11px] font-bold tabular-nums",
+                  lesson.id === selectedId && "rounded-t-lg bg-brand-500",
+                )}
               >
-                {lesson.subject === "math" ? "MATH " : lesson.subject === "ebrw" ? "ENG " : ""}
-                {lesson.lesson_date.slice(8)}
-              </div>
+                {shortDate(lesson.lesson_date)}
+              </button>
             ))}
           </div>
-          {people.map((person, row) => (
+          {people.map((person, r) => (
             <div
               key={person.userId}
               role="row"
               className="grid border-t border-brand-400/30"
-              style={{
-                gridTemplateColumns: `180px repeat(${lessons.length || 1}, minmax(72px, 1fr))`,
-              }}
+              style={{ gridTemplateColumns: columns }}
             >
-              <div className="sticky left-0 bg-brand-600 px-2 py-2 text-sm font-bold">
+              <div
+                role="rowheader"
+                className="sticky left-0 z-10 truncate bg-brand-600 px-2 py-2 text-sm font-bold"
+              >
                 {person.name}
               </div>
-              {lessons.map((lesson, col) => {
-                const key = `${person.userId}:${lesson.lesson_date}:${lesson.subject ?? ""}`;
-                const state = present.has(key) ? "present" : absent.has(key) ? "absent" : "empty";
-                const index = row * lessons.length + col;
-                return (
-                  <button
-                    key={lesson.id}
-                    role="gridcell"
-                    tabIndex={index === focus ? 0 : -1}
-                    aria-label={`${state} for ${person.name} on ${lesson.lesson_date}`}
-                    aria-pressed={state === "present"}
-                    onFocus={() => setFocus(index)}
-                    onKeyDown={(event) => {
-                      if (event.key === "ArrowRight") setFocus(Math.min(cells - 1, focus + 1));
-                      if (event.key === "ArrowLeft") setFocus(Math.max(0, focus - 1));
-                    }}
-                    onClick={() => void toggle(person, lesson)}
-                    className="tap grid h-10 place-items-center text-white"
-                  >
-                    {state === "present" ? (
-                      <Check className="h-4 w-4" />
-                    ) : state === "absent" ? (
-                      <X className="h-4 w-4" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-      <p className="mt-3 text-xs font-bold text-brand-100">
-        {present.size} PRESENT · {absent.size} ABSENT · {marked} MARKED
-      </p>
-    </div>
-  );
-}
-
-export function VarLessonGrid({
-  classId,
-  lessons,
-  people,
-  marks,
-  selectedLessonId,
-  onSelectLesson,
-  onChange,
-}: {
-  classId: string;
-  lessons: ClassLesson[];
-  people: Person[];
-  marks: VarMark[];
-  selectedLessonId: string | null;
-  onSelectLesson: (id: string) => void;
-  onChange: () => Promise<void>;
-}) {
-  const byKey = useMemo(() => {
-    const map = new Map<string, VarMark>();
-    for (const mark of marks) map.set(`${mark.user_id}:${mark.lesson_id}`, mark);
-    return map;
-  }, [marks]);
-
-  async function toggle(person: Person, lesson: ClassLesson, flag: VarKind) {
-    const mark = byKey.get(`${person.userId}:${lesson.id}`);
-    const current = mark ? mark[flag] : false;
-    onSelectLesson(lesson.id);
-    try {
-      await setVarFlag({
-        classId,
-        lessonId: lesson.id,
-        userId: person.userId,
-        flag,
-        value: !current,
-      });
-      await onChange();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save VAR");
-    }
-  }
-
-  async function tickAll() {
-    const lesson = lessons.find((item) => item.id === selectedLessonId) ?? lessons[0];
-    if (!lesson) return;
-    if (!confirm("Mark the filtered students present and complete V, A, and R for this lesson?"))
-      return;
-    try {
-      await tickAllComplete(
-        lesson.id,
-        people.map((person) => person.userId),
-      );
-      toast.success("Lesson marked complete");
-      await onChange();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Tick all failed");
-    }
-  }
-
-  const totals = { vocab: 0, assignment: 0, article: 0 };
-  for (const mark of marks) {
-    if (mark.vocab) totals.vocab += 1;
-    if (mark.assignment) totals.assignment += 1;
-    if (mark.article) totals.article += 1;
-  }
-
-  return (
-    <div>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => void tickAll()}
-          className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-xs font-bold text-white"
-        >
-          Tick all complete
-        </button>
-        <span className="text-xs font-bold uppercase text-white">
-          VAR · V VOCABULARY · A ASSIGNMENT · R ARTICLE
-        </span>
-      </div>
-      <div className="overflow-x-auto">
-        <div role="grid" aria-label="VAR homework" className="min-w-[720px]">
-          {people.map((person) => (
-            <div
-              key={person.userId}
-              className="grid border-t border-brand-400/30"
-              style={{
-                gridTemplateColumns: `180px repeat(${lessons.length || 1}, minmax(120px, 1fr))`,
-              }}
-            >
-              <div className="sticky left-0 bg-brand-600 px-2 py-2 text-sm font-bold">
-                {person.name}
-              </div>
-              {lessons.map((lesson) => {
-                const mark = byKey.get(`${person.userId}:${lesson.id}`);
+              {lessons.map((lesson, c) => {
+                const state = local.get(`${person.userId}:${lesson.lesson_date}`) ?? "empty";
                 return (
                   <div
                     key={lesson.id}
-                    className="flex justify-center gap-1 py-2"
-                    onClick={() => onSelectLesson(lesson.id)}
+                    role="gridcell"
+                    className={cn(lesson.id === selectedId && "bg-brand-500")}
                   >
-                    {FLAGS.map((flag) => {
-                      const on = Boolean(mark?.[flag.key]);
-                      const source = mark?.[`${flag.key}_source` as "vocab_source"];
-                      return (
-                        <button
-                          key={flag.key}
-                          type="button"
-                          aria-pressed={on}
-                          title={flag.title + (source === "auto" ? " · auto" : "")}
-                          aria-label={`${flag.title} for ${person.name} on ${lesson.lesson_date}`}
-                          onClick={() => void toggle(person, lesson, flag.key)}
-                          className={
-                            "tap h-7 w-7 rounded-full text-[11px] font-black " +
-                            (on
-                              ? "bg-brand-400 text-white"
-                              : "bg-brand-800 text-brand-100 ring-1 ring-brand-400/40")
-                          }
-                        >
-                          {flag.label}
-                          {source === "auto" && on ? <span className="sr-only"> auto</span> : null}
-                        </button>
-                      );
-                    })}
+                    <button
+                      ref={(el) => {
+                        if (el) grid.refs.current.set(`${r}:${c}`, el);
+                      }}
+                      type="button"
+                      tabIndex={grid.pos.r === r && grid.pos.c === c ? 0 : -1}
+                      aria-label={`${person.name}, ${shortDate(lesson.lesson_date)}: ${state === "empty" ? "not marked" : state}`}
+                      onFocus={() => grid.setPos({ r, c })}
+                      onKeyDown={(event) => grid.onKey(event, r, c)}
+                      onClick={() => void cycle(person, lesson)}
+                      className={cn(
+                        "tap grid h-10 w-full place-items-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-200",
+                        state === "present" && "text-white",
+                        state === "absent" && "text-brand-200",
+                      )}
+                    >
+                      {state === "present" ? (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold">
+                          <Check className="h-4 w-4" aria-hidden="true" />
+                        </span>
+                      ) : state === "absent" ? (
+                        <X className="h-4 w-4" aria-hidden="true" />
+                      ) : (
+                        <span className="h-1 w-1 rounded-full bg-brand-400" aria-hidden="true" />
+                      )}
+                    </button>
                   </div>
                 );
               })}
@@ -260,8 +309,282 @@ export function VarLessonGrid({
           ))}
         </div>
       </div>
-      <p className="mt-3 text-xs font-bold text-brand-100">
-        DONE: {totals.vocab} VOCABULARY · {totals.assignment} ASSIGNMENT · {totals.article} ARTICLE
+      <p className="text-xs font-bold text-brand-100 tabular-nums">
+        {selected
+          ? `${shortDate(selected.lesson_date)}: ${counts.present} present · ${counts.absent} absent · ${people.length - counts.present - counts.absent} not marked`
+          : "Pick a lesson date"}
+      </p>
+    </div>
+  );
+}
+
+/** VAR (Eng) or AFL (Maths) ticks per student × lesson, with the Level column for AFL. */
+export function MarksGrid({
+  subject,
+  lessons,
+  people,
+  marks,
+  board,
+  selectedId,
+  onSelect,
+  onOpenLevel,
+  onChanged,
+}: {
+  subject: Subject;
+  lessons: GroupLesson[];
+  people: GridPerson[];
+  marks: HwMark[];
+  board: Map<string, LevelBoardRow>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onOpenLevel: (userId: string) => void;
+  onChanged: () => Promise<void>;
+}) {
+  const items = itemsFor(subject);
+  const [local, setLocal] = useState<Map<string, boolean>>(new Map());
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setLocal(new Map(marks.map((m) => [`${m.user_id}:${m.lesson_id}:${m.item}`, m.done])));
+  }, [marks]);
+  const sources = useMemo(
+    () => new Map(marks.map((m) => [`${m.user_id}:${m.lesson_id}:${m.item}`, m.source])),
+    [marks],
+  );
+  const selected = lessons.find((l) => l.id === selectedId) ?? null;
+  const ids = people.map((p) => p.userId);
+
+  async function toggle(person: GridPerson, lesson: GroupLesson, item: HwItem) {
+    const key = `${person.userId}:${lesson.id}:${item}`;
+    const before = local.get(key) ?? false;
+    setLocal((cur) => new Map(cur).set(key, !before));
+    onSelect(lesson.id);
+    try {
+      await setHwMarks(lesson.id, [person.userId], item, !before);
+    } catch (err) {
+      setLocal((cur) => new Map(cur).set(key, before));
+      toast.error(err instanceof Error ? err.message : "Could not save");
+    }
+  }
+
+  async function bulk(label: string, run: () => Promise<unknown>) {
+    if (!selected) return toast.message("Pick a lesson date first");
+    if (people.length === 0) return;
+    if (
+      people.length > 10 &&
+      !confirm(`${label} for ${people.length} students on ${shortDate(selected.lesson_date)}?`)
+    ) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await run();
+      toast.success(`${label} · ${people.length} student(s)`);
+      await onChanged();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `${label} failed`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const everyoneDone = (item: HwItem) =>
+    selected != null &&
+    people.length > 0 &&
+    people.every((p) => local.get(`${p.userId}:${selected.id}:${item}`));
+
+  const counts: Partial<Record<HwItem, number>> = {};
+  const lessonIds = new Set(lessons.map((l) => l.id));
+  for (const [key, done] of local) {
+    if (!done) continue;
+    const [userId, lessonId, item] = key.split(":") as [string, string, HwItem];
+    if (!lessonIds.has(lessonId) || !ids.includes(userId)) continue;
+    counts[item] = (counts[item] ?? 0) + 1;
+  }
+  const levels = people
+    .map((p) => board.get(p.userId)?.overall)
+    .filter((v): v is number => v != null);
+  const avgLevel = levels.length
+    ? Math.round(levels.reduce((a, b) => a + b, 0) / levels.length)
+    : null;
+  const isAfl = subject === "math";
+  const columns = `${NAME_COL} repeat(${Math.max(lessons.length, 1)}, minmax(${items.length * 30 + 12}px, 1fr))${isAfl ? " 96px" : ""}`;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-bold text-brand-100">Everyone:</span>
+        {items.map((item) => (
+          <button
+            key={item}
+            type="button"
+            disabled={busy || !selected}
+            aria-pressed={everyoneDone(item)}
+            aria-label={`${HW_ITEM_LABEL[item]} for every listed student`}
+            onClick={() =>
+              void bulk(`${HW_ITEM_LABEL[item]} ${everyoneDone(item) ? "cleared" : "ticked"}`, () =>
+                setHwMarks(selected!.id, ids, item, !everyoneDone(item)),
+              )
+            }
+            className={cn(
+              "tap h-8 w-8 rounded-full text-xs font-black transition-colors duration-200 disabled:opacity-40",
+              everyoneDone(item)
+                ? "bg-brand-25 text-brand-900"
+                : "bg-brand-800 text-white ring-1 ring-brand-300",
+            )}
+          >
+            {HW_ITEM_LETTER[item]}
+          </button>
+        ))}
+        <div className="ml-auto flex gap-1">
+          <IconButton
+            icon={Eraser}
+            label="Untick all"
+            className="text-white hover:bg-brand-500"
+            disabled={busy || !selected}
+            onClick={() => void bulk("Untick all", () => untickAll(selected!.id, ids))}
+          />
+          <IconButton
+            icon={CheckCheck}
+            label="Tick all complete"
+            variant="brand"
+            disabled={busy || !selected}
+            onClick={() => void bulk("Tick all complete", () => tickAllComplete(selected!.id, ids))}
+          />
+        </div>
+      </div>
+      <ul className="flex flex-wrap gap-3 text-[11px] text-brand-100" aria-label="Legend">
+        {items.map((item) => (
+          <li key={item} className="inline-flex items-center gap-1">
+            <span className="grid h-5 w-5 place-items-center rounded-full bg-brand-25 text-[10px] font-black text-brand-900">
+              {HW_ITEM_LETTER[item]}
+            </span>
+            {HW_ITEM_LABEL[item]}
+          </li>
+        ))}
+        <li className="inline-flex items-center gap-1">
+          <span className="grid h-5 w-5 place-items-center rounded-full bg-brand-800 text-[10px] ring-1 ring-brand-300">
+            ·
+          </span>
+          Not done
+        </li>
+        <li>* auto from accepted homework</li>
+        {isAfl && <li>L = Level, edited in the Level modal</li>}
+      </ul>
+      <div className="overflow-x-auto">
+        <div role="grid" aria-label={isAfl ? "AFL homework" : "VAR homework"} className="min-w-max">
+          <div role="row" className="grid" style={{ gridTemplateColumns: columns }}>
+            <div
+              role="columnheader"
+              className="sticky left-0 z-10 bg-brand-600 px-2 py-2 text-xs font-bold"
+            >
+              Student
+            </div>
+            {lessons.map((lesson) => (
+              <button
+                key={lesson.id}
+                type="button"
+                role="columnheader"
+                aria-pressed={lesson.id === selectedId}
+                onClick={() => onSelect(lesson.id)}
+                className={cn(
+                  "tap px-1 py-2 text-center text-[11px] font-bold tabular-nums",
+                  lesson.id === selectedId && "rounded-t-lg bg-brand-500",
+                )}
+              >
+                {shortDate(lesson.lesson_date)}
+              </button>
+            ))}
+            {isAfl && (
+              <div
+                role="columnheader"
+                className="sticky right-0 z-10 bg-brand-600 px-2 py-2 text-center text-xs font-bold"
+              >
+                L
+              </div>
+            )}
+          </div>
+          {people.map((person) => {
+            const level = board.get(person.userId);
+            return (
+              <div
+                key={person.userId}
+                role="row"
+                className="grid border-t border-brand-400/30"
+                style={{ gridTemplateColumns: columns }}
+              >
+                <div
+                  role="rowheader"
+                  className="sticky left-0 z-10 truncate bg-brand-600 px-2 py-2 text-sm font-bold"
+                >
+                  {person.name}
+                </div>
+                {lessons.map((lesson) => (
+                  <div
+                    key={lesson.id}
+                    role="gridcell"
+                    className={cn(
+                      "flex items-center justify-center gap-1 py-1.5",
+                      lesson.id === selectedId && "bg-brand-500",
+                    )}
+                  >
+                    {items.map((item) => {
+                      const key = `${person.userId}:${lesson.id}:${item}`;
+                      const on = local.get(key) ?? false;
+                      const auto = sources.get(key) === "auto";
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          aria-pressed={on}
+                          aria-label={`${HW_ITEM_LABEL[item]}, ${person.name}, ${shortDate(lesson.lesson_date)}${auto ? ", auto" : ""}`}
+                          onClick={() => void toggle(person, lesson, item)}
+                          className={cn(
+                            "tap relative h-7 w-7 rounded-full text-[11px] font-black transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200",
+                            on
+                              ? "bg-brand-25 text-brand-900"
+                              : "bg-brand-800 text-brand-200 ring-1 ring-brand-400/50",
+                          )}
+                        >
+                          {HW_ITEM_LETTER[item]}
+                          {auto && on && (
+                            <span
+                              aria-hidden="true"
+                              className="absolute -right-0.5 -top-1 text-[10px] text-brand-25"
+                            >
+                              *
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+                {isAfl && (
+                  <div
+                    role="gridcell"
+                    className="sticky right-0 z-10 flex items-center justify-end gap-1 bg-brand-600 px-1"
+                  >
+                    <span
+                      className="text-xs font-black tabular-nums"
+                      title={level?.overall == null ? "No sections scored" : undefined}
+                    >
+                      {level?.overall ?? "—"}
+                    </span>
+                    <IconButton
+                      icon={Gauge}
+                      label={`Edit levels for ${person.name}`}
+                      className="h-8 min-w-8 w-8 text-white hover:bg-brand-500"
+                      onClick={() => onOpenLevel(person.userId)}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <p className="text-xs font-bold text-brand-100 tabular-nums">
+        {doneSummary(subject, counts, avgLevel)}
       </p>
     </div>
   );

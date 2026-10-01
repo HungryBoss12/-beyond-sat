@@ -25,8 +25,18 @@ import {
 } from "lucide-react";
 import { getStaffRole } from "@/lib/admin";
 import { supabase } from "@/integrations/supabase/client";
-import { getMyScore, listMyVar } from "@/lib/classes/classroom";
+import { getMyScore } from "@/lib/classes/classroom";
+import {
+  listGroups,
+  listUserGroupMemberships,
+  listUserHwMarks,
+  listUserLevelCurrent,
+  listUserResults,
+} from "@/lib/classes/groups";
+import { levelOverall } from "@/lib/classes/level";
 import { rankFor, totalScore } from "@/lib/classes/ranking";
+import { resultLabel } from "@/lib/classes/results";
+import { schemeFor } from "@/lib/classes/schemes";
 import { AmbientGlow, RevealCard } from "@/components/ui/reveal-card";
 import { usePointerGlow } from "@/hooks/usePointerGlow";
 import { cn } from "@/lib/utils";
@@ -976,21 +986,52 @@ function HomeworksPane({ classId }: { classId: string }) {
   );
 }
 
+/** Read-only: the student's own rank, ticks, Level and latest Result per sub-class. */
 function OwnProgress() {
-  const [line, setLine] = useState<string | null>(null);
+  const [lines, setLines] = useState<string[] | null>(null);
   useEffect(() => {
     void (async () => {
       const { data } = await supabase.auth.getUser();
       if (!data.user) return;
-      const score = await getMyScore(data.user.id).catch(() => null);
-      const marks = await listMyVar(data.user.id).catch(() => []);
-      const done = marks.filter((mark) => mark.vocab || mark.assignment || mark.article).length;
+      const uid = data.user.id;
+      const [score, memberships, marks, levels, results] = await Promise.all([
+        getMyScore(uid).catch(() => null),
+        listUserGroupMemberships([uid]).catch(() => []),
+        listUserHwMarks(uid).catch(() => []),
+        listUserLevelCurrent(uid).catch(() => []),
+        listUserResults(uid).catch(() => []),
+      ]);
+      const groups = memberships.length
+        ? await listGroups(memberships[0]!.class_id).catch(() => [])
+        : [];
       const rank = score
         ? `${rankFor(totalScore(score.rw, score.math)).letter} ${totalScore(score.rw, score.math)}`
         : "no score yet";
-      setLine(`Your rank ${rank}. VAR flags recorded on ${done} lessons.`);
+      const out = [`Your rank: ${rank}.`];
+      for (const member of memberships) {
+        const group = groups.find((g) => g.id === member.group_id);
+        const ticks = marks.filter((m) => m.group_id === member.group_id && m.done).length;
+        const level = levelOverall(
+          levels
+            .filter((l) => l.group_id === member.group_id)
+            .map((l) => ({ score: l.score, weight: l.weight })),
+        );
+        const latest = results
+          .filter((r) => r.group_id === member.group_id)
+          .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
+        out.push(
+          `${group?.name ?? (member.subject === "math" ? "Maths" : "Eng")}: ${ticks} ${schemeFor(member.subject)} ticks · Level ${level ?? "—"}${latest ? ` · last result ${resultLabel(latest.m1, latest.m2)}` : ""}`,
+        );
+      }
+      setLines(out);
     })();
   }, []);
-  if (!line) return null;
-  return <p className="text-sm font-bold text-brand-100">{line}</p>;
+  if (!lines) return null;
+  return (
+    <ul className="space-y-0.5 text-sm font-bold text-brand-100">
+      {lines.map((line) => (
+        <li key={line}>{line}</li>
+      ))}
+    </ul>
+  );
 }

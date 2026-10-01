@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { canEditorAccess, getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
 import { ArrowLeft, Menu, X, ChevronRight } from "lucide-react";
 import { AmbientGlow, RevealLink } from "@/components/ui/reveal-card";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AdminNavIcon, type AdminAnim } from "@/components/admin/AdminNavIcon";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -108,57 +109,59 @@ function AdminLayout() {
   const current = visibleNav(staffRole).find((n) => isActive(n, pathname));
 
   return (
-    <div className="relative isolate min-h-screen bg-white text-brand-900">
-      <AmbientGlow />
-      <div className="lg:grid lg:grid-cols-[260px_1fr]">
-      <aside className="sticky top-0 hidden h-screen flex-col border-r border-brand-400/30 bg-brand-600 text-white lg:flex">
-        <SidebarBody pathname={pathname} role={staffRole} />
-      </aside>
-
-      {open && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <button
-            className="absolute inset-0 bg-brand-900/50 backdrop-blur-sm"
-            aria-label="Close menu"
-            onClick={() => setOpen(false)}
-          />
-          <aside className="absolute inset-y-0 left-0 flex w-[min(100%,280px)] flex-col bg-brand-600 text-white shadow-float">
-            <SidebarBody
-              pathname={pathname}
-              role={staffRole}
-              onNavigate={() => setOpen(false)}
-            />
+    <TooltipProvider delayDuration={300}>
+      <div className="relative isolate min-h-screen bg-white text-brand-900">
+        <AmbientGlow />
+        <div className="lg:grid lg:grid-cols-[260px_1fr]">
+          <aside className="sticky top-0 hidden h-screen flex-col border-r border-brand-400/30 bg-brand-600 text-white lg:flex">
+            <SidebarBody pathname={pathname} role={staffRole} />
           </aside>
-        </div>
-      )}
 
-      <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 text-brand-900 backdrop-blur lg:px-8">
-          <button
-            onClick={() => setOpen(true)}
-            className="tap grid h-9 w-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden"
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
-              <span>Admin</span>
-              {current && (
-                <>
-                  <ChevronRight className="h-3 w-3" />
-                  <span className="truncate text-slate-600">{current.label}</span>
-                </>
-              )}
+          {open && (
+            <div className="fixed inset-0 z-40 lg:hidden">
+              <button
+                className="absolute inset-0 bg-brand-900/50 backdrop-blur-sm"
+                aria-label="Close menu"
+                onClick={() => setOpen(false)}
+              />
+              <aside className="absolute inset-y-0 left-0 flex w-[min(100%,280px)] flex-col bg-brand-600 text-white shadow-float">
+                <SidebarBody
+                  pathname={pathname}
+                  role={staffRole}
+                  onNavigate={() => setOpen(false)}
+                />
+              </aside>
             </div>
+          )}
+
+          <div className="flex min-w-0 flex-col">
+            <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 text-brand-900 backdrop-blur lg:px-8">
+              <button
+                onClick={() => setOpen(true)}
+                className="tap grid h-9 w-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden"
+                aria-label="Open menu"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                  <span>Admin</span>
+                  {current && (
+                    <>
+                      <ChevronRight className="h-3 w-3" />
+                      <span className="truncate text-slate-600">{current.label}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </header>
+            <main className="flex-1 px-4 py-6 text-brand-900 lg:px-8 lg:py-8">
+              <Outlet />
+            </main>
           </div>
-        </header>
-        <main className="flex-1 px-4 py-6 text-brand-900 lg:px-8 lg:py-8">
-          <Outlet />
-        </main>
+        </div>
       </div>
-      </div>
-    </div>
+    </TooltipProvider>
   );
 }
 

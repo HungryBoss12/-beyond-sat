@@ -4,6 +4,58 @@ Automated cron audits append dated entries here.
 
 ---
 
+## 2026-10-01 (cron `0 3 * * *`)
+
+**Live site:** https://beyond-sat-v0.javazbek80.workers.dev
+
+| Check | Result |
+|-------|--------|
+| `GET /` | 200 |
+| `GET /signin` | 200 |
+| `GET /dashboard` | 200 |
+| `GET /reset-password` (prod, pre-deploy) | 404 — route still absent on deployed worker; **restored in repo this run** (cherry-pick from prior audit) |
+| `POST /api/import/vision` (no auth) | 401 |
+| `POST /api/ai/uinfo` (no auth) | 401 |
+| `POST /api/admin/create-user` (no auth) | 401 |
+
+**Build & tests**
+
+- `npm run build` — pass
+- `npm test` — **175/175** pass (24 files)
+- `npm audit` — 2 moderate (`vitest`/`@vitest/mocker` dev-only); applied safe `npm audit fix` (undici/wrangler high resolved); avoid `audit fix --force`
+- `npm run lint` — not run (Prettier drift pre-existing across scripts)
+
+**Code review (recurring regression watch)**
+
+| Area | Status |
+|------|--------|
+| Import APIs (`/api/import/*`) staff-gated | OK (live 401) |
+| `/api/admin/create-user` uses `requireAdmin` | OK (P1A) |
+| Telegram `ensure-webhook` admin: `verifySupabaseUser` then `callRpc(bs_is_admin)` | OK |
+| `slugUsernameFromName` numeric names | OK (unit test) |
+| Password reset `/reset-password` | **Missing on prod** — present in repo; needs deploy |
+| Service role key | Server-only paths; not exposed in client bundle |
+| `MathText` / chart `dangerouslySetInnerHTML` | OK — KaTeX/sanitized chart CSS only |
+
+**Security (quick)**
+
+- P1A unauth probe — **P1A_DONE**, no 5xx/leaks/ODD flags
+- P1A2 / `verify-phase1-security.mjs` — **not run** (no `.dev.vars` in agent env)
+
+**Outstanding**
+
+- Deploy worker so `/reset-password` is live (recurring: fix not merged/deployed to prod)
+- Prod DB phase-1 migration verification with `.dev.vars`
+
+**Changes this run**
+
+- Re-applied `src/routes/reset-password.tsx`, `routeTree.gen.ts`, `latexify-ascii.test.ts` (regex expectations), `SYSTEM_HEALTH_LOG.md` via cherry-pick `a597251`
+- `package-lock.json` — safe `npm audit fix` (undici via wrangler)
+
+**Branch:** `cursor/system-integrity-audit-59e1`
+
+---
+
 ## 2026-09-30 (cron `0 3 * * *`)
 
 **Live site:** https://beyond-sat-v0.javazbek80.workers.dev

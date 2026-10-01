@@ -218,6 +218,37 @@ BEGIN
     PERFORM public.admin_record_payment(v_a, 15000000, 'cash', '2026-03-20', 'large', gen_random_uuid());
     v_out := v_out || jsonb_build_object('check', '6 15 000 000 is accepted by the server (UI confirms)', 'ok', true, 'detail', 'recorded');
 
+    BEGIN
+      DELETE FROM public.student_level_scores WHERE group_id = v_math;
+      v_out := v_out || jsonb_build_object('check', '3 direct level-score delete is blocked', 'ok', false, 'detail', 'deleted');
+    EXCEPTION WHEN OTHERS THEN
+      v_out := v_out || jsonb_build_object('check', '3 direct level-score delete is blocked', 'ok', true, 'detail', SQLERRM);
+    END;
+
+    -- 1 (again). Deleting a parent cascades, even with level history and lessons.
+    BEGIN
+      DELETE FROM public.classes WHERE id = v_class2;
+      DELETE FROM public.class_lessons WHERE id = v_lesson;
+      v_out := v_out || jsonb_build_object('check', '1 deleting a lesson keeps its level scores', 'ok',
+        (SELECT count(*) FROM public.student_level_scores WHERE group_id = v_math AND lesson_id IS NULL) = 2,
+        'detail', 'lesson deleted');
+    EXCEPTION WHEN OTHERS THEN
+      v_out := v_out || jsonb_build_object('check', '1 deleting a lesson keeps its level scores', 'ok', false, 'detail', SQLERRM);
+    END;
+    BEGIN
+      INSERT INTO public.classes (name, active, created_by) VALUES ('ZZ Acceptance 3', true, v_admin) RETURNING id INTO v_class2;
+      SELECT id INTO v_math2 FROM public.class_groups WHERE class_id = v_class2 AND subject = 'math';
+      PERFORM public.staff_remove_group_member(v_math, v_b);
+      PERFORM public.staff_remove_group_member(v_eng, v_b);
+      PERFORM public.staff_add_group_member(v_math2, v_b, 'active', '2026-03-01', NULL, false);
+      PERFORM public.staff_save_level_scores(v_math2, v_b, '2026-03-20', '{"systems": 600}'::jsonb, NULL);
+      DELETE FROM public.classes WHERE id = v_class2;
+      SELECT count(*) INTO v_n FROM public.class_groups WHERE class_id = v_class2;
+      v_out := v_out || jsonb_build_object('check', '1 deleting a parent cascades through level history', 'ok', v_n = 0, 'detail', v_n);
+    EXCEPTION WHEN OTHERS THEN
+      v_out := v_out || jsonb_build_object('check', '1 deleting a parent cascades through level history', 'ok', false, 'detail', SQLERRM);
+    END;
+
     RAISE EXCEPTION 'acceptance_rollback';
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM <> 'acceptance_rollback' THEN

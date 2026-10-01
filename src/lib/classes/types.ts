@@ -3,11 +3,7 @@ export type ClassSubject = "math" | "ebrw";
 export type ChatThreadKind = "subject_group" | "class_group" | "direct";
 
 export type HomeworkSubmissionStatus =
-  | "pending"
-  | "submitted"
-  | "reviewed"
-  | "accepted"
-  | "needs_revision";
+  "pending" | "submitted" | "reviewed" | "accepted" | "needs_revision";
 
 export type MemberStatus = "active" | "trial" | "frozen" | "left";
 export type VarKind = "vocab" | "assignment" | "article";
@@ -22,12 +18,6 @@ export type ClassRow = {
   schedule_days?: number[] | null;
   start_time?: string | null;
   end_time?: string | null;
-  math_schedule_days?: number[] | null;
-  math_start_time?: string | null;
-  math_end_time?: string | null;
-  ebrw_schedule_days?: number[] | null;
-  ebrw_start_time?: string | null;
-  ebrw_end_time?: string | null;
   room?: string | null;
   level?: string | null;
   teacher_id?: string | null;
@@ -142,7 +132,9 @@ export const SUBJECT_LABEL: Record<ClassSubject, string> = {
   ebrw: "EBRW",
 };
 
-export function displayName(p: Pick<ChatProfile, "username" | "full_name" | "first_name" | "email">) {
+export function displayName(
+  p: Pick<ChatProfile, "username" | "full_name" | "first_name" | "email">,
+) {
   return (
     p.username ||
     p.full_name ||

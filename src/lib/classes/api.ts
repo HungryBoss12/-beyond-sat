@@ -25,7 +25,7 @@ export async function listActiveClasses(): Promise<ClassRow[]> {
   const { data, error } = await db
     .from("classes")
     .select(
-      "id,name,description,active,created_at,schedule_days,start_time,end_time,room,level,teacher_id,starts_on,math_schedule_days,math_start_time,math_end_time,ebrw_schedule_days,ebrw_start_time,ebrw_end_time",
+      "id,name,description,active,created_at,schedule_days,start_time,end_time,room,level,teacher_id,starts_on",
     )
     .eq("active", true)
     .order("name");
@@ -37,7 +37,7 @@ export async function listAllClasses(): Promise<ClassRow[]> {
   const { data, error } = await db
     .from("classes")
     .select(
-      "id,name,description,active,created_at,schedule_days,start_time,end_time,room,level,teacher_id,starts_on,math_schedule_days,math_start_time,math_end_time,ebrw_schedule_days,ebrw_start_time,ebrw_end_time",
+      "id,name,description,active,created_at,schedule_days,start_time,end_time,room,level,teacher_id,starts_on",
     )
     .order("name");
   if (error) throw error;
@@ -57,7 +57,7 @@ export async function createClass(input: {
       created_by: u.user?.id ?? null,
     })
     .select(
-      "id,name,description,active,created_at,schedule_days,start_time,end_time,room,level,teacher_id,starts_on,math_schedule_days,math_start_time,math_end_time,ebrw_schedule_days,ebrw_start_time,ebrw_end_time",
+      "id,name,description,active,created_at,schedule_days,start_time,end_time,room,level,teacher_id,starts_on",
     )
     .single();
   if (error) throw error;
@@ -75,12 +75,6 @@ export async function updateClass(
       | "schedule_days"
       | "start_time"
       | "end_time"
-      | "math_schedule_days"
-      | "math_start_time"
-      | "math_end_time"
-      | "ebrw_schedule_days"
-      | "ebrw_start_time"
-      | "ebrw_end_time"
       | "room"
       | "level"
       | "teacher_id"

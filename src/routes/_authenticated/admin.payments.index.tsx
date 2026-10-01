@@ -1,220 +1,737 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link, type SearchSchemaInput } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Wallet } from "lucide-react";
-import { StatTile } from "@/components/ui/metric";
+import {
+  CalendarCheck,
+  Download,
+  HandCoins,
+  Layers,
+  ListChecks,
+  ReceiptText,
+  Search,
+  SlidersHorizontal,
+  TriangleAlert,
+  UserRound,
+  Wallet,
+  X,
+} from "lucide-react";
 import { EmptyState } from "@/components/ui/panel";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { applyRecurringFees, chargeMonth, listBalances } from "@/lib/billing/api";
-import { asInt, type BalanceRow } from "@/lib/billing/types";
-import { formatUzs } from "@/lib/billing/money";
+import { IconButton } from "@/components/ui/icon-button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { MoneyTile } from "@/components/billing/MoneyTile";
+import { RecordPaymentDialog, type PaymentTarget } from "@/components/billing/RecordPaymentDialog";
+import { TransactionsTable, type TxRow } from "@/components/billing/TransactionsTable";
+import { BalanceLabel, StatusLabel } from "@/components/billing/labels";
+import { KIND_META } from "@/components/billing/meta";
+import { chargeThisMonth } from "@/components/billing/charge";
+import { txMethodOrPeriod, txSign, txType } from "@/lib/billing/ledger";
 import { CLASS_CONTROL } from "@/components/classes/control";
-import { RankBadge } from "@/components/classes/RankBadge";
+import { SubclassChip } from "@/components/classes/SubclassChip";
+import {
+  applyRecurringFees,
+  groupFees,
+  listAllLedger,
+  listBalances,
+  paymentsSummary,
+} from "@/lib/billing/api";
+import { downloadCsv, toCsv } from "@/lib/billing/csv";
+import { tashkentToday } from "@/lib/billing/dates";
+import { compactUzs, formatUzs, groupDigits, parseUzsInput } from "@/lib/billing/money";
+import type { BalanceRow, GroupFeeRow, PaymentsSummary } from "@/lib/billing/types";
+import { cn } from "@/lib/utils";
+
+const CHIPS = ["all", "debt", "credit", "settled"] as const;
+type Chip = (typeof CHIPS)[number];
+const CHIP_LABEL: Record<Chip, string> = {
+  all: "All",
+  debt: "Debtors",
+  credit: "Credit",
+  settled: "Settled",
+};
+
+const digits = z.string().regex(/^\d*$/).catch("");
 
 const searchSchema = z.object({
+  view: z.enum(["balances", "ledger"]).catch("balances"),
+  chip: z.enum(CHIPS).catch("all"),
+  group: z.string().catch(""),
   q: z.string().catch(""),
-  kind: z.string().catch(""),
-  status: z.string().catch(""),
-  rank: z.string().catch(""),
+  status: z.enum(["", "active", "trial", "frozen"]).catch(""),
+  rank: z.enum(["", "S", "A", "B", "C", "D"]).catch(""),
+  minDebt: digits,
+  maxDebt: digits,
+  monthsInDebt: digits,
+  method: z.enum(["", "cash", "card", "transfer"]).catch(""),
+  kind: z.enum(["", "charge", "payment", "discount", "refund"]).catch(""),
+  source: z.enum(["", "auto", "manual"]).catch(""),
 });
+type Search = z.infer<typeof searchSchema>;
+
+const MORE_FILTERS = [
+  "status",
+  "rank",
+  "minDebt",
+  "maxDebt",
+  "monthsInDebt",
+  "method",
+  "kind",
+  "source",
+] as const;
 
 export const Route = createFileRoute("/_authenticated/admin/payments/")({
-  validateSearch: (search) => searchSchema.parse(search),
+  validateSearch: (search: Record<string, unknown> & SearchSchemaInput) =>
+    searchSchema.parse(search),
   component: PaymentsPage,
 });
+
+function studentName(row: Pick<BalanceRow, "full_name" | "username" | "user_id">): string {
+  return row.full_name || row.username || row.user_id.slice(0, 8);
+}
 
 function PaymentsPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const [rows, setRows] = useState<BalanceRow[]>([]);
+  const [ledger, setLedger] = useState<TxRow[] | null>(null);
+  const [summary, setSummary] = useState<PaymentsSummary | null>(null);
+  const [fees, setFees] = useState<GroupFeeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [payFor, setPayFor] = useState<PaymentTarget | null>(null);
+  const [query, setQuery] = useState(search.q);
+  const applied = useRef(false);
 
-  async function load() {
+  const patch = useCallback(
+    (next: Partial<Search>) => void navigate({ search: (prev) => ({ ...prev, ...next }) }),
+    [navigate],
+  );
+
+  useEffect(() => setQuery(search.q), [search.q]);
+  useEffect(() => {
+    if (query === search.q) return;
+    const handle = window.setTimeout(() => patch({ q: query }), 300);
+    return () => window.clearTimeout(handle);
+  }, [query, search.q, patch]);
+
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      await applyRecurringFees();
-      setRows(
-        await listBalances({
-          search: search.q,
-          kind: search.kind,
+      if (!applied.current) {
+        applied.current = true;
+        await applyRecurringFees().catch(() => 0);
+      }
+      const maxDebt = parseUzsInput(search.maxDebt, 10n ** 12n);
+      const minDebt = parseUzsInput(search.minDebt, 10n ** 12n);
+      const [balanceRows, all, sum, groupRows] = await Promise.all([
+        listBalances({
+          search: search.view === "balances" ? search.q : "",
+          groupId: search.group,
+          kind: search.chip === "all" ? "" : search.chip,
           status: search.status,
           rank: search.rank,
+          minBalance: maxDebt == null ? null : -maxDebt,
+          maxBalance: minDebt == null ? null : -minDebt,
+          monthsInDebt: search.monthsInDebt ? Number(search.monthsInDebt) : null,
         }),
-      );
+        listBalances({}),
+        paymentsSummary(),
+        groupFees(),
+      ]);
+      setRows(balanceRows);
+      setSummary(sum);
+      setFees(groupRows);
+      if (search.view === "ledger") {
+        const names = new Map(all.map((r) => [r.user_id, studentName(r)]));
+        setLedger(
+          (await listAllLedger()).map((r) => ({
+            ...r,
+            student: names.get(r.user_id ?? "") ?? "—",
+          })),
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load balances");
     } finally {
       setLoading(false);
     }
-  }
+  }, [
+    search.view,
+    search.q,
+    search.group,
+    search.chip,
+    search.status,
+    search.rank,
+    search.minDebt,
+    search.maxDebt,
+    search.monthsInDebt,
+  ]);
 
   useEffect(() => {
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search.q, search.kind, search.status, search.rank]);
+  }, [load]);
 
-  const debtors = rows.filter((row) => asInt(row.balance) < 0);
-  const settled = rows.filter((row) => asInt(row.balance) === 0);
-  const owed = debtors.reduce((sum, row) => sum + Math.abs(asInt(row.balance)), 0);
+  const groupsByParent = useMemo(() => {
+    const map = new Map<string, GroupFeeRow[]>();
+    for (const row of fees) map.set(row.class_name, [...(map.get(row.class_name) ?? []), row]);
+    return [...map.entries()];
+  }, [fees]);
+
+  const txRows = useMemo(() => {
+    const needle = search.q.trim().toLowerCase();
+    return (ledger ?? []).filter(
+      (row) =>
+        (!search.group || row.group_id === search.group) &&
+        (!search.method || row.method === search.method) &&
+        (!search.kind || row.kind === search.kind) &&
+        (!search.source || row.source === search.source) &&
+        (!needle ||
+          (row.student ?? "").toLowerCase().includes(needle) ||
+          (row.note ?? "").toLowerCase().includes(needle)),
+    );
+  }, [ledger, search.q, search.group, search.method, search.kind, search.source]);
+
+  const debtors = rows.filter((row) => row.balance < 0n);
+  const owed = debtors.reduce((sum, row) => sum - row.balance, 0n);
+  const activeFilters = MORE_FILTERS.filter((key) => search[key]);
+  const isFiltered = Boolean(
+    search.q || search.group || search.chip !== "all" || activeFilters.length,
+  );
+
+  async function chargeAll() {
+    if (
+      !confirm("Ensure monthly group fees are applied for all billable students through today?")
+    ) {
+      return;
+    }
+    try {
+      const added = await applyRecurringFees();
+      toast.success(
+        added ? `Applied ${added} new fee charge(s)` : "All recurring fees already up to date",
+      );
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not apply fees");
+    }
+  }
+
+  function exportCsv() {
+    const today = tashkentToday();
+    if (search.view === "ledger") {
+      downloadCsv(
+        `transactions-${today}.csv`,
+        toCsv([
+          ["Date", "Student", "Type", "Group", "Amount (UZS)", "Method / period", "Note", "Voided"],
+          ...txRows.map((row) => [
+            row.occurred_on,
+            row.student,
+            txType(row),
+            row.group_name,
+            `${txSign(row) === "−" ? "-" : ""}${row.amount_uzs}`,
+            txMethodOrPeriod(row),
+            row.note,
+            row.voided_at ? row.void_reason : "",
+          ]),
+        ]),
+      );
+      return;
+    }
+    downloadCsv(
+      `balances-${today}.csv`,
+      toCsv([
+        [
+          "Student",
+          "Phone",
+          "Class",
+          "Sub-classes",
+          "Status",
+          "Balance (UZS)",
+          "Kind",
+          "Monthly fee (UZS)",
+          "Months in debt",
+        ],
+        ...rows.map((row) => [
+          studentName(row),
+          row.phone,
+          row.class_name,
+          row.groups.map((g) => g.name).join(" + "),
+          row.status,
+          row.balance,
+          KIND_META[row.balance < 0n ? "debt" : row.balance > 0n ? "credit" : "settled"].label,
+          row.monthly_fee,
+          row.months_in_debt,
+        ]),
+      ]),
+    );
+  }
+
+  const feeMeta =
+    summary == null
+      ? undefined
+      : summary.priced_groups === 0
+        ? "No group fees set yet — edit a group in Classes"
+        : summary.min_fee === summary.max_fee
+          ? `${groupDigits(summary.min_fee ?? 0n)} UZS per group`
+          : `${groupDigits(summary.min_fee ?? 0n)}–${groupDigits(summary.max_fee ?? 0n)} UZS per group`;
 
   return (
-    <div className="space-y-4 text-brand-900">
-      <Link to="/admin/classes" className="tap text-sm font-bold uppercase text-brand-900">
-        ← Back
-      </Link>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-black uppercase">Payments</h1>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white"
-            onClick={() => {
-              if (!confirm("Apply missing monthly charges?")) return;
-              void applyRecurringFees()
-                .then((n) =>
-                  toast.success(
-                    n ? `Applied ${n} new charges` : "All recurring fees already up to date",
-                  ),
-                )
-                .then(load);
-            }}
-          >
-            Apply recurring fees
-          </button>
-          <Link
-            to="/admin/payments/ledger"
-            className="tap rounded-full bg-brand-800 px-4 py-2 text-sm font-bold text-white"
-          >
-            Ledger
-          </Link>
+    <div className="space-y-5 text-brand-900">
+      <div className="flex flex-col gap-3 rise-in md:flex-row md:items-end md:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-black tracking-tight md:text-3xl">Balances & Payments</h1>
+          <p className="mt-1 text-sm text-brand-700">
+            Track student debt, credit, and payment history. Course fees recur monthly
+            automatically.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <IconButton
+            icon={CalendarCheck}
+            label="Charge monthly fee"
+            variant="brand"
+            text="Charge monthly fee"
+            onClick={() => void chargeAll()}
+          />
+          <IconButton icon={Download} label="Export CSV" variant="outline" onClick={exportCsv} />
         </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StatTile
-          icon={Wallet}
+
+      <div className="grid gap-3 sm:grid-cols-3 stagger">
+        <MoneyTile
+          icon={TriangleAlert}
           label="Total owed"
-          value={owed}
-          hint={`${debtors.length} debtors`}
+          amount={summary?.total_owed ?? null}
+          hint={summary ? `${summary.debtors} debtor(s)` : undefined}
+          loading={!summary}
         />
-        <StatTile
+        <MoneyTile
           icon={Wallet}
           label="Credits / prepaid"
-          value={rows
-            .filter((row) => asInt(row.balance) > 0)
-            .reduce((s, r) => s + asInt(r.balance), 0)}
-          hint={`${settled.length} settled`}
+          amount={summary?.credits ?? null}
+          hint={summary ? `${summary.settled} settled` : undefined}
+          loading={!summary}
         />
-        <StatTile
-          icon={Wallet}
-          label="Expected this month"
-          value={rows.reduce((s, r) => s + asInt(r.monthly_fee), 0)}
-          hint="Sum of current fees"
+        <MoneyTile
+          icon={Layers}
+          label="Monthly group fees"
+          text={summary ? `${summary.priced_groups} of ${summary.active_groups} groups` : undefined}
+          hint={feeMeta}
+          loading={!summary}
         />
       </div>
-      <div className="flex flex-wrap gap-2">
-        {["", "debt", "credit", "settled"].map((kind) => (
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative isolate flex rounded-full bg-brand-25 p-1" role="tablist">
+          <span
+            aria-hidden="true"
+            className="nav-tab-pill absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-brand-500"
+            style={{ transform: `translateX(${search.view === "ledger" ? "100%" : "0"})` }}
+          />
+          {(
+            [
+              ["balances", "Balances", Wallet],
+              ["ledger", "All transactions", ListChecks],
+            ] as const
+          ).map(([view, label, Icon]) => (
+            <button
+              key={view}
+              type="button"
+              role="tab"
+              aria-selected={search.view === view}
+              className={cn(
+                "tap relative z-10 flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-bold transition-colors duration-200",
+                search.view === view ? "text-white" : "text-brand-700",
+              )}
+              onClick={() => patch({ view })}
+            >
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              {label}
+            </button>
+          ))}
+        </div>
+        <ul
+          className="flex flex-wrap items-center gap-3 text-xs font-bold text-brand-700"
+          aria-label="Legend"
+        >
+          {(["debt", "settled", "credit"] as const).map((kind) => {
+            const Icon = KIND_META[kind].icon;
+            return (
+              <li key={kind} className="inline-flex items-center gap-1">
+                <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                {KIND_META[kind].label}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="relative min-w-0 flex-1 basis-56">
+          <span className="sr-only">Search</span>
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-200"
+            aria-hidden="true"
+          />
+          <input
+            className={CLASS_CONTROL + " pl-9"}
+            placeholder={search.view === "ledger" ? "Student name or note" : "Name or phone"}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </label>
+        <select
+          aria-label="Group filter"
+          className={CLASS_CONTROL + " w-auto max-w-[14rem]"}
+          value={search.group}
+          onChange={(e) => patch({ group: e.target.value })}
+        >
+          <option value="">All groups</option>
+          {groupsByParent.map(([parent, groups]) => (
+            <optgroup key={parent} label={parent}>
+              {groups.map((g) => (
+                <option key={g.group_id} value={g.group_id}>
+                  {g.group_name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Balance filter">
+          {CHIPS.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              aria-pressed={search.chip === chip}
+              className={cn(
+                "tap rounded-full px-3 py-1.5 text-xs font-bold transition-colors duration-200",
+                search.chip === chip ? "bg-brand-500 text-white" : "bg-brand-25 text-brand-700",
+              )}
+              onClick={() => patch({ chip, view: "balances" })}
+            >
+              {CHIP_LABEL[chip]}
+            </button>
+          ))}
+        </div>
+        <MoreFilters search={search} onChange={patch} />
+        {isFiltered && (
           <button
-            key={kind || "all"}
             type="button"
-            className="tap rounded-full bg-brand-800 px-3 py-1 text-xs font-bold uppercase text-white"
-            onClick={() => void navigate({ search: { ...search, kind } })}
+            className="tap inline-flex items-center gap-1 rounded-full bg-brand-25 px-3 py-1.5 text-xs font-bold text-brand-700"
+            onClick={() =>
+              patch({
+                q: "",
+                group: "",
+                chip: "all",
+                ...Object.fromEntries(MORE_FILTERS.map((key) => [key, ""])),
+              })
+            }
           >
-            {kind || "All balances"}
-          </button>
-        ))}
-        <input
-          className={CLASS_CONTROL + " max-w-xs"}
-          placeholder="Search"
-          defaultValue={search.q}
-          onBlur={(e) => void navigate({ search: { ...search, q: e.target.value } })}
-        />
-        {(search.q || search.kind || search.status || search.rank) && (
-          <button
-            type="button"
-            className="tap text-xs font-bold uppercase text-brand-900"
-            onClick={() => void navigate({ search: { q: "", kind: "", status: "", rank: "" } })}
-          >
-            CLEAR FILTERS
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+            Clear filters
           </button>
         )}
       </div>
+      <p className="text-xs text-brand-700">
+        Fees recur monthly. Click a name for the full student profile.
+      </p>
+
       {loading ? (
         <TableSkeleton />
       ) : error ? (
-        <p className="text-sm">
-          {error}{" "}
-          <button type="button" className="font-bold underline" onClick={() => void load()}>
-            Retry
-          </button>
-        </p>
-      ) : rows.length === 0 ? (
         <EmptyState
-          icon={Wallet}
-          title="No balances"
-          body="Students appear here after they join a class."
+          icon={TriangleAlert}
+          title="Could not load payments"
+          body={error}
+          action={
+            <button
+              type="button"
+              className="tap text-sm font-bold underline"
+              onClick={() => void load()}
+            >
+              Retry
+            </button>
+          }
         />
+      ) : search.view === "ledger" ? (
+        <>
+          <TransactionsTable rows={txRows} showGroup />
+          <p className="text-xs text-brand-700">
+            {txRows.length} transactions · recurring group fees
+          </p>
+        </>
+      ) : rows.length === 0 ? (
+        <EmptyState icon={Search} title="No students match" body="Try another filter or search." />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-brand-400/40 bg-white text-brand-900">
-          <table className="w-full min-w-[720px] text-left text-sm text-brand-900">
-            <thead className="text-[10px] font-bold uppercase text-brand-700">
-              <tr>
-                <th className="p-3">Student</th>
-                <th>Balance</th>
-                <th>Fee</th>
-                <th>Rank</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.user_id} className="border-t border-brand-400/30">
-                  <td className="p-3">
-                    <div className="font-bold">{row.full_name || row.username}</div>
-                    <div className="text-xs uppercase text-brand-700">
-                      {row.class_name} · {row.phone || "no phone"} · {row.status}
-                    </div>
-                  </td>
-                  <td className="tabular-nums">
-                    {asInt(row.balance) < 0
-                      ? "Debt "
-                      : asInt(row.balance) > 0
-                        ? "Credit "
-                        : "Settled "}
-                    {formatUzs(Math.abs(asInt(row.balance)))}
-                  </td>
-                  <td>{row.monthly_fee ? formatUzs(asInt(row.monthly_fee)) : "—"}</td>
-                  <td>
-                    <RankBadge letter={row.rank_letter} total={row.total_score} />
-                  </td>
-                  <td className="space-x-2 p-3 text-xs font-bold">
+        <>
+          <BalancesTable
+            rows={rows}
+            onPay={(row) =>
+              setPayFor({
+                userId: row.user_id,
+                name: studentName(row),
+                balance: row.balance,
+                monthlyFee: row.monthly_fee,
+              })
+            }
+            onCharge={(row) =>
+              void chargeThisMonth({
+                userId: row.user_id,
+                name: studentName(row),
+                active: row.groups.some((g) => g.status === "active"),
+              }).then((charged) => {
+                if (charged) return load();
+              })
+            }
+          />
+          <p className="text-xs text-brand-700 tabular-nums">
+            {rows.length} shown · {debtors.length} debtors · owed {compactUzs(owed)} · fee auto-runs
+            monthly
+          </p>
+        </>
+      )}
+
+      <RecordPaymentDialog target={payFor} onClose={() => setPayFor(null)} onSaved={load} />
+    </div>
+  );
+}
+
+function BalancesTable({
+  rows,
+  onPay,
+  onCharge,
+}: {
+  rows: BalanceRow[];
+  onPay: (row: BalanceRow) => void;
+  onCharge: (row: BalanceRow) => void;
+}) {
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel">
+      <table className="w-full min-w-[860px] text-left text-sm">
+        <thead className="text-[11px] font-bold text-brand-100">
+          <tr>
+            <th className="p-3">Student</th>
+            <th className="whitespace-nowrap p-3">Balance</th>
+            <th className="whitespace-nowrap p-3">Recent activity</th>
+            <th className="p-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.user_id} className="border-t border-brand-400/30 align-top">
+              <td className="p-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  {row.class_id ? (
                     <Link
                       to="/admin/classes/$classId/students/$userId"
                       params={{ classId: row.class_id, userId: row.user_id }}
+                      className="tap truncate font-bold underline-offset-2 hover:underline"
                     >
-                      PROFILE
+                      {studentName(row)}
                     </Link>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void chargeMonth(row.user_id, new Date().toISOString().slice(0, 7) + "-01")
-                          .then(load)
-                          .catch((err) =>
-                            toast.error(err instanceof Error ? err.message : "Charge failed"),
-                          )
-                      }
+                  ) : (
+                    <span className="truncate font-bold">{studentName(row)}</span>
+                  )}
+                  {row.status && <StatusLabel status={row.status} className="text-brand-100" />}
+                </div>
+                <div className="mt-0.5 text-xs text-brand-100">{row.phone || "No phone"}</div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {row.groups.map((g) => (
+                    <SubclassChip key={g.id} subject={g.subject} name={g.name} />
+                  ))}
+                </div>
+              </td>
+              <td className="p-3">
+                <BalanceLabel balance={row.balance} />
+                {row.months_in_debt > 0 && (
+                  <div className="mt-1 text-xs text-brand-100">
+                    {row.months_in_debt} month(s) in debt
+                  </div>
+                )}
+              </td>
+              <td className="p-3 text-xs">
+                {row.recent.length === 0 ? (
+                  <span className="text-brand-100">No transactions yet</span>
+                ) : (
+                  <ul className="space-y-0.5">
+                    {row.recent.map((entry) => (
+                      <li key={entry.id} className="whitespace-nowrap tabular-nums">
+                        <span className="font-bold">
+                          {entry.kind === "charge" || entry.kind === "refund" ? "−" : "+"}
+                          {formatUzs(entry.amount_uzs)}
+                        </span>
+                        <span className="text-brand-100">
+                          {" "}
+                          · {entry.note ?? entry.kind} · {entry.occurred_on}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </td>
+              <td className="p-2">
+                <div className="flex justify-end gap-1">
+                  {row.class_id && (
+                    <Link
+                      to="/admin/classes/$classId/students/$userId"
+                      params={{ classId: row.class_id, userId: row.user_id }}
+                      aria-label={`Profile of ${studentName(row)}`}
+                      className="tap grid h-10 w-10 place-items-center rounded-full text-white hover:bg-brand-500 focus-visible:ring-2 focus-visible:ring-brand-200"
                     >
-                      CHARGE MONTH
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                      <UserRound className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  )}
+                  <IconButton
+                    icon={HandCoins}
+                    label="Record payment"
+                    className="text-white hover:bg-brand-500"
+                    onClick={() => onPay(row)}
+                  />
+                  <IconButton
+                    icon={ReceiptText}
+                    label="Charge fee"
+                    className="text-white hover:bg-brand-500"
+                    onClick={() => onCharge(row)}
+                  />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
+  );
+}
+
+function MoreFilters({
+  search,
+  onChange,
+}: {
+  search: Search;
+  onChange: (next: Partial<Search>) => void;
+}) {
+  const count = MORE_FILTERS.filter((key) => search[key]).length;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <IconButton
+          icon={SlidersHorizontal}
+          label={count ? `More filters (${count} on)` : "More filters"}
+          variant="outline"
+          pressed={count > 0}
+        />
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        className="w-80 space-y-3 border-brand-400/40 bg-brand-800 text-white"
+      >
+        {search.view === "balances" ? (
+          <>
+            <label className="block text-xs font-bold text-brand-100">
+              Status
+              <select
+                className={CLASS_CONTROL + " mt-1"}
+                value={search.status}
+                onChange={(e) => onChange({ status: e.target.value as Search["status"] })}
+              >
+                <option value="">Any</option>
+                <option value="active">Active</option>
+                <option value="trial">Trial</option>
+                <option value="frozen">Frozen</option>
+              </select>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block text-xs font-bold text-brand-100">
+                Debt from
+                <input
+                  inputMode="numeric"
+                  className={CLASS_CONTROL + " mt-1 tabular-nums"}
+                  value={search.minDebt}
+                  onChange={(e) => onChange({ minDebt: e.target.value.replace(/\D/g, "") })}
+                />
+              </label>
+              <label className="block text-xs font-bold text-brand-100">
+                Debt to
+                <input
+                  inputMode="numeric"
+                  className={CLASS_CONTROL + " mt-1 tabular-nums"}
+                  value={search.maxDebt}
+                  onChange={(e) => onChange({ maxDebt: e.target.value.replace(/\D/g, "") })}
+                />
+              </label>
+            </div>
+            <label className="block text-xs font-bold text-brand-100">
+              Months in debt at least
+              <input
+                inputMode="numeric"
+                className={CLASS_CONTROL + " mt-1"}
+                value={search.monthsInDebt}
+                onChange={(e) =>
+                  onChange({ monthsInDebt: e.target.value.replace(/\D/g, "").slice(0, 2) })
+                }
+              />
+            </label>
+            <label className="block text-xs font-bold text-brand-100">
+              Rank tier
+              <select
+                className={CLASS_CONTROL + " mt-1"}
+                value={search.rank}
+                onChange={(e) => onChange({ rank: e.target.value as Search["rank"] })}
+              >
+                <option value="">Any</option>
+                {(["S", "A", "B", "C", "D"] as const).map((tier) => (
+                  <option key={tier} value={tier}>
+                    {tier}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        ) : (
+          <>
+            <label className="block text-xs font-bold text-brand-100">
+              Method
+              <select
+                className={CLASS_CONTROL + " mt-1"}
+                value={search.method}
+                onChange={(e) => onChange({ method: e.target.value as Search["method"] })}
+              >
+                <option value="">Any</option>
+                <option value="cash">Cash</option>
+                <option value="card">Card</option>
+                <option value="transfer">Bank transfer</option>
+              </select>
+            </label>
+            <label className="block text-xs font-bold text-brand-100">
+              Type
+              <select
+                className={CLASS_CONTROL + " mt-1"}
+                value={search.kind}
+                onChange={(e) => onChange({ kind: e.target.value as Search["kind"] })}
+              >
+                <option value="">Any</option>
+                <option value="charge">Charge</option>
+                <option value="payment">Payment</option>
+                <option value="discount">Discount</option>
+                <option value="refund">Refund</option>
+              </select>
+            </label>
+            <label className="block text-xs font-bold text-brand-100">
+              Source
+              <select
+                className={CLASS_CONTROL + " mt-1"}
+                value={search.source}
+                onChange={(e) => onChange({ source: e.target.value as Search["source"] })}
+              >
+                <option value="">Any</option>
+                <option value="auto">Recurring</option>
+                <option value="manual">Manual</option>
+              </select>
+            </label>
+          </>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

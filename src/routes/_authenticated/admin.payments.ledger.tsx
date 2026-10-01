@@ -1,115 +1,112 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { listBalances, studentLedger } from "@/lib/billing/api";
-import { asInt, type LedgerRow } from "@/lib/billing/types";
-import { formatUzs } from "@/lib/billing/money";
+import { useCallback, useEffect, useState } from "react";
+import { ChevronLeft, Download } from "lucide-react";
+import { toast } from "sonner";
 import { TableSkeleton } from "@/components/ui/skeletons";
+import { IconButton } from "@/components/ui/icon-button";
+import { TransactionsTable, type TxRow } from "@/components/billing/TransactionsTable";
+import { txMethodOrPeriod, txSign, txType } from "@/lib/billing/ledger";
+import { VoidDialog } from "@/components/billing/VoidDialog";
+import { listAllLedger, listBalances, voidEntry } from "@/lib/billing/api";
+import { downloadCsv, toCsv } from "@/lib/billing/csv";
+import { tashkentToday } from "@/lib/billing/dates";
+import { formatUzs } from "@/lib/billing/money";
 
 export const Route = createFileRoute("/_authenticated/admin/payments/ledger")({
   component: LedgerPage,
 });
 
 function LedgerPage() {
-  const [rows, setRows] = useState<(LedgerRow & { student: string })[]>([]);
+  const [rows, setRows] = useState<TxRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [voiding, setVoiding] = useState<TxRow | null>(null);
 
-  useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      const balances = await listBalances({}).catch(() => []);
-      const all: (LedgerRow & { student: string })[] = [];
-      for (const person of balances.slice(0, 40)) {
-        const ledger = await studentLedger(person.user_id).catch(() => []);
-        for (const row of ledger)
-          all.push({ ...row, student: person.full_name || person.username || person.user_id });
-      }
-      all.sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));
-      setRows(all.slice(0, 50));
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [ledger, people] = await Promise.all([listAllLedger(), listBalances({})]);
+      const names = new Map(people.map((p) => [p.user_id, p.full_name || p.username || "—"]));
+      setRows(ledger.map((row) => ({ ...row, student: names.get(row.user_id ?? "") ?? "—" })));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not load the ledger");
+    } finally {
       setLoading(false);
-    })();
+    }
   }, []);
 
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   function exportCsv() {
-    const header = "date,student,kind,amount,method,note,voided";
-    const body = rows
-      .map((row) =>
+    downloadCsv(
+      `ledger-${tashkentToday()}.csv`,
+      toCsv([
         [
+          "Date",
+          "Student",
+          "Type",
+          "Group",
+          "Prorated",
+          "Amount (UZS)",
+          "Method / period",
+          "Note",
+          "Voided",
+        ],
+        ...rows.map((row) => [
           row.occurred_on,
           row.student,
-          row.kind,
-          asInt(row.amount_uzs),
-          row.method ?? "",
-          row.note ?? "",
-          row.voided_at ? "yes" : "",
-        ].join(","),
-      )
-      .join("\n");
-    const blob = new Blob([header + "\n" + body], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "ledger.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+          txType(row),
+          row.group_name,
+          row.prorate_lessons == null ? "" : `${row.prorate_lessons}/${row.prorate_total}`,
+          `${txSign(row) === "−" ? "-" : ""}${row.amount_uzs}`,
+          txMethodOrPeriod(row),
+          row.note,
+          row.voided_at ? row.void_reason : "",
+        ]),
+      ]),
+    );
   }
 
   return (
     <div className="space-y-4 text-brand-900">
-      <Link to="/admin/payments" className="tap text-sm font-bold uppercase text-brand-900">
-        ← Back
+      <Link
+        to="/admin/payments"
+        className="tap inline-flex items-center gap-1 text-sm font-bold text-brand-700"
+      >
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        Balances
       </Link>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-black uppercase">Ledger</h1>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="tap rounded-full bg-brand-800 px-4 py-2 text-sm font-bold uppercase text-white"
-            onClick={exportCsv}
-          >
-            EXPORT CSV
-          </button>
-          <Link to="/admin/payments" className="tap text-sm font-bold uppercase text-brand-900">
-            Balances
-          </Link>
-        </div>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-2xl font-black tracking-tight md:text-3xl">Ledger</h1>
+        <IconButton icon={Download} label="Export CSV" variant="outline" onClick={exportCsv} />
       </div>
       {loading ? (
         <TableSkeleton />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-brand-400/40 bg-white text-brand-900">
-          <table className="w-full min-w-[720px] text-left text-sm text-brand-900">
-            <thead className="text-[10px] font-bold uppercase text-brand-700">
-              <tr>
-                <th className="p-3">Date</th>
-                <th>Student</th>
-                <th>Kind</th>
-                <th>Amount</th>
-                <th>Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className={
-                    "border-t border-brand-400/30 " +
-                    (row.voided_at ? "line-through opacity-60" : "")
-                  }
-                >
-                  <td className="p-3">{row.occurred_on}</td>
-                  <td>{row.student}</td>
-                  <td>
-                    {row.kind}
-                    {row.source === "auto" ? " · auto" : ""}
-                  </td>
-                  <td>{formatUzs(asInt(row.amount_uzs))}</td>
-                  <td>{row.note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <TransactionsTable rows={rows} showGroup onVoid={setVoiding} />
+          <p className="text-xs text-brand-700">
+            {rows.length} transactions · recurring group fees
+          </p>
+        </>
       )}
+      <VoidDialog
+        open={voiding != null}
+        title="Void entry"
+        description={
+          voiding
+            ? `${voiding.student} · ${txType(voiding)} · ${formatUzs(voiding.amount_uzs)} · ${voiding.occurred_on}`
+            : ""
+        }
+        onClose={() => setVoiding(null)}
+        onVoid={async (reason) => {
+          if (!voiding) return;
+          await voidEntry(voiding.id, reason);
+          toast.success("Entry voided");
+          await load();
+        }}
+      />
     </div>
   );
 }

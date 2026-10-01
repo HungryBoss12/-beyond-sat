@@ -66,9 +66,31 @@ export function parseUzsInput(raw: string, max: bigint = UZS_DEFAULT_MAX_PAYMENT
   return n;
 }
 
+export type UzsCheck = { amount: bigint | null; error: string | null };
+
+/** Inline validation for a money field: empty is "no value", everything else must be in range. */
+export function checkUzsInput(
+  raw: string,
+  min: bigint = UZS_MIN_PAYMENT,
+  max: bigint = UZS_DEFAULT_MAX_PAYMENT,
+): UzsCheck {
+  const text = raw.trim();
+  if (!text) return { amount: null, error: null };
+  if (!/^\d[\d ]*$/.test(text)) return { amount: null, error: "Digits only" };
+  const digits = text.replace(/ /g, "");
+  if (digits.length > 13) return { amount: null, error: `At most ${groupDigits(max)} UZS` };
+  const n = BigInt(digits);
+  if (n < min) return { amount: null, error: `At least ${groupDigits(min)} UZS` };
+  if (n > max) return { amount: null, error: `At most ${groupDigits(max)} UZS` };
+  return { amount: n, error: null };
+}
+
 /** Keeps only digits and regroups them for display while typing. */
 export function maskUzsInput(raw: string): string {
-  const digits = raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 13);
+  const digits = raw
+    .replace(/\D/g, "")
+    .replace(/^0+(?=\d)/, "")
+    .slice(0, 13);
   return digits ? groupDigits(BigInt(digits)) : "";
 }
 

@@ -462,7 +462,7 @@ export async function createHomework(input: {
   title: string;
   body: string;
   due_at?: string | null;
-  var_kind?: "vocab" | "assignment" | "article" | null;
+  var_kind?: "vocab" | "assignment" | "article" | "formulas" | null;
   lesson_id?: string | null;
   max_score?: number | null;
 }): Promise<HomeworkAssignment> {

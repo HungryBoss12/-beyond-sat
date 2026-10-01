@@ -58,6 +58,20 @@ export function stepLevel(current: number | null, direction: 1 | -1, big: boolea
   return Math.min(LEVEL_MAX, Math.max(LEVEL_MIN, base + direction * step));
 }
 
+/** Short column header from a section name: "Command of Evidence (Textual)" -> "CET". */
+export function sectionShort(name: string): string {
+  const words = name
+    .replace(/[(),&]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 1) return words[0]!.slice(0, 5);
+  return words
+    .filter((w) => !["and", "of", "the"].includes(w.toLowerCase()))
+    .map((w) => w[0]!.toUpperCase())
+    .join("")
+    .slice(0, 5);
+}
+
 export type LevelTrend = "up" | "down" | "flat";
 
 export function levelTrend(current: number | null, previous: number | null): LevelTrend | null {

@@ -88,7 +88,7 @@ export type HomeworkAssignment = {
   due_at: string | null;
   created_at: string;
   created_by: string | null;
-  var_kind?: VarKind | null;
+  var_kind?: VarKind | "formulas" | null;
   lesson_id?: string | null;
   max_score?: number | null;
 };

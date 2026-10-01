@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   balanceKind,
+  checkUzsInput,
   compactUzs,
   formatUzs,
   maskUzsInput,
@@ -41,6 +42,14 @@ describe("money", () => {
     expect(parseUzsInput("100 000 001")).toBeNull();
     expect(parseUzsInput("232323232323")).toBeNull();
     expect(parseUzsInput("5 000", 4000n)).toBeNull();
+  });
+
+  it("validates a money field inline without clamping", () => {
+    expect(checkUzsInput("")).toEqual({ amount: null, error: null });
+    expect(checkUzsInput("999")).toEqual({ amount: null, error: "At least 1 000 UZS" });
+    expect(checkUzsInput("232 323 232 323").error).toBe("At most 100 000 000 UZS");
+    expect(checkUzsInput("1 300 000")).toEqual({ amount: 1300000n, error: null });
+    expect(checkUzsInput("1e6").error).toBe("Digits only");
   });
 
   it("masks typing to grouped digits", () => {

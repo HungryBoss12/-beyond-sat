@@ -210,6 +210,7 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
     );
   }
 
+  // A parent row with no sub-class rows joins both sub-classes (class_memberships_after_insert).
   await db.from("class_memberships").delete().eq("user_id", userId);
   const { error: memErr } = await db
     .from("class_memberships")

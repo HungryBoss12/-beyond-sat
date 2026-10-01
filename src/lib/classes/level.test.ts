@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { levelOverall, levelTrend, parseLevelScore, stepLevel } from "./level";
+import { levelOverall, levelTrend, parseLevelScore, sectionShort, stepLevel } from "./level";
 
 describe("levelOverall", () => {
   it("averages two sections", () => {
@@ -55,6 +55,12 @@ describe("level helpers", () => {
     expect(stepLevel(640, -1, true)).toBe(590);
     expect(stepLevel(995, 1, false)).toBe(1000);
     expect(stepLevel(null, 1, false)).toBe(400);
+  });
+
+  it("abbreviates section names for column headers", () => {
+    expect(sectionShort("Command of Evidence (Textual)")).toBe("CET");
+    expect(sectionShort("Similarity & Congruence")).toBe("SC");
+    expect(sectionShort("Systems")).toBe("Syste");
   });
 
   it("compares with the previous assessment", () => {

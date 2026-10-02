@@ -15,7 +15,6 @@ import {
   ChevronRight,
   CheckCircle2,
   XCircle,
-  Target,
   Gauge,
   Calculator,
   RotateCcw,
@@ -30,8 +29,6 @@ import {
   estimateScore,
   scoreBand,
   scoreProgress,
-  RW_QUESTION_COUNT,
-  MATH_QUESTION_COUNT,
   type Section,
   type Difficulty,
 } from "@/lib/sat";
@@ -531,42 +528,50 @@ function ScoreCounter({
   );
 }
 
+const RW_MODULE = 27;
+const MATH_MODULE = 22;
+
 /**
- * Manual raw-score calculator: enter how many questions you got right in each
- * section and get an estimated scaled score. Independent of saved sessions, so
- * it works for paper practice tests taken outside the app.
+ * Manual raw-score calculator. Each section is two module lines; the section
+ * raw score is their sum, scaled with the existing SAT curves.
  */
 function ScoreCalculator() {
-  const [rw, setRw] = useState("");
-  const [math, setMath] = useState("");
+  const [rw1, setRw1] = useState(0);
+  const [rw2, setRw2] = useState(0);
+  const [math1, setMath1] = useState(0);
+  const [math2, setMath2] = useState(0);
+  const [touched, setTouched] = useState(false);
 
-  const rwNum = clampInt(rw, RW_QUESTION_COUNT);
-  const mathNum = clampInt(math, MATH_QUESTION_COUNT);
-  const touched = rw !== "" || math !== "";
-  const est = estimateScore(rwNum, mathNum);
+  const est = estimateScore(rw1 + rw2, math1 + math2);
   const band = scoreBand(est.total);
+
+  function setLine(setter: (n: number) => void, value: number) {
+    setTouched(true);
+    setter(value);
+  }
 
   return (
     <div className="rounded-2xl border border-brand-400/30 bg-grad-surface p-5 shadow-panel rise-in md:p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          {/* This card has always been a dark gradient, so the heading and copy
-              were slate-on-navy and effectively unreadable. */}
           <h2 className="flex items-center gap-2 text-lg font-black tracking-tight text-white">
             <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand-400 text-white">
               <Calculator className="h-[17px] w-[17px]" />
             </span>
             Score calculator
           </h2>
-          <p className="mt-1.5 text-xs text-brand-100">
-            Enter your correct answers per section to estimate a scaled score.
+          <p className="mt-1.5 text-xs text-white">
+            Drag each module line. The section score is the sum of its two modules.
           </p>
         </div>
         {touched && (
           <button
             onClick={() => {
-              setRw("");
-              setMath("");
+              setRw1(0);
+              setRw2(0);
+              setMath1(0);
+              setMath2(0);
+              setTouched(false);
             }}
             className="btn-ghost fade-in inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-300/40 bg-brand-800 px-2.5 py-1.5 text-xs font-semibold text-white"
           >
@@ -575,45 +580,45 @@ function ScoreCalculator() {
         )}
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
-        <RawInput
-          label="Reading & Writing"
-          max={RW_QUESTION_COUNT}
-          value={rw}
-          onChange={setRw}
+      <div className="mt-5 grid gap-5 sm:grid-cols-2">
+        <ModulePair
+          title="Reading & Writing"
+          max={RW_MODULE}
+          first={rw1}
+          second={rw2}
+          onFirst={(n) => setLine(setRw1, n)}
+          onSecond={(n) => setLine(setRw2, n)}
           scaled={touched ? est.rw : null}
         />
-        <RawInput
-          label="Math"
-          max={MATH_QUESTION_COUNT}
-          value={math}
-          onChange={setMath}
+        <ModulePair
+          title="Math"
+          max={MATH_MODULE}
+          first={math1}
+          second={math2}
+          onFirst={(n) => setLine(setMath1, n)}
+          onSecond={(n) => setLine(setMath2, n)}
           scaled={touched ? est.math : null}
         />
+      </div>
 
-        <div className="relative overflow-hidden rounded-xl bg-grad-brand px-6 py-4 text-center text-white shadow-brand">
-          <div
-            aria-hidden="true"
-            className="drift pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-white/10 blur-2xl"
-          />
-          <div className="relative">
-            {/* Both labels were white at reduced opacity; on this gradient the
-                brand-100 step reads as secondary at full opacity instead. */}
-            <div className="text-[10px] font-bold uppercase tracking-wider text-brand-100">
-              Estimated total
-            </div>
-            {/* Tweens as the inputs change, so the total visibly reacts. */}
-            <div className="mt-0.5 text-3xl font-black">
-              <AnimatedNumber value={touched ? est.total : 0} duration={500} />
-            </div>
-            <div className="text-[10px] font-semibold text-brand-100">
-              {touched ? band.label : "Enter your answers"}
-            </div>
+      <div className="mt-5 text-white">
+        <div className="flex items-end justify-between gap-3">
+          <div className="text-3xl font-black leading-none">
+            {touched ? <AnimatedNumber value={est.total} duration={500} /> : "—"}
           </div>
+          <div className="text-[10px] font-bold uppercase tracking-wider">
+            {touched ? band.label : "Move a line"}
+          </div>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-brand-800">
+          <div
+            className="h-full rounded-full bg-white transition-[width] duration-500"
+            style={{ width: `${touched ? scoreProgress(est.total) : 0}%` }}
+          />
         </div>
       </div>
 
-      <p className="mt-4 text-[11px] leading-relaxed text-brand-100">
+      <p className="mt-4 text-[11px] leading-relaxed text-white">
         Estimate only. The real Digital SAT is section-adaptive and College Board does not publish
         its conversion curves, so your official score may differ.
       </p>
@@ -621,55 +626,74 @@ function ScoreCalculator() {
   );
 }
 
-function RawInput({
-  label,
+function ModulePair({
+  title,
   max,
-  value,
-  onChange,
+  first,
+  second,
+  onFirst,
+  onSecond,
   scaled,
 }: {
-  label: string;
+  title: string;
   max: number;
-  value: string;
-  onChange: (v: string) => void;
+  first: number;
+  second: number;
+  onFirst: (n: number) => void;
+  onSecond: (n: number) => void;
   scaled: number | null;
 }) {
   return (
-    <label className="block">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-brand-100">{label}</span>
-      <div className="mt-1.5 flex items-center gap-2">
-        {/* color-scheme:dark keeps the native number spinner light against the
-            navy field; without it the arrows render as dark-on-dark. */}
-        <input
-          type="number"
-          inputMode="numeric"
-          min={0}
-          max={max}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="0"
-          aria-label={`${label} correct answers out of ${max}`}
-          className="w-full rounded-lg border border-brand-400/40 bg-brand-800 px-3 py-2.5 text-sm tabular-nums text-white transition-all duration-200 placeholder:text-brand-200 focus:border-brand-200 focus:shadow-brand focus:outline-none focus:ring-2 focus:ring-brand-200/25 [color-scheme:dark]"
-        />
-        <span className="shrink-0 text-xs text-brand-100">/ {max}</span>
+    <div>
+      <div className="text-[10px] font-bold uppercase tracking-wider text-white">{title}</div>
+      <div className="mt-3 space-y-3">
+        <ModuleLine label="Module 1" section={title} max={max} value={first} onChange={onFirst} />
+        <ModuleLine label="Module 2" section={title} max={max} value={second} onChange={onSecond} />
       </div>
-      {/* Raw-to-scaled readout, tweened so it tracks typing. */}
-      <div className="mt-2 flex items-center gap-1.5 text-xs">
-        <Target className="h-3.5 w-3.5 text-brand-200" />
-        <span className="text-brand-100">Scaled:</span>
-        <span className="font-bold text-white">
+      <div className="mt-3 flex items-baseline justify-between text-xs text-white">
+        <span className="tabular-nums">
+          {first + second} / {max * 2}
+        </span>
+        <span className="font-bold">
           {scaled == null ? "—" : <AnimatedNumber value={scaled} duration={400} />}
         </span>
       </div>
-    </label>
+    </div>
   );
 }
 
-/** Parses user input to an int inside [0, max]; blank or invalid becomes 0. */
-function clampInt(raw: string, max: number): number {
-  const n = Number.parseInt(raw, 10);
-  if (Number.isNaN(n)) return 0;
-  return Math.max(0, Math.min(max, n));
+function ModuleLine({
+  label,
+  section,
+  max,
+  value,
+  onChange,
+}: {
+  label: string;
+  section: string;
+  max: number;
+  value: number;
+  onChange: (n: number) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="flex items-center justify-between text-xs font-bold text-white">
+        <span>{label}</span>
+        <span className="tabular-nums">
+          {value} / {max}
+        </span>
+      </span>
+      <input
+        type="range"
+        min={0}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        aria-label={`${section} ${label}, ${value} of ${max} correct`}
+        className="mt-1.5 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-brand-800 accent-white"
+      />
+    </label>
+  );
 }
 
 function FieldFilter({ label, children }: { label: string; children: React.ReactNode }) {

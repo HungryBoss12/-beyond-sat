@@ -117,7 +117,7 @@ export function RecordPaymentDialog({
       <DialogContent className="max-h-[92vh] overflow-y-auto border-brand-400/40 bg-brand-800 text-white sm:rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-white">Record payment</DialogTitle>
-          <DialogDescription className="min-w-0 truncate tabular-nums text-brand-100">
+          <DialogDescription className="min-w-0 truncate tabular-nums text-white">
             {target.name} · {KIND_WORD[kind]}
             {kind === "settled" ? "" : ` ${formatUzs(target.balance)}`}
           </DialogDescription>
@@ -125,13 +125,13 @@ export function RecordPaymentDialog({
 
         {confirming && check.amount != null ? (
           <div className="space-y-4">
-            <p className="text-sm text-brand-100">
+            <p className="text-sm text-white">
               This is a large payment. Check the digits before saving.
             </p>
             <p className="break-all rounded-xl bg-brand-600 p-4 text-center text-2xl font-black tabular-nums">
               {formatUzs(check.amount)}
             </p>
-            <p className="text-center text-xs text-brand-100 tabular-nums">
+            <p className="text-center text-xs text-white tabular-nums">
               {check.amount.toString()} UZS · {PAY_METHOD_LABEL[method]} · {date}
             </p>
             <div className="flex justify-end gap-2">
@@ -174,7 +174,7 @@ export function RecordPaymentDialog({
               hint={`${groupDigits(limits.min_payment_uzs)} – ${groupDigits(limits.max_payment_uzs)} UZS`}
             />
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-xs font-bold text-brand-100">
+              <label className="block text-xs font-bold text-white">
                 Method
                 <select
                   className={CLASS_CONTROL + " mt-1"}
@@ -188,7 +188,7 @@ export function RecordPaymentDialog({
                   ))}
                 </select>
               </label>
-              <label className="block text-xs font-bold text-brand-100">
+              <label className="block text-xs font-bold text-white">
                 Date
                 <input
                   type="date"
@@ -200,7 +200,7 @@ export function RecordPaymentDialog({
                 {dateError && <span className="mt-1 block text-white">{dateError}</span>}
               </label>
             </div>
-            <label className="block text-xs font-bold text-brand-100">
+            <label className="block text-xs font-bold text-white">
               Note (optional)
               <input
                 maxLength={80}
@@ -210,7 +210,7 @@ export function RecordPaymentDialog({
                 onChange={(e) => setNote(e.target.value)}
               />
             </label>
-            <p className="min-w-0 truncate text-xs text-brand-100 tabular-nums">
+            <p className="min-w-0 truncate text-xs text-white tabular-nums">
               Balance after:{" "}
               {after == null
                 ? "—"

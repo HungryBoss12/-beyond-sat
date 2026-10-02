@@ -18,7 +18,7 @@ export async function chargeThisMonth(input: {
     return added > 0;
   } catch (err) {
     if (isNoPricedGroupsError(err)) {
-      toast.error("No priced sub-class for this student. Set a group fee in Classes.");
+      toast.error("No class fee is set. Edit the class in Classes.");
     } else {
       toast.error(err instanceof Error ? err.message : "Charge failed");
     }

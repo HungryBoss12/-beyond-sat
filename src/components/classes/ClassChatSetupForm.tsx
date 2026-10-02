@@ -108,7 +108,7 @@ export function ClassChatSetupForm({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-8 text-sm text-brand-100">
+      <div className="flex items-center justify-center gap-2 py-8 text-sm text-white">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading…
       </div>
     );
@@ -123,7 +123,7 @@ export function ClassChatSetupForm({
       {!compact && (
         <div>
           <h2 className="text-xl font-black text-white">Set up Classes chat</h2>
-          <p className="mt-1 text-sm text-brand-100">
+          <p className="mt-1 text-sm text-white">
             Pick a username for Classes chat and optionally connect Telegram. Your teacher assigns
             your class group.
           </p>
@@ -141,7 +141,7 @@ export function ClassChatSetupForm({
           {avatarPreview ? (
             <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
           ) : (
-            <Camera className="h-5 w-5 text-brand-100" />
+            <Camera className="h-5 w-5 text-white" />
           )}
           {uploading && (
             <span className="absolute inset-0 grid place-items-center bg-brand-900/60">
@@ -159,13 +159,13 @@ export function ClassChatSetupForm({
             if (f) void onAvatar(f);
           }}
         />
-        <div className="text-xs text-brand-100">
+        <div className="text-xs text-white">
           Profile photo (optional). You can also just use a username.
         </div>
       </div>
 
       <label className="block">
-        <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand-100">
+        <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white">
           Username
         </span>
         <input
@@ -181,12 +181,12 @@ export function ClassChatSetupForm({
         {assignedName ? (
           <>
             <p className="font-semibold text-white">{assignedName}</p>
-            <p className="mt-0.5 text-xs text-brand-100">
+            <p className="mt-0.5 text-xs text-white">
               Assigned by your teacher — contact them to switch groups.
             </p>
           </>
         ) : (
-          <p className="text-brand-100">
+          <p className="text-white">
             Your teacher will assign you to a class. You can finish chat setup now and join chats
             once you are added.
           </p>
@@ -194,7 +194,7 @@ export function ClassChatSetupForm({
       </div>
 
       <label className="block">
-        <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand-100">
+        <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white">
           Telegram (optional)
         </span>
         <input

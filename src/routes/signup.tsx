@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { appUrl } from "@/lib/app-url";
 import { rememberCurrentSession } from "@/lib/auth/account-switcher";
 import { isSyntheticAccountEmail } from "@/lib/auth/login-email";
+import { loadRegistrationEnabled, useRegistrationEnabled } from "@/lib/registration";
 import { AdminSelect } from "@/components/admin/AdminSelect";
 
 export const Route = createFileRoute("/signup")({
@@ -62,9 +63,13 @@ function SignUp() {
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const registrationOn = useRegistrationEnabled();
 
   // Redirect signed-in users
   useEffect(() => {
+    void loadRegistrationEnabled().then((on) => {
+      if (!on) navigate({ to: "/signin", replace: true });
+    });
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) navigate({ to: "/dashboard", replace: true });
     });
@@ -89,6 +94,11 @@ function SignUp() {
       return;
     }
     setLoading(true);
+    if (!(await loadRegistrationEnabled())) {
+      setLoading(false);
+      navigate({ to: "/signin", replace: true });
+      return;
+    }
     if (isSyntheticAccountEmail(parsed.data.email)) {
       setFormError("Use a real email address.");
       setLoading(false);
@@ -162,6 +172,8 @@ function SignUp() {
     if (error) setOtpError(error.message);
     else setInfo("A new code has been sent to your email.");
   }
+
+  if (registrationOn !== true) return null;
 
   return (
     <div className="relative isolate flex min-h-screen flex-col bg-white">

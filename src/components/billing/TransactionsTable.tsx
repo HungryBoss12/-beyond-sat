@@ -10,6 +10,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { txMethodOrPeriod, txSign, txType } from "@/lib/billing/ledger";
 import { formatUzs } from "@/lib/billing/money";
 import type { LedgerRow } from "@/lib/billing/types";
+import { usePointerGlow } from "@/hooks/usePointerGlow";
 import { cn } from "@/lib/utils";
 
 export type TxRow = LedgerRow & { student?: string };
@@ -29,13 +30,17 @@ export function TransactionsTable({
   emptyTitle?: string;
   emptyBody?: string;
 }) {
+  const glow = usePointerGlow<HTMLDivElement>();
   if (rows.length === 0) {
     return <EmptyState icon={ListChecks} title={emptyTitle} body={emptyBody} />;
   }
   return (
-    <div className="overflow-x-auto rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel">
+    <div
+      ref={glow}
+      className="reveal-surface overflow-x-auto overflow-y-clip rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel"
+    >
       <table className="w-full min-w-[720px] text-left text-sm">
-        <thead className="text-[11px] font-bold text-brand-100">
+        <thead className="text-[11px] font-bold text-white">
           <tr>
             <th className="whitespace-nowrap p-3">Date</th>
             {showStudent && <th className="whitespace-nowrap p-3">Student</th>}
@@ -61,7 +66,7 @@ export function TransactionsTable({
               <td className="whitespace-nowrap p-3">
                 {txType(row)}
                 {row.prorate_lessons != null && (
-                  <span className="ml-1 text-xs text-brand-100">
+                  <span className="ml-1 text-xs text-white">
                     {row.prorate_lessons}/{row.prorate_total}
                   </span>
                 )}
@@ -72,7 +77,7 @@ export function TransactionsTable({
                 {formatUzs(row.amount_uzs)}
               </td>
               <td className="whitespace-nowrap p-3">{txMethodOrPeriod(row)}</td>
-              <td className="max-w-[18rem] truncate p-3 text-brand-100" title={row.note ?? ""}>
+              <td className="max-w-[18rem] truncate p-3 text-white" title={row.note ?? ""}>
                 {row.voided_at ? `Voided: ${row.void_reason ?? ""}` : (row.note ?? "")}
               </td>
               {onVoid && (

@@ -56,7 +56,7 @@ import {
   type ResultRow,
 } from "@/lib/classes/groups";
 import { schemeFor, subjectToSlug } from "@/lib/classes/schemes";
-import { groupFees, listBalances } from "@/lib/billing/api";
+import { classFees, listBalances } from "@/lib/billing/api";
 import { tashkentToday } from "@/lib/billing/dates";
 import { balanceKind, type BalanceKind } from "@/lib/billing/money";
 import { cn } from "@/lib/utils";
@@ -170,10 +170,10 @@ export function ClassroomWorkspace({
       if (isAdmin) {
         const [money, fees] = await Promise.all([
           listBalances({ groupId: group.id }).catch(() => []),
-          groupFees().catch(() => []),
+          classFees().catch(() => []),
         ]);
         setBalances(new Map(money.map((m) => [m.user_id, balanceKind(m.balance)])));
-        setFee(fees.find((f) => f.group_id === group.id)?.monthly_fee_uzs ?? null);
+        setFee(fees.find((f) => f.class_id === group.class_id)?.monthly_fee_uzs ?? null);
       }
     } finally {
       setLoading(false);
@@ -349,7 +349,7 @@ export function ClassroomWorkspace({
                       onClick={() => onNavigate({ tab: id })}
                       className={cn(
                         "tap relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-lg px-1 py-2 text-xs font-bold transition-colors duration-200",
-                        search.tab === id ? "text-white" : "text-brand-100",
+                        search.tab === id ? "text-white" : "text-white/80",
                       )}
                     >
                       <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />

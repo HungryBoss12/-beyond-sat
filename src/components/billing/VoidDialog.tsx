@@ -38,7 +38,7 @@ export function VoidDialog({
       <DialogContent className="border-brand-400/40 bg-brand-800 text-white sm:rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-white">{title}</DialogTitle>
-          <DialogDescription className="text-brand-100">{description}</DialogDescription>
+          <DialogDescription className="text-white">{description}</DialogDescription>
         </DialogHeader>
         <form
           className="space-y-3"
@@ -55,7 +55,7 @@ export function VoidDialog({
               .finally(() => setBusy(false));
           }}
         >
-          <label className="block text-xs font-bold text-brand-100">
+          <label className="block text-xs font-bold text-white">
             Reason (required)
             <input
               autoFocus

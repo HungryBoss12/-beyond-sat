@@ -11,6 +11,7 @@ import { createClass, listAllClasses, type ClassRow } from "@/lib/classes";
 import { monthKey } from "@/lib/classes/classroom";
 import {
   listAllGroupMembers,
+  listGroupMonthCounts,
   listGroups,
   listProfiles,
   personName,
@@ -29,12 +30,16 @@ export const Route = createFileRoute("/_authenticated/admin/classes/")({
 const adminRoute = getRouteApi("/_authenticated/admin");
 
 function AdminClassesIndex() {
-  const { staffRole } = adminRoute.useRouteContext();
+  const { staffRole, userId } = adminRoute.useRouteContext();
   const isAdmin = staffRole === "admin";
+  const isTeacher = staffRole === "teacher";
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [groups, setGroups] = useState<ClassGroup[]>([]);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [teachers, setTeachers] = useState<Map<string, PersonProfile>>(new Map());
+  const [monthCounts, setMonthCounts] = useState<Map<string, { lessons: number; attendance: number }>>(
+    new Map(),
+  );
   const [debtors, setDebtors] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -42,25 +47,38 @@ function AdminClassesIndex() {
   const load = useCallback(async () => {
     try {
       const [rows, groupRows] = await Promise.all([listAllClasses(), listGroups()]);
-      setClasses(rows);
-      setGroups(groupRows);
-      const [memberRows, teacherRows] = await Promise.all([
+      const visibleGroups = isTeacher
+        ? groupRows.filter((group) => group.teacher_id === userId)
+        : groupRows;
+      const visibleClasses = isTeacher
+        ? rows.filter((row) => visibleGroups.some((group) => group.class_id === row.id))
+        : rows;
+      setClasses(visibleClasses);
+      setGroups(visibleGroups);
+      const [memberRows, teacherRows, counts] = await Promise.all([
         listAllGroupMembers(),
-        listProfiles(groupRows.map((g) => g.teacher_id).filter((id): id is string => Boolean(id))),
+        listProfiles(visibleGroups.map((g) => g.teacher_id).filter((id): id is string => Boolean(id))),
+        isTeacher
+          ? listGroupMonthCounts(
+              visibleGroups.map((group) => group.id),
+              monthKey(),
+            )
+          : Promise.resolve(new Map<string, { lessons: number; attendance: number }>()),
       ]);
       setMembers(memberRows);
       setTeachers(teacherRows);
+      setMonthCounts(counts);
       if (isAdmin) {
         const money = await listBalances({ kind: "debt" }).catch(() => []);
-        const counts = new Map<string, number>();
+        const debt = new Map<string, number>();
         for (const row of money)
-          if (row.class_id) counts.set(row.class_id, (counts.get(row.class_id) ?? 0) + 1);
-        setDebtors(counts);
+          if (row.class_id) debt.set(row.class_id, (debt.get(row.class_id) ?? 0) + 1);
+        setDebtors(debt);
       }
     } finally {
       setLoading(false);
     }
-  }, [isAdmin]);
+  }, [isAdmin, isTeacher, userId]);
 
   useEffect(() => {
     void load();
@@ -70,11 +88,16 @@ function AdminClassesIndex() {
     <div className="space-y-6 text-brand-900">
       <div className="flex flex-col gap-3 rise-in md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight md:text-3xl">Classes</h1>
+          <h1 className="text-2xl font-black tracking-tight md:text-3xl">
+            {isTeacher ? "Teaching" : "Classes"}
+          </h1>
           <p className="mt-1 text-sm text-brand-700">
-            Each class has a Maths sub-class (AFL) and an Eng sub-class (VAR).
+            {isTeacher
+              ? "Groups an admin assigned to you. Counts are students, lessons this month, and attendance marked this month."
+              : "Each class has a Maths sub-class (AFL) and an Eng sub-class (VAR)."}
           </p>
         </div>
+        {!isTeacher && (
         <form
           className="flex gap-2"
           onSubmit={(event) => {
@@ -105,14 +128,19 @@ function AdminClassesIndex() {
             <Plus className="h-4 w-4" aria-hidden="true" /> Create
           </button>
         </form>
+        )}
       </div>
       {loading ? (
         <ListSkeleton rows={4} />
       ) : classes.length === 0 ? (
         <EmptyState
           icon={School}
-          title="No classes yet"
-          body="Create a class to open its workspace."
+          title={isTeacher ? "No groups yet" : "No classes yet"}
+          body={
+            isTeacher
+              ? "An admin assigns you to a Maths or Eng group from the class editor."
+              : "Create a class to open its workspace."
+          }
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 stagger">
@@ -131,9 +159,9 @@ function AdminClassesIndex() {
                     search={{ tab: "roster" }}
                     className="tap min-w-0"
                   >
-                    <h2 className="truncate text-xl font-black hover:underline">{row.name}</h2>
+                    <h2 className="truncate text-xl font-black text-white hover:underline">{row.name}</h2>
                   </Link>
-                  <div className="flex shrink-0 items-center gap-2 text-xs font-bold text-brand-100">
+                  <div className="flex shrink-0 items-center gap-2 text-xs font-bold text-white">
                     {!row.active && <span>Inactive</span>}
                     {isAdmin && debt > 0 && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-brand-25 px-2 py-0.5 text-brand-900">
@@ -148,6 +176,7 @@ function AdminClassesIndex() {
                     const active = members.filter(
                       (m) => m.group_id === group.id && m.status === "active",
                     ).length;
+                    const students = members.filter((m) => m.group_id === group.id).length;
                     return (
                       <Link
                         key={group.id}
@@ -165,15 +194,25 @@ function AdminClassesIndex() {
                       >
                         <span className="min-w-0">
                           <SubclassChip subject={group.subject} name={group.name} />
-                          <span className="mt-1 block truncate text-xs text-brand-100">
+                          <span className="mt-1 block truncate text-xs text-white">
                             {group.teacher_id
                               ? personName(teachers.get(group.teacher_id), group.teacher_id)
                               : "No teacher"}{" "}
                             · {scheduleLine(group)}
                           </span>
                         </span>
-                        <span className="shrink-0 text-xs font-bold tabular-nums">
-                          {active} active
+                        <span className="shrink-0 text-right text-xs font-bold tabular-nums">
+                          {isTeacher ? (
+                            <>
+                              {students} students
+                              <span className="mt-0.5 block font-semibold">
+                                {monthCounts.get(group.id)?.lessons ?? 0} lessons ·{" "}
+                                {monthCounts.get(group.id)?.attendance ?? 0} marked
+                              </span>
+                            </>
+                          ) : (
+                            <>{active} active</>
+                          )}
                         </span>
                       </Link>
                     );

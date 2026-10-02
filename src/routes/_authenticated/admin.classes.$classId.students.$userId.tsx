@@ -35,6 +35,7 @@ import { resultLabel } from "@/lib/classes/results";
 import { HW_ITEM_LABEL, HW_ITEM_LETTER, itemsFor, subjectToSlug } from "@/lib/classes/schemes";
 import { shortDate } from "@/lib/classes/schedule";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 const searchSchema = z.object({
   sections: z.coerce
@@ -63,6 +64,7 @@ function StudentProfilePage() {
   const navigate = useNavigate();
   const { klass, groups, isAdmin } = useClassContext();
   const [name, setName] = useState("Student");
+  const [description, setDescription] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<GroupBlock[]>([]);
   const [score, setScore] = useState<{ rw: number; math: number } | null>(null);
   const [attendance, setAttendance] = useState<
@@ -86,6 +88,13 @@ function StudentProfilePage() {
         listStudentSubmissions(userId).catch(() => []),
       ]);
     setName(personName(profiles.get(userId), userId));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: studentRow } = await (supabase as any)
+      .from("students")
+      .select("description")
+      .eq("user_id", userId)
+      .maybeSingle();
+    setDescription((studentRow?.description as string | null) ?? null);
     setScore(myScore ? { rw: myScore.rw, math: myScore.math } : null);
     setAttendance(attendanceRows);
     setMarks(markRows);
@@ -212,11 +221,14 @@ function StudentProfilePage() {
             {name.slice(0, 1).toUpperCase()}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold tracking-[0.08em] text-brand-100">
+            <p className="text-[11px] font-bold tracking-[0.08em] text-white">
               STUDENT PROFILE
             </p>
-            <p className="truncate text-xl font-black">{name}</p>
-            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-brand-100">
+            <p className="truncate text-xl font-black text-white">{name}</p>
+            {description && (
+              <p className="mt-2 max-w-xl whitespace-pre-wrap text-sm text-white">{description}</p>
+            )}
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white">
               {blocks.map((b) => (
                 <span key={b.group.id} className="inline-flex items-center gap-1">
                   {b.group.subject === "math" ? "Maths" : "Eng"}:{" "}
@@ -233,7 +245,7 @@ function StudentProfilePage() {
             {total != null ? (
               <RankBadge letter={rankFor(total).letter} total={total} size="lg" />
             ) : (
-              <span className="text-sm text-brand-100">No score yet</span>
+              <span className="text-sm text-white">No score yet</span>
             )}
           </div>
         </div>
@@ -256,10 +268,10 @@ function StudentProfilePage() {
                 hint={`${block.group.subject === "math" ? "AFL" : "VAR"} · last 8 lessons`}
               />
               <section aria-label="Attendance">
-                <p className="text-xs font-bold text-brand-100">Attendance</p>
+                <p className="text-xs font-bold text-white">Attendance</p>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {groupAttendance.length === 0 && (
-                    <span className="text-xs text-brand-100">No attendance yet</span>
+                    <span className="text-xs text-white">No attendance yet</span>
                   )}
                   {groupAttendance.map((a) => (
                     <span
@@ -282,7 +294,7 @@ function StudentProfilePage() {
                 </div>
               </section>
               <section aria-label="Homework ticks">
-                <p className="text-xs font-bold text-brand-100">
+                <p className="text-xs font-bold text-white">
                   {block.group.subject === "math" ? "AFL" : "VAR"} completion
                 </p>
                 <div className="mt-1 overflow-x-auto">
@@ -328,7 +340,7 @@ function StudentProfilePage() {
               <section aria-label="Level" className="rounded-xl bg-brand-800 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <p className="text-xs font-bold text-brand-100">Level</p>
+                    <p className="text-xs font-bold text-white">Level</p>
                     <LevelValue row={block.level ?? undefined} />
                   </div>
                   <SectionToggle
@@ -349,7 +361,7 @@ function StudentProfilePage() {
                       const cell = block.level?.scores[section.slug];
                       return (
                         <li key={section.id} className="flex justify-between gap-2">
-                          <span className="truncate text-brand-100">{section.name}</span>
+                          <span className="truncate text-white">{section.name}</span>
                           <span className="font-bold tabular-nums">{cell?.score ?? "—"}</span>
                         </li>
                       );
@@ -358,9 +370,9 @@ function StudentProfilePage() {
                 )}
               </section>
               <section aria-label="Results">
-                <p className="text-xs font-bold text-brand-100">Results (M1 + M2)</p>
+                <p className="text-xs font-bold text-white">Results (M1 + M2)</p>
                 {groupResults.length === 0 ? (
-                  <p className="mt-1 text-xs text-brand-100">No results yet</p>
+                  <p className="mt-1 text-xs text-white">No results yet</p>
                 ) : (
                   <ul className="mt-1 flex flex-wrap gap-1.5 text-xs">
                     {groupResults.map((r, i) => (
@@ -380,7 +392,7 @@ function StudentProfilePage() {
       <Panel className="space-y-2">
         <PanelHead label="Homework" hint="Latest submissions" />
         {submissions.length === 0 ? (
-          <p className="text-sm text-brand-100">No submissions yet.</p>
+          <p className="text-sm text-white">No submissions yet.</p>
         ) : (
           <ul className="divide-y divide-brand-400/30 text-sm">
             {submissions.map((s) => (
@@ -388,7 +400,7 @@ function StudentProfilePage() {
                 <span className="min-w-0 truncate">
                   {s.homework_assignments?.title ?? "Homework"}
                 </span>
-                <span className="shrink-0 text-xs text-brand-100 tabular-nums">
+                <span className="shrink-0 text-xs text-white tabular-nums">
                   {s.status.replace("_", " ")}
                   {s.score != null
                     ? ` · ${s.score}${s.homework_assignments?.max_score ? `/${s.homework_assignments.max_score}` : ""}`

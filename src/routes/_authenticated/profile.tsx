@@ -322,7 +322,7 @@ function Profile() {
         <Surface tone="brand" className="p-6 md:p-8">
           <PanelGlow />
           <h2 className="mb-1 text-lg font-black text-white">Finish your Classes setup</h2>
-          <p className="mb-4 text-sm text-brand-100">
+          <p className="mb-4 text-sm text-white">
             Pick a username for Classes chat. Your teacher assigns your class group.
           </p>
           <ClassChatSetupForm

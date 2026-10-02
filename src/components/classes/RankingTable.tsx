@@ -62,7 +62,7 @@ export function RankingTable({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 text-xs font-bold text-brand-100">
+      <div className="flex flex-wrap gap-2 text-xs font-bold text-white">
         {(["S", "A", "B", "C", "D"] as RankLetter[]).map((letter) => (
           <span key={letter}>
             {letter} {counts[letter]}
@@ -72,7 +72,7 @@ export function RankingTable({
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="text-[10px] font-bold uppercase tracking-wider text-brand-100">
+          <thead className="text-[10px] font-bold uppercase tracking-wider text-white">
             <tr>
               <th className="py-2">#</th>
               <th>Student</th>
@@ -117,21 +117,21 @@ export function RankingTable({
             })}
             {ranked.unscored.map((row) => (
               <tr key={row.userId} className="border-t border-brand-400/30">
-                <td className="py-2 text-brand-100">—</td>
+                <td className="py-2 text-white">—</td>
                 <td className="font-bold">{row.name}</td>
                 <ScoreCells
                   rw={row.rw}
                   math={row.math}
                   onCommit={(rwRaw, mathRaw) => void commit(row.userId, row.name, rwRaw, mathRaw)}
                 />
-                <td className="text-brand-100">—</td>
+                <td className="text-white">—</td>
                 <td className="text-xs uppercase text-white">NOT SCORED</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-brand-100">1500+ S · 1400+ A · 1300+ B · 1200+ C · Not enough</p>
+      <p className="text-xs text-white">1500+ S · 1400+ A · 1300+ B · 1200+ C · Not enough</p>
     </div>
   );
 }

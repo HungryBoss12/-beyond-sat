@@ -50,14 +50,14 @@ export function MoneyTile({
                 className="flex min-w-0 items-baseline gap-1.5 text-xl font-black leading-tight text-white outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
               >
                 <span className="truncate tabular-nums">{shown}</span>
-                {kind && <span className="shrink-0 text-xs font-bold text-brand-100">{kind}</span>}
+                {kind && <span className="shrink-0 text-xs font-bold text-white">{kind}</span>}
               </div>
             </TooltipTrigger>
             <TooltipContent className="bg-brand-800 tabular-nums text-white">{full}</TooltipContent>
           </Tooltip>
         )}
-        <div className="mt-0.5 truncate text-[11px] font-medium text-brand-100">{label}</div>
-        {hint && <div className="truncate text-[10px] text-brand-100">{hint}</div>}
+        <div className="mt-0.5 truncate text-[11px] font-medium text-white">{label}</div>
+        {hint && <div className="truncate text-[10px] text-white">{hint}</div>}
       </div>
     </div>
   );

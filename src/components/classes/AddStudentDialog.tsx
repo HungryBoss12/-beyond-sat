@@ -9,29 +9,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useClassContext } from "@/components/classes/ClassContext";
-import {
-  displayName,
-  listUsersForAdmin,
-  searchUsersForAdmin,
-  type ChatProfile,
-  type ClassRow,
-  type ClassSubject,
-} from "@/lib/classes";
+import { type ClassRow, type ClassSubject } from "@/lib/classes";
 import { addGroupMember, type ClassGroup } from "@/lib/classes/groups";
-import { isOnline, lastSeenLabel } from "@/lib/presence";
-import { createClassStudent } from "@/lib/auth/create-user";
+import { createStudentInvite, listStudents, reissueStudentInvite, type StudentRow } from "@/lib/students/api";
 import { tashkentToday } from "@/lib/billing/dates";
 import { cn } from "@/lib/utils";
 import { CLASS_CONTROL } from "./control";
 
 type Pick = "math" | "ebrw" | "both";
-const TABS = ["all", "none", "other", "online"] as const;
+const TABS = ["all", "none", "other", "unclaimed"] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABEL: Record<Tab, string> = {
   all: "All",
   none: "Not in a class",
   other: "In another class",
-  online: "Online now",
+  unclaimed: "Not registered",
 };
 
 /** Telegram-style picker: search, tabs, multi-select, Maths / Eng / Both per student. */
@@ -55,7 +47,8 @@ export function AddStudentDialog({
   const { allClasses } = useClassContext();
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<Tab>("all");
-  const [rows, setRows] = useState<ChatProfile[]>([]);
+  const [rows, setRows] = useState<StudentRow[]>([]);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [selected, setSelected] = useState<Map<string, Pick>>(new Map());
   const [focus, setFocus] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -64,7 +57,6 @@ export function AddStudentDialog({
   const [activatedOn, setActivatedOn] = useState("");
   const [busy, setBusy] = useState(false);
   const [createName, setCreateName] = useState("");
-  const [createPassword, setCreatePassword] = useState("");
   const request = useRef(0);
   const listRef = useRef<HTMLUListElement>(null);
   const defaultPick: Pick = defaultSubject ?? "both";
@@ -76,6 +68,7 @@ export function AddStudentDialog({
     setTab("all");
     setEnrolledOn(tashkentToday());
     setActivatedOn("");
+    setInviteUrl(null);
   }, [open]);
 
   useEffect(() => {
@@ -83,8 +76,7 @@ export function AddStudentDialog({
     const id = ++request.current;
     const handle = window.setTimeout(() => {
       setLoading(true);
-      const job =
-        query.trim().length < 2 ? listUsersForAdmin({ limit: 80 }) : searchUsersForAdmin(query, 40);
+      const job = listStudents(query.trim());
       void job
         .then((result) => {
           if (id === request.current) setRows(result);
@@ -102,7 +94,7 @@ export function AddStudentDialog({
       rows.filter((row) => {
         if (tab === "none") return !row.class_id;
         if (tab === "other") return Boolean(row.class_id) && row.class_id !== klass.id;
-        if (tab === "online") return isOnline(row.last_seen_at);
+        if (tab === "unclaimed") return !row.claimed_at;
         return true;
       }),
     [rows, tab, klass.id],
@@ -124,7 +116,11 @@ export function AddStudentDialog({
     try {
       for (const [id, pick] of selected) {
         const person = rows.find((row) => row.id === id);
-        const name = person ? displayName(person) : id.slice(0, 8);
+        if (!person?.user_id) {
+          toast.error(`${person?.full_name ?? "Student"} has no account yet`);
+          continue;
+        }
+        const name = person.full_name;
         const other =
           person?.class_id && person.class_id !== klass.id ? className(person.class_id) : null;
         if (other && !confirm(`Move ${name} from ${other} to ${klass.name}?`)) continue;
@@ -135,7 +131,7 @@ export function AddStudentDialog({
           if (!group) continue;
           await addGroupMember({
             groupId: group.id,
-            userId: id,
+            userId: person.user_id,
             status,
             enrolledOn,
             activatedOn: isAdmin ? activatedOn || enrolledOn : null,
@@ -160,19 +156,29 @@ export function AddStudentDialog({
     }
   }
 
-  async function createNew() {
-    if (!createName.trim() || !createPassword) return;
+  async function createInvite() {
+    if (!createName.trim()) return;
     setBusy(true);
     try {
-      await createClassStudent({ name: createName, password: createPassword, classId: klass.id });
-      toast.success("Student created and added to both sub-classes");
+      const link = await createStudentInvite({ name: createName.trim(), classId: klass.id });
+      setInviteUrl(link.url);
       setCreateName("");
-      setCreatePassword("");
+      toast.success("Invite link created");
       await onAdded();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not create student");
+      toast.error(err instanceof Error ? err.message : "Could not create the link");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function copyInvite(userId: string) {
+    try {
+      const link = await reissueStudentInvite(userId);
+      await navigator.clipboard.writeText(link.url);
+      toast.success("Setup link copied");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not copy the link");
     }
   }
 
@@ -181,7 +187,7 @@ export function AddStudentDialog({
       <DialogContent className="flex max-h-[92vh] flex-col gap-3 overflow-hidden border-brand-400/40 bg-brand-800 p-0 text-white sm:rounded-2xl">
         <DialogHeader className="px-5 pt-5">
           <DialogTitle className="text-white">Add student</DialogTitle>
-          <DialogDescription className="text-brand-100">{klass.name}</DialogDescription>
+          <DialogDescription className="text-white">{klass.name}</DialogDescription>
         </DialogHeader>
         <div className="space-y-2 px-5">
           <label className="relative block">
@@ -193,7 +199,7 @@ export function AddStudentDialog({
             <input
               autoFocus
               className={CLASS_CONTROL + " pl-9"}
-              placeholder="Name, username or email"
+              placeholder="Name or phone"
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -224,7 +230,7 @@ export function AddStudentDialog({
                 aria-selected={tab === item}
                 className={cn(
                   "tap whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold transition-colors duration-200",
-                  tab === item ? "bg-brand-400 text-white" : "bg-brand-600 text-brand-100",
+                  tab === item ? "bg-brand-400 text-white" : "bg-brand-600 text-white",
                 )}
                 onClick={() => {
                   setTab(item);
@@ -235,7 +241,7 @@ export function AddStudentDialog({
               </button>
             ))}
             {loading && (
-              <Loader2 className="ml-auto h-4 w-4 shrink-0 animate-spin text-brand-100" />
+              <Loader2 className="ml-auto h-4 w-4 shrink-0 animate-spin text-white" />
             )}
           </div>
         </div>
@@ -248,11 +254,16 @@ export function AddStudentDialog({
           {visible.map((row, index) => {
             const here = row.class_id === klass.id;
             const other = row.class_id && !here ? className(row.class_id) : null;
-            const presence = isOnline(row.last_seen_at)
-              ? "online"
-              : `last seen ${lastSeenLabel(row.last_seen_at)}`;
+            const detail = [
+              row.claimed_at ? "Registered" : "Not registered",
+              row.grade,
+              row.phone,
+              here ? "in this class" : other ? `in ${other}` : "not in a class",
+            ]
+              .filter(Boolean)
+              .join(" · ");
             const pick = selected.get(row.id);
-            const name = displayName(row);
+            const name = row.full_name;
             return (
               <li
                 key={row.id}
@@ -275,12 +286,18 @@ export function AddStudentDialog({
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-bold">{name}</span>
-                    <span className="block truncate text-[11px] text-brand-100">
-                      {presence}
-                      {here ? " · in this class" : other ? ` · in ${other}` : " · not in a class"}
-                    </span>
+                    <span className="block truncate text-[11px] text-white">{detail}</span>
                   </span>
                 </button>
+                {isAdmin && row.user_id && !row.claimed_at && (
+                  <button
+                    type="button"
+                    className="tap shrink-0 rounded-full px-2 py-1 text-[11px] font-bold text-white hover:bg-brand-500"
+                    onClick={() => void copyInvite(row.user_id!)}
+                  >
+                    Copy link
+                  </button>
+                )}
                 {pick && (
                   <div
                     className="flex shrink-0 rounded-full bg-brand-600 p-0.5"
@@ -300,7 +317,7 @@ export function AddStudentDialog({
                         aria-pressed={pick === value}
                         className={cn(
                           "tap inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold",
-                          pick === value ? "bg-brand-300 text-white" : "text-brand-100",
+                          pick === value ? "bg-brand-300 text-white" : "text-white",
                         )}
                         onClick={() => setSelected((cur) => new Map(cur).set(row.id, value))}
                       >
@@ -314,13 +331,13 @@ export function AddStudentDialog({
             );
           })}
           {!loading && visible.length === 0 && (
-            <li className="py-6 text-center text-sm text-brand-100">No students match</li>
+            <li className="py-6 text-center text-sm text-white">No students match</li>
           )}
         </ul>
 
         <div className="space-y-3 border-t border-brand-400/30 bg-brand-800 px-5 pb-5 pt-3">
           <div className="grid gap-2 sm:grid-cols-3">
-            <label className="block text-xs font-bold text-brand-100">
+            <label className="block text-xs font-bold text-white">
               Status
               <select
                 className={CLASS_CONTROL + " mt-1"}
@@ -331,7 +348,7 @@ export function AddStudentDialog({
                 <option value="trial">Trial</option>
               </select>
             </label>
-            <label className="block text-xs font-bold text-brand-100">
+            <label className="block text-xs font-bold text-white">
               Enrolled on
               <input
                 type="date"
@@ -341,7 +358,7 @@ export function AddStudentDialog({
               />
             </label>
             {isAdmin && (
-              <label className="block text-xs font-bold text-brand-100">
+              <label className="block text-xs font-bold text-white">
                 Activated on (billing)
                 <input
                   type="date"
@@ -361,10 +378,10 @@ export function AddStudentDialog({
             {busy ? "Adding…" : `Add ${selected.size} student${selected.size === 1 ? "" : "s"}`}
           </button>
           <details className="text-sm">
-            <summary className="tap cursor-pointer text-xs font-bold text-brand-100">
+            <summary className="tap cursor-pointer text-xs font-bold text-white">
               Create a new student account
             </summary>
-            <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+            <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
               <input
                 className={CLASS_CONTROL}
                 placeholder="Full name"
@@ -372,23 +389,27 @@ export function AddStudentDialog({
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
               />
-              <input
-                className={CLASS_CONTROL}
-                placeholder="Password"
-                aria-label="Password"
-                type="password"
-                value={createPassword}
-                onChange={(e) => setCreatePassword(e.target.value)}
-              />
               <button
                 type="button"
-                disabled={busy || !createName.trim() || !createPassword}
-                onClick={() => void createNew()}
+                disabled={busy || !createName.trim()}
+                onClick={() => void createInvite()}
                 className="tap rounded-full bg-brand-500 px-4 py-2 text-xs font-bold disabled:opacity-40"
               >
-                Create
+                Create invite link
               </button>
             </div>
+            {inviteUrl && (
+              <div className="mt-2 flex items-center gap-2">
+                <input className={CLASS_CONTROL} readOnly value={inviteUrl} aria-label="Invite link" />
+                <button
+                  type="button"
+                  className="tap shrink-0 rounded-full bg-brand-400 px-3 py-2 text-xs font-bold text-white"
+                  onClick={() => void navigator.clipboard.writeText(inviteUrl).then(() => toast.success("Link copied"))}
+                >
+                  Copy
+                </button>
+              </div>
+            )}
           </details>
         </div>
       </DialogContent>

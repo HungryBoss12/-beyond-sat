@@ -3,6 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { AmbientGlow } from "@/components/ui/reveal-card";
+import { useRegistrationEnabled } from "@/lib/registration";
 
 /** Scroll to `location.hash` after navigation (footer / Resources deep links). */
 export function useHashScroll() {
@@ -94,10 +95,12 @@ export function MarketingCta({
   to?: "/signup" | "/signin";
   label?: string;
 }) {
+  const registrationOn = useRegistrationEnabled();
+  const dest = registrationOn !== true && to === "/signup" ? "/signin" : to;
   return (
     <p className="mt-8">
       <Link
-        to={to}
+        to={dest}
         className="btn-brand inline-flex rounded-lg bg-brand-400 px-5 py-2.5 text-sm font-bold text-white"
       >
         {label}

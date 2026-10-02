@@ -1552,6 +1552,10 @@ export type Database = {
         }[];
       };
       bs_is_staff: { Args: { _uid?: string }; Returns: boolean };
+      staff_publish_sqb_test: {
+        Args: { p_test_id: string; p_publish: boolean };
+        Returns: undefined;
+      };
       bs_upsert_lesson_video: {
         Args: {
           p_video_id: string;
@@ -1572,7 +1576,7 @@ export type Database = {
       };
     };
     Enums: {
-      app_role: "student" | "admin" | "editor";
+      app_role: "student" | "admin" | "editor" | "teacher";
       question_kind: "multiple_choice" | "grid_in";
       sat_difficulty: "easy" | "medium" | "hard" | "C" | "B" | "D" | "A" | "S";
       sat_section: "reading_writing" | "math";

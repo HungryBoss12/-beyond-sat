@@ -18,7 +18,7 @@ export function SubclassChip({
       className={cn(
         "inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold",
         subject === "math"
-          ? "border border-brand-300 text-brand-100"
+          ? "border border-brand-300 text-white"
           : "bg-brand-200 text-brand-900",
         className,
       )}

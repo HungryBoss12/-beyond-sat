@@ -14,7 +14,7 @@ export function MoneyInput({
   error,
   hint,
   autoFocus,
-  placeholder = "0",
+  placeholder = "",
   className,
 }: {
   value: string;
@@ -31,7 +31,7 @@ export function MoneyInput({
   const message = pasteError ?? error ?? null;
   return (
     <div className={cn("min-w-0", className)}>
-      <label htmlFor={id} className="text-xs font-bold text-brand-100">
+      <label htmlFor={id} className="text-xs font-bold text-white">
         {label}
       </label>
       <div className="relative mt-1">
@@ -72,7 +72,7 @@ export function MoneyInput({
         <p
           id={`${id}-msg`}
           role={message ? "alert" : undefined}
-          className={cn("mt-1 text-xs", message ? "font-bold text-white" : "text-brand-100")}
+          className={cn("mt-1 text-xs", message ? "font-bold text-white" : "text-white")}
         >
           {message ?? hint}
         </p>

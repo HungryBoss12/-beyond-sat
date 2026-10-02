@@ -12,6 +12,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { reissueStudentInvite } from "@/lib/students/api";
 import { Panel } from "@/components/ui/panel";
 import { IconButton } from "@/components/ui/icon-button";
 import {
@@ -134,14 +135,14 @@ export function GroupRail({
   return (
     <aside className="min-w-0 space-y-3" aria-label={`${group.name} roster`}>
       <Panel tone="brand" className="space-y-2 p-4 md:p-4">
-        <p className="text-[11px] font-bold tracking-[0.08em] text-brand-100">
+        <p className="text-[11px] font-bold tracking-[0.08em] text-white">
           {klass.name.toUpperCase()}
         </p>
-        <h2 className="truncate text-lg font-black">{group.name}</h2>
+        <h2 className="truncate text-lg font-black text-white">{group.name}</h2>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
           {info.map(([label, value]) => (
             <div key={label} className="contents">
-              <dt className="text-brand-100">{label}</dt>
+              <dt className="text-white">{label}</dt>
               <dd className="min-w-0 truncate font-bold tabular-nums">{value}</dd>
             </div>
           ))}
@@ -177,7 +178,7 @@ export function GroupRail({
                 onClick={() => onFilter(on ? "" : item.id)}
                 className={cn(
                   "tap inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold transition-colors duration-200",
-                  on ? "bg-brand-25 text-brand-900" : "bg-brand-800 text-brand-100",
+                  on ? "bg-brand-25 text-brand-900" : "bg-brand-800 text-white",
                 )}
               >
                 <Icon className="h-3 w-3" aria-hidden="true" />
@@ -203,7 +204,7 @@ export function GroupRail({
                 key={person.userId}
                 className="flex items-center gap-1 rounded-lg px-1 hover:bg-brand-500/60"
               >
-                <StatusIcon className="h-3.5 w-3.5 shrink-0 text-brand-100" aria-hidden="true" />
+                <StatusIcon className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden="true" />
                 <div className="min-w-0 flex-1 py-1.5">
                   <div className="flex min-w-0 items-center gap-1">
                     <span className="truncate text-sm font-bold">{person.name}</span>
@@ -211,7 +212,7 @@ export function GroupRail({
                       <TriangleAlert className="h-3 w-3 shrink-0" aria-label="Debtor" />
                     )}
                   </div>
-                  <div className="truncate text-[11px] text-brand-100">{subtitle.join(" · ")}</div>
+                  <div className="truncate text-[11px] text-white">{subtitle.join(" · ")}</div>
                 </div>
                 <Link
                   to="/admin/classes/$classId/students/$userId"
@@ -247,6 +248,22 @@ export function GroupRail({
                         Activation date
                       </DropdownMenuItem>
                     )}
+                    {isAdmin && (
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          void reissueStudentInvite(person.userId)
+                            .then(async (link) => {
+                              await navigator.clipboard.writeText(link.url);
+                              toast.success("Setup link copied");
+                            })
+                            .catch((err: unknown) =>
+                              toast.error(err instanceof Error ? err.message : "Could not copy the link"),
+                            );
+                        }}
+                      >
+                        Copy setup link
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onSelect={() => setMoving(person)}>
                       Move to another class…
                     </DropdownMenuItem>
@@ -259,7 +276,7 @@ export function GroupRail({
             );
           })}
           {people.length === 0 && (
-            <li className="px-2 py-4 text-sm text-brand-100">No students match.</li>
+            <li className="px-2 py-4 text-sm text-white">No students match.</li>
           )}
         </ul>
       </Panel>
@@ -323,7 +340,7 @@ function MoveDialog({
       <DialogContent className="border-brand-400/40 bg-brand-800 text-white sm:rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-white">Move student</DialogTitle>
-          <DialogDescription className="text-brand-100">
+          <DialogDescription className="text-white">
             {person?.name} leaves {klass.name} (both sub-classes) and joins the same subject in the
             new class.
           </DialogDescription>

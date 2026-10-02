@@ -113,7 +113,7 @@ export function HomeworkPanel({
         }}
       >
         <div className="grid gap-2 sm:grid-cols-3">
-          <label className="block text-xs font-bold text-brand-100">
+          <label className="block text-xs font-bold text-white">
             Links to
             <select
               className={CLASS_CONTROL + " mt-1"}
@@ -128,7 +128,7 @@ export function HomeworkPanel({
               ))}
             </select>
           </label>
-          <label className="block text-xs font-bold text-brand-100">
+          <label className="block text-xs font-bold text-white">
             Lesson
             <select
               className={CLASS_CONTROL + " mt-1"}
@@ -143,7 +143,7 @@ export function HomeworkPanel({
               ))}
             </select>
           </label>
-          <label className="block text-xs font-bold text-brand-100">
+          <label className="block text-xs font-bold text-white">
             Max score
             <input
               inputMode="numeric"
@@ -169,7 +169,7 @@ export function HomeworkPanel({
           onChange={(e) => setBody(e.target.value)}
         />
         <div className="flex flex-wrap items-end gap-2">
-          <label className="block text-xs font-bold text-brand-100">
+          <label className="block text-xs font-bold text-white">
             Due
             <input
               type="datetime-local"
@@ -237,7 +237,7 @@ export function HomeworkPanel({
             >
               <button type="button" className="tap w-full text-left" onClick={() => setOpen(item)}>
                 <div className="text-sm font-black">{item.title}</div>
-                <div className="text-xs text-brand-100">
+                <div className="text-xs text-white">
                   {item.var_kind
                     ? `${HW_ITEM_LETTER[item.var_kind as HwItem]} · ${HW_ITEM_LABEL[item.var_kind as HwItem]}`
                     : "No tick"}
@@ -336,7 +336,7 @@ function ReviewSheet({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-2">
-          <h3 className="truncate font-black">{assignment.title}</h3>
+          <h3 className="truncate font-black text-white">{assignment.title}</h3>
           <IconButton
             icon={X}
             label="Close"
@@ -344,20 +344,20 @@ function ReviewSheet({
             onClick={onClose}
           />
         </div>
-        <p className="mt-1 text-xs text-brand-100">
+        <p className="mt-1 text-xs text-white">
           J/K next student · Ctrl/Cmd+Enter saves as reviewed
         </p>
         <p className="mt-4 text-sm font-bold">
           {currentId ? (names.get(currentId) ?? currentId.slice(0, 8)) : "No students"}
-          <span className="ml-2 text-xs text-brand-100">
+          <span className="ml-2 text-xs text-white">
             {index + 1}/{ids.length}
           </span>
         </p>
-        <p className="text-xs text-brand-100">
+        <p className="text-xs text-white">
           {current ? (STATUS_LABEL[current.status] ?? current.status) : "Not submitted"}
         </p>
         {current?.note && <p className="mt-2 whitespace-pre-wrap text-sm">{current.note}</p>}
-        <label className="mt-3 block text-xs font-bold text-brand-100">
+        <label className="mt-3 block text-xs font-bold text-white">
           Score{assignment.max_score ? ` (out of ${assignment.max_score})` : ""}
           <input
             inputMode="numeric"
@@ -366,7 +366,7 @@ function ReviewSheet({
             onChange={(e) => setScore(e.target.value.replace(/\D/g, ""))}
           />
         </label>
-        <label className="mt-3 block text-xs font-bold text-brand-100">
+        <label className="mt-3 block text-xs font-bold text-white">
           Feedback
           <textarea
             className={CLASS_CONTROL + " mt-1"}

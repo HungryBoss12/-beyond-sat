@@ -292,6 +292,41 @@ export async function listUserAttendance(
   return (data ?? []) as (AttendanceRow & { group_id: string })[];
 }
 
+export async function listGroupMonthCounts(
+  groupIds: string[],
+  month: string,
+): Promise<Map<string, { lessons: number; attendance: number }>> {
+  const counts = new Map<string, { lessons: number; attendance: number }>();
+  for (const id of groupIds) counts.set(id, { lessons: 0, attendance: 0 });
+  if (!groupIds.length) return counts;
+  const { start, end } = monthRange(month);
+  const [lessons, attendance] = await Promise.all([
+    db
+      .from("class_lessons")
+      .select("group_id")
+      .in("group_id", groupIds)
+      .gte("lesson_date", start)
+      .lt("lesson_date", end),
+    db
+      .from("lesson_attendance")
+      .select("group_id")
+      .in("group_id", groupIds)
+      .gte("lesson_date", start)
+      .lt("lesson_date", end),
+  ]);
+  if (lessons.error) throw lessons.error;
+  if (attendance.error) throw attendance.error;
+  for (const row of (lessons.data ?? []) as { group_id: string }[]) {
+    const cur = counts.get(row.group_id);
+    if (cur) cur.lessons += 1;
+  }
+  for (const row of (attendance.data ?? []) as { group_id: string }[]) {
+    const cur = counts.get(row.group_id);
+    if (cur) cur.attendance += 1;
+  }
+  return counts;
+}
+
 export async function setGroupAttendance(input: {
   groupId: string;
   userId: string;
@@ -505,12 +540,12 @@ export function personName(profile: PersonProfile | undefined, fallbackId: strin
   return profile.full_name || joined || profile.username || profile.email || fallbackId.slice(0, 8);
 }
 
-/** Admins and editors, for the teacher picker. Only admins can read roles; others get []. */
+/** Admins, editors, and teachers, for the teacher picker. Only admins can read roles; others get []. */
 export async function listStaff(): Promise<PersonProfile[]> {
   const { data, error } = await db
     .from("user_roles")
     .select("user_id,role")
-    .in("role", ["admin", "editor"]);
+    .in("role", ["admin", "editor", "teacher"]);
   if (error || !data?.length) return [];
   const profiles = await listProfiles((data as { user_id: string }[]).map((r) => r.user_id));
   return [...profiles.values()].sort((a, b) =>

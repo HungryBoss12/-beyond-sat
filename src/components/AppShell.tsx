@@ -17,7 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
+import { getStaffRole, staffHome, type StaffRole } from "@/lib/admin";
 import { displayAccountEmail } from "@/lib/auth/login-email";
 import {
   listSavedAccounts,
@@ -527,7 +527,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       })}
       {staffRole && (
         <RevealLink
-          to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
+          to={staffHome(staffRole)}
           data-nav-key="admin"
           onClick={opts.onNavigate}
           {...navPlayHandlers()}
@@ -537,7 +537,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           }
         >
           <NavGlyph icon={Shield} kind="admin" className={opts.iconSize} />
-          {staffRole === "admin" ? "Admin" : "Editor"}
+          {staffRole === "admin" ? "Admin" : staffRole === "teacher" ? "Teaching" : "Editor"}
         </RevealLink>
       )}
     </>
@@ -802,7 +802,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               })}
               {staffRole && (
                 <RevealLink
-                  to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
+                  to={staffHome(staffRole)}
                   onClick={() => setMoreOpen(false)}
                   {...navPlayHandlers()}
                   className={
@@ -811,7 +811,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   }
                 >
                   <NavGlyph icon={Shield} kind="admin" className="h-5 w-5" />
-                  {staffRole === "admin" ? "Admin" : "Editor"}
+                  {staffRole === "admin" ? "Admin" : staffRole === "teacher" ? "Teaching" : "Editor"}
                 </RevealLink>
               )}
             </div>

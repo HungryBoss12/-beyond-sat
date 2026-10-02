@@ -10,9 +10,13 @@ describe("results", () => {
     expect(parseModule("").kind).toBe("empty");
   });
 
-  it("shows N.A. below 30 and the score from 30", () => {
-    expect(resultLabel(14, 15)).toBe("N.A.");
-    expect(resultLabel(15, 15)).toBe("30");
+  it("maps the raw total to a section score", () => {
+    expect(resultLabel(21, 20)).toBe("750-760");
+    expect(resultLabel(22, 22)).toBe("800");
+    expect(resultLabel(12, 11)).toBe("480");
+    expect(resultLabel(14, 15)).toBe("560");
+    expect(resultLabel(10, 10)).toBe("N.A.");
+    expect(resultLabel(27, 27)).toBe("N.A.");
     expect(resultLabel(15, null)).toBe("—");
   });
 });

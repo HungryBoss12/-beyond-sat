@@ -27,6 +27,7 @@ import { BalanceLabel, StatusLabel } from "@/components/billing/labels";
 import { KIND_META } from "@/components/billing/meta";
 import { chargeThisMonth } from "@/components/billing/charge";
 import { txMethodOrPeriod, txSign, txType } from "@/lib/billing/ledger";
+import { usePointerGlow } from "@/hooks/usePointerGlow";
 import { CLASS_CONTROL } from "@/components/classes/control";
 import { SubclassChip } from "@/components/classes/SubclassChip";
 import {
@@ -202,7 +203,7 @@ function PaymentsPage() {
 
   async function chargeAll() {
     if (
-      !confirm("Ensure monthly group fees are applied for all billable students through today?")
+      !confirm("Ensure the monthly class fee is applied for all billable students through today?")
     ) {
       return;
     }
@@ -271,10 +272,10 @@ function PaymentsPage() {
     summary == null
       ? undefined
       : summary.priced_groups === 0
-        ? "No group fees set yet — edit a group in Classes"
+        ? "No class fee set yet — edit the class in Classes"
         : summary.min_fee === summary.max_fee
-          ? `${groupDigits(summary.min_fee ?? 0n)} UZS per group`
-          : `${groupDigits(summary.min_fee ?? 0n)}–${groupDigits(summary.max_fee ?? 0n)} UZS per group`;
+          ? `${groupDigits(summary.min_fee ?? 0n)} UZS per class`
+          : `${groupDigits(summary.min_fee ?? 0n)}–${groupDigits(summary.max_fee ?? 0n)} UZS per class`;
 
   return (
     <div className="space-y-5 text-brand-900">
@@ -315,8 +316,8 @@ function PaymentsPage() {
         />
         <MoneyTile
           icon={Layers}
-          label="Monthly group fees"
-          text={summary ? `${summary.priced_groups} of ${summary.active_groups} groups` : undefined}
+          label="Monthly class fees"
+          text={summary ? `${summary.priced_groups} of ${summary.active_groups} classes` : undefined}
           hint={feeMeta}
           loading={!summary}
         />
@@ -458,7 +459,7 @@ function PaymentsPage() {
         <>
           <TransactionsTable rows={txRows} showGroup />
           <p className="text-xs text-brand-700">
-            {txRows.length} transactions · recurring group fees
+            {txRows.length} transactions · one class fee per month
           </p>
         </>
       ) : rows.length === 0 ? (
@@ -506,10 +507,14 @@ function BalancesTable({
   onPay: (row: BalanceRow) => void;
   onCharge: (row: BalanceRow) => void;
 }) {
+  const glow = usePointerGlow<HTMLDivElement>();
   return (
-    <div className="overflow-x-auto rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel">
+    <div
+      ref={glow}
+      className="reveal-surface overflow-x-auto overflow-y-clip rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel"
+    >
       <table className="w-full min-w-[860px] text-left text-sm">
-        <thead className="text-[11px] font-bold text-brand-100">
+        <thead className="text-[11px] font-bold text-white">
           <tr>
             <th className="p-3">Student</th>
             <th className="whitespace-nowrap p-3">Balance</th>
@@ -533,9 +538,9 @@ function BalancesTable({
                   ) : (
                     <span className="truncate font-bold">{studentName(row)}</span>
                   )}
-                  {row.status && <StatusLabel status={row.status} className="text-brand-100" />}
+                  {row.status && <StatusLabel status={row.status} className="text-white" />}
                 </div>
-                <div className="mt-0.5 text-xs text-brand-100">{row.phone || "No phone"}</div>
+                <div className="mt-0.5 text-xs text-white">{row.phone || "No phone"}</div>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {row.groups.map((g) => (
                     <SubclassChip key={g.id} subject={g.subject} name={g.name} />
@@ -545,14 +550,14 @@ function BalancesTable({
               <td className="p-3">
                 <BalanceLabel balance={row.balance} />
                 {row.months_in_debt > 0 && (
-                  <div className="mt-1 text-xs text-brand-100">
+                  <div className="mt-1 text-xs text-white">
                     {row.months_in_debt} month(s) in debt
                   </div>
                 )}
               </td>
               <td className="p-3 text-xs">
                 {row.recent.length === 0 ? (
-                  <span className="text-brand-100">No transactions yet</span>
+                  <span className="text-white">No transactions yet</span>
                 ) : (
                   <ul className="space-y-0.5">
                     {row.recent.map((entry) => (
@@ -561,7 +566,7 @@ function BalancesTable({
                           {entry.kind === "charge" || entry.kind === "refund" ? "−" : "+"}
                           {formatUzs(entry.amount_uzs)}
                         </span>
-                        <span className="text-brand-100">
+                        <span className="text-white">
                           {" "}
                           · {entry.note ?? entry.kind} · {entry.occurred_on}
                         </span>
@@ -628,7 +633,7 @@ function MoreFilters({
       >
         {search.view === "balances" ? (
           <>
-            <label className="block text-xs font-bold text-brand-100">
+            <label className="block text-xs font-bold text-white">
               Status
               <select
                 className={CLASS_CONTROL + " mt-1"}
@@ -642,7 +647,7 @@ function MoreFilters({
               </select>
             </label>
             <div className="grid grid-cols-2 gap-2">
-              <label className="block text-xs font-bold text-brand-100">
+              <label className="block text-xs font-bold text-white">
                 Debt from
                 <input
                   inputMode="numeric"
@@ -651,7 +656,7 @@ function MoreFilters({
                   onChange={(e) => onChange({ minDebt: e.target.value.replace(/\D/g, "") })}
                 />
               </label>
-              <label className="block text-xs font-bold text-brand-100">
+              <label className="block text-xs font-bold text-white">
                 Debt to
                 <input
                   inputMode="numeric"
@@ -661,7 +666,7 @@ function MoreFilters({
                 />
               </label>
             </div>
-            <label className="block text-xs font-bold text-brand-100">
+            <label className="block text-xs font-bold text-white">
               Months in debt at least
               <input
                 inputMode="numeric"
@@ -672,7 +677,7 @@ function MoreFilters({
                 }
               />
             </label>
-            <label className="block text-xs font-bold text-brand-100">
+            <label className="block text-xs font-bold text-white">
               Rank tier
               <select
                 className={CLASS_CONTROL + " mt-1"}
@@ -690,7 +695,7 @@ function MoreFilters({
           </>
         ) : (
           <>
-            <label className="block text-xs font-bold text-brand-100">
+            <label className="block text-xs font-bold text-white">
               Method
               <select
                 className={CLASS_CONTROL + " mt-1"}
@@ -703,7 +708,7 @@ function MoreFilters({
                 <option value="transfer">Bank transfer</option>
               </select>
             </label>
-            <label className="block text-xs font-bold text-brand-100">
+            <label className="block text-xs font-bold text-white">
               Type
               <select
                 className={CLASS_CONTROL + " mt-1"}
@@ -717,7 +722,7 @@ function MoreFilters({
                 <option value="refund">Refund</option>
               </select>
             </label>
-            <label className="block text-xs font-bold text-brand-100">
+            <label className="block text-xs font-bold text-white">
               Source
               <select
                 className={CLASS_CONTROL + " mt-1"}

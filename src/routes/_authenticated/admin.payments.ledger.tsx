@@ -87,7 +87,7 @@ function LedgerPage() {
         <>
           <TransactionsTable rows={rows} showGroup onVoid={setVoiding} />
           <p className="text-xs text-brand-700">
-            {rows.length} transactions · recurring group fees
+            {rows.length} transactions · one class fee per month
           </p>
         </>
       )}

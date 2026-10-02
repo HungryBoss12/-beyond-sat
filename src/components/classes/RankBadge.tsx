@@ -5,7 +5,7 @@ const TONE: Record<RankLetter, string> = {
   A: "bg-brand-500 text-white ring-brand-300/50",
   B: "bg-brand-600 text-white ring-brand-400/40",
   C: "bg-brand-700 text-white ring-brand-400/30",
-  D: "bg-brand-800 text-brand-100 ring-brand-400/20",
+  D: "bg-brand-800 text-white ring-brand-400/20",
 };
 
 export function RankBadge({

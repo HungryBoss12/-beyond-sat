@@ -85,7 +85,7 @@ export function AttendanceGrid({
       <div className="mb-3 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-sm font-bold text-white">{title}</h3>
-          <p className="text-xs text-brand-100">
+          <p className="text-xs text-white">
             {total} lesson{total === 1 ? "" : "s"} attended in the last {weeks} weeks
           </p>
         </div>

@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useRegistrationEnabled } from "@/lib/registration";
 
 const LINKS = [
   { to: "/", label: "Home" },
@@ -36,6 +37,7 @@ function LogoMark() {
 
 export function SiteNav() {
   const [open, setOpen] = useState(false);
+  const registrationOn = useRegistrationEnabled();
 
   return (
     /* The marketing top bar matches the app shell's: brand surface, white page
@@ -96,12 +98,14 @@ export function SiteNav() {
           >
             Sign In
           </Link>
-          <Link
-            to="/signup"
-            className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
-          >
-            Sign Up Free
-          </Link>
+          {registrationOn && (
+            <Link
+              to="/signup"
+              className="btn-brand rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
+            >
+              Sign Up Free
+            </Link>
+          )}
         </div>
 
         <button
@@ -153,13 +157,15 @@ export function SiteNav() {
             >
               Sign In
             </Link>
-            <Link
-              to="/signup"
-              onClick={() => setOpen(false)}
-              className="btn-brand flex-1 rounded-lg bg-brand-400 px-4 py-2 text-center text-sm font-bold text-white"
-            >
-              Sign Up
-            </Link>
+            {registrationOn && (
+              <Link
+                to="/signup"
+                onClick={() => setOpen(false)}
+                className="btn-brand flex-1 rounded-lg bg-brand-400 px-4 py-2 text-center text-sm font-bold text-white"
+              >
+                Sign Up
+              </Link>
+            )}
           </div>
         </div>
       )}

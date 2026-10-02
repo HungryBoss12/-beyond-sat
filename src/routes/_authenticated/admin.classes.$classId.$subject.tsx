@@ -1,10 +1,11 @@
 import {
   createFileRoute,
+  getRouteApi,
   redirect,
   useNavigate,
   type SearchSchemaInput,
 } from "@tanstack/react-router";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { z } from "zod";
 import { EmptyState } from "@/components/ui/panel";
 import { groupFor, useClassContext } from "@/components/classes/ClassContext";
@@ -14,7 +15,9 @@ import {
   type WorkspaceSearch,
 } from "@/components/classes/ClassroomWorkspace";
 import { monthKey } from "@/lib/classes/classroom";
-import { slugToSubject } from "@/lib/classes/schemes";
+import { slugToSubject, subjectToSlug } from "@/lib/classes/schemes";
+
+const adminRoute = getRouteApi("/_authenticated/admin");
 
 const searchSchema = z.object({
   tab: z.enum(WORKSPACE_TABS).catch("attendance"),
@@ -50,10 +53,26 @@ function SubclassPage() {
   const { subject: slug, classId } = Route.useParams();
   const search = Route.useSearch() as WorkspaceSearch;
   const navigate = useNavigate();
+  const { staffRole } = adminRoute.useRouteContext();
   const { klass, groups, allClasses, isAdmin, reload } = useClassContext();
   const subject = slugToSubject(slug) ?? "math";
   const group = groupFor(groups, subject);
   const sibling = groupFor(groups, subject === "math" ? "ebrw" : "math");
+
+  useEffect(() => {
+    if (staffRole !== "teacher" || group) return;
+    const mine = groups[0];
+    if (mine) {
+      void navigate({
+        to: "/admin/classes/$classId/$subject",
+        params: { classId, subject: subjectToSlug(mine.subject) },
+        search,
+        replace: true,
+      });
+      return;
+    }
+    void navigate({ to: "/admin/classes", replace: true });
+  }, [staffRole, group, groups, navigate, classId, search]);
 
   const onNavigate = useCallback(
     (patch: Partial<WorkspaceSearch>) =>

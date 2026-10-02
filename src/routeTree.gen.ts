@@ -34,6 +34,7 @@ import { Route as AuthenticatedPracticeRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedVocabRouteImport } from './routes/_authenticated/vocab'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as JoinTokenRouteImport } from './routes/join.$token'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminClassesRouteImport } from './routes/_authenticated/admin.classes'
 import { Route as AuthenticatedAdminDailyRouteImport } from './routes/_authenticated/admin.daily'
@@ -219,6 +220,11 @@ const AuthenticatedVocabRoute = AuthenticatedVocabRouteImport.update({
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinTokenRoute = JoinTokenRouteImport.update({
+  id: '/join/$token',
+  path: '/join/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
@@ -605,6 +611,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AuthenticatedProfileRoute
   '/vocab': typeof AuthenticatedVocabRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/join/$token': typeof JoinTokenRoute
   '/admin/classes': typeof AuthenticatedAdminClassesRouteWithChildren
   '/admin/daily': typeof AuthenticatedAdminDailyRoute
   '/admin/examdates': typeof AuthenticatedAdminExamdatesRoute
@@ -687,6 +694,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/join/$token': typeof JoinTokenRoute
   '/admin/daily': typeof AuthenticatedAdminDailyRoute
   '/admin/examdates': typeof AuthenticatedAdminExamdatesRoute
   '/admin/homepage': typeof AuthenticatedAdminHomepageRoute
@@ -766,6 +774,7 @@ export interface FileRoutesById {
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/vocab': typeof AuthenticatedVocabRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/join/$token': typeof JoinTokenRoute
   '/_authenticated/admin/classes': typeof AuthenticatedAdminClassesRouteWithChildren
   '/_authenticated/admin/daily': typeof AuthenticatedAdminDailyRoute
   '/_authenticated/admin/examdates': typeof AuthenticatedAdminExamdatesRoute
@@ -856,6 +865,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/vocab'
     | '/auth/callback'
+    | '/join/$token'
     | '/admin/classes'
     | '/admin/daily'
     | '/admin/examdates'
@@ -938,6 +948,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/profile'
     | '/auth/callback'
+    | '/join/$token'
     | '/admin/daily'
     | '/admin/examdates'
     | '/admin/homepage'
@@ -1016,6 +1027,7 @@ export interface FileRouteTypes {
     | '/_authenticated/profile'
     | '/_authenticated/vocab'
     | '/auth/callback'
+    | '/join/$token'
     | '/_authenticated/admin/classes'
     | '/_authenticated/admin/daily'
     | '/_authenticated/admin/examdates'
@@ -1094,6 +1106,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  JoinTokenRoute: typeof JoinTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1271,6 +1284,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/callback'
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join/$token': {
+      id: '/join/$token'
+      path: '/join/$token'
+      fullPath: '/join/$token'
+      preLoaderRoute: typeof JoinTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/': {
@@ -2098,6 +2118,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  JoinTokenRoute: JoinTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

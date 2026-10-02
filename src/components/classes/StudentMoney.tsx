@@ -10,19 +10,17 @@ import {
   Wallet,
   Banknote,
 } from "lucide-react";
-import { Panel, PanelHead } from "@/components/ui/panel";
 import { IconButton } from "@/components/ui/icon-button";
 import { MoneyTile } from "@/components/billing/MoneyTile";
-import { MoneyInput } from "@/components/billing/MoneyInput";
 import { RecordPaymentDialog, type PaymentTarget } from "@/components/billing/RecordPaymentDialog";
 import { ActivationDateDialog } from "@/components/billing/ActivationDateDialog";
 import { TransactionsTable, type TxRow } from "@/components/billing/TransactionsTable";
 import { VoidDialog } from "@/components/billing/VoidDialog";
 import { KIND_META } from "@/components/billing/meta";
 import { chargeThisMonth } from "@/components/billing/charge";
-import { setFeeOverride, studentBilling, studentLedger, voidEntry } from "@/lib/billing/api";
+import { studentBilling, studentLedger, voidEntry } from "@/lib/billing/api";
 import { periodLabel } from "@/lib/billing/dates";
-import { balanceKind, checkUzsInput, formatUzs, groupDigits } from "@/lib/billing/money";
+import { balanceKind, formatUzs } from "@/lib/billing/money";
 import type { LedgerRow, StudentBillingRow } from "@/lib/billing/types";
 
 /** Admin-only money block on the student profile (§6). */
@@ -69,13 +67,9 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
   const joinTotal = joinGroups.reduce((sum, g) => sum + (g.join_amount_uzs ?? 0n), 0n);
   const joinHint =
     joinGroups.length === 0
-      ? "No priced groups"
+      ? "No class fee set"
       : joinGroups
-          .map((g) =>
-            g.join_total
-              ? `${g.join_remaining}/${g.join_total} lessons · ${g.group_name}`
-              : g.group_name,
-          )
+          .map((g) => (g.join_total ? `${g.join_remaining}/${g.join_total} lessons` : "Full month"))
           .join(" · ");
   const anyActive = billing.some((g) => g.status === "active");
 
@@ -144,24 +138,10 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
           label="Monthly fee"
           amount={priced.length ? monthly : null}
           text="Not set"
-          hint={priced.length ? "Auto-charged each month" : "No priced groups"}
+          hint={priced.length ? "Auto-charged each month" : "No class fee set"}
           loading={loading}
         />
       </div>
-
-      {billing.length > 0 && (
-        <Panel tone="soft" className="space-y-3">
-          <PanelHead
-            label="Per sub-class"
-            hint="Balance is per student; payments are not split by group."
-          />
-          <ul className="divide-y divide-brand-400/30">
-            {billing.map((group) => (
-              <GroupFeeRow key={group.group_id} userId={userId} group={group} onSaved={load} />
-            ))}
-          </ul>
-        </Panel>
-      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="min-w-0 space-y-2">
@@ -236,7 +216,7 @@ function CourseFeeTable({ rows }: { rows: LedgerRow[] }) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel">
       <table className="w-full min-w-[560px] text-left text-sm">
-        <thead className="text-[11px] font-bold text-brand-100">
+        <thead className="text-[11px] font-bold text-white">
           <tr>
             <th className="p-3">Date</th>
             <th className="p-3">Period</th>
@@ -261,7 +241,7 @@ function CourseFeeTable({ rows }: { rows: LedgerRow[] }) {
               <td className="whitespace-nowrap p-3">
                 {sourceLabel(row)}
                 {row.prorate_lessons != null && (
-                  <span className="ml-1 text-xs text-brand-100">
+                  <span className="ml-1 text-xs text-white">
                     {row.prorate_lessons}/{row.prorate_total}
                   </span>
                 )}
@@ -269,7 +249,7 @@ function CourseFeeTable({ rows }: { rows: LedgerRow[] }) {
               <td className="whitespace-nowrap p-3 text-right font-bold tabular-nums">
                 {formatUzs(row.amount_uzs)}
               </td>
-              <td className="max-w-[12rem] truncate p-3 text-brand-100" title={row.note ?? ""}>
+              <td className="max-w-[12rem] truncate p-3 text-white" title={row.note ?? ""}>
                 {row.note}
               </td>
             </tr>
@@ -287,7 +267,7 @@ function PaymentTable({ rows }: { rows: LedgerRow[] }) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel">
       <table className="w-full min-w-[420px] text-left text-sm">
-        <thead className="text-[11px] font-bold text-brand-100">
+        <thead className="text-[11px] font-bold text-white">
           <tr>
             <th className="p-3">Date</th>
             <th className="p-3">Method</th>
@@ -315,7 +295,7 @@ function PaymentTable({ rows }: { rows: LedgerRow[] }) {
               <td className="whitespace-nowrap p-3 text-right font-bold tabular-nums">
                 {formatUzs(row.amount_uzs)}
               </td>
-              <td className="max-w-[12rem] truncate p-3 text-brand-100" title={row.note ?? ""}>
+              <td className="max-w-[12rem] truncate p-3 text-white" title={row.note ?? ""}>
                 {row.note}
               </td>
             </tr>
@@ -326,99 +306,3 @@ function PaymentTable({ rows }: { rows: LedgerRow[] }) {
   );
 }
 
-/** One line per sub-class: charged so far, the fee in force and the per-student override. */
-function GroupFeeRow({
-  userId,
-  group,
-  onSaved,
-}: {
-  userId: string;
-  group: StudentBillingRow;
-  onSaved: () => Promise<void>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState("");
-  const [busy, setBusy] = useState(false);
-  const check = checkUzsInput(value, 0n);
-
-  async function save(fee: bigint | null) {
-    setBusy(true);
-    try {
-      await setFeeOverride(userId, group.group_id, fee);
-      toast.success(fee == null ? "Back to the group fee" : `Override saved · ${formatUzs(fee)}`);
-      setEditing(false);
-      await onSaved();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save the override");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-      <div className="min-w-0">
-        <div className="truncate font-bold">{group.group_name}</div>
-        <div className="truncate text-xs text-brand-100 tabular-nums">
-          Activated {group.activated_on ?? "—"} · charged {formatUzs(group.charged_uzs)} (
-          {group.charge_count}) · fee{" "}
-          {group.monthly_fee_uzs == null ? "not set" : formatUzs(group.monthly_fee_uzs)}
-          {group.override_fee_uzs != null && " (student override)"}
-        </div>
-      </div>
-      {editing ? (
-        <form
-          className="flex flex-wrap items-end gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (check.amount != null) void save(check.amount);
-          }}
-        >
-          <MoneyInput
-            label="Override (0 = free)"
-            value={value}
-            onChange={setValue}
-            error={check.error}
-            className="w-48"
-            autoFocus
-          />
-          <button
-            type="submit"
-            disabled={busy || check.amount == null}
-            className="btn-brand rounded-full bg-brand-400 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
-          >
-            Save
-          </button>
-          {group.override_fee_uzs != null && (
-            <button
-              type="button"
-              disabled={busy}
-              className="tap px-2 py-2 text-xs font-bold"
-              onClick={() => void save(null)}
-            >
-              Use group fee
-            </button>
-          )}
-          <button
-            type="button"
-            className="tap px-2 py-2 text-xs font-bold"
-            onClick={() => setEditing(false)}
-          >
-            Cancel
-          </button>
-        </form>
-      ) : (
-        <button
-          type="button"
-          className="tap rounded-full bg-brand-500 px-3 py-1.5 text-xs font-bold text-white"
-          onClick={() => {
-            setValue(group.override_fee_uzs == null ? "" : groupDigits(group.override_fee_uzs));
-            setEditing(true);
-          }}
-        >
-          {group.override_fee_uzs == null ? "Set student fee" : "Edit student fee"}
-        </button>
-      )}
-    </li>
-  );
-}

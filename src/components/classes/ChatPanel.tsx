@@ -73,7 +73,7 @@ export function ChatPanel({ classId, subject }: { classId: string; subject: Clas
   if (loading) {
     return (
       <div className="flex justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-brand-100" />
+        <Loader2 className="h-5 w-5 animate-spin text-white" />
       </div>
     );
   }
@@ -94,7 +94,7 @@ export function ChatPanel({ classId, subject }: { classId: string; subject: Clas
                 (thread.id === activeId ? "bg-brand-500" : "")
               }
             >
-              <MessageSquare className="h-3.5 w-3.5 shrink-0 text-brand-100" />
+              <MessageSquare className="h-3.5 w-3.5 shrink-0 text-white" />
               {thread.kind === "subject_group" && thread.subject
                 ? `${SUBJECT_LABEL[thread.subject]} sub-class`
                 : thread.kind === "class_group"
@@ -104,7 +104,7 @@ export function ChatPanel({ classId, subject }: { classId: string; subject: Clas
           </li>
         ))}
         {threads.length === 0 && (
-          <li className="px-3 py-4 text-sm text-brand-100">No class threads yet.</li>
+          <li className="px-3 py-4 text-sm text-white">No class threads yet.</li>
         )}
       </ul>
       <div className="max-h-96 space-y-2 overflow-y-auto rounded-xl border border-brand-400/40 p-3">
@@ -118,11 +118,11 @@ export function ChatPanel({ classId, subject }: { classId: string; subject: Clas
                 "rounded-lg bg-brand-800 px-3 py-2 text-sm " + (deleted ? "opacity-60" : "")
               }
             >
-              <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+              <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                 {sender ? displayName(sender) : message.sender_id.slice(0, 8)}
               </div>
               {deleted ? (
-                <div className="italic text-brand-100">Message deleted</div>
+                <div className="italic text-white">Message deleted</div>
               ) : editingId === message.id ? (
                 <div className="space-y-2">
                   <textarea
@@ -151,14 +151,14 @@ export function ChatPanel({ classId, subject }: { classId: string; subject: Clas
                   {attachments
                     .filter((file) => file.message_id === message.id)
                     .map((file) => (
-                      <div key={file.id} className="mt-1 text-xs text-brand-100">
+                      <div key={file.id} className="mt-1 text-xs text-white">
                         Attachment: {file.file_name}
                       </div>
                     ))}
                   <div className="mt-1 flex gap-2">
                     <button
                       type="button"
-                      className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase text-brand-100"
+                      className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase text-white"
                       onClick={() => {
                         setEditingId(message.id);
                         setEditDraft(message.body);
@@ -168,7 +168,7 @@ export function ChatPanel({ classId, subject }: { classId: string; subject: Clas
                     </button>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase text-brand-100"
+                      className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase text-white"
                       onClick={() => {
                         if (!confirm("Delete this message?")) return;
                         void (async () => {
@@ -186,7 +186,7 @@ export function ChatPanel({ classId, subject }: { classId: string; subject: Clas
           );
         })}
         {activeId && messages.length === 0 && (
-          <p className="text-sm text-brand-100">No messages yet.</p>
+          <p className="text-sm text-white">No messages yet.</p>
         )}
       </div>
     </div>

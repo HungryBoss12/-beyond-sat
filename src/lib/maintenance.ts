@@ -60,6 +60,7 @@ export async function getMaintenanceState(
 const EXEMPT_PREFIXES = [
   "/signin",
   "/signup",
+  "/join",
   "/auth",
   "/api/",
   "/_serverFn/",

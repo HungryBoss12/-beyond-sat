@@ -226,18 +226,27 @@
     display: none;
   }
 
-  /* Nested scroll regions: momentum, no scroll chaining, subtle scrollbar. */
+  /* Nested scroll regions: momentum, no scroll chaining, subtle scrollbar.
+     Horizontal-only boxes (overflow-x-auto + overflow-y-clip) must still let
+     the mouse wheel move the page, so they only contain the x axis. */
   :is(
     [class*="overflow-y-auto"],
-    [class*="overflow-x-auto"],
     [class*="overflow-auto"],
     [class*="overflow-y-scroll"],
-    [class*="overflow-x-scroll"],
     [class*="overflow-scroll"],
     .scroll-area
   ) {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(83 82 145 / 0.42) transparent;
+  }
+
+  :is([class*="overflow-x-auto"], [class*="overflow-x-scroll"]):not([class*="overflow-y-"]) {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
     scroll-behavior: smooth;
     scrollbar-width: thin;
     scrollbar-color: rgb(83 82 145 / 0.42) transparent;

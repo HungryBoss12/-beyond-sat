@@ -234,17 +234,10 @@ function AdminSqbReviewPage() {
       );
       return;
     }
-    if (next) {
-      const ok = confirm(
-        `Publish “${title}”?\n\nKeeping ${kept.length} question${kept.length === 1 ? "" : "s"}.\nSkipping ${skippedCount} (removed from this pack).\nHard errors: ${packErrors}\nSoft warnings: ${packWarnings}`,
-      );
-      if (!ok) return;
-    }
     setBusy(true);
     setConfirmPublish(false);
     try {
       const skipIds = adminQs.filter((item) => skipped[item.id]).map((item) => item.id);
-      const keepIds = adminQs.filter((item) => !skipped[item.id]).map((item) => item.id);
       if (next && skipIds.length > 0) {
         const { error: unlinkErr } = await supabase
           .from("test_questions")
@@ -253,21 +246,11 @@ function AdminSqbReviewPage() {
           .in("question_id", skipIds);
         if (unlinkErr) throw new Error(unlinkErr.message);
       }
-      const ids = next ? keepIds : adminQs.map((item) => item.id);
-      if (ids.length > 0) {
-        const { error: qe } = await supabase
-          .from("questions")
-          .update({ published: next })
-          .in("id", ids)
-          .eq("bank_format", "sqb");
-        if (qe) throw new Error(qe.message);
-      }
-      const { error: te } = await supabase
-        .from("tests")
-        .update(next ? { published: true, in_test_base: false } : { published: false })
-        .eq("id", testId)
-        .eq("bank_format", "sqb");
-      if (te) throw new Error(te.message);
+      const { error: publishErr } = await supabase.rpc("staff_publish_sqb_test", {
+        p_test_id: testId,
+        p_publish: next,
+      });
+      if (publishErr) throw new Error(publishErr.message);
       if (next && skipIds.length > 0) {
         const drop = new Set(skipIds);
         setAdminQs((prev) => prev.filter((item) => !drop.has(item.id)));

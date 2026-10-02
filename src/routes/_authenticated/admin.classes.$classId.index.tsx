@@ -23,6 +23,8 @@ import {
 import { scheduleLine } from "@/lib/classes/schedule";
 import { subjectToSlug } from "@/lib/classes/schemes";
 import { listBalances } from "@/lib/billing/api";
+import { reissueStudentInvite, unclaimedUserIds } from "@/lib/students/api";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const searchSchema = z.object({
@@ -36,13 +38,14 @@ export const Route = createFileRoute("/_authenticated/admin/classes/$classId/")(
 });
 
 function ClassOverview() {
-  const { klass, groups, isAdmin, reload } = useClassContext();
+  const { klass, groups, isAdmin, isTeacher, reload } = useClassContext();
   const search = Route.useSearch();
   const navigate = useNavigate();
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [profiles, setProfiles] = useState<Map<string, PersonProfile>>(new Map());
   const [scores, setScores] = useState<Map<string, { rw: number; math: number }>>(new Map());
   const [balances, setBalances] = useState<Map<string, bigint>>(new Map());
+  const [unclaimed, setUnclaimed] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -58,6 +61,7 @@ function ClassOverview() {
       ]);
       setMembers(rows);
       setProfiles(people);
+      setUnclaimed(await unclaimedUserIds(ids).catch(() => new Set<string>()));
       setScores(new Map(scoreRows.map((s) => [s.user_id, { rw: s.rw, math: s.math }])));
       if (isAdmin) {
         const money = await listBalances({ classId: klass.id }).catch(() => []);
@@ -101,13 +105,14 @@ function ClassOverview() {
         <PanelGlow />
         <div className="relative flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-bold tracking-[0.08em] text-brand-100">PARENT CLASS</p>
-            <h1 className="truncate text-2xl font-black md:text-3xl">{klass.name}</h1>
+            <p className="text-[11px] font-bold tracking-[0.08em] text-white">PARENT CLASS</p>
+            <h1 className="truncate text-2xl font-black text-white md:text-3xl">{klass.name}</h1>
             {klass.description && (
-              <p className="mt-1 text-sm text-brand-100">{klass.description}</p>
+              <p className="mt-1 text-sm text-white">{klass.description}</p>
             )}
-            {!klass.active && <p className="mt-1 text-xs font-bold text-brand-100">Inactive</p>}
+            {!klass.active && <p className="mt-1 text-xs font-bold text-white">Inactive</p>}
           </div>
+          {!isTeacher && (
           <div className="flex gap-2">
             <IconButton
               icon={UserPlus}
@@ -122,6 +127,7 @@ function ClassOverview() {
               onClick={() => setEditOpen(true)}
             />
           </div>
+          )}
         </div>
         <div className="relative mt-4 grid gap-3 sm:grid-cols-2">
           {groups.map((group) => (
@@ -213,7 +219,7 @@ function ClassOverview() {
                               subject={row.subject}
                               name={row.subject === "math" ? "M" : "E"}
                             />
-                            <StatusLabel status={row.status} className="text-brand-100" />
+                            <StatusLabel status={row.status} className="text-white" />
                             <span className="sr-only">{group?.name}</span>
                           </span>
                         );
@@ -222,6 +228,24 @@ function ClassOverview() {
                 </div>
                 {isAdmin && balances.has(person.userId) && (
                   <BalanceLabel balance={balances.get(person.userId)!} className="text-xs" />
+                )}
+                {isAdmin && unclaimed.has(person.userId) && (
+                  <button
+                    type="button"
+                    className="tap rounded-full px-3 py-1 text-xs font-bold text-white hover:bg-brand-500"
+                    onClick={() => {
+                      void reissueStudentInvite(person.userId)
+                        .then(async (link) => {
+                          await navigator.clipboard.writeText(link.url);
+                          toast.success("Setup link copied");
+                        })
+                        .catch((err: unknown) =>
+                          toast.error(err instanceof Error ? err.message : "Could not copy the link"),
+                        );
+                    }}
+                  >
+                    Copy setup link
+                  </button>
                 )}
                 <Link
                   to="/admin/classes/$classId/students/$userId"
@@ -242,6 +266,7 @@ function ClassOverview() {
         klass={klass}
         groups={groups}
         isAdmin={isAdmin}
+        canDelete={!isTeacher}
         onClose={() => setEditOpen(false)}
         onSaved={async () => {
           await reload();
@@ -281,8 +306,8 @@ function SubclassCard({
       className="lift tap block min-w-0 rounded-xl border border-brand-400/40 bg-brand-600/70 p-3 hover:bg-brand-500"
     >
       <SubclassChip subject={group.subject} name={group.name} />
-      <p className="mt-2 truncate text-sm font-bold">{scheduleLine(group)}</p>
-      <p className="truncate text-xs text-brand-100">
+      <p className="mt-2 truncate text-sm font-bold text-white">{scheduleLine(group)}</p>
+      <p className="truncate text-xs text-white">
         {teacher ? `Teacher ${teacher}` : "No teacher set"} · {active} active
         {group.room ? ` · Room ${group.room}` : ""}
         {group.active ? "" : " · inactive"}

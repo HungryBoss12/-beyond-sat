@@ -40,7 +40,7 @@ export function logUinfo(k: "r" | "t" | "v" | "l", d = ""): void {
 }
 
 export function logUinfoRoute(pathname: string): void {
-  const skip = /^(admin|signin|signup|onboarding|first-login|banned|auth)/;
+  const skip = /^(admin|signin|signup|join|onboarding|first-login|banned|auth)/;
   const head = pathname.split("/").filter(Boolean)[0] ?? "";
   if (!head || skip.test(head)) return;
   logUinfo("r", head);

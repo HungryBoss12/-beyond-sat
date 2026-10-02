@@ -134,12 +134,12 @@ export function LevelModal({
       >
         <DialogHeader>
           <DialogTitle className="text-white">Edit levels</DialogTitle>
-          <DialogDescription className="text-brand-100">
+          <DialogDescription className="text-white">
             {student?.name} · {group.name} · {LEVEL_MIN}–{LEVEL_MAX} per section
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2 sm:grid-cols-2">
-          <label className="block text-xs font-bold text-brand-100">
+          <label className="block text-xs font-bold text-white">
             Assessment date
             <input
               type="date"
@@ -150,7 +150,7 @@ export function LevelModal({
             />
             {dateError && <span className="mt-1 block text-white">{dateError}</span>}
           </label>
-          <label className="block text-xs font-bold text-brand-100">
+          <label className="block text-xs font-bold text-white">
             Lesson (optional)
             <select
               className={CLASS_CONTROL + " mt-1"}
@@ -182,7 +182,7 @@ export function LevelModal({
                   <label htmlFor={`lvl-${section.id}`} className="block truncate text-sm font-bold">
                     {section.name}
                   </label>
-                  <span className="text-[11px] text-brand-100 tabular-nums">
+                  <span className="text-[11px] text-white tabular-nums">
                     {now ? `${now.score} · ${now.assessed_on}` : "No score yet"}
                     {p?.kind === "error" && (
                       <span className="ml-2 font-bold text-white">{p.message}</span>
@@ -241,7 +241,7 @@ export function LevelModal({
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-brand-400/30 pt-3">
           <p className="text-sm tabular-nums">
             New overall <span className="font-black">{preview ?? "—"}</span>
-            <span className="text-brand-100"> (now {before ?? "—"})</span>
+            <span className="text-white"> (now {before ?? "—"})</span>
           </p>
           <div className="flex gap-2">
             <button type="button" className="tap px-4 py-2 text-sm font-bold" onClick={onClose}>

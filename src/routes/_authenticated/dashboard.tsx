@@ -30,7 +30,7 @@ import {
   Tooltip,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
-import { getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
+import { getStaffRole, staffHome, type StaffRole } from "@/lib/admin";
 import { RW_SKILLS, MATH_SKILLS, scoreBand } from "@/lib/sat";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { FocusNextPanel } from "@/components/ai/FocusNextPanel";
@@ -249,11 +249,11 @@ function Dashboard() {
         action={
           staffRole ? (
             <Link
-              to={staffRole === "admin" ? "/admin" : EDITOR_HOME}
+              to={staffHome(staffRole)}
               className="btn-brand group inline-flex items-center gap-2 rounded-xl bg-grad-brand px-4 py-2.5 text-sm font-bold text-white"
             >
               <Shield className="h-4 w-4" />
-              {staffRole === "admin" ? "Admin Panel" : "Editor Panel"}
+              {staffRole === "admin" ? "Admin Panel" : staffRole === "teacher" ? "Teaching" : "Editor Panel"}
               <ArrowRight className="arrow-slide h-4 w-4" />
             </Link>
           ) : undefined

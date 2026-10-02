@@ -14,6 +14,11 @@ import { handleVocabGenerate } from "./lib/vocab/handlers/generate";
 import { handleVocabQuizSubmit } from "./lib/vocab/handlers/quiz-submit";
 import { handleVocabReview, handleVocabSession } from "./lib/vocab/handlers/session";
 import { handleAdminCreateUser } from "./lib/auth/create-user-handler";
+import {
+  handleClaimStudentInvite,
+  handleCreateStudentInvite,
+  handlePreviewStudentInvite,
+} from "./lib/auth/student-invite-handler";
 import { handleCompleteFirstLogin } from "./lib/auth/complete-first-login-handler";
 import { handleUsernameLogin } from "./lib/auth/username-login-handler";
 import { handleEnsureTelegramWebhook } from "./lib/telegram/ensure-webhook-handler";
@@ -212,6 +217,18 @@ export default {
 
       if (url.pathname === "/api/admin/create-user") {
         return applySecurityHeaders(await handleAdminCreateUser(request, env), env);
+      }
+
+      if (url.pathname === "/api/admin/student-invite") {
+        return applySecurityHeaders(await handleCreateStudentInvite(request, env), env);
+      }
+
+      if (url.pathname === "/api/auth/preview-invite") {
+        return applySecurityHeaders(await handlePreviewStudentInvite(request, env), env);
+      }
+
+      if (url.pathname === "/api/auth/claim-invite") {
+        return applySecurityHeaders(await handleClaimStudentInvite(request, env), env);
       }
 
       if (url.pathname === "/api/auth/username-login") {

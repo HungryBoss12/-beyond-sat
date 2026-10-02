@@ -139,6 +139,38 @@ export async function groupFees(): Promise<GroupFeeRow[]> {
   }));
 }
 
+export type ClassFeeRow = {
+  class_id: string;
+  class_name: string;
+  active: boolean;
+  monthly_fee_uzs: bigint | null;
+  effective_from: string | null;
+};
+
+export async function classFees(): Promise<ClassFeeRow[]> {
+  const rows = await call("admin_class_fees");
+  return (rows ?? []).map((r) => ({
+    class_id: r.class_id,
+    class_name: r.class_name,
+    active: Boolean(r.active),
+    monthly_fee_uzs: uzsOrNull(r.monthly_fee_uzs),
+    effective_from: r.effective_from ?? null,
+  }));
+}
+
+/** `fee = null` makes the class unpriced from that month. One fee covers both sub-classes. */
+export async function setClassFee(
+  classId: string,
+  fee: bigint | null,
+  effectiveFrom?: string | null,
+): Promise<void> {
+  await call("admin_set_class_fee", {
+    p_class_id: classId,
+    p_fee_uzs: fee == null ? null : uzsParam(fee),
+    p_effective_from: effectiveFrom ?? null,
+  });
+}
+
 /** `fee = null` makes the group unpriced from that month. */
 export async function setGroupFee(
   groupId: string,

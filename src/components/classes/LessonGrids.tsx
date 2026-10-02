@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePointerGlow } from "@/hooks/usePointerGlow";
 import { CalendarPlus, Check, CheckCheck, Eraser, Gauge, X } from "lucide-react";
 import { toast } from "sonner";
 import { IconButton } from "@/components/ui/icon-button";
@@ -29,6 +30,16 @@ import { CLASS_CONTROL } from "./control";
 export type GridPerson = { userId: string; name: string; status: MemberStatus };
 
 const NAME_COL = "minmax(150px, 200px)";
+
+/** Horizontal scroller that still lets the mouse wheel move the page, with the card glow. */
+function GlowScroll({ children }: { children: React.ReactNode }) {
+  const ref = usePointerGlow<HTMLDivElement>();
+  return (
+    <div ref={ref} className="reveal-surface overflow-x-auto overflow-y-clip rounded-xl">
+      {children}
+    </div>
+  );
+}
 
 /** Date pills for the month; the selected lesson drives tick-all, results and level dates. */
 export function DateStrip({
@@ -65,14 +76,14 @@ export function DateStrip({
               "tap rounded-full px-2.5 py-1 text-xs font-bold tabular-nums transition-colors duration-200",
               lesson.id === selectedId
                 ? "bg-brand-25 text-brand-900"
-                : "bg-brand-800 text-brand-100",
+                : "bg-brand-800 text-white",
             )}
           >
             {shortDate(lesson.lesson_date)}
           </button>
         ))}
         {lessons.length === 0 && (
-          <span className="text-xs text-brand-100">
+          <span className="text-xs text-white">
             No lessons this month. Set the days in Edit class, or add a date.
           </span>
         )}
@@ -229,8 +240,8 @@ export function AttendanceGrid({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-brand-100">Click a cell: present → absent → clear</p>
-      <div className="overflow-x-auto">
+      <p className="text-xs text-white">Click a cell: present → absent → clear</p>
+      <GlowScroll>
         <div role="grid" aria-label="Attendance" className="min-w-max">
           <div role="row" className="grid" style={{ gridTemplateColumns: columns }}>
             <div
@@ -308,8 +319,8 @@ export function AttendanceGrid({
             </div>
           ))}
         </div>
-      </div>
-      <p className="text-xs font-bold text-brand-100 tabular-nums">
+      </GlowScroll>
+      <p className="text-xs font-bold text-white tabular-nums">
         {selected
           ? `${shortDate(selected.lesson_date)}: ${counts.present} present · ${counts.absent} absent · ${people.length - counts.present - counts.absent} not marked`
           : "Pick a lesson date"}
@@ -366,12 +377,16 @@ export function MarksGrid({
     }
   }
 
-  async function bulk(label: string, run: () => Promise<unknown>) {
-    if (!selected) return toast.message("Pick a lesson date first");
+  async function bulk(
+    label: string,
+    run: () => Promise<unknown>,
+    lesson: { lesson_date: string } | null = selected,
+  ) {
+    if (!lesson) return toast.message("Pick a lesson date first");
     if (people.length === 0) return;
     if (
       people.length > 10 &&
-      !confirm(`${label} for ${people.length} students on ${shortDate(selected.lesson_date)}?`)
+      !confirm(`${label} for ${people.length} students on ${shortDate(lesson.lesson_date)}?`)
     ) {
       return;
     }
@@ -412,7 +427,7 @@ export function MarksGrid({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-bold text-brand-100">Everyone:</span>
+        <span className="text-xs font-bold text-white">Everyone:</span>
         {items.map((item) => (
           <button
             key={item}
@@ -452,7 +467,7 @@ export function MarksGrid({
           />
         </div>
       </div>
-      <ul className="flex flex-wrap gap-3 text-[11px] text-brand-100" aria-label="Legend">
+      <ul className="flex flex-wrap gap-3 text-[11px] text-white" aria-label="Legend">
         {items.map((item) => (
           <li key={item} className="inline-flex items-center gap-1">
             <span className="grid h-5 w-5 place-items-center rounded-full bg-brand-25 text-[10px] font-black text-brand-900">
@@ -470,7 +485,7 @@ export function MarksGrid({
         <li>* auto from accepted homework</li>
         {isAfl && <li>L = Level, edited in the Level modal</li>}
       </ul>
-      <div className="overflow-x-auto">
+      <GlowScroll>
         <div role="grid" aria-label={isAfl ? "AFL homework" : "VAR homework"} className="min-w-max">
           <div role="row" className="grid" style={{ gridTemplateColumns: columns }}>
             <div
@@ -480,19 +495,54 @@ export function MarksGrid({
               Student
             </div>
             {lessons.map((lesson) => (
-              <button
+              <div
                 key={lesson.id}
-                type="button"
                 role="columnheader"
-                aria-pressed={lesson.id === selectedId}
-                onClick={() => onSelect(lesson.id)}
                 className={cn(
-                  "tap px-1 py-2 text-center text-[11px] font-bold tabular-nums",
+                  "flex flex-col items-center gap-1 px-1 py-1",
                   lesson.id === selectedId && "rounded-t-lg bg-brand-500",
                 )}
               >
-                {shortDate(lesson.lesson_date)}
-              </button>
+                <button
+                  type="button"
+                  aria-pressed={lesson.id === selectedId}
+                  onClick={() => onSelect(lesson.id)}
+                  className="tap text-[11px] font-bold tabular-nums"
+                >
+                  {shortDate(lesson.lesson_date)}
+                </button>
+                <div className="flex gap-0.5">
+                  {items.map((item) => {
+                    const on =
+                      people.length > 0 &&
+                      people.every((person) => local.get(`${person.userId}:${lesson.id}:${item}`));
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        disabled={busy || people.length === 0}
+                        aria-pressed={on}
+                        aria-label={`${HW_ITEM_LABEL[item]} for every student on ${shortDate(lesson.lesson_date)}`}
+                        onClick={() =>
+                          void bulk(
+                            `${HW_ITEM_LABEL[item]} ${on ? "cleared" : "ticked"} · ${shortDate(lesson.lesson_date)}`,
+                            () => setHwMarks(lesson.id, ids, item, !on),
+                            lesson,
+                          )
+                        }
+                        className={cn(
+                          "tap h-6 w-6 rounded-full text-[10px] font-black disabled:opacity-40",
+                          on
+                            ? "bg-brand-25 text-brand-900"
+                            : "bg-brand-800 text-white ring-1 ring-brand-300",
+                        )}
+                      >
+                        {HW_ITEM_LETTER[item]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
             {isAfl && (
               <div
@@ -582,8 +632,8 @@ export function MarksGrid({
             );
           })}
         </div>
-      </div>
-      <p className="text-xs font-bold text-brand-100 tabular-nums">
+      </GlowScroll>
+      <p className="text-xs font-bold text-white tabular-nums">
         {doneSummary(subject, counts, avgLevel)}
       </p>
     </div>

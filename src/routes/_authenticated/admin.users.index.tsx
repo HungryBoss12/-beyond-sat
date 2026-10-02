@@ -32,9 +32,10 @@ import { isSyntheticAccountEmail } from "@/lib/auth/login-email";
 import { listAllClasses, addClassMember } from "@/lib/classes/api";
 import type { ClassRow } from "@/lib/classes/types";
 import { isOnline, lastSeenLabel } from "@/lib/presence";
+import { unclaimedUserIds } from "@/lib/students/api";
 import { errorMessage } from "@/lib/utils";
 
-type Role = "student" | "editor" | "admin";
+type Role = "student" | "editor" | "admin" | "teacher";
 type Filter = "students" | "all" | "online" | "staff" | "banned";
 type ClassFilter = "all" | "unassigned" | string;
 type SortKey = "created_at" | "tests_total" | "last_seen";
@@ -47,6 +48,7 @@ const CONTROL =
 
 const ROLE_OPTIONS = [
   { value: "student", label: "Student" },
+  { value: "teacher", label: "Teacher" },
   { value: "editor", label: "Editor" },
   { value: "admin", label: "Admin" },
 ];
@@ -73,6 +75,7 @@ function AdminStudents() {
   const { tab } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const [rows, setRows] = useState<UserRow[]>([]);
+  const [unclaimed, setUnclaimed] = useState<Set<string>>(new Set());
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -159,6 +162,12 @@ function AdminStudents() {
     for (const r of (roles ?? []) as { user_id: string; role: string }[]) {
       if (r.role === "admin") roleOf.set(r.user_id, "admin");
       else if (r.role === "editor" && roleOf.get(r.user_id) !== "admin") roleOf.set(r.user_id, "editor");
+      else if (
+        r.role === "teacher" &&
+        roleOf.get(r.user_id) !== "admin" &&
+        roleOf.get(r.user_id) !== "editor"
+      )
+        roleOf.set(r.user_id, "teacher");
     }
     setRows(
       (full.data ?? []).map((p) => ({
@@ -390,6 +399,25 @@ function AdminStudents() {
     return names;
   }, [rows]);
 
+  useEffect(() => {
+    const ids = rows.map((row) => row.id);
+    if (ids.length === 0) {
+      setUnclaimed(new Set());
+      return;
+    }
+    let live = true;
+    void unclaimedUserIds(ids)
+      .then((next) => {
+        if (live) setUnclaimed(next);
+      })
+      .catch(() => {
+        if (live) setUnclaimed(new Set());
+      });
+    return () => {
+      live = false;
+    };
+  }, [rows]);
+
   const staffCreatedRows = useMemo(
     () =>
       [...rows.filter(isStaffCreated)].sort(
@@ -614,6 +642,7 @@ function AdminStudents() {
                           busy={busy === u.id}
                           insightsReady={insightsReady}
                           selected={selectedIds.has(u.id)}
+                          unclaimed={unclaimed.has(u.id)}
                           onToggleSelect={() => toggleSelected(u.id)}
                           onRole={(role) => void setRole(u, role)}
                           onBan={() => void toggleBan(u)}
@@ -836,12 +865,14 @@ function AdminStudents() {
                                     </span>
                                   ) : null}
                                 </div>
-                                <div className="truncate text-xs text-brand-100">
-                                  {u.banned
-                                    ? "Banned"
-                                    : isOnline(u.last_seen_at)
-                                      ? "Online now"
-                                      : lastSeenLabel(u.last_seen_at)}
+                                <div className="truncate text-xs text-white">
+                                  {unclaimed.has(u.id)
+                                    ? "Not registered yet"
+                                    : u.banned
+                                      ? "Banned"
+                                      : isOnline(u.last_seen_at)
+                                        ? "Online now"
+                                        : lastSeenLabel(u.last_seen_at)}
                                 </div>
                               </div>
                               <div className="text-sm tabular-nums text-white">{u.tests_total}</div>
@@ -895,6 +926,7 @@ function UserListRow({
   busy,
   insightsReady,
   selected,
+  unclaimed,
   onToggleSelect,
   onRole,
   onBan,
@@ -903,6 +935,7 @@ function UserListRow({
   busy: boolean;
   insightsReady: boolean;
   selected: boolean;
+  unclaimed: boolean;
   onToggleSelect: () => void;
   onRole: (role: Role) => void;
   onBan: () => void;
@@ -964,9 +997,14 @@ function UserListRow({
                     Banned
                   </span>
                 )}
+                {unclaimed && (
+                  <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white ring-1 ring-brand-400/40">
+                    Not registered yet
+                  </span>
+                )}
               </div>
-              <div className="truncate text-xs text-brand-100">
-                {u.email}
+              <div className="truncate text-xs text-white">
+                {unclaimed ? "Not registered yet" : u.email}
                 {" · Joined "}
                 {format(new Date(u.created_at), "MMM d, yyyy")}
               </div>

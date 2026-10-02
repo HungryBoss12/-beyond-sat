@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2, Save, Calculator, Sparkles, Wrench, KeyRound, MessageCircle, Youtube } from "lucide-react";
+import { Loader2, Save, Calculator, Sparkles, Wrench, KeyRound, MessageCircle, Youtube, UserPlus } from "lucide-react";
+import { clearRegistrationCache } from "@/lib/registration";
 import {
   createTelegramLinkCode,
   fetchTelegramAdmins,
@@ -33,6 +34,7 @@ const SETTING_KEYS = [
   "openrouter_model_vision",
   "maintenance_enabled",
   "maintenance_message",
+  "registration_enabled",
 ] as const;
 
 type SettingKey = (typeof SETTING_KEYS)[number];
@@ -47,6 +49,7 @@ const EMPTY: Settings = {
   openrouter_model_vision: "",
   maintenance_enabled: "false",
   maintenance_message: "",
+  registration_enabled: "false",
 };
 
 /**
@@ -151,11 +154,13 @@ function AdminSettings() {
     const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "key" });
     setSavingCard(null);
     if (error) return alert(error.message);
+    if (keys.includes("registration_enabled")) clearRegistrationCache();
     setSavedCard(card);
     setTimeout(() => setSavedCard((c) => (c === card ? null : c)), 2500);
   }
 
   const maintenanceOn = settings.maintenance_enabled === "true";
+  const registrationOn = settings.registration_enabled === "true";
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -454,6 +459,48 @@ function AdminSettings() {
           disabled={loading}
           hint="Changes take up to 30 seconds to reach every visitor."
         />
+      </Card>
+
+      <Card
+        icon={UserPlus}
+        title="Registration"
+        description="New accounts are off by default. Sign-in stays available. Turn this on when you want visitors to create accounts again."
+      >
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-brand-800 p-4 ring-1 ring-brand-400/40">
+          <div className="min-w-0">
+            <div className="text-sm font-bold text-white">
+              {registrationOn ? "Registration is open" : "Registration is off"}
+            </div>
+            <p className="mt-0.5 text-xs text-white">
+              {registrationOn
+                ? "The sign-up page and Create an account links are visible."
+                : "Only sign-in is available. Sign-up links go to the sign-in page."}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={registrationOn}
+            aria-label="Registration"
+            disabled={loading || savingCard === "registration"}
+            onClick={() => {
+              const next = registrationOn ? "false" : "true";
+              set("registration_enabled", next);
+              save("registration", ["registration_enabled"], { registration_enabled: next });
+            }}
+            className={
+              "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors disabled:opacity-60 " +
+              (registrationOn ? "bg-white" : "bg-brand-900 ring-1 ring-brand-400/50")
+            }
+          >
+            <span
+              className={
+                "inline-block h-5 w-5 rounded-full transition-transform " +
+                (registrationOn ? "translate-x-6 bg-brand-600" : "translate-x-1 bg-brand-200")
+              }
+            />
+          </button>
+        </div>
       </Card>
 
       <Card

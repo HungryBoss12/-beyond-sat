@@ -14,6 +14,7 @@ import {
   type SavedAccount,
 } from "@/lib/auth/account-switcher";
 import { PanelGlow } from "@/components/ui/panel";
+import { useRegistrationEnabled } from "@/lib/registration";
 import { AmbientGlow, RevealCard } from "@/components/ui/reveal-card";
 
 export const Route = createFileRoute("/signin")({
@@ -52,6 +53,7 @@ function SignIn() {
   const [saved, setSaved] = useState<SavedAccount[]>([]);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
   const adding = isAddAccount();
+  const registrationOn = useRegistrationEnabled();
 
   useEffect(() => {
     setSaved(listSavedAccounts());
@@ -232,12 +234,14 @@ function SignIn() {
             </div>
           </form>
 
-          <p className="mt-6 text-center text-sm text-brand-100">
-            New here?{" "}
-            <Link to="/signup" className="font-bold text-white hover:underline">
-              Create an account
-            </Link>
-          </p>
+          {registrationOn && (
+            <p className="mt-6 text-center text-sm text-brand-100">
+              New here?{" "}
+              <Link to="/signup" className="font-bold text-white hover:underline">
+                Create an account
+              </Link>
+            </p>
+          )}
           </div>
         </RevealCard>
       </main>

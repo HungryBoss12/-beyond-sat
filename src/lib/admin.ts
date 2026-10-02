@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /** Roles that can open the admin panel, most privileged first. */
-export type StaffRole = "admin" | "editor";
+export type StaffRole = "admin" | "editor" | "teacher";
 
 /**
  * The only admin sections an editor may open. Everything else — Overview,
@@ -30,6 +30,15 @@ export function canEditorAccess(pathname: string): boolean {
 /** Where an editor lands when they hit the panel root or an off-limits path. */
 export const EDITOR_HOME = "/admin/questions";
 
+/** A teacher's home is the class list, limited to groups an admin assigned. */
+export const TEACHER_HOME = "/admin/classes";
+
+export function staffHome(role: StaffRole): "/admin" | typeof EDITOR_HOME | typeof TEACHER_HOME {
+  if (role === "admin") return "/admin";
+  if (role === "teacher") return TEACHER_HOME;
+  return EDITOR_HOME;
+}
+
 /**
  * Reads every role row for a user and picks the strongest.
  *
@@ -43,6 +52,7 @@ export async function getStaffRole(userId: string): Promise<StaffRole | null> {
   const roles = (data ?? []).map((r: { role: string }) => r.role);
   if (roles.includes("admin")) return "admin";
   if (roles.includes("editor")) return "editor";
+  if (roles.includes("teacher")) return "teacher";
   return null;
 }
 

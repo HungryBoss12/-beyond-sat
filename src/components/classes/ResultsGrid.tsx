@@ -1,12 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { setResult, type GroupLesson, type ResultRow } from "@/lib/classes/groups";
-import {
-  RESULT_MODULE_MAX,
-  RESULT_NA_BELOW,
-  parseModule,
-  resultLabel,
-} from "@/lib/classes/results";
+import { RESULT_MODULE_MAX, parseModule, resultLabel } from "@/lib/classes/results";
 import { shortDate } from "@/lib/classes/schedule";
 import { cn } from "@/lib/utils";
 import type { GridPerson } from "./LessonGrids";
@@ -14,8 +9,9 @@ import type { GridPerson } from "./LessonGrids";
 type Draft = { m1: string; m2: string };
 
 /**
- * M1 + M2 correct answers per student. Past dates show the score; the selected
- * lesson is editable. Enter moves down the column. Below 30 shows "N.A.".
+ * M1 + M2 correct answers per student. The score column is the section score
+ * for that raw total. Past dates show it; the selected lesson is editable.
+ * Enter moves down the column.
  */
 export function ResultsGrid({
   lessons,
@@ -90,13 +86,13 @@ export function ResultsGrid({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-brand-100">
-        M1 and M2 are correct answers (0–{RESULT_MODULE_MAX}). Score = M1 + M2; below{" "}
-        {RESULT_NA_BELOW} shows N.A. Enter moves down.
+      <p className="text-xs text-white">
+        M1 and M2 are correct answers (0–{RESULT_MODULE_MAX}). Score is the section score for M1 +
+        M2. Totals outside 23–44 show N.A. Enter moves down.
       </p>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-clip">
         <table className="min-w-max text-left text-sm">
-          <thead className="text-[11px] font-bold text-brand-100">
+          <thead className="text-[11px] font-bold text-white">
             <tr>
               <th className="sticky left-0 z-10 bg-brand-600 px-2 py-2">Student</th>
               {lessons.map((lesson) =>
@@ -127,7 +123,7 @@ export function ResultsGrid({
               <tr key={person.userId} className="border-t border-brand-400/30">
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 max-w-[200px] truncate bg-brand-600 px-2 py-2 font-bold"
+                  className="sticky left-0 z-10 max-w-[200px] truncate bg-brand-600 px-2 py-2 font-bold text-white"
                 >
                   {person.name}
                 </th>
@@ -137,7 +133,7 @@ export function ResultsGrid({
                     return (
                       <td
                         key={lesson.id}
-                        className="px-2 py-2 text-center tabular-nums text-brand-100"
+                        className="px-2 py-2 text-center tabular-nums text-white"
                       >
                         {resultLabel(row?.m1 ?? null, row?.m2 ?? null)}
                       </td>
@@ -225,7 +221,7 @@ function ResultCells({
           />
         </td>
       ))}
-      <td className="bg-brand-500 px-2 py-1 text-center font-black tabular-nums">
+      <td className="bg-brand-500 px-2 py-1 text-center font-black tabular-nums text-white">
         {label}
         {(errors.m1 || errors.m2) && (
           <span className="sr-only"> (enter 0 to {RESULT_MODULE_MAX})</span>

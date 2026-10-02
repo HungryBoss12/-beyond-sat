@@ -98,7 +98,7 @@ export function ActivationDateDialog({
       <DialogContent className="max-h-[92vh] overflow-y-auto border-brand-400/40 bg-brand-800 text-white sm:rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-white">Activation date</DialogTitle>
-          <DialogDescription className="text-brand-100">
+          <DialogDescription className="text-white">
             {name} · billing starts on this day. The join month is prorated by remaining lessons.
           </DialogDescription>
         </DialogHeader>
@@ -110,9 +110,9 @@ export function ActivationDateDialog({
                   {row.group.groupName}: {row.group.activatedOn ?? "not set"} → {row.date}
                 </p>
                 {row.voids.length === 0 ? (
-                  <p className="mt-1 text-xs text-brand-100">No charges will be voided.</p>
+                  <p className="mt-1 text-xs text-white">No charges will be voided.</p>
                 ) : (
-                  <ul className="mt-1 space-y-0.5 text-xs text-brand-100">
+                  <ul className="mt-1 space-y-0.5 text-xs text-white">
                     {row.voids.map((v) => (
                       <li key={v.id} className="flex justify-between gap-2 tabular-nums">
                         <span className="truncate">Void {periodLabel(v.period)}</span>
@@ -123,7 +123,7 @@ export function ActivationDateDialog({
                 )}
               </div>
             ))}
-            <p className="text-xs text-brand-100">Manual charges and payments are never touched.</p>
+            <p className="text-xs text-white">Manual charges and payments are never touched.</p>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
@@ -151,10 +151,10 @@ export function ActivationDateDialog({
             }}
           >
             {groups.length === 0 && (
-              <p className="text-sm text-brand-100">This student is not in a sub-class.</p>
+              <p className="text-sm text-white">This student is not in a sub-class.</p>
             )}
             {groups.map((group) => (
-              <label key={group.groupId} className="block text-xs font-bold text-brand-100">
+              <label key={group.groupId} className="block text-xs font-bold text-white">
                 {group.groupName}
                 <input
                   type="date"

@@ -25,6 +25,7 @@ import { MathText } from "@/components/MathText";
 import { useInView, useScrollProgress } from "@/hooks/useInView";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
+import { useRegistrationEnabled } from "@/lib/registration";
 import type { Json } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/")({
@@ -123,20 +124,25 @@ function CtaLink({
   className?: string;
   children: React.ReactNode;
 }) {
-  const isInternalRoute = href.startsWith("/") && !href.startsWith("//");
+  const registrationOn = useRegistrationEnabled();
+  const dest =
+    registrationOn !== true && (href === "/signup" || href.startsWith("/signup?"))
+      ? "/signin"
+      : href;
+  const isInternalRoute = dest.startsWith("/") && !dest.startsWith("//");
   if (!isInternalRoute) {
     return (
       <a
-        href={href}
+        href={dest}
         className={className}
-        {...(/^https?:/i.test(href) ? { target: "_blank", rel: "noreferrer noopener" } : {})}
+        {...(/^https?:/i.test(dest) ? { target: "_blank", rel: "noreferrer noopener" } : {})}
       >
         {children}
       </a>
     );
   }
   return (
-    <Link to={href} className={className}>
+    <Link to={dest} className={className}>
       {children}
     </Link>
   );

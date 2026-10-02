@@ -158,14 +158,14 @@ function ClassesPage() {
         <div className="flex min-w-0 items-center gap-2">
           <Link
             to="/dashboard"
-            className="tap grid h-9 w-9 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+            className="tap grid h-9 w-9 place-items-center rounded-lg text-white hover:bg-brand-800 hover:text-white"
             aria-label="Exit Classes"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div className="min-w-0">
             <div className="truncate text-sm font-black tracking-tight">Classes</div>
-            <div className="truncate text-[10px] font-bold uppercase tracking-wider text-brand-100">
+            <div className="truncate text-[10px] font-bold uppercase tracking-wider text-white">
               {me?.username ? `@${me.username}` : "Chats & homework"}
             </div>
           </div>
@@ -189,7 +189,7 @@ function ClassesPage() {
               onClick={() => setTab(id)}
               className={
                 "relative z-10 tap inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-bold transition-colors duration-200 " +
-                (tab === id ? "text-white" : "text-brand-100 hover:text-white")
+                (tab === id ? "text-white" : "text-white hover:text-white")
               }
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -200,13 +200,13 @@ function ClassesPage() {
       </header>
 
       {loading ? (
-        <div className="grid flex-1 place-items-center text-sm text-brand-100">
+        <div className="grid flex-1 place-items-center text-sm text-white">
           <Loader2 className="h-5 w-5 animate-spin" />
         </div>
       ) : err && (!me?.class_id || !me.chat_setup_completed) ? (
         <div className="grid flex-1 place-items-center p-6">
           <RevealCard className="max-w-sm rounded-2xl border border-brand-400/40 bg-brand-600 p-6 text-center shadow-panel">
-            <p className="text-sm text-brand-100">{err}</p>
+            <p className="text-sm text-white">{err}</p>
             <Link
               to="/profile"
               className="btn-brand mt-4 inline-flex rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
@@ -251,7 +251,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
   } | null>(null);
 
   useEffect(() => {
-    void getStaffRole(me.id).then((r) => setIsStaff(Boolean(r)));
+    void getStaffRole(me.id).then((r) => setIsStaff(r === "admin" || r === "editor"));
   }, [me.id]);
 
   const avatarKey = [
@@ -475,7 +475,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                       className="h-7 w-7 bg-brand-500 text-[10px] text-white"
                     />
                     <span className="font-bold">@{h.username}</span>
-                    <span className="truncate text-xs text-brand-100">{h.full_name}</span>
+                    <span className="truncate text-xs text-white">{h.full_name}</span>
                   </RevealButton>
                 </li>
               ))}
@@ -498,7 +498,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                     (t.kind === "subject_group"
                       ? "bg-brand-400 text-white"
                       : t.kind === "class_group"
-                        ? "bg-brand-800 text-brand-100"
+                        ? "bg-brand-800 text-white"
                         : "bg-brand-800 text-white")
                   }
                 >
@@ -512,7 +512,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-bold">{threadTitle(t)}</span>
-                  <span className="block truncate text-[11px] text-brand-100">
+                  <span className="block truncate text-[11px] text-white">
                     {t.kind === "subject_group"
                       ? "Subject group"
                       : t.kind === "class_group"
@@ -524,7 +524,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
             </li>
           ))}
           {threads.length === 0 && (
-            <li className="p-4 text-sm text-brand-100">
+            <li className="p-4 text-sm text-white">
               No chats yet. Join a class to get Maths & EBRW groups.
             </li>
           )}
@@ -543,7 +543,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
             <div className="flex h-12 items-center gap-2 border-b border-brand-400/30 bg-brand-600 px-3 text-sm font-bold md:px-4">
               <RevealButton
                 type="button"
-                className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 md:hidden"
+                className="tap grid h-8 w-8 place-items-center rounded-lg text-white hover:bg-brand-800 md:hidden"
                 onClick={() => setActiveId(null)}
                 aria-label="Back to chats"
               >
@@ -579,12 +579,12 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                       }
                     >
                       {!mine && (
-                        <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                        <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                           {sender ? displayName(sender) : "…"}
                         </div>
                       )}
                       {deleted ? (
-                        <div className="italic text-brand-100">Message deleted</div>
+                        <div className="italic text-white">Message deleted</div>
                       ) : editingId === m.id ? (
                         <div className="space-y-2">
                           <textarea
@@ -604,7 +604,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                             <button
                               type="button"
                               onClick={() => setEditingId(null)}
-                              className="rounded px-2 py-1 text-[11px] font-bold text-brand-100"
+                              className="rounded px-2 py-1 text-[11px] font-bold text-white"
                             >
                               Cancel
                             </button>
@@ -632,13 +632,13 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                             </button>
                           ))}
                           {m.edited_at && (
-                            <div className="mt-0.5 text-[10px] text-brand-100/80">edited</div>
+                            <div className="mt-0.5 text-[10px] text-white/80">edited</div>
                           )}
                           {canMod && (
                             <div className="mt-1 flex gap-2">
                               <button
                                 type="button"
-                                className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 hover:text-white"
+                                className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider text-white hover:text-white"
                                 onClick={() => {
                                   setEditingId(m.id);
                                   setEditDraft(m.body);
@@ -648,7 +648,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                               </button>
                               <button
                                 type="button"
-                                className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 hover:text-white"
+                                className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider text-white hover:text-white"
                                 onClick={() => void removeMessage(m.id)}
                               >
                                 <Trash2 className="h-2.5 w-2.5" /> Delete
@@ -664,12 +664,12 @@ function ChatsPane({ me }: { me: ChatProfile }) {
             </div>
             <div className="border-t border-brand-400/30 bg-brand-600 p-3">
               {muted && (
-                <div className="mb-2 rounded-lg bg-brand-900/60 px-3 py-2 text-xs font-semibold text-brand-100">
+                <div className="mb-2 rounded-lg bg-brand-900/60 px-3 py-2 text-xs font-semibold text-white">
                   You are muted in this chat and cannot send messages.
                 </div>
               )}
               {pendingFile && (
-                <div className="mb-2 flex items-center gap-2 text-xs text-brand-100">
+                <div className="mb-2 flex items-center gap-2 text-xs text-white">
                   <Paperclip className="h-3.5 w-3.5" />
                   {pendingFile.file_name}
                   <RevealButton onClick={() => setPendingFile(null)} className="ml-auto">
@@ -681,7 +681,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                 <RevealButton
                   onClick={() => fileRef.current?.click()}
                   disabled={muted}
-                  className="tap grid h-10 w-10 place-items-center rounded-lg bg-brand-800 text-brand-100 hover:text-white disabled:opacity-40"
+                  className="tap grid h-10 w-10 place-items-center rounded-lg bg-brand-800 text-white hover:text-white disabled:opacity-40"
                   aria-label="Attach file"
                 >
                   <Paperclip className="h-4 w-4" />
@@ -813,7 +813,7 @@ function HomeworksPane({ classId }: { classId: string }) {
             onClick={() => setSubject(s)}
             className={
               "tap rounded-lg px-3 py-1.5 text-xs font-bold " +
-              (subject === s ? "bg-brand-400 text-white" : "bg-brand-600 text-brand-100")
+              (subject === s ? "bg-brand-400 text-white" : "bg-brand-600 text-white")
             }
           >
             {s === "all" ? "All" : SUBJECT_LABEL[s]}
@@ -822,12 +822,12 @@ function HomeworksPane({ classId }: { classId: string }) {
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-12 text-sm text-brand-100">
+        <div className="flex flex-col items-center justify-center gap-2 py-12 text-sm text-white">
           <Loader2 className="h-5 w-5 animate-spin" />
           Loading homework…
         </div>
       ) : loadErr ? (
-        <RevealCard className="rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center text-sm text-brand-100 shadow-panel">
+        <RevealCard className="rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center text-sm text-white shadow-panel">
           {loadErr}
           <RevealButton
             type="button"
@@ -838,7 +838,7 @@ function HomeworksPane({ classId }: { classId: string }) {
           </RevealButton>
         </RevealCard>
       ) : items.length === 0 ? (
-        <RevealCard className="rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center text-sm text-brand-100 shadow-panel">
+        <RevealCard className="rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center text-sm text-white shadow-panel">
           No homework yet for your class.
         </RevealCard>
       ) : (
@@ -851,13 +851,13 @@ function HomeworksPane({ classId }: { classId: string }) {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-white">
                     {SUBJECT_LABEL[a.subject]}
                     {a.due_at ? ` · due ${new Date(a.due_at).toLocaleDateString()}` : ""}
                   </div>
                   <h3 className="mt-1 text-base font-black">{a.title}</h3>
                   {a.body && (
-                    <p className="mt-2 whitespace-pre-wrap text-sm text-brand-100">{a.body}</p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-white">{a.body}</p>
                   )}
                 </div>
                 <RevealButton
@@ -897,20 +897,20 @@ function HomeworksPane({ classId }: { classId: string }) {
           <RevealCard className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-brand-400/40 bg-brand-600 p-5 shadow-float">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-white">
                   {SUBJECT_LABEL[active.subject]}
                 </div>
                 <h3 className="text-lg font-black">{active.title}</h3>
               </div>
               <RevealButton
                 onClick={() => setActive(null)}
-                className="tap text-brand-100 hover:text-white"
+                className="tap text-white hover:text-white"
               >
                 <X className="h-5 w-5" />
               </RevealButton>
             </div>
             {active.body && (
-              <p className="mb-4 whitespace-pre-wrap text-sm text-brand-100">{active.body}</p>
+              <p className="mb-4 whitespace-pre-wrap text-sm text-white">{active.body}</p>
             )}
             <div className="mb-3 space-y-2">
               {filesFor(active.id).map((f) => (
@@ -928,7 +928,7 @@ function HomeworksPane({ classId }: { classId: string }) {
                 </RevealButton>
               ))}
             </div>
-            <p className="mb-2 text-xs text-brand-100">
+            <p className="mb-2 text-xs text-white">
               Optional make-up: if you didn&apos;t attend, upload photos of your completed work for
               admins to check.
             </p>
@@ -940,7 +940,7 @@ function HomeworksPane({ classId }: { classId: string }) {
               className="mb-3 w-full rounded-lg border border-brand-400/40 bg-brand-800 px-3 py-2 text-sm text-white placeholder:text-brand-200 focus:outline-none"
             />
             {submission && (
-              <div className="mb-3 rounded-lg bg-brand-800 px-3 py-2 text-xs text-brand-100">
+              <div className="mb-3 rounded-lg bg-brand-800 px-3 py-2 text-xs text-white">
                 Status: <span className="font-bold text-white">{submission.status}</span>
                 {submission.score != null && (
                   <span>
@@ -1028,7 +1028,7 @@ function OwnProgress() {
   }, []);
   if (!lines) return null;
   return (
-    <ul className="space-y-0.5 text-sm font-bold text-brand-100">
+    <ul className="space-y-0.5 text-sm font-bold text-white">
       {lines.map((line) => (
         <li key={line}>{line}</li>
       ))}

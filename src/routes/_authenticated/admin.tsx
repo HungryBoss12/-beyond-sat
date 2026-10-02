@@ -2,7 +2,14 @@ import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tansta
 import { useState } from "react";
 import { LayoutGroup, motion } from "motion/react";
 import { supabase } from "@/integrations/supabase/client";
-import { canEditorAccess, getStaffRole, EDITOR_HOME, type StaffRole } from "@/lib/admin";
+import {
+  canEditorAccess,
+  getStaffRole,
+  EDITOR_HOME,
+  TEACHER_HOME,
+  staffHome,
+  type StaffRole,
+} from "@/lib/admin";
 import { ArrowLeft, Menu, X, ChevronRight } from "lucide-react";
 import { AmbientGlow, RevealLink } from "@/components/ui/reveal-card";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,7 +27,10 @@ export const Route = createFileRoute("/_authenticated/admin")({
     if (role === "editor" && !canEditorAccess(location.pathname)) {
       throw redirect({ to: EDITOR_HOME });
     }
-    return { staffRole: role };
+    if (role === "teacher" && !location.pathname.startsWith("/admin/classes")) {
+      throw redirect({ to: TEACHER_HOME });
+    }
+    return { staffRole: role, userId: data.user.id };
   },
   component: AdminLayout,
   head: () => ({ meta: [{ title: "Admin — BeyondSAT" }] }),
@@ -94,6 +104,7 @@ function visibleNav(role: StaffRole) {
      off the union is an error. Widening to NavItem here doesn't widen the
      result: filter still returns the array's own element type, so `to` stays a
      literal and <Link> keeps accepting it. */
+  if (role === "teacher") return NAV.filter((n: NavItem) => n.to === "/admin/classes");
   return NAV.filter((n: NavItem) => role === "admin" || !n.adminOnly);
 }
 
@@ -182,7 +193,7 @@ function SidebarBody({
     <>
       <div className="flex h-16 items-center justify-between gap-2.5 border-b border-brand-400/30 px-5">
         <Link
-          to={role === "admin" ? "/admin" : EDITOR_HOME}
+          to={staffHome(role)}
           onClick={onNavigate}
           className="group flex min-w-0 items-center gap-2.5"
         >
@@ -197,7 +208,7 @@ function SidebarBody({
               Beyond<span className="text-brand-200">SAT</span>
             </span>
             <span className="mt-1 block text-[10px] font-bold uppercase tracking-wider text-brand-100">
-              {role === "admin" ? "Admin Panel" : "Editor Panel"}
+              {role === "admin" ? "Admin Panel" : role === "teacher" ? "Teaching" : "Editor Panel"}
             </span>
           </span>
         </Link>

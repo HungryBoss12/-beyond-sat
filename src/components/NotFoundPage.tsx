@@ -7,6 +7,7 @@ import { AmbientGlow } from "@/components/ui/reveal-card";
 import { BeyondCore } from "@/components/landing/BeyondCore";
 import { SatPracticeWidget } from "@/components/not-found/SatPracticeWidget";
 import { TetrisEgg } from "@/components/not-found/TetrisEgg";
+import { useRegistrationEnabled } from "@/lib/registration";
 
 type NotFoundPageProps = {
   layout?: "full" | "content";
@@ -15,6 +16,7 @@ type NotFoundPageProps = {
 function NotFoundContent() {
   const [pillClicks, setPillClicks] = useState(0);
   const [tetrisOpen, setTetrisOpen] = useState(false);
+  const registrationOn = useRegistrationEnabled();
 
   return (
     <main className="mx-auto grid w-full max-w-7xl flex-1 items-center gap-10 px-4 py-12 sm:px-6 md:py-16 lg:grid-cols-2 lg:gap-14 lg:py-20">
@@ -40,7 +42,7 @@ function NotFoundContent() {
 
         <div className="mt-7 flex flex-wrap gap-3">
           <Link
-            to="/signup"
+            to={registrationOn ? "/signup" : "/signin"}
             className="not-found-outline-btn tap inline-flex cursor-pointer items-center rounded-full border-2 border-brand-600 bg-white px-6 py-3 text-sm font-bold text-brand-600"
           >
             Start Practicing

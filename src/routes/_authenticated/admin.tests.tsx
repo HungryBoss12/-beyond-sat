@@ -275,6 +275,7 @@ function AdminTests() {
       difficulty: t.difficulty,
       source_month: t.source_month,
       source_year: t.source_year,
+      published: t.published,
       bank_format: bank,
     });
   }
@@ -399,6 +400,7 @@ function AdminTests() {
         return;
       }
     }
+    const published = editing.published === true;
     const payload = {
       title: editing.title.trim(),
       section: editing.section,
@@ -406,7 +408,7 @@ function AdminTests() {
       difficulty: editing.difficulty,
       source_month: editing.source_month,
       source_year: editing.source_year,
-      published: editing.published,
+      published,
       bank_format: bank,
     };
     let testId = editing.id;
@@ -417,7 +419,7 @@ function AdminTests() {
       const { data: u } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from("tests")
-        .insert({ ...payload, created_by: u.user?.id, published: editing.published })
+        .insert({ ...payload, created_by: u.user?.id, published })
         .select("id")
         .single();
       if (error) return alert(error.message);
@@ -955,6 +957,8 @@ function PaperCard({
   const allModules = [...group.mod1, ...group.mod2];
   const anyDraft = allModules.some((t) => !t.published);
   const allPublished = allModules.length > 0 && allModules.every((t) => t.published);
+  const allDraft = allModules.length > 0 && allModules.every((t) => !t.published);
+  const paperStatus = allPublished ? "Published" : allDraft ? "Draft" : anyDraft ? "Part draft" : "—";
 
   return (
     <RevealCard className="rise-in flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel lift">
@@ -964,11 +968,11 @@ function PaperCard({
             {group.base}
           </div>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            <span className="rounded bg-brand-400/25 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-100">
+            <span className="rounded bg-brand-400/25 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
               {SECTION_LABEL[group.section]}
             </span>
             {date && (
-              <span className="rounded bg-brand-800/80 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-100">
+              <span className="rounded bg-brand-800/80 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                 {date}
               </span>
             )}
@@ -977,12 +981,14 @@ function PaperCard({
                 "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide " +
                 (allPublished
                   ? "bg-emerald-700/40 text-emerald-100"
-                  : anyDraft
+                  : allDraft
                     ? "bg-amber-700/40 text-amber-100"
-                    : "bg-brand-800/80 text-brand-100")
+                    : anyDraft
+                      ? "bg-amber-700/40 text-white"
+                      : "bg-brand-800/80 text-white")
               }
             >
-              {allPublished ? "Published" : anyDraft ? "Draft" : "—"}
+              {paperStatus}
             </span>
           </div>
         </div>
@@ -1006,13 +1012,13 @@ function PaperCard({
                     <div className="flex gap-2">
                       <button
                         onClick={() => onPair(existing)}
-                        className="tap text-xs font-semibold text-brand-100 hover:text-white hover:underline"
+                        className="tap text-xs font-semibold text-white hover:underline"
                       >
                         Pair
                       </button>
                       <button
                         onClick={() => onAddMissing(existing)}
-                        className="tap text-xs font-semibold text-brand-100 hover:text-white hover:underline"
+                        className="tap text-xs font-semibold text-white hover:underline"
                       >
                         Add
                       </button>
@@ -1023,7 +1029,7 @@ function PaperCard({
                 <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2.5">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-white">Module {mod}</p>
-                    <p className="truncate text-xs font-medium text-brand-100">
+                    <p className="truncate text-xs font-medium text-white">
                       {counts.get(t.id) ?? 0}Q · {t.difficulty}
                       {!t.published ? " · Draft" : ""}
                     </p>
@@ -1031,21 +1037,21 @@ function PaperCard({
                   <div className="flex shrink-0 items-center gap-1">
                     <button
                       onClick={() => onView(t)}
-                      className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-700 hover:text-white"
+                      className="tap grid h-8 w-8 place-items-center rounded-lg text-white hover:bg-brand-700"
                       aria-label={`View Module ${mod}`}
                     >
                       <Eye className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => onEdit(t)}
-                      className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-700 hover:text-white"
+                      className="tap grid h-8 w-8 place-items-center rounded-lg text-white hover:bg-brand-700"
                       aria-label={`Edit Module ${mod}`}
                     >
                       <Edit3 className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => onRemove(t.id)}
-                      className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-red-600/80 hover:text-white"
+                      className="tap grid h-8 w-8 place-items-center rounded-lg text-white hover:bg-red-600/80"
                       aria-label={`Delete Module ${mod}`}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1061,7 +1067,7 @@ function PaperCard({
         <div className="shrink-0 px-3.5 pb-3.5">
           <button
             onClick={() => onCreateMock(fullPaper.key)}
-            className="tap inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-brand-400/40 bg-brand-800/80 px-2 py-2 text-xs font-bold text-brand-100 hover:bg-brand-700 hover:text-white"
+            className="tap inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-brand-400/40 bg-brand-800/80 px-2 py-2 text-xs font-bold text-white hover:bg-brand-700"
           >
             <ClipboardList className="h-3.5 w-3.5" />
             Use in full mock

@@ -8,6 +8,8 @@ export type ClassContextValue = {
   /** Every parent class, for the "Active group" jump and moves. */
   allClasses: ClassRow[];
   isAdmin: boolean;
+  /** Teachers see only the groups an admin assigned, and cannot change fees or delete the class. */
+  isTeacher: boolean;
   reload: () => Promise<void>;
 };
 

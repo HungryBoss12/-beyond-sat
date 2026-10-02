@@ -58,7 +58,7 @@ export function LevelHistorySheet({
       <SheetContent className="w-full overflow-y-auto border-brand-400/40 bg-brand-800 text-white sm:max-w-md">
         <SheetHeader>
           <SheetTitle className="text-white">Level history</SheetTitle>
-          <SheetDescription className="text-brand-100">
+          <SheetDescription className="text-white">
             {student?.name} · {group.name}
           </SheetDescription>
         </SheetHeader>
@@ -68,7 +68,7 @@ export function LevelHistorySheet({
             if (!entries.length) return null;
             return (
               <section key={section.id}>
-                <h3 className="text-xs font-bold text-brand-100">{section.name}</h3>
+                <h3 className="text-xs font-bold text-white">{section.name}</h3>
                 <ul className="mt-1 divide-y divide-brand-400/30">
                   {entries.map((entry) => (
                     <li
@@ -100,7 +100,7 @@ export function LevelHistorySheet({
               </section>
             );
           })}
-          {rows.length === 0 && <p className="text-sm text-brand-100">No assessments yet.</p>}
+          {rows.length === 0 && <p className="text-sm text-white">No assessments yet.</p>}
         </div>
         <VoidDialog
           open={voiding != null}

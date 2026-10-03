@@ -10,7 +10,6 @@ import { IconButton } from "@/components/ui/icon-button";
 import { txMethodOrPeriod, txSign, txType } from "@/lib/billing/ledger";
 import { formatUzs } from "@/lib/billing/money";
 import type { LedgerRow } from "@/lib/billing/types";
-import { usePointerGlow } from "@/hooks/usePointerGlow";
 import { cn } from "@/lib/utils";
 
 export type TxRow = LedgerRow & { student?: string };
@@ -30,16 +29,12 @@ export function TransactionsTable({
   emptyTitle?: string;
   emptyBody?: string;
 }) {
-  const glow = usePointerGlow<HTMLDivElement>();
   if (rows.length === 0) {
     return <EmptyState icon={ListChecks} title={emptyTitle} body={emptyBody} />;
   }
   return (
-    <div
-      ref={glow}
-      className="reveal-surface overflow-x-auto overflow-y-clip rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel"
-    >
-      <table className="w-full min-w-[720px] text-left text-sm">
+    <div className="min-w-0 overflow-x-auto rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel">
+      <table className="w-full text-left text-sm">
         <thead className="text-[11px] font-bold text-white">
           <tr>
             <th className="whitespace-nowrap p-3">Date</th>
@@ -77,7 +72,7 @@ export function TransactionsTable({
                 {formatUzs(row.amount_uzs)}
               </td>
               <td className="whitespace-nowrap p-3">{txMethodOrPeriod(row)}</td>
-              <td className="max-w-[18rem] truncate p-3 text-white" title={row.note ?? ""}>
+              <td className="max-w-[18rem] whitespace-normal break-words p-3 text-white" title={row.note ?? ""}>
                 {row.voided_at ? `Voided: ${row.void_reason ?? ""}` : (row.note ?? "")}
               </td>
               {onVoid && (

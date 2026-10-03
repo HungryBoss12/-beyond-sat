@@ -156,6 +156,7 @@ export async function handleClaimStudentInvite(request: Request, env: unknown): 
   if (password.length < 8) return jsonResponse({ error: "Password must be at least 8 characters." }, 400);
   if (password.length > 72) return jsonResponse({ error: "Password is too long." }, 400);
 
+  let releaseClaim: (() => Promise<unknown>) | null = null;
   try {
     const { supabaseAdmin, db } = await adminDb();
     const row = await loadInvite(db, token);
@@ -170,13 +171,31 @@ export async function handleClaimStudentInvite(request: Request, env: unknown): 
       return jsonResponse({ error: "That username is already taken." }, 409);
     }
 
+    const now = new Date().toISOString();
+    const { data: claimed, error: claimErr } = await db
+      .from("student_invites")
+      .update({ used_at: now })
+      .eq("id", row.id)
+      .is("used_at", null)
+      .select("id");
+    if (claimErr) return jsonResponse({ error: claimErr.message }, 500);
+    if (!claimed?.length) {
+      return jsonResponse({ error: "This link has already been used." }, 410);
+    }
+    const release = () =>
+      db.from("student_invites").update({ used_at: null }).eq("id", row.id).eq("used_at", now);
+    releaseClaim = release;
+
     const email = accountEmailFor(username);
     const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       password,
       email,
       email_confirm: true,
     });
-    if (updErr) return jsonResponse({ error: updErr.message }, 400);
+    if (updErr) {
+      await release();
+      return jsonResponse({ error: updErr.message }, 400);
+    }
 
     const { first_name, last_name, full_name } = splitName(name);
     const { error: profErr } = await db
@@ -191,18 +210,23 @@ export async function handleClaimStudentInvite(request: Request, env: unknown): 
         intro_completed: false,
       })
       .eq("id", userId);
-    if (profErr) return jsonResponse({ error: profErr.message }, 500);
+    if (profErr) {
+      await release();
+      return jsonResponse({ error: profErr.message }, 500);
+    }
 
-    const now = new Date().toISOString();
     const { error: studentErr } = await db
       .from("students")
       .update({ full_name, claimed_at: now })
       .eq("id", row.student_id);
-    if (studentErr) return jsonResponse({ error: studentErr.message }, 500);
-    await db.from("student_invites").update({ used_at: now }).eq("id", row.id);
+    if (studentErr) {
+      await release();
+      return jsonResponse({ error: studentErr.message }, 500);
+    }
 
     return jsonResponse({ ok: true, username });
   } catch (e) {
+    if (releaseClaim) await releaseClaim().catch(() => undefined);
     console.error("[student-invite] claim", (e as Error).message);
     return jsonResponse({ error: "Could not save your account." }, 500);
   }
@@ -273,7 +297,8 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
       email,
       password: randomPassword(),
       email_confirm: true,
-      user_metadata: { first_name, last_name, full_name, username, staff_created: true },
+      app_metadata: { staff_created: true },
+      user_metadata: { first_name, last_name, full_name, username },
     });
     if (createErr || !created.user) {
       return jsonResponse({ error: createErr?.message ?? "Could not create the account." }, 400);

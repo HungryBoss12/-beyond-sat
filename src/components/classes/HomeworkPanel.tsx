@@ -307,7 +307,7 @@ function ReviewSheet({
     if (!current) return void toast.error("This student has not submitted");
     if (status === "needs_revision" && !note.trim())
       return void toast.error("Feedback is required for needs revision");
-    const parsed = score.trim() === "" ? undefined : Number(score);
+    const parsed = score.trim() === "" ? null : Number(score);
     if (
       parsed != null &&
       (!Number.isInteger(parsed) ||

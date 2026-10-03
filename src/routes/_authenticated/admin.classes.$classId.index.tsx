@@ -130,7 +130,9 @@ function ClassOverview() {
           )}
         </div>
         <div className="relative mt-4 grid gap-3 sm:grid-cols-2">
-          {groups.map((group) => (
+          {[...groups]
+            .sort((a, b) => Number(a.subject === "math") - Number(b.subject === "math"))
+            .map((group) => (
             <SubclassCard
               key={group.id}
               group={group}

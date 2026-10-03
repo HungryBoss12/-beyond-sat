@@ -9,7 +9,7 @@ export type CreatedStudent = {
 export async function createClassStudent(input: {
   name: string;
   password: string;
-  classId: string;
+  classId?: string | null;
   username?: string;
   mustChangeCredentials?: boolean;
 }): Promise<CreatedStudent> {

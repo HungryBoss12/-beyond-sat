@@ -87,7 +87,7 @@ const NAV = [
   { to: "/admin/lessons", label: "Lessons", anim: "lessons", group: "Content" },
   { to: "/admin/classes", label: "Classes", anim: "classes", group: "Content" },
   { to: "/admin/users", label: "Students", anim: "users", group: "Students", adminOnly: true },
-  { to: "/admin/payments", label: "Payments", anim: "users", group: "Students", adminOnly: true },
+  { to: "/admin/payments", label: "Payments", anim: "payments", group: "Students", adminOnly: true },
   { to: "/admin/notifications", label: "Notifications", anim: "notifications", group: "Manage" },
   {
     to: "/admin/settings",

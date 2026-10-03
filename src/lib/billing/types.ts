@@ -42,6 +42,10 @@ export type BalanceRow = {
   total_score: number;
   rank_letter: "S" | "A" | "B" | "C" | "D";
   monthly_fee: bigint | null;
+  /** One full class fee for this student, not one per class. */
+  monthly_tuition: bigint | null;
+  /** This month’s charge across every class, join month included. */
+  expected_this_month: bigint | null;
   charged: bigint;
   paid: bigint;
   balance: bigint;

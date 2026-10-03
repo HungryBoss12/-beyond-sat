@@ -48,7 +48,8 @@ export type RailPerson = {
   userId: string;
   name: string;
   status: Exclude<MemberStatus, "left">;
-  inSibling: boolean;
+  /** Other parent classes this student is in, besides the one on screen. */
+  alsoIn: string[];
   /** Admin only. */
   balanceKind?: BalanceKind;
 };
@@ -70,7 +71,6 @@ const LEGEND: {
 export function GroupRail({
   klass,
   group,
-  sibling,
   people,
   teacherName,
   fee,
@@ -86,7 +86,6 @@ export function GroupRail({
 }: {
   klass: ClassRow;
   group: ClassGroup;
-  sibling: ClassGroup | null;
   people: RailPerson[];
   teacherName: string | null;
   /** undefined = editor (hidden); null = not set. */
@@ -192,7 +191,7 @@ export function GroupRail({
             const StatusIcon = STATUS_META[person.status].icon;
             const subtitle = [
               STATUS_META[person.status].label,
-              person.inSibling && sibling ? `Also in ${sibling.name}` : null,
+              person.alsoIn.length > 0 ? `Also in ${person.alsoIn.join(", ")}` : null,
               isAdmin && person.balanceKind && person.balanceKind !== "settled"
                 ? person.balanceKind === "debt"
                   ? "Debtor"

@@ -1,6 +1,6 @@
 /**
- * Join-month charge. Mirrors SQL bs_join_month_charge:
- * fee x remaining / total lessons, rounded half-up to the nearest 1 000 UZS.
+ * Join-month charge. Mirrors SQL bs_class_join_month_charge:
+ * fee x remaining / total lessons, rounded half-up to the nearest so'm.
  * No lessons scheduled that month = full fee. Later months are always full price.
  */
 export type JoinMonthCharge = {
@@ -15,7 +15,7 @@ export function prorateJoinMonth(fee: bigint, remaining: number, total: number):
   if (remaining <= 0) return { amount: 0n, lessons: null };
   if (remaining >= total) return { amount: fee, lessons: null };
   const numerator = fee * BigInt(remaining);
-  const denominator = BigInt(total) * 1000n;
-  const thousands = (numerator * 2n + denominator) / (denominator * 2n);
-  return { amount: thousands * 1000n, lessons: { remaining, total } };
+  const denominator = BigInt(total);
+  const amount = (numerator * 2n + denominator) / (denominator * 2n);
+  return { amount, lessons: { remaining, total } };
 }

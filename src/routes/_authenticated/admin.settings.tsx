@@ -464,7 +464,7 @@ function AdminSettings() {
       <Card
         icon={UserPlus}
         title="Registration"
-        description="New accounts are off by default. Sign-in stays available. Turn this on when you want visitors to create accounts again."
+        description="Open or close public sign-up. People who already have an account can still sign in. Accounts you add in Students still work when this is off."
       >
         <div className="flex items-center justify-between gap-4 rounded-xl bg-brand-800 p-4 ring-1 ring-brand-400/40">
           <div className="min-w-0">
@@ -473,8 +473,8 @@ function AdminSettings() {
             </div>
             <p className="mt-0.5 text-xs text-white">
               {registrationOn
-                ? "The sign-up page and Create an account links are visible."
-                : "Only sign-in is available. Sign-up links go to the sign-in page."}
+                ? "The sign-up page is visible. A new visitor can create an account, including with Google."
+                : "Sign-up links go to sign-in. A brand-new Google sign-in cannot create an account."}
             </p>
           </div>
           <button

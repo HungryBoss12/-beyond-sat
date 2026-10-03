@@ -15,6 +15,8 @@ export type StudentRow = {
   username: string | null;
   class_id: string | null;
   class_name: string | null;
+  /** Every parent class. Empty when the student is not in a class. */
+  class_ids?: string[] | null;
 };
 
 export async function listStudents(search = ""): Promise<StudentRow[]> {

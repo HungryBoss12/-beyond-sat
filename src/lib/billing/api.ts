@@ -23,7 +23,7 @@ type Raw = Record<string, any>;
 
 async function call<T = Raw[]>(fn: string, args?: Record<string, unknown>): Promise<T> {
   const { data, error } = await rpc.rpc(fn, args);
-  if (error) throw error;
+  if (error) throw new Error(error.message || "Request failed");
   return data as T;
 }
 
@@ -100,6 +100,8 @@ export async function listBalances(filters: BalanceFilters = {}): Promise<Balanc
     total_score: Number(r.total_score ?? 0),
     rank_letter: r.rank_letter,
     monthly_fee: uzsOrNull(r.monthly_fee),
+    monthly_tuition: uzsOrNull(r.monthly_tuition),
+    expected_this_month: uzsOrNull(r.expected_this_month),
     charged: toUzs(r.charged),
     paid: toUzs(r.paid),
     balance: toUzs(r.balance),
@@ -182,6 +184,31 @@ export async function setGroupFee(
     p_fee_uzs: fee == null ? null : uzsParam(fee),
     p_effective_from: effectiveFrom ?? null,
   });
+}
+
+/** Per-student price for one class, or every class they are in when classId is omitted. */
+export async function setStudentFee(
+  userId: string,
+  fee: bigint,
+  effectiveFrom?: string | null,
+  classId?: string | null,
+): Promise<number> {
+  const saved = await call<number>("admin_set_student_fee", {
+    p_user_id: userId,
+    p_class_id: classId ?? null,
+    p_fee_uzs: uzsParam(fee),
+    p_effective_from: effectiveFrom ?? null,
+  });
+  return Number(saved ?? 0);
+}
+
+export async function billingNote(userId: string): Promise<string> {
+  const data = await call<string | null>("admin_billing_note", { p_user_id: userId });
+  return data ?? "";
+}
+
+export async function setBillingNote(userId: string, note: string): Promise<void> {
+  await call("admin_set_billing_note", { p_user_id: userId, p_note: note });
 }
 
 /** `fee = null` goes back to the group fee; `0n` makes the group free for this student. */

@@ -57,7 +57,11 @@ export function MockExamBuilderModal({
     setLoading(true);
     (async () => {
       const [{ data }, { data: sectionLinks }] = await Promise.all([
-        supabase.from("tests").select("*").order("title").order("module"),
+        supabase
+          .from("tests")
+          .select("id,title,section,module,difficulty,source_month,source_year")
+          .order("title")
+          .order("module"),
         supabase.from("mock_exam_sections").select("mock_exam_id, test_id"),
       ]);
       const nextPapers = buildFullPapers((data ?? []) as MockExamTest[]);

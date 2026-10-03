@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  BadgeDollarSign,
   Ban,
   ChevronRight,
   CircleCheck,
@@ -14,7 +15,11 @@ import {
   Sparkles,
   Wand2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { format } from "date-fns";
+import { FeeDialog } from "@/components/billing/FeeDialog";
+import { IconButton } from "@/components/ui/icon-button";
+import { setStudentFee } from "@/lib/billing/api";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { PanelGlow } from "@/components/ui/panel";
 import { RevealCard } from "@/components/ui/reveal-card";
@@ -103,6 +108,7 @@ function AdminStudents() {
   const [bulkClassId, setBulkClassId] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [feeOpen, setFeeOpen] = useState(false);
 
   function setPageTab(next: PageTab) {
     void navigate({
@@ -142,12 +148,6 @@ function AdminStudents() {
       setLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    if (createClassId || classes.length === 0) return;
-    const active = classes.find((c) => c.active) ?? classes[0];
-    if (active) setCreateClassId(active.id);
-  }, [classes, createClassId]);
 
   async function loadLegacyUsers() {
     const FULL_COLS = "id,email,full_name,username,created_at,last_seen_at,banned";
@@ -256,16 +256,12 @@ function AdminStudents() {
       setCreateError("Password must be at least 8 characters.");
       return;
     }
-    if (!createClassId) {
-      setCreateError("Pick a class group first.");
-      return;
-    }
     setCreating(true);
     try {
       const row = await createClassStudent({
         name: createName,
         password: createPassword,
-        classId: createClassId,
+        classId: createClassId || null,
         username: createUsername.trim() || undefined,
         mustChangeCredentials: mustChange,
       });
@@ -318,8 +314,12 @@ function AdminStudents() {
       if (filter === "staff" && r.role === "student") return false;
       if (filter === "banned" && !r.banned) return false;
 
-      if (classFilter === "unassigned") return !r.class_name;
-      if (classFilter !== "all") return (r.class_name ?? "") === classFilter;
+      const names = (r.class_name ?? "")
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean);
+      if (classFilter === "unassigned") return names.length === 0;
+      if (classFilter !== "all") return names.includes(classFilter);
       return true;
     });
 
@@ -395,9 +395,16 @@ function AdminStudents() {
   ];
 
   const classOptions = useMemo(() => {
-    const names = [...new Set(rows.map((r) => r.class_name).filter(Boolean) as string[])].sort();
-    return names;
-  }, [rows]);
+    const fromClasses = classes.map((row) => row.name).filter(Boolean);
+    if (fromClasses.length > 0) return [...new Set(fromClasses)].sort();
+    const names = rows.flatMap((row) =>
+      (row.class_name ?? "")
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean),
+    );
+    return [...new Set(names)].sort();
+  }, [classes, rows]);
 
   useEffect(() => {
     const ids = rows.map((row) => row.id);
@@ -552,6 +559,13 @@ function AdminStudents() {
                   )}
                   Add to class
                 </button>
+                <IconButton
+                  icon={BadgeDollarSign}
+                  label="Set fee for selected students"
+                  variant="brand"
+                  disabled={bulkBusy}
+                  onClick={() => setFeeOpen(true)}
+                />
                 <button
                   type="button"
                   disabled={bulkBusy}
@@ -586,8 +600,7 @@ function AdminStudents() {
           {loading && !err ? (
             <ListSkeleton rows={6} />
           ) : !err ? (
-            <RevealCard className="relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel lift">
-              <PanelGlow />
+            <div className="relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel">
               <div className="relative">
                 {filtered.length === 0 ? (
                   <div className="p-8 text-center text-sm text-brand-100">No students found.</div>
@@ -652,7 +665,7 @@ function AdminStudents() {
                   </>
                 )}
               </div>
-            </RevealCard>
+            </div>
           ) : null}
         </>
       ) : (
@@ -667,8 +680,8 @@ function AdminStudents() {
                 </h2>
               </div>
               <p className="mt-1 text-xs text-brand-100">
-                Name, optional username, password, and class. Hand off the login, then the student
-                finishes setup.
+                Name, optional username, and password. A class is optional and can be added later
+                from Classes. Hand off the login, then the student finishes setup.
               </p>
               <form onSubmit={(e) => void handleCreate(e)} className="mt-3 space-y-3">
                 <div className="grid gap-2 md:grid-cols-2">
@@ -718,13 +731,15 @@ function AdminStudents() {
                     Generate
                   </button>
                   <AdminSelect
-                    value={createClassId}
-                    onValueChange={setCreateClassId}
-                    placeholder="Select class…"
-                    options={classes.map((c) => ({
-                      value: c.id,
-                      label: c.active ? c.name : `${c.name} (inactive)`,
-                    }))}
+                    value={createClassId || "none"}
+                    onValueChange={(value) => setCreateClassId(value === "none" ? "" : value)}
+                    options={[
+                      { value: "none", label: "No class" },
+                      ...classes.map((c) => ({
+                        value: c.id,
+                        label: c.active ? c.name : `${c.name} (inactive)`,
+                      })),
+                    ]}
                   />
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -831,8 +846,7 @@ function AdminStudents() {
             {loading && !err ? (
               <ListSkeleton rows={4} />
             ) : (
-              <RevealCard className="relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel lift">
-                <PanelGlow />
+              <div className="relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel">
                 <div className="relative">
                   {staffCreatedRows.length === 0 ? (
                     <div className="p-8 text-center text-sm text-brand-100">
@@ -893,11 +907,31 @@ function AdminStudents() {
                     </>
                   )}
                 </div>
-              </RevealCard>
+              </div>
             )}
           </section>
         </>
       )}
+      <FeeDialog
+        open={feeOpen}
+        title="Fee for selected students"
+        description="This price replaces the class fee for each selected student, starting in the month you pick."
+        onClose={() => setFeeOpen(false)}
+        onSave={async (fee, month) => {
+          const counts = await Promise.all([...selectedIds].map((id) => setStudentFee(id, fee, month)));
+          const updated = counts.filter((n) => n > 0).length;
+          const skipped = counts.length - updated;
+          if (updated === 0) {
+            throw new Error("None of the selected students are in a class, so no fee was saved.");
+          }
+          toast.success(
+            skipped > 0
+              ? `Fee saved for ${updated}. ${skipped} skipped because they are not in a class.`
+              : `Fee saved for ${updated}.`,
+          );
+          setFeeOpen(false);
+        }}
+      />
     </div>
   );
 }

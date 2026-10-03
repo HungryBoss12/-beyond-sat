@@ -32,6 +32,7 @@ import {
   listUserHwMarks,
   listUserLevelCurrent,
   listUserResults,
+  type ClassGroup,
 } from "@/lib/classes/groups";
 import { levelOverall } from "@/lib/classes/level";
 import { rankFor, totalScore } from "@/lib/classes/ranking";
@@ -130,6 +131,7 @@ function RevealLabel({ className, children, ...props }: LabelHTMLAttributes<HTML
 function ClassesPage() {
   const [tab, setTab] = useState<Tab>("chats");
   const [me, setMe] = useState<ChatProfile | null>(null);
+  const [classIds, setClassIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -138,9 +140,19 @@ function ClassesPage() {
       try {
         const profile = await getChatProfile();
         setMe(profile);
+        const memberships = profile
+          ? await listUserGroupMemberships([profile.id]).catch(() => [])
+          : [];
+        const ids = [
+          ...new Set(
+            memberships.map((row) => row.class_id).filter((id): id is string => Boolean(id)),
+          ),
+        ];
+        const resolved = ids.length > 0 ? ids : profile?.class_id ? [profile.class_id] : [];
+        setClassIds(resolved);
         if (!profile?.chat_setup_completed) {
           setErr("Finish your Classes chat setup on Profile first.");
-        } else if (!profile.class_id) {
+        } else if (resolved.length === 0) {
           setErr("Your teacher has not assigned you to a class yet. Check back once they add you.");
         }
       } catch (e) {
@@ -203,7 +215,7 @@ function ClassesPage() {
         <div className="grid flex-1 place-items-center text-sm text-white">
           <Loader2 className="h-5 w-5 animate-spin" />
         </div>
-      ) : err && (!me?.class_id || !me.chat_setup_completed) ? (
+      ) : err && (classIds.length === 0 || !me?.chat_setup_completed) ? (
         <div className="grid flex-1 place-items-center p-6">
           <RevealCard className="max-w-sm rounded-2xl border border-brand-400/40 bg-brand-600 p-6 text-center shadow-panel">
             <p className="text-sm text-white">{err}</p>
@@ -218,7 +230,7 @@ function ClassesPage() {
       ) : tab === "chats" ? (
         <ChatsPane me={me!} />
       ) : (
-        <HomeworksPane classId={me!.class_id!} />
+        <HomeworksPane classIds={classIds} />
       )}
     </div>
   );
@@ -734,7 +746,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
   );
 }
 
-function HomeworksPane({ classId }: { classId: string }) {
+function HomeworksPane({ classIds }: { classIds: string[] }) {
   const [subject, setSubject] = useState<ClassSubject | "all">("all");
   const [items, setItems] = useState<HomeworkAssignment[]>([]);
   const [files, setFiles] = useState<HomeworkFile[]>([]);
@@ -749,7 +761,12 @@ function HomeworksPane({ classId }: { classId: string }) {
     setLoading(true);
     setLoadErr(null);
     try {
-      const rows = await listHomework(classId, subject === "all" ? undefined : subject);
+      const lists = await Promise.all(
+        classIds.map((id) => listHomework(id, subject === "all" ? undefined : subject)),
+      );
+      const rows = lists
+        .flat()
+        .sort((a, b) => b.created_at.localeCompare(a.created_at));
       setItems(rows);
       setFiles(await listHomeworkFiles(rows.map((r) => r.id)));
     } catch (e) {
@@ -757,7 +774,7 @@ function HomeworksPane({ classId }: { classId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [classId, subject]);
+  }, [classIds, subject]);
 
   useEffect(() => {
     void reload();
@@ -1001,9 +1018,10 @@ function OwnProgress() {
         listUserLevelCurrent(uid).catch(() => []),
         listUserResults(uid).catch(() => []),
       ]);
-      const groups = memberships.length
-        ? await listGroups(memberships[0]!.class_id).catch(() => [])
-        : [];
+      const classIds = [...new Set(memberships.map((row) => row.class_id))];
+      const groups = (
+        await Promise.all(classIds.map((id) => listGroups(id).catch(() => [] as ClassGroup[])))
+      ).flat();
       const rank = score
         ? `${rankFor(totalScore(score.rw, score.math)).letter} ${totalScore(score.rw, score.math)}`
         : "no score yet";

@@ -24,7 +24,19 @@ export const Route = createFileRoute("/auth/callback")({
 
 function callbackError(url: URL): string | null {
   const desc = url.searchParams.get("error_description") ?? url.searchParams.get("error");
-  return desc?.replace(/\+/g, " ").trim() || null;
+  return friendlyAuthError(desc?.replace(/\+/g, " ").trim() || null);
+}
+
+function friendlyAuthError(message: string | null): string | null {
+  if (!message) return null;
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("registration is closed") ||
+    lower.includes("database error saving new user")
+  ) {
+    return "Registration is closed. Sign in with an account you already have, or ask your teacher for one.";
+  }
+  return message;
 }
 
 async function establishSession(): Promise<void> {
@@ -60,7 +72,9 @@ function AuthCallback() {
         const next = safeNext(new URL(window.location.href).searchParams.get("next"));
         navigate({ to: next, replace: true });
       } catch (err) {
-        if (!cancelled) setError((err as Error)?.message ?? "Sign-in failed.");
+        if (!cancelled) {
+          setError(friendlyAuthError((err as Error)?.message ?? null) ?? "Sign-in failed.");
+        }
       }
     })();
     return () => {

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import {
   CalendarCheck,
+  Banknote,
   Download,
   HandCoins,
   Layers,
@@ -13,6 +14,7 @@ import {
   SlidersHorizontal,
   TriangleAlert,
   UserRound,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
@@ -27,15 +29,17 @@ import { BalanceLabel, StatusLabel } from "@/components/billing/labels";
 import { KIND_META } from "@/components/billing/meta";
 import { chargeThisMonth } from "@/components/billing/charge";
 import { txMethodOrPeriod, txSign, txType } from "@/lib/billing/ledger";
-import { usePointerGlow } from "@/hooks/usePointerGlow";
 import { CLASS_CONTROL } from "@/components/classes/control";
 import { SubclassChip } from "@/components/classes/SubclassChip";
+import { FeeDialog } from "@/components/billing/FeeDialog";
 import {
   applyRecurringFees,
+  classFees,
   groupFees,
   listAllLedger,
   listBalances,
   paymentsSummary,
+  setClassFee,
 } from "@/lib/billing/api";
 import { downloadCsv, toCsv } from "@/lib/billing/csv";
 import { tashkentToday } from "@/lib/billing/dates";
@@ -60,6 +64,7 @@ const searchSchema = z.object({
   group: z.string().catch(""),
   q: z.string().catch(""),
   status: z.enum(["", "active", "trial", "frozen"]).catch(""),
+  activeSort: z.enum(["active", "other"]).catch("active"),
   rank: z.enum(["", "S", "A", "B", "C", "D"]).catch(""),
   minDebt: digits,
   maxDebt: digits,
@@ -91,16 +96,23 @@ function studentName(row: Pick<BalanceRow, "full_name" | "username" | "user_id">
   return row.full_name || row.username || row.user_id.slice(0, 8);
 }
 
+function isActiveStudent(row: BalanceRow): boolean {
+  return row.status === "active" || row.groups.some((group) => group.status === "active");
+}
+
 function PaymentsPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const [rows, setRows] = useState<BalanceRow[]>([]);
+  const [census, setCensus] = useState<BalanceRow[]>([]);
   const [ledger, setLedger] = useState<TxRow[] | null>(null);
   const [summary, setSummary] = useState<PaymentsSummary | null>(null);
   const [fees, setFees] = useState<GroupFeeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payFor, setPayFor] = useState<PaymentTarget | null>(null);
+  const [feeOpen, setFeeOpen] = useState(false);
+  const [feeClasses, setFeeClasses] = useState<{ id: string; name: string }[]>([]);
   const [query, setQuery] = useState(search.q);
   const applied = useRef(false);
 
@@ -126,31 +138,35 @@ function PaymentsPage() {
       }
       const maxDebt = parseUzsInput(search.maxDebt, 10n ** 12n);
       const minDebt = parseUzsInput(search.minDebt, 10n ** 12n);
-      const [balanceRows, all, sum, groupRows] = await Promise.all([
-        listBalances({
-          search: search.view === "balances" ? search.q : "",
-          groupId: search.group,
-          kind: search.chip === "all" ? "" : search.chip,
-          status: search.status,
-          rank: search.rank,
-          minBalance: maxDebt == null ? null : -maxDebt,
-          maxBalance: minDebt == null ? null : -minDebt,
-          monthsInDebt: search.monthsInDebt ? Number(search.monthsInDebt) : null,
-        }),
-        listBalances({}),
+      const [sum, groupRows, people] = await Promise.all([
         paymentsSummary(),
         groupFees(),
+        listBalances({}),
       ]);
-      setRows(balanceRows);
       setSummary(sum);
       setFees(groupRows);
+      setCensus(people);
       if (search.view === "ledger") {
-        const names = new Map(all.map((r) => [r.user_id, studentName(r)]));
+        const names = new Map(people.map((r) => [r.user_id, studentName(r)]));
+        const ledgerRows = await listAllLedger();
         setLedger(
-          (await listAllLedger()).map((r) => ({
+          ledgerRows.map((r) => ({
             ...r,
             student: names.get(r.user_id ?? "") ?? "—",
           })),
+        );
+      } else {
+        setRows(
+          await listBalances({
+            search: search.q,
+            groupId: search.group,
+            kind: search.chip === "all" ? "" : search.chip,
+            status: search.status,
+            rank: search.rank,
+            minBalance: maxDebt == null ? null : -maxDebt,
+            maxBalance: minDebt == null ? null : -minDebt,
+            monthsInDebt: search.monthsInDebt ? Number(search.monthsInDebt) : null,
+          }),
         );
       }
     } catch (err) {
@@ -196,6 +212,30 @@ function PaymentsPage() {
 
   const debtors = rows.filter((row) => row.balance < 0n);
   const owed = debtors.reduce((sum, row) => sum - row.balance, 0n);
+  const sortedRows = useMemo(() => {
+    const activeFirst = search.activeSort !== "other";
+    return [...rows].sort((a, b) => {
+      const rank = Number(isActiveStudent(b)) - Number(isActiveStudent(a));
+      const byActive = activeFirst ? rank : -rank;
+      if (byActive !== 0) return byActive;
+      return studentName(a).localeCompare(studentName(b));
+    });
+  }, [rows, search.activeSort]);
+
+  const revenue = useMemo(() => {
+    const seen = new Set<string>();
+    let students = 0;
+    let expected = 0n;
+    let tuition = 0n;
+    for (const row of census) {
+      if (seen.has(row.user_id) || row.groups.length === 0) continue;
+      seen.add(row.user_id);
+      students += 1;
+      expected += row.expected_this_month ?? 0n;
+      tuition += row.monthly_tuition ?? 0n;
+    }
+    return { students, expected, tuition };
+  }, [census]);
   const activeFilters = MORE_FILTERS.filter((key) => search[key]);
   const isFiltered = Boolean(
     search.q || search.group || search.chip !== "all" || activeFilters.length,
@@ -295,6 +335,21 @@ function PaymentsPage() {
             text="Charge monthly fee"
             onClick={() => void chargeAll()}
           />
+          <IconButton
+            icon={SlidersHorizontal}
+            label="Edit class fee"
+            variant="outline"
+            onClick={() => {
+              void classFees()
+                .then((rows) => {
+                  setFeeClasses(rows.map((row) => ({ id: row.class_id, name: row.class_name })));
+                  setFeeOpen(true);
+                })
+                .catch((err) =>
+                  toast.error(err instanceof Error ? err.message : "Could not load class fees"),
+                );
+            }}
+          />
           <IconButton icon={Download} label="Export CSV" variant="outline" onClick={exportCsv} />
         </div>
       </div>
@@ -320,6 +375,27 @@ function PaymentsPage() {
           text={summary ? `${summary.priced_groups} of ${summary.active_groups} classes` : undefined}
           hint={feeMeta}
           loading={!summary}
+        />
+        <MoneyTile
+          icon={Users}
+          label="Students in groups"
+          text={loading ? undefined : String(revenue.students)}
+          hint="Each person once"
+          loading={loading}
+        />
+        <MoneyTile
+          icon={CalendarCheck}
+          label="Expected this month"
+          amount={loading ? null : revenue.expected}
+          hint="Join month is a share of the lessons. Two classes count twice."
+          loading={loading}
+        />
+        <MoneyTile
+          icon={Banknote}
+          label="Monthly tuition"
+          amount={loading ? null : revenue.tuition}
+          hint="One full fee per student"
+          loading={loading}
         />
       </div>
 
@@ -415,6 +491,27 @@ function PaymentsPage() {
             </button>
           ))}
         </div>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Sort by active">
+          {(
+            [
+              ["active", "Active first"],
+              ["other", "Not active first"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={search.activeSort === value}
+              className={cn(
+                "tap rounded-full px-3 py-1.5 text-xs font-bold transition-colors duration-200",
+                search.activeSort === value ? "bg-brand-500 text-white" : "bg-brand-25 text-brand-700",
+              )}
+              onClick={() => patch({ activeSort: value, view: "balances" })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <MoreFilters search={search} onChange={patch} />
         {isFiltered && (
           <button
@@ -467,7 +564,7 @@ function PaymentsPage() {
       ) : (
         <>
           <BalancesTable
-            rows={rows}
+            rows={sortedRows}
             onPay={(row) =>
               setPayFor({
                 userId: row.user_id,
@@ -494,6 +591,19 @@ function PaymentsPage() {
       )}
 
       <RecordPaymentDialog target={payFor} onClose={() => setPayFor(null)} onSaved={load} />
+      <FeeDialog
+        open={feeOpen}
+        title="Class fee"
+        description="The monthly price, and the month it starts. The first month is still a share of the lessons."
+        classes={feeClasses}
+        onClose={() => setFeeOpen(false)}
+        onSave={async (fee, month, classId) => {
+          const targets = classId ? feeClasses.filter((row) => row.id === classId) : feeClasses;
+          await Promise.all(targets.map((row) => setClassFee(row.id, fee, month)));
+          toast.success("Fee saved");
+          await load();
+        }}
+      />
     </div>
   );
 }
@@ -507,13 +617,9 @@ function BalancesTable({
   onPay: (row: BalanceRow) => void;
   onCharge: (row: BalanceRow) => void;
 }) {
-  const glow = usePointerGlow<HTMLDivElement>();
   return (
-    <div
-      ref={glow}
-      className="reveal-surface overflow-x-auto overflow-y-clip rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel"
-    >
-      <table className="w-full min-w-[860px] text-left text-sm">
+    <div className="min-w-0 overflow-x-auto rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel">
+      <table className="w-full text-left text-sm">
         <thead className="text-[11px] font-bold text-white">
           <tr>
             <th className="p-3">Student</th>
@@ -556,12 +662,17 @@ function BalancesTable({
                 )}
               </td>
               <td className="p-3 text-xs">
+                {row.groups.length > 0 && (row.expected_this_month ?? 0n) > 0n && (
+                  <div className="mb-1 font-bold tabular-nums text-white">
+                    Expected {formatUzs(row.expected_this_month ?? 0n)}
+                  </div>
+                )}
                 {row.recent.length === 0 ? (
                   <span className="text-white">No transactions yet</span>
                 ) : (
                   <ul className="space-y-0.5">
                     {row.recent.map((entry) => (
-                      <li key={entry.id} className="whitespace-nowrap tabular-nums">
+                      <li key={entry.id} className="break-words tabular-nums">
                         <span className="font-bold">
                           {entry.kind === "charge" || entry.kind === "refund" ? "−" : "+"}
                           {formatUzs(entry.amount_uzs)}

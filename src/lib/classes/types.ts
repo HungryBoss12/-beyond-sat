@@ -32,6 +32,8 @@ export type ChatProfile = {
   telegram_connected_at: string | null;
   chat_setup_completed: boolean;
   class_id: string | null;
+  /** Every parent class this person is in. `class_id` is the first of these. */
+  class_ids?: string[];
   full_name: string | null;
   first_name: string | null;
   last_name: string | null;

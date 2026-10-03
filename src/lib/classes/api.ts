@@ -241,22 +241,7 @@ export async function searchUsersForAdmin(q: string, limit = 20): Promise<ChatPr
     .limit(limit);
   if (error) throw error;
   const rows = (data ?? []) as ChatProfile[];
-  if (rows.length === 0) return rows;
-  const ids = rows.map((r) => r.id);
-  const { data: memberships } = await db
-    .from("class_memberships")
-    .select("user_id,class_id")
-    .in("user_id", ids);
-  const classOf = new Map(
-    ((memberships ?? []) as { user_id: string; class_id: string }[]).map((m) => [
-      m.user_id,
-      m.class_id,
-    ]),
-  );
-  return rows.map((r) => ({
-    ...r,
-    class_id: classOf.get(r.id) ?? r.class_id ?? null,
-  }));
+  return attachClassMemberships(rows);
 }
 
 /** Staff browse: students not already in this class (membership-aware). */
@@ -284,24 +269,32 @@ export async function listUsersForAdmin(opts?: {
   if (error) throw error;
 
   const rows = (data ?? []) as ChatProfile[];
-  if (!excludeClassId || rows.length === 0) return rows;
+  return attachClassMemberships(rows);
+}
 
-  // Prefer membership class over stale profiles.class_id for "elsewhere" labels.
+/** Keep every class membership. A later row must not replace an earlier one. */
+async function attachClassMemberships(rows: ChatProfile[]): Promise<ChatProfile[]> {
+  if (rows.length === 0) return rows;
   const ids = rows.map((r) => r.id);
-  const { data: memberships } = await db
+  const { data: memberships, error } = await db
     .from("class_memberships")
     .select("user_id,class_id")
     .in("user_id", ids);
-  const classOf = new Map(
-    ((memberships ?? []) as { user_id: string; class_id: string }[]).map((m) => [
-      m.user_id,
-      m.class_id,
-    ]),
-  );
-  return rows.map((r) => ({
-    ...r,
-    class_id: classOf.get(r.id) ?? r.class_id ?? null,
-  }));
+  if (error) throw error;
+  const byUser = new Map<string, string[]>();
+  for (const membership of (memberships ?? []) as { user_id: string; class_id: string }[]) {
+    const list = byUser.get(membership.user_id) ?? [];
+    if (!list.includes(membership.class_id)) list.push(membership.class_id);
+    byUser.set(membership.user_id, list);
+  }
+  return rows.map((row) => {
+    const classIds = byUser.get(row.id) ?? (row.class_id ? [row.class_id] : []);
+    return {
+      ...row,
+      class_ids: classIds,
+      class_id: classIds[0] ?? row.class_id ?? null,
+    };
+  });
 }
 
 export async function listMyThreads(): Promise<ChatThread[]> {
@@ -608,7 +601,10 @@ export async function reviewSubmission(
     reviewed_by: u.user?.id ?? null,
     reviewed_at: new Date().toISOString(),
   };
-  if (typeof score === "number" && Number.isFinite(score)) {
+  if (score === null) {
+    patch.score = null;
+    patch.graded_at = null;
+  } else if (typeof score === "number" && Number.isFinite(score)) {
     patch.score = score;
     patch.graded_at = new Date().toISOString();
   }

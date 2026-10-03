@@ -672,6 +672,62 @@ export function TestPlayer({
     }
   }
 
+  async function checkAnswered() {
+    if (checking || submittingRef.current) return;
+    setChecking(true);
+    setSubmitError(null);
+    try {
+      const elapsed = Math.round((Date.now() - questionStartRef.current) / 1000);
+      timePerQ.current[idx] = (timePerQ.current[idx] ?? 0) + elapsed;
+      questionStartRef.current = Date.now();
+      const currentAnswers = answersRef.current;
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i]!;
+        if (gradesRef.current[q.id]) continue;
+        const a = currentAnswers[i] ?? emptyAnswer();
+        const hasAnswer = q.kind === "grid_in" ? !!a.gridAnswer.trim() : !!a.selectedChoiceId;
+        if (!hasAnswer) continue;
+        const { data, error } = await supabase.rpc("submit_attempt", {
+          p_session_id: sessionId,
+          p_question_id: q.id,
+          p_choice_id: a.selectedChoiceId ?? "",
+          p_grid_answer: a.gridAnswer || "",
+          p_marked_for_review: a.markedForReview,
+          p_eliminated: a.eliminated,
+          p_time_spent: timePerQ.current[i] ?? 0,
+        });
+        if (error) throw new Error(error.message);
+        const rec: GradeRec = {
+          isCorrect: data === true,
+          correctChoiceId: null,
+          correctGridAnswers: null,
+          explanation: null,
+        };
+        if (!rec.isCorrect) {
+          const { data: rows } = await supabase.rpc("get_attempt_feedback", {
+            p_session_id: sessionId,
+            p_question_id: q.id,
+          });
+          const row = rows?.[0];
+          if (row) {
+            rec.correctChoiceId = row.correct_choice_id ?? null;
+            rec.correctGridAnswers = row.correct_grid_answers ?? null;
+            rec.explanation = row.explanation ?? null;
+          }
+        }
+        gradesRef.current = { ...gradesRef.current, [q.id]: rec };
+        setGrades({ ...gradesRef.current });
+      }
+      const current = questions[idx];
+      if (current && gradesRef.current[current.id]) setFeedbackOpen(true);
+    } catch (err) {
+      setGrades({ ...gradesRef.current });
+      setSubmitError(err instanceof Error ? err.message : "Could not check these answers.");
+    } finally {
+      setChecking(false);
+    }
+  }
+
   /* Clamped rather than indexed straight: `idx` can outrun the array if the
      question list ever shrinks, and an out-of-range read here reaches
      QuestionCard as `undefined` and throws mid-render. */
@@ -1102,11 +1158,12 @@ export function TestPlayer({
           nextBusy={checking}
           onCheckAll={
             instantCheck &&
-            questions.filter((qq, i) => answered[i] && !grades[qq.id]).length > 1
-              ? () => void submit()
+            questions.some((q) => q.bank_format === "sqb") &&
+            questions.some((qq, i) => answered[i] && !grades[qq.id])
+              ? () => void checkAnswered()
               : undefined
           }
-          checkAllBusy={submitting}
+          checkAllBusy={checking}
           onGoto={(i) => goto(i)}
           isFirst={isFirstInSection}
           isLast={isLastInSection}

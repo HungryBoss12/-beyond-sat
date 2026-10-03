@@ -154,50 +154,22 @@ function Onboarding() {
     }
     setSaving(true);
     setErr(null);
-    const { error: spErr } = await supabase.from("student_profiles").upsert(
-      {
-        user_id: uid,
-        exam_date: examDate,
-        target_rw: rwNum,
-        target_math: mathNum,
-        target_score: rwNum + mathNum,
-        step: 1,
-        intro_completed_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" },
-    );
-    if (spErr) {
+    const { error: saveErr } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: string,
+          args: { p_exam_date: string; p_target_rw: number; p_target_math: number },
+        ) => Promise<{ error: { message: string } | null }>;
+      }
+    ).rpc("bs_complete_intro", {
+      p_exam_date: examDate,
+      p_target_rw: rwNum,
+      p_target_math: mathNum,
+    });
+    if (saveErr) {
       setSaving(false);
-      setErr(spErr.message);
+      setErr(saveErr.message);
       return;
-    }
-    const { data: existing } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("id", uid)
-      .maybeSingle();
-    if (!existing) {
-      const { data: userData } = await supabase.auth.getUser();
-      const { error: insErr } = await supabase.from("profiles").insert({
-        id: uid,
-        email: userData.user?.email ?? null,
-        intro_completed: true,
-      });
-      if (insErr) {
-        setSaving(false);
-        setErr(insErr.message);
-        return;
-      }
-    } else {
-      const { error: pErr } = await supabase
-        .from("profiles")
-        .update({ intro_completed: true })
-        .eq("id", uid);
-      if (pErr) {
-        setSaving(false);
-        setErr(pErr.message);
-        return;
-      }
     }
     setSaving(false);
     navigate({ to: "/dashboard", replace: true });

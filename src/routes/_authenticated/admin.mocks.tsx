@@ -94,7 +94,11 @@ function AdminMocks() {
       : empty();
     setEditing(target);
     const [{ data: tests }, { data: linked }, { data: allSections }] = await Promise.all([
-      supabase.from("tests").select("*").order("title").order("module"),
+      supabase
+        .from("tests")
+        .select("id,title,section,module,difficulty,source_month,source_year")
+        .order("title")
+        .order("module"),
       target.id
         ? supabase.from("mock_exam_sections").select("test_id").eq("mock_exam_id", target.id)
         : Promise.resolve({ data: [] as { test_id: string | null }[] }),

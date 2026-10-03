@@ -83,7 +83,9 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
     return jsonResponse({ error: "Password must be at least 8 characters." }, 400);
   }
   if (password.length > 72) return jsonResponse({ error: "Password is too long." }, 400);
-  if (!UUID_RE.test(classId)) return jsonResponse({ error: "Pick a class group first." }, 400);
+  if (classId && !UUID_RE.test(classId)) {
+    return jsonResponse({ error: "That class was not found." }, 400);
+  }
   if (usernameOverride && !USERNAME_RE.test(usernameOverride)) {
     return jsonResponse(
       {
@@ -94,20 +96,22 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
     );
   }
 
-  const clsCheck = await restFetch<{ id: string }[]>(
-    auth.config,
-    auth.token,
-    `classes?id=eq.${encodeURIComponent(classId)}&select=id`,
-  );
-  if (clsCheck.error) {
-    console.error("[create-user] class lookup failed", clsCheck.status, clsCheck.error);
-    return jsonResponse(
-      { error: "Could not verify the class group. Try again or refresh the page." },
-      500,
+  if (classId) {
+    const clsCheck = await restFetch<{ id: string }[]>(
+      auth.config,
+      auth.token,
+      `classes?id=eq.${encodeURIComponent(classId)}&select=id`,
     );
-  }
-  if (!clsCheck.data?.length) {
-    return jsonResponse({ error: "That class group was not found." }, 404);
+    if (clsCheck.error) {
+      console.error("[create-user] class lookup failed", clsCheck.status, clsCheck.error);
+      return jsonResponse(
+        { error: "Could not verify the class. Try again or refresh the page." },
+        500,
+      );
+    }
+    if (!clsCheck.data?.length) {
+      return jsonResponse({ error: "That class was not found." }, 404);
+    }
   }
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -145,12 +149,12 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
     email,
     password,
     email_confirm: true,
+    app_metadata: { staff_created: true },
     user_metadata: {
       first_name,
       last_name,
       full_name,
       username,
-      staff_created: true,
     },
   });
   if (createErr || !created.user) {
@@ -210,17 +214,19 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
     );
   }
 
-  // A parent row with no sub-class rows joins both sub-classes (class_memberships_after_insert).
-  await db.from("class_memberships").delete().eq("user_id", userId);
-  const { error: memErr } = await db
-    .from("class_memberships")
-    .insert({ class_id: classId, user_id: userId });
-  if (memErr) {
-    await supabaseAdmin.auth.admin.deleteUser(userId);
-    return jsonResponse(
-      { error: `Account was created but could not be added to the class: ${memErr.message}` },
-      500,
-    );
+  if (classId) {
+    // A parent row with no sub-class rows joins both sub-classes (class_memberships_after_insert).
+    await db.from("class_memberships").delete().eq("user_id", userId);
+    const { error: memErr } = await db
+      .from("class_memberships")
+      .insert({ class_id: classId, user_id: userId });
+    if (memErr) {
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      return jsonResponse(
+        { error: `Account was created but could not be added to the class: ${memErr.message}` },
+        500,
+      );
+    }
   }
 
   return jsonResponse({ userId, username, name: full_name });

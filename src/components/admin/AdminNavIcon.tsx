@@ -17,6 +17,7 @@ export type AdminAnim =
   | "classes"
   | "notifications"
   | "users"
+  | "payments"
   | "settings";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -60,6 +61,7 @@ export function AdminNavIcon({ anim, className, hovered: hoveredProp }: Props) {
       {anim === "classes" && <ClassesIcon hovered={h} />}
       {anim === "notifications" && <NotificationsIcon hovered={h} />}
       {anim === "users" && <UsersIcon hovered={h} />}
+      {anim === "payments" && <PaymentsIcon hovered={h} />}
       {anim === "settings" && <SettingsIcon hovered={h} />}
     </span>
   );
@@ -484,6 +486,21 @@ function UsersIcon({ hovered }: { hovered: boolean }) {
       <circle cx="9.2" cy="8" r="2.8" />
       <path d="M3.6 18.2c.7-3.2 2.6-4.9 5.6-4.9s4.9 1.7 5.6 4.9" />
     </svg>
+  );
+}
+
+function PaymentsIcon({ hovered }: { hovered: boolean }) {
+  return (
+    <motion.svg
+      {...svgProps}
+      animate={{ y: hovered ? -1 : 0 }}
+      transition={SNAP}
+      style={{ willChange: "transform" }}
+    >
+      <path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 0 4H5a2 2 0 0 0 0 4h12a2 2 0 0 0 2-2v-2" />
+      <path d="M3 5v14a2 2 0 0 0 2 2h14" />
+      <circle cx="16.5" cy="11.5" r="1" />
+    </motion.svg>
   );
 }
 

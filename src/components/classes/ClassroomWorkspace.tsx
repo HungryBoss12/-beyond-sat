@@ -32,6 +32,7 @@ import { LevelModal } from "@/components/classes/LevelModal";
 import { LevelHistorySheet } from "@/components/classes/LevelHistorySheet";
 import { GroupRail, type RailFilter, type RailPerson } from "@/components/classes/GroupRail";
 import { ActivationDateDialog } from "@/components/billing/ActivationDateDialog";
+import { listAllClasses } from "@/lib/classes/api";
 import type { ClassRow } from "@/lib/classes/types";
 import { shiftMonth } from "@/lib/classes/classroom";
 import {
@@ -40,6 +41,7 @@ import {
   listGroupAttendance,
   listGroupLessons,
   listGroupMembers,
+  listUserGroupMemberships,
   listHwMarks,
   listLevelSections,
   listProfiles,
@@ -110,7 +112,7 @@ export function ClassroomWorkspace({
 }) {
   const navigate = useNavigate();
   const [members, setMembers] = useState<GroupMember[]>([]);
-  const [siblingIds, setSiblingIds] = useState<Set<string>>(new Set());
+  const [alsoIn, setAlsoIn] = useState<Map<string, string[]>>(new Map());
   const [profiles, setProfiles] = useState<Map<string, PersonProfile>>(new Map());
   const [lessons, setLessons] = useState<GroupLesson[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRow[]>([]);
@@ -142,9 +144,8 @@ export function ClassroomWorkspace({
   const load = useCallback(async () => {
     try {
       await ensureGroupLessons(group.id, search.month).catch(() => 0);
-      const [memberRows, siblingRows, lessonRows, attendanceRows, sectionRows] = await Promise.all([
+      const [memberRows, lessonRows, attendanceRows, sectionRows] = await Promise.all([
         listGroupMembers(group.id),
-        sibling ? listGroupMembers(sibling.id) : Promise.resolve([]),
         listGroupLessons(group.id, search.month),
         listGroupAttendance(group.id, search.month),
         listLevelSections(group.subject),
@@ -159,8 +160,23 @@ export function ClassroomWorkspace({
         listResults(lessonIds),
         loadBoard(),
       ]);
+      const [everywhere, catalog] = await Promise.all([
+        listUserGroupMemberships(memberRows.map((m) => m.user_id)),
+        listAllClasses().catch(() => allClasses),
+      ]);
+      const classNames = new Map(catalog.map((row) => [row.id, row.name]));
+      const extra = new Map<string, string[]>();
+      for (const row of everywhere) {
+        if (row.class_id === klass.id) continue;
+        const label = classNames.get(row.class_id);
+        if (!label) continue;
+        const list = extra.get(row.user_id) ?? [];
+        if (!list.includes(label)) list.push(label);
+        extra.set(row.user_id, list);
+      }
+      for (const list of extra.values()) list.sort((a, b) => a.localeCompare(b));
       setMembers(memberRows);
-      setSiblingIds(new Set(siblingRows.map((m) => m.user_id)));
+      setAlsoIn(extra);
       setLessons(lessonRows);
       setAttendance(attendanceRows);
       setSections(sectionRows);
@@ -178,7 +194,7 @@ export function ClassroomWorkspace({
     } finally {
       setLoading(false);
     }
-  }, [group.id, group.subject, group.teacher_id, sibling, search.month, isAdmin, loadBoard]);
+  }, [group.id, group.subject, group.teacher_id, klass.id, allClasses, search.month, isAdmin, loadBoard]);
 
   useEffect(() => {
     setLoading(true);
@@ -192,11 +208,11 @@ export function ClassroomWorkspace({
           userId: m.user_id,
           name: personName(profiles.get(m.user_id), m.user_id),
           status: m.status,
-          inSibling: siblingIds.has(m.user_id),
+          alsoIn: alsoIn.get(m.user_id) ?? [],
           balanceKind: isAdmin ? balances.get(m.user_id) : undefined,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [members, profiles, siblingIds, balances, isAdmin],
+    [members, profiles, alsoIn, balances, isAdmin],
   );
 
   const filtered = useMemo(() => {
@@ -302,7 +318,6 @@ export function ClassroomWorkspace({
         <GroupRail
           klass={klass}
           group={group}
-          sibling={sibling}
           people={filtered}
           teacherName={
             group.teacher_id ? personName(profiles.get(group.teacher_id), group.teacher_id) : null

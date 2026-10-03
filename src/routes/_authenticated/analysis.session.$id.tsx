@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { applyResolvedImageUrls } from "@/lib/storage-url";
@@ -164,12 +165,9 @@ function SessionReview() {
   const q = questions[idx];
   const isCorrect = currentAttempt?.is_correct;
 
-  return (
-    /* Same surface as the live runner — this screen embeds the identical
-       QuestionCard, so it reproduces the Bluebook chrome exactly: light header
-       bar, dashed rule, full-bleed question, light footer. The only difference
-       is the verdict chip where the runner puts its clock. */
-    <div className="fixed inset-0 z-50 flex flex-col bg-test-canvas">
+  const review = (
+    /* Portaled so route-enter's transform does not collapse this fixed overlay. */
+    <div className="fixed inset-0 z-[80] flex h-[100dvh] flex-col bg-test-canvas">
       <header className="shrink-0 bg-test-chrome">
         <div className="grid grid-cols-3 items-center gap-2 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-2">
@@ -240,4 +238,6 @@ function SessionReview() {
       </div>
     </div>
   );
+  if (typeof document === "undefined") return review;
+  return createPortal(review, document.body);
 }

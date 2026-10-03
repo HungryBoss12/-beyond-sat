@@ -145,7 +145,9 @@ function AdminClassesIndex() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 stagger">
           {classes.map((row) => {
-            const subs = groups.filter((g) => g.class_id === row.id);
+            const subs = groups
+              .filter((g) => g.class_id === row.id)
+              .sort((a, b) => Number(a.subject === "math") - Number(b.subject === "math"));
             const debt = debtors.get(row.id) ?? 0;
             return (
               <RevealCard

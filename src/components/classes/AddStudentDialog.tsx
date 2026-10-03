@@ -88,12 +88,15 @@ export function AddStudentDialog({
   }, [query, open]);
 
   const className = (id: string | null) => allClasses.find((row) => row.id === id)?.name ?? null;
+  const membershipIds = (row: StudentRow) =>
+    row.class_ids?.length ? row.class_ids : row.class_id ? [row.class_id] : [];
 
   const visible = useMemo(
     () =>
       rows.filter((row) => {
-        if (tab === "none") return !row.class_id;
-        if (tab === "other") return Boolean(row.class_id) && row.class_id !== klass.id;
+        const ids = row.class_ids?.length ? row.class_ids : row.class_id ? [row.class_id] : [];
+        if (tab === "none") return ids.length === 0;
+        if (tab === "other") return ids.some((id) => id !== klass.id);
         if (tab === "unclaimed") return !row.claimed_at;
         return true;
       }),
@@ -245,13 +248,25 @@ export function AddStudentDialog({
           aria-label="Students"
         >
           {visible.map((row, index) => {
-            const here = row.class_id === klass.id;
-            const other = row.class_id && !here ? className(row.class_id) : null;
+            const ids = membershipIds(row);
+            const here = ids.includes(klass.id);
+            const others = ids
+              .filter((id) => id !== klass.id)
+              .map((id) => className(id))
+              .filter((name): name is string => Boolean(name));
+            const place =
+              here && others.length > 0
+                ? `in this class · also ${others.join(", ")}`
+                : here
+                  ? "in this class"
+                  : others.length > 0
+                    ? `in ${others.join(", ")}`
+                    : "not in a class";
             const detail = [
               row.claimed_at ? "Registered" : "Not registered",
               row.grade,
               row.phone,
-              here ? "in this class" : other ? `in ${other}` : "not in a class",
+              place,
             ]
               .filter(Boolean)
               .join(" · ");

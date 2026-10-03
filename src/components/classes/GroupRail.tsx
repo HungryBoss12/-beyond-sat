@@ -324,6 +324,7 @@ function MoveDialog({
         userId: person.userId,
         status: person.status,
         move: true,
+        fromClassId: klass.id,
       });
       toast.success(`${person.name} moved to ${destination.name}`);
       onClose();

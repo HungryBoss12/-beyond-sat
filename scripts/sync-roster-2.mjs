@@ -4,7 +4,7 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
@@ -167,7 +167,7 @@ async function main() {
     groupByClassSubject.set(`${className}|${group.subject}`, group.id);
   }
 
-  const students = await fetchAll(db, "students", "id, user_id, full_name, claimed_at, import_key");
+  const students = await fetchAll(db, "students", "id, user_id, full_name, claimed_at, import_key, created_at");
   const profiles = await fetchAll(db, "profiles", "id, full_name, username");
   const memberships = await fetchAll(
     db,
@@ -189,6 +189,7 @@ async function main() {
       tokenKey: tokenKey(fullName),
       username: profile?.username ?? "",
       claimedAt: student.claimed_at,
+      createdAt: student.created_at ?? "",
       importKey: student.import_key,
       memberships: [],
     });
@@ -205,6 +206,7 @@ async function main() {
       tokenKey: tokenKey(fullName),
       username: profile.username ?? "",
       claimedAt: null,
+      createdAt: "",
       importKey: null,
       memberships: [],
     });
@@ -219,24 +221,42 @@ async function main() {
     });
   }
 
+  await mergeSameNameAccounts(db, accounts);
+
   const used = new Set();
+  const pairedNorm = new Map();
   const paired = [];
   const matchCounts = {};
 
-  function free(list) {
-    return list.filter((account) => !used.has(account.userId));
+  function reusable(account, person) {
+    if (!used.has(account.userId)) return true;
+    return person.words.length >= 2 && pairedNorm.get(account.userId) === person.norm;
+  }
+
+  function free(list, person) {
+    return list.filter((account) => reusable(account, person));
   }
 
   function take(account, person, how) {
     used.add(account.userId);
+    if (!pairedNorm.has(account.userId)) pairedNorm.set(account.userId, person.norm);
     paired.push({ person, account, how });
     matchCounts[how] = (matchCounts[how] ?? 0) + 1;
   }
 
   function pick(list, person, how) {
-    const open = free(list);
-    if (open.length !== 1) return false;
-    take(open[0], person, how);
+    const open = free(list, person);
+    const same = open.filter((account) => used.has(account.userId));
+    if (same.length >= 1) {
+      take(same[0], person, how);
+      return true;
+    }
+    const fresh = open.filter((account) => !used.has(account.userId));
+    if (!fresh.length) return false;
+    const withClass = fresh.filter((account) => account.memberships.length > 0);
+    const pool = withClass.length ? withClass : fresh;
+    pool.sort((a, b) => b.memberships.length - a.memberships.length || (b.studentId ? 1 : 0) - (a.studentId ? 1 : 0));
+    take(pool[0], person, how);
     return true;
   }
 
@@ -255,30 +275,25 @@ async function main() {
         account.memberships.some((row) => row.className === person.className) && sameName(account, person),
     );
     if (pick(inClass, person, "name in class")) continue;
+    const elsewhere = [...accounts.values()].filter((account) => sameName(account, person));
+    if (pick(elsewhere, person, "name in another class")) continue;
   }
 
   for (const person of people) {
     if (paired.some((row) => row.person === person)) continue;
     if (person.words.length < 2) continue;
-    const classes = [person.className, ...(person.alsoClasses ?? [])];
-    const hits = free([...accounts.values()]).filter((account) => {
+    const hits = free([...accounts.values()], person).filter((account) => {
       if (account.norm.includes(" ")) return false;
       if (account.norm !== person.lastWord) return false;
-      return account.memberships.some((row) => classes.includes(row.className));
+      return account.memberships.some((row) => row.className === person.className);
     });
     if (hits.length === 1) take(hits[0], person, "one-word last name");
   }
 
   for (const person of people) {
     if (paired.some((row) => row.person === person)) continue;
-    const hits = free([...accounts.values()]).filter((account) => sameName(account, person));
-    if (hits.length === 1) take(hits[0], person, "name in another class");
-  }
-
-  for (const person of people) {
-    if (paired.some((row) => row.person === person)) continue;
     if (person.words.length < 2) continue;
-    const hits = free([...accounts.values()]).filter((account) => {
+    const hits = free([...accounts.values()], person).filter((account) => {
       const words = account.norm.split(" ").filter(Boolean);
       if (words.length !== person.words.length) return false;
       return editDistance(account.norm, person.norm) <= 2;
@@ -288,6 +303,10 @@ async function main() {
 
   const unmatched = people.filter((person) => !paired.some((row) => row.person === person));
   console.log("matches", matchCounts, "new", unmatched.length);
+  if (unmatched.length > 20) {
+    for (const person of unmatched) console.log("unmatched", person.className, person.name);
+    throw new Error("Too many unmatched names; roster was not changed");
+  }
 
   const desired = new Set();
   for (const row of paired) {
@@ -365,24 +384,32 @@ async function main() {
     }
   }
 
-  const byClass = new Map();
-  for (const link of links) {
-    const list = byClass.get(link.className) ?? [];
-    list.push(link);
-    byClass.set(link.className, list);
-  }
-  const lines = ["BeyondSAT setup links", "New accounts from Total work(2).xlsx", ""];
-  if (!links.length) lines.push("No new accounts.");
-  for (const className of [...byClass.keys()].sort()) {
-    lines.push(className);
-    for (const link of byClass.get(className)) {
-      lines.push(link.name);
-      lines.push(link.username);
-      lines.push(link.url);
-      lines.push("");
+  if (links.length) {
+    const byClass = new Map();
+    for (const link of links) {
+      const list = byClass.get(link.className) ?? [];
+      list.push(link);
+      byClass.set(link.className, list);
+    }
+    const lines = ["", "Additional accounts", ""];
+    for (const className of [...byClass.keys()].sort()) {
+      lines.push(className);
+      for (const link of byClass.get(className)) {
+        lines.push(link.name);
+        lines.push(link.username);
+        lines.push(link.url);
+        lines.push("");
+      }
+    }
+    if (existsSync(LINKS_PATH)) appendFileSync(LINKS_PATH, lines.join("\r\n"), "utf8");
+    else {
+      writeFileSync(
+        LINKS_PATH,
+        ["BeyondSAT setup links", "New accounts from Total work(2).xlsx", ...lines].join("\r\n"),
+        "utf8",
+      );
     }
   }
-  writeFileSync(LINKS_PATH, lines.join("\r\n"), "utf8");
   console.log(`new links ${links.length}, failures ${failures.length}`);
   for (const line of failures) console.error(line);
 
@@ -427,6 +454,67 @@ async function main() {
   console.log("SAT 13 Eng Muratov Imron", has("Muratov Imron") ? "kept" : "MISSING");
 
   if (failures.length) process.exitCode = 1;
+}
+
+async function mergeSameNameAccounts(db, accounts) {
+  const groups = new Map();
+  for (const account of accounts.values()) {
+    if (account.norm.split(" ").filter(Boolean).length < 2) continue;
+    const list = groups.get(account.norm) ?? [];
+    list.push(account);
+    groups.set(account.norm, list);
+  }
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    list.sort((a, b) => {
+      if (Boolean(a.claimedAt) !== Boolean(b.claimedAt)) return a.claimedAt ? -1 : 1;
+      if (a.createdAt !== b.createdAt) return String(a.createdAt).localeCompare(String(b.createdAt));
+      return b.memberships.length - a.memberships.length;
+    });
+    const keep = list[0];
+    for (const extra of list.slice(1)) {
+      const { data: ledger, error: ledgerErr } = await db
+        .from("ledger_entries")
+        .select("id")
+        .eq("user_id", extra.userId)
+        .limit(1);
+      if (ledgerErr) throw new Error(ledgerErr.message);
+      if (ledger?.length) {
+        console.log("left duplicate with payments", extra.fullName, extra.username);
+        continue;
+      }
+      for (const membership of extra.memberships) {
+        const already = keep.memberships.some(
+          (row) => row.className === membership.className && row.subject === membership.subject,
+        );
+        if (!already) {
+          const { error } = await db.from("class_group_memberships").insert({
+            group_id: membership.groupId,
+            user_id: keep.userId,
+            status: "active",
+            enrolled_on: tashkentToday(),
+          });
+          if (error) throw new Error(`${extra.fullName}: ${error.message}`);
+          keep.memberships.push({ ...membership });
+        }
+        const { error: dropErr } = await db
+          .from("class_group_memberships")
+          .delete()
+          .eq("group_id", membership.groupId)
+          .eq("user_id", extra.userId);
+        if (dropErr) throw new Error(dropErr.message);
+      }
+      if (extra.studentId) {
+        await db.from("student_invites").delete().eq("student_id", extra.studentId);
+        const { error: studentErr } = await db.from("students").delete().eq("id", extra.studentId);
+        if (studentErr) throw new Error(studentErr.message);
+      }
+      const { error: delErr } = await db.auth.admin.deleteUser(extra.userId);
+      if (delErr) console.log("could not delete duplicate", extra.username, delErr.message);
+      else accounts.delete(extra.userId);
+      console.log("merged", extra.fullName, extra.username, "into", keep.username);
+    }
+  }
 }
 
 async function savePerson(db, account, person, takenKeys) {

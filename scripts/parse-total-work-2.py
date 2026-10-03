@@ -25,7 +25,6 @@ SHEETS = {
     "PreM": ("Pre-SAT", "math", {"name": 1, "phone": 3, "parent": 4, "grade": 5, "english": 6, "math": 7, "goal": 8}),
 }
 
-RANK = {"SAT 14": 5, "SAT 13": 4, "SAT 12": 3, "SAT 10": 2, "Pre-SAT": 1}
 LABELS = {"english": "English", "math": "Math", "goal": "Goal"}
 
 
@@ -183,17 +182,7 @@ def main():
     kept = {}
     for class_name, people in by_class.items():
         for key, person in people.items():
-            if person["tokens"] < 2:
-                kept[f"{class_name}|{key}"] = person
-                continue
-            current = kept.get(key)
-            if current is None or RANK[class_name] > RANK[current["className"]]:
-                if current is not None and class_name not in current["alsoClasses"]:
-                    person["alsoClasses"] = list(dict.fromkeys([*person["alsoClasses"], current["className"], *current["alsoClasses"]]))
-                kept[key] = person
-            else:
-                if class_name not in current["alsoClasses"]:
-                    current["alsoClasses"].append(class_name)
+            kept[f"{class_name}|{key}"] = person
 
     out = []
     for person in kept.values():

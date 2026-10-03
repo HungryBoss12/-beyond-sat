@@ -178,6 +178,8 @@ export async function addGroupMember(input: {
   enrolledOn?: string | null;
   activatedOn?: string | null;
   move?: boolean;
+  /** When moving, leave this class and keep any other classes the student attends. */
+  fromClassId?: string | null;
 }): Promise<void> {
   const { error } = await db.rpc("staff_add_group_member", {
     p_group_id: input.groupId,
@@ -186,6 +188,7 @@ export async function addGroupMember(input: {
     p_enrolled_on: input.enrolledOn ?? null,
     p_activated_on: input.activatedOn ?? null,
     p_move: input.move ?? false,
+    p_from_class_id: input.fromClassId ?? null,
   });
   if (error) throw error;
 }

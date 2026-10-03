@@ -120,12 +120,7 @@ export function AddStudentDialog({
           toast.error(`${person?.full_name ?? "Student"} has no account yet`);
           continue;
         }
-        const name = person.full_name;
-        const other =
-          person?.class_id && person.class_id !== klass.id ? className(person.class_id) : null;
-        if (other && !confirm(`Move ${name} from ${other} to ${klass.name}?`)) continue;
         const subjects: ClassSubject[] = pick === "both" ? ["math", "ebrw"] : [pick];
-        let moved = false;
         for (const subject of subjects) {
           const group = groups.find((g) => g.subject === subject);
           if (!group) continue;
@@ -135,9 +130,7 @@ export function AddStudentDialog({
             status,
             enrolledOn,
             activatedOn: isAdmin ? activatedOn || enrolledOn : null,
-            move: Boolean(other) && !moved,
           });
-          moved = true;
         }
         added += 1;
       }

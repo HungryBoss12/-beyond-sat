@@ -68,6 +68,7 @@ type EnrollChoice = {
 };
 
 function groupChoiceLabel(group: ClassGroup): string {
+  if (/\b(eng|english|maths|math)\b/i.test(group.name)) return group.name;
   const subject = group.subject === "math" ? "Math" : "Eng";
   return `${group.name} · ${subject}`;
 }
@@ -440,16 +441,20 @@ function AdminStudents() {
             await addGroupMember({ groupId: group.id, userId: row.userId, status: "active" });
           }
         } catch (enrollErr) {
-          setCreateError(
-            `Account created, but the class could not be set: ${
-              enrollErr instanceof Error ? enrollErr.message : "Could not enroll."
-            }`,
-          );
+          const detail = enrollErr instanceof Error ? enrollErr.message.trim() : "";
+          const reason =
+            detail && detail !== "{}" && detail !== "[object Object]" ? detail : "Could not enroll.";
+          setCreateError(`Account created, but the class could not be set: ${reason}`);
         }
       }
       await load();
     } catch (err) {
-      setCreateError((err as Error).message ?? "Could not create account.");
+      const message = err instanceof Error ? err.message.trim() : "";
+      setCreateError(
+        message && message !== "{}" && message !== "[object Object]"
+          ? message
+          : "Could not create account.",
+      );
     } finally {
       setCreating(false);
     }

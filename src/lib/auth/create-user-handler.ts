@@ -27,10 +27,42 @@ async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
 }
 
+function failureSentence(error: unknown, fallback: string): string {
+  if (typeof error === "string") {
+    const text = error.trim();
+    if (text && text !== "{}" && text !== "[object Object]") return text;
+    return fallback;
+  }
+  if (error && typeof error === "object") {
+    const record = error as {
+      message?: unknown;
+      msg?: unknown;
+      error_description?: unknown;
+      details?: unknown;
+      hint?: unknown;
+    };
+    for (const value of [record.message, record.msg, record.error_description, record.details, record.hint]) {
+      if (typeof value !== "string") continue;
+      const text = value.trim();
+      if (text && text !== "{}" && text !== "[object Object]") return text;
+    }
+  }
+  return fallback;
+}
+
 export async function handleAdminCreateUser(request: Request, env: unknown): Promise<Response> {
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
+  try {
+    return await createAdminUser(request, env);
+  } catch (error) {
+    console.error("[create-user] failed", error);
+    return jsonResponse({ error: failureSentence(error, "Could not create the account.") }, 500);
+  }
+}
+
+async function createAdminUser(request: Request, env: unknown): Promise<Response> {
 
   hydrateServerEnv(env);
   try {
@@ -155,10 +187,11 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
       last_name,
       full_name,
       username,
+      staff_created: true,
     },
   });
   if (createErr || !created.user) {
-    const msg = createErr?.message ?? "Could not create the account.";
+    const msg = failureSentence(createErr, "Could not create the account.");
     if (/already/i.test(msg)) {
       return jsonResponse(
         { error: "That login name is already taken. Try a slightly different name." },
@@ -206,9 +239,10 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
     await supabaseAdmin.auth.admin.deleteUser(userId);
     return jsonResponse(
       {
-        error: `Account was created but the profile could not be finished: ${
-          profErr?.message ?? "profile row missing"
-        }`,
+        error: `Account was created but the profile could not be finished: ${failureSentence(
+          profErr,
+          "profile row missing",
+        )}`,
       },
       500,
     );
@@ -223,7 +257,12 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
     if (memErr) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return jsonResponse(
-        { error: `Account was created but could not be added to the class: ${memErr.message}` },
+        {
+          error: `Account was created but could not be added to the class: ${failureSentence(
+            memErr,
+            "could not add the class",
+          )}`,
+        },
         500,
       );
     }

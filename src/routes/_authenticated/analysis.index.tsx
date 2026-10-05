@@ -286,41 +286,43 @@ function AnalysisPage() {
           /* Recharts renders its slice labels and legend text with its own dark
              defaults, which disappear on the brand card — the two arbitrary
              variants force them white since there's no prop for either. */
-          <div className="h-64 [&_.recharts-legend-item-text]:!text-white [&_.recharts-pie-label-text]:fill-white">
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={52}
-                  outerRadius={90}
-                  paddingAngle={2}
-                  animationDuration={900}
-                  labelLine={{ stroke: "#9f9fc2" }}
-                  label={(e: PieLabelRenderProps) =>
-                    `${e.name}: ${e.value} (${Math.round(((e.value as number) / totals.total) * 100)}%)`
-                  }
-                >
-                  {pieData.map((d) => (
-                    /* Stroke matches the card behind it, so the gap between
-                       slices reads as a seam rather than a white outline. */
-                    <Cell key={d.name} fill={d.color} stroke="#0b0761" strokeWidth={2} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    background: "#090654",
-                    border: "1px solid #535291",
-                    borderRadius: 12,
-                    color: "#FFFFFF",
-                  }}
-                  itemStyle={{ color: "#FFFFFF" }}
-                  labelStyle={{ color: "#C6C5DA" }}
-                />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="h-[13.6rem] overflow-hidden">
+            <div className="h-64 origin-top scale-[0.85] [&_.recharts-legend-item-text]:!text-white [&_.recharts-pie-label-text]:fill-white">
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={52}
+                    outerRadius={90}
+                    paddingAngle={2}
+                    animationDuration={900}
+                    labelLine={{ stroke: "#9f9fc2" }}
+                    label={(e: PieLabelRenderProps) =>
+                      `${e.name}: ${e.value} (${Math.round(((e.value as number) / totals.total) * 100)}%)`
+                    }
+                  >
+                    {pieData.map((d) => (
+                      /* Stroke matches the card behind it, so the gap between
+                         slices reads as a seam rather than a white outline. */
+                      <Cell key={d.name} fill={d.color} stroke="#0b0761" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      background: "#090654",
+                      border: "1px solid #535291",
+                      borderRadius: 12,
+                      color: "#FFFFFF",
+                    }}
+                    itemStyle={{ color: "#FFFFFF" }}
+                    labelStyle={{ color: "#C6C5DA" }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
       </Panel>

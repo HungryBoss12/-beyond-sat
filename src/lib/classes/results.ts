@@ -1,9 +1,21 @@
+import type { ClassSubject } from "./types";
+import { rwRawToScaled } from "@/lib/sat";
+
 /** Per-lesson Results: M1 + M2 correct answers, shown as a section score. */
 
-export const RESULT_MODULE_MAX = 27;
+/** Reading & Writing module length. */
+export const ENGLISH_MODULE_MAX = 27;
+/** Math module length. */
+export const MATH_MODULE_MAX = 22;
+/** @deprecated Use moduleMax(subject). Kept for callers that still mean English. */
+export const RESULT_MODULE_MAX = ENGLISH_MODULE_MAX;
 
-/** Raw total (M1 + M2) → section score. Anything else is N.A. */
-const SECTION_SCORE: Record<number, string> = {
+export function moduleMax(subject: ClassSubject): number {
+  return subject === "math" ? MATH_MODULE_MAX : ENGLISH_MODULE_MAX;
+}
+
+/** Math raw total (M1 + M2, each 0–22) → section score. Anything else is N.A. */
+const MATH_SECTION_SCORE: Record<number, string> = {
   44: "800",
   43: "790",
   42: "770",
@@ -30,12 +42,12 @@ const SECTION_SCORE: Record<number, string> = {
 
 export type ModuleParse = { kind: "empty" } | { kind: "ok"; value: number } | { kind: "error" };
 
-export function parseModule(raw: string): ModuleParse {
+export function parseModule(raw: string, max = ENGLISH_MODULE_MAX): ModuleParse {
   const text = raw.trim();
   if (!text) return { kind: "empty" };
   if (!/^\d{1,2}$/.test(text)) return { kind: "error" };
   const value = Number(text);
-  return value <= RESULT_MODULE_MAX ? { kind: "ok", value } : { kind: "error" };
+  return value <= max ? { kind: "ok", value } : { kind: "error" };
 }
 
 export function resultScore(m1: number | null, m2: number | null): number | null {
@@ -43,9 +55,17 @@ export function resultScore(m1: number | null, m2: number | null): number | null
   return m1 + m2;
 }
 
-/** "—" until both modules are in. Otherwise the section score, or "N.A." off the table. */
-export function resultLabel(m1: number | null, m2: number | null): string {
+/** "—" until both modules are in. Math uses the class table. English uses the Reading & Writing curve. */
+export function resultLabel(
+  m1: number | null,
+  m2: number | null,
+  subject: ClassSubject = "math",
+): string {
   const score = resultScore(m1, m2);
   if (score == null) return "—";
-  return SECTION_SCORE[score] ?? "N.A.";
+  if (subject === "ebrw") {
+    if (m1! > ENGLISH_MODULE_MAX || m2! > ENGLISH_MODULE_MAX) return "N.A.";
+    return String(rwRawToScaled(score));
+  }
+  return MATH_SECTION_SCORE[score] ?? "N.A.";
 }

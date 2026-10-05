@@ -230,18 +230,25 @@ export async function fetchSyllabus(slug: string): Promise<{
     byTopic.set(row.topic_id, list);
   }
 
+  const topicRows = (topics ?? []) as LessonTopic[];
+  const topicOrder = new Map(topicRows.map((topic) => [topic.id, topic.sort_order]));
   const featuredRows = (featured.data ?? []) as RecommendedVideo[];
-  await ensureCatalogEntries(featuredRows);
-  const rankedFeatured = sortByScore(await attachRanking(featuredRows)).slice(
-    0,
-    SECTION_REC_LIMIT,
-  );
+  const teacherCounts = new Map<string, number>();
+  for (const row of featuredRows) {
+    teacherCounts.set(row.topic_id, (teacherCounts.get(row.topic_id) ?? 0) + 1);
+  }
+  const rankedFeatured = (await attachRanking(featuredRows)).sort((a, b) => {
+    const topicDiff = (topicOrder.get(a.topic_id) ?? 0) - (topicOrder.get(b.topic_id) ?? 0);
+    if (topicDiff !== 0) return topicDiff;
+    return a.sort_order - b.sort_order;
+  });
 
   return {
     subject: subject as LessonSubject,
-    topics: ((topics ?? []) as LessonTopic[]).map((topic) => ({
+    topics: topicRows.map((topic) => ({
       ...topic,
       lessons: byTopic.get(topic.id) ?? [],
+      teacherVideoCount: teacherCounts.get(topic.id) ?? 0,
     })),
     featured: rankedFeatured,
   };
@@ -431,7 +438,7 @@ export async function fetchSkillWatch(subjectSlug: string, topicId: string): Pro
     subject: syllabus.subject,
     topic,
     lessons: topic.lessons,
-    recommended: (data ?? []) as RecommendedVideo[],
+    recommended: await attachRanking((data ?? []) as RecommendedVideo[]),
   };
 }
 

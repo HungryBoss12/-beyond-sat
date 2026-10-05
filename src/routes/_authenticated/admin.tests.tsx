@@ -95,7 +95,7 @@ const empty = (bank: BankFormat = "ordinary"): Test => ({
   difficulty: "C",
   source_month: null,
   source_year: new Date().getFullYear(),
-  published: false,
+  published: bank !== "sqb",
   bank_format: bank,
 });
 
@@ -389,18 +389,7 @@ function AdminTests() {
       alert("A test must contain at least 1 question.");
       return;
     }
-    if (editing.published && bank === "sqb") {
-      const unpublished = pool.filter(
-        (q) => editingQs.includes(q.id) && q.published === false,
-      );
-      if (unpublished.length > 0) {
-        alert(
-          `Publish blocked: ${unpublished.length} selected SQB question(s) are still drafts. Publish those questions first.`,
-        );
-        return;
-      }
-    }
-    const published = editing.published === true;
+    const wantPublished = editing.published === true;
     const payload = {
       title: editing.title.trim(),
       section: editing.section,
@@ -408,7 +397,7 @@ function AdminTests() {
       difficulty: editing.difficulty,
       source_month: editing.source_month,
       source_year: editing.source_year,
-      published,
+      published: bank === "sqb" ? false : wantPublished,
       bank_format: bank,
     };
     let testId = editing.id;
@@ -419,7 +408,7 @@ function AdminTests() {
       const { data: u } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from("tests")
-        .insert({ ...payload, created_by: u.user?.id, published })
+        .insert({ ...payload, created_by: u.user?.id })
         .select("id")
         .single();
       if (error) return alert(error.message);
@@ -427,11 +416,19 @@ function AdminTests() {
     }
     await supabase.from("test_questions").delete().eq("test_id", testId);
     if (editingQs.length > 0) {
-      await supabase
+      const { error: linkErr } = await supabase
         .from("test_questions")
         .insert(
           editingQs.map((qid, i) => ({ test_id: testId, question_id: qid, position: i + 1 })),
         );
+      if (linkErr) return alert(linkErr.message);
+    }
+    if (bank === "sqb" && wantPublished) {
+      const { error: publishErr } = await supabase.rpc("staff_publish_sqb_test", {
+        p_test_id: testId,
+        p_publish: true,
+      });
+      if (publishErr) return alert(publishErr.message);
     }
     setEditing(null);
     setEditingQs(null);

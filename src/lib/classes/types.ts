@@ -83,6 +83,7 @@ export type HomeworkAssignment = {
   var_kind?: VarKind | "formulas" | null;
   lesson_id?: string | null;
   max_score?: number | null;
+  video_url?: string | null;
 };
 
 export type HomeworkFile = {

@@ -96,14 +96,15 @@ export function MarketingCta({
   label?: string;
 }) {
   const registrationOn = useRegistrationEnabled();
-  const dest = registrationOn !== true && to === "/signup" ? "/signin" : to;
+  const closed = registrationOn !== true && to === "/signup";
+  const dest = closed ? "/signin" : to;
   return (
     <p className="mt-8">
       <Link
         to={dest}
         className="btn-brand inline-flex rounded-lg bg-brand-400 px-5 py-2.5 text-sm font-bold text-white"
       >
-        {label}
+        {closed ? "Sign in" : label}
       </Link>
     </p>
   );

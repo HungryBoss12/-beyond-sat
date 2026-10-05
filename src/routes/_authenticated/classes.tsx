@@ -876,6 +876,7 @@ function HomeworksPane({ classIds }: { classIds: string[] }) {
                   {a.body && (
                     <p className="mt-2 whitespace-pre-wrap text-sm text-white">{a.body}</p>
                   )}
+                  {a.video_url && <HomeworkVideo url={a.video_url} />}
                 </div>
                 <RevealButton
                   onClick={() => void openAssignment(a)}
@@ -1038,7 +1039,7 @@ function OwnProgress() {
           .filter((r) => r.group_id === member.group_id)
           .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
         out.push(
-          `${group?.name ?? (member.subject === "math" ? "Maths" : "Eng")}: ${ticks} ${schemeFor(member.subject)} ticks · Level ${level ?? "—"}${latest ? ` · last result ${resultLabel(latest.m1, latest.m2)}` : ""}`,
+          `${group?.name ?? (member.subject === "math" ? "Maths" : "Eng")}: ${ticks} ${schemeFor(member.subject)} ticks · Level ${level ?? "—"}${latest ? ` · last result ${resultLabel(latest.m1, latest.m2, member.subject)}` : ""}`,
         );
       }
       setLines(out);
@@ -1051,5 +1052,50 @@ function OwnProgress() {
         <li key={line}>{line}</li>
       ))}
     </ul>
+  );
+}
+
+function HomeworkVideo({ url }: { url: string }) {
+  const trimmed = url.trim();
+  const list = /[?&]list=([^&]+)/.exec(trimmed)?.[1];
+  const id = /(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{6,})/.exec(trimmed)?.[1];
+  const youtube = list
+    ? `https://www.youtube.com/embed/videoseries?list=${encodeURIComponent(list)}`
+    : id && /youtube\.com|youtu\.be/i.test(trimmed)
+      ? `https://www.youtube.com/embed/${id}`
+      : null;
+  if (youtube) {
+    return (
+      <div className="mt-3 aspect-video overflow-hidden rounded-xl">
+        <iframe
+          className="h-full w-full"
+          src={youtube}
+          title="Homework video"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    return (
+      <div className="mt-3 aspect-video overflow-hidden rounded-xl bg-black">
+        <video className="h-full w-full" src={trimmed} controls playsInline />
+      </div>
+    );
+  }
+  const openable = /^(https?:\/\/|\/)/i.test(trimmed);
+  return (
+    <p className="mt-3 text-sm text-white">
+      Video could not be played.
+      {openable && (
+        <>
+          {" "}
+          <a href={trimmed} className="font-bold underline" target="_blank" rel="noreferrer">
+            Open it
+          </a>
+        </>
+      )}
+    </p>
   );
 }

@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { Check, ChevronLeft, Minus, Wallet, X } from "lucide-react";
+import { Check, ChevronLeft, Minus, Pencil, Wallet, X } from "lucide-react";
 import { Panel, PanelGlow, PanelHead } from "@/components/ui/panel";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useClassContext } from "@/components/classes/ClassContext";
 import { StudentMoney } from "@/components/classes/StudentMoney";
 import { RankBadge } from "@/components/classes/RankBadge";
@@ -36,6 +37,8 @@ import { HW_ITEM_LABEL, HW_ITEM_LETTER, itemsFor, subjectToSlug } from "@/lib/cl
 import { shortDate } from "@/lib/classes/schedule";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { updateStudentProfile } from "@/lib/students/api";
+import { toast } from "sonner";
 
 const searchSchema = z.object({
   sections: z.coerce
@@ -75,6 +78,10 @@ function StudentProfilePage() {
     { lesson: GroupLesson | undefined; m1: number | null; m2: number | null; group_id: string }[]
   >([]);
   const [submissions, setSubmissions] = useState<StudentSubmission[]>([]);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const load = useCallback(async () => {
     const [profiles, memberships, myScore, attendanceRows, markRows, resultRows, subs] =
@@ -182,6 +189,20 @@ function StudentProfilePage() {
         </div>
         <div className="flex gap-2">
           {isAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditName(name);
+                setEditNotes(description ?? "");
+                setEditOpen(true);
+              }}
+              className="tap inline-flex h-10 items-center gap-1.5 rounded-full border border-brand-200 px-4 text-sm font-bold text-brand-700 hover:bg-brand-25"
+            >
+              <Pencil className="h-4 w-4" aria-hidden="true" />
+              Edit
+            </button>
+          )}
+          {isAdmin && (
             <Link
               to="/admin/payments"
               className="tap inline-flex h-10 items-center gap-1.5 rounded-full border border-brand-200 px-4 text-sm font-bold text-brand-700 hover:bg-brand-25"
@@ -252,6 +273,63 @@ function StudentProfilePage() {
       </Panel>
 
       {isAdmin && <StudentMoney userId={userId} name={name} />}
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-md border-brand-400/40 bg-brand-600 text-white shadow-none sm:rounded-2xl [&>button]:!bg-transparent [&>button]:!text-white">
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSavingProfile(true);
+              void updateStudentProfile({
+                userId,
+                fullName: editName,
+                description: editNotes,
+              })
+                .then(async () => {
+                  setEditOpen(false);
+                  toast.success("Student updated");
+                  await load();
+                })
+                .catch((err) =>
+                  toast.error(err instanceof Error ? err.message : "Could not save the student"),
+                )
+                .finally(() => setSavingProfile(false));
+            }}
+          >
+            <DialogHeader className="space-y-0 text-left">
+              <DialogTitle className="text-lg font-black text-white">Edit student</DialogTitle>
+            </DialogHeader>
+            <label className="block text-xs font-bold text-white">
+              Name
+              <input
+                value={editName}
+                onChange={(event) => setEditName(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white"
+              />
+            </label>
+            <label className="block text-xs font-bold text-white">
+              Notes
+              <textarea
+                value={editNotes}
+                onChange={(event) => setEditNotes(event.target.value)}
+                rows={5}
+                placeholder={"English: \nAchievement: \nGoal:"}
+                className="mt-1 w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white"
+              />
+            </label>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={savingProfile}
+                className="rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {savingProfile ? "Saving" : "Save"}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid gap-4 lg:grid-cols-2">
         {blocks.map((block) => {
@@ -378,7 +456,7 @@ function StudentProfilePage() {
                     {groupResults.map((r, i) => (
                       <li key={i} className="rounded-lg bg-brand-800 px-2 py-1 tabular-nums">
                         {r.lesson ? shortDate(r.lesson.lesson_date) : "—"}:{" "}
-                        <span className="font-black">{resultLabel(r.m1, r.m2)}</span>
+                        <span className="font-black">{resultLabel(r.m1, r.m2, block.group.subject)}</span>
                       </li>
                     ))}
                   </ul>

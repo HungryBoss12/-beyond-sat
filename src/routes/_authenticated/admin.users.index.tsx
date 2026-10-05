@@ -24,6 +24,7 @@ import { ListSkeleton } from "@/components/ui/skeletons";
 import { PanelGlow } from "@/components/ui/panel";
 import { RevealCard } from "@/components/ui/reveal-card";
 import { AdminSelect } from "@/components/admin/AdminSelect";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   fetchAdminUsersSummary,
   type AdminUserSummaryRow,
@@ -35,6 +36,7 @@ import {
 } from "@/lib/auth/create-user";
 import { isSyntheticAccountEmail } from "@/lib/auth/login-email";
 import { listAllClasses, addClassMember } from "@/lib/classes/api";
+import { addGroupMember, listGroups, type ClassGroup } from "@/lib/classes/groups";
 import type { ClassRow } from "@/lib/classes/types";
 import { isOnline, lastSeenLabel } from "@/lib/presence";
 import { unclaimedUserIds } from "@/lib/students/api";
@@ -57,6 +59,164 @@ const ROLE_OPTIONS = [
   { value: "editor", label: "Editor" },
   { value: "admin", label: "Admin" },
 ];
+
+type EnrollChoice = {
+  classId: string;
+  className: string;
+  groups: { id: string; label: string }[];
+  full: boolean;
+};
+
+function groupChoiceLabel(group: ClassGroup): string {
+  const subject = group.subject === "math" ? "Math" : "Eng";
+  return `${group.name} · ${subject}`;
+}
+
+function EnrollDialog({
+  open,
+  classes,
+  initial,
+  onOpenChange,
+  onSave,
+}: {
+  open: boolean;
+  classes: ClassRow[];
+  initial: EnrollChoice | null;
+  onOpenChange: (open: boolean) => void;
+  onSave: (choice: EnrollChoice | null) => void;
+}) {
+  const [classId, setClassId] = useState(initial?.classId ?? "");
+  const [groupIds, setGroupIds] = useState<string[]>(initial?.groups.map((g) => g.id) ?? []);
+  const [groups, setGroups] = useState<ClassGroup[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setClassId(initial?.classId ?? "");
+    setGroupIds(initial?.groups.map((g) => g.id) ?? []);
+    setError(null);
+    setLoading(true);
+    void listGroups()
+      .then(setGroups)
+      .catch((err) => setError(err instanceof Error ? err.message : "Could not load groups"))
+      .finally(() => setLoading(false));
+  }, [open]);
+
+  const classGroups = groups.filter((group) => group.class_id === classId);
+  const full = classGroups.length > 0 && classGroups.every((group) => groupIds.includes(group.id));
+
+  function pickClass(id: string) {
+    setClassId(id);
+    setGroupIds(groups.filter((group) => group.class_id === id).map((group) => group.id));
+  }
+
+  function toggleGroup(id: string) {
+    setGroupIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+  }
+
+  function save(next: EnrollChoice | null) {
+    onSave(next);
+    onOpenChange(false);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md border-brand-400/40 bg-brand-600 text-white shadow-none sm:rounded-2xl [&>button]:!bg-transparent [&>button]:!text-white">
+        <DialogHeader className="space-y-0 text-left">
+          <DialogTitle className="text-lg font-black text-white">Class and group</DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-brand-100">
+          Full class joins Math and Eng. Leave them out of a class, or tick only the groups they
+          attend.
+        </p>
+        {error && <p className="text-xs font-semibold text-white">{error}</p>}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => save(null)}
+            className="rounded-full bg-brand-800 px-3 py-1.5 text-xs font-bold text-white"
+          >
+            Not in a class
+          </button>
+          <button
+            type="button"
+            disabled={!classId || classGroups.length === 0}
+            onClick={() => pickClass(classId)}
+            className="rounded-full bg-brand-400 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40"
+          >
+            Full class
+          </button>
+        </div>
+        <AdminSelect
+          value={classId || "none"}
+          onValueChange={(value) => {
+            if (value === "none") {
+              setClassId("");
+              setGroupIds([]);
+              return;
+            }
+            pickClass(value);
+          }}
+          placeholder="Choose a class"
+          options={[
+            { value: "none", label: "Choose a class" },
+            ...classes.map((klass) => ({
+              value: klass.id,
+              label: klass.active ? klass.name : `${klass.name} (inactive)`,
+            })),
+          ]}
+        />
+        {loading ? (
+          <p className="text-xs text-brand-100">Loading groups…</p>
+        ) : classId ? (
+          <ul className="space-y-1">
+            {classGroups.map((group) => (
+              <li key={group.id}>
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-white hover:bg-brand-800">
+                  <input
+                    type="checkbox"
+                    checked={groupIds.includes(group.id)}
+                    onChange={() => toggleGroup(group.id)}
+                    className="h-4 w-4 rounded border-brand-400 bg-brand-800"
+                  />
+                  {groupChoiceLabel(group)}
+                </label>
+              </li>
+            ))}
+            {classGroups.length === 0 && (
+              <li className="text-xs text-brand-100">This class has no groups yet.</li>
+            )}
+          </ul>
+        ) : null}
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              if (!classId || groupIds.length === 0) {
+                save(null);
+                return;
+              }
+              const klass = classes.find((row) => row.id === classId);
+              const chosen = classGroups.filter((group) => groupIds.includes(group.id));
+              save({
+                classId,
+                className: klass?.name ?? "Class",
+                groups: chosen.map((group) => ({ id: group.id, label: groupChoiceLabel(group) })),
+                full,
+              });
+            }}
+            className="rounded-full bg-brand-400 px-4 py-2 text-xs font-bold text-white"
+          >
+            Use this class
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function missingObject(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
@@ -96,7 +256,8 @@ function AdminStudents() {
   const [createName, setCreateName] = useState("");
   const [createUsername, setCreateUsername] = useState("");
   const [createPassword, setCreatePassword] = useState("");
-  const [createClassId, setCreateClassId] = useState("");
+  const [enroll, setEnroll] = useState<EnrollChoice | null>(null);
+  const [enrollOpen, setEnrollOpen] = useState(false);
   const [mustChange, setMustChange] = useState(true);
   const [showCreatePw, setShowCreatePw] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -258,10 +419,11 @@ function AdminStudents() {
     }
     setCreating(true);
     try {
+      const chosen = enroll;
       const row = await createClassStudent({
         name: createName,
         password: createPassword,
-        classId: createClassId || null,
+        classId: null,
         username: createUsername.trim() || undefined,
         mustChangeCredentials: mustChange,
       });
@@ -270,7 +432,21 @@ function AdminStudents() {
       setCreateUsername("");
       setCreatePassword("");
       setMustChange(true);
+      setEnroll(null);
       setPageTab("provisioning");
+      if (chosen && chosen.groups.length > 0) {
+        try {
+          for (const group of chosen.groups) {
+            await addGroupMember({ groupId: group.id, userId: row.userId, status: "active" });
+          }
+        } catch (enrollErr) {
+          setCreateError(
+            `Account created, but the class could not be set: ${
+              enrollErr instanceof Error ? enrollErr.message : "Could not enroll."
+            }`,
+          );
+        }
+      }
       await load();
     } catch (err) {
       setCreateError((err as Error).message ?? "Could not create account.");
@@ -730,17 +906,17 @@ function AdminStudents() {
                     <Wand2 className="h-3.5 w-3.5" />
                     Generate
                   </button>
-                  <AdminSelect
-                    value={createClassId || "none"}
-                    onValueChange={(value) => setCreateClassId(value === "none" ? "" : value)}
-                    options={[
-                      { value: "none", label: "No class" },
-                      ...classes.map((c) => ({
-                        value: c.id,
-                        label: c.active ? c.name : `${c.name} (inactive)`,
-                      })),
-                    ]}
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setEnrollOpen(true)}
+                    className={CONTROL + " truncate text-left"}
+                  >
+                    {enroll
+                      ? enroll.full
+                        ? `${enroll.className} · Full class`
+                        : enroll.groups.map((group) => group.label).join(", ")
+                      : "Not in a class"}
+                  </button>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <label className="tap inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-brand-100">
@@ -912,6 +1088,13 @@ function AdminStudents() {
           </section>
         </>
       )}
+      <EnrollDialog
+        open={enrollOpen}
+        classes={classes}
+        initial={enroll}
+        onOpenChange={setEnrollOpen}
+        onSave={setEnroll}
+      />
       <FeeDialog
         open={feeOpen}
         title="Fee for selected students"

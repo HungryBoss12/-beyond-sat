@@ -27,7 +27,11 @@ export const Route = createFileRoute("/_authenticated/admin")({
     if (role === "editor" && !canEditorAccess(location.pathname)) {
       throw redirect({ to: EDITOR_HOME });
     }
-    if (role === "teacher" && !location.pathname.startsWith("/admin/classes")) {
+    if (
+      role === "teacher" &&
+      !location.pathname.startsWith("/admin/classes") &&
+      !location.pathname.startsWith("/admin/payments")
+    ) {
       throw redirect({ to: TEACHER_HOME });
     }
     return { staffRole: role, userId: data.user.id };
@@ -104,7 +108,9 @@ function visibleNav(role: StaffRole) {
      off the union is an error. Widening to NavItem here doesn't widen the
      result: filter still returns the array's own element type, so `to` stays a
      literal and <Link> keeps accepting it. */
-  if (role === "teacher") return NAV.filter((n: NavItem) => n.to === "/admin/classes");
+  if (role === "teacher") {
+    return NAV.filter((n: NavItem) => n.to === "/admin/classes" || n.to === "/admin/payments");
+  }
   return NAV.filter((n: NavItem) => role === "admin" || !n.adminOnly);
 }
 

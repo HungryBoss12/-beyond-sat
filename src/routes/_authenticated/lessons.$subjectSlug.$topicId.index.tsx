@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Play } from "lucide-react";
+import { FeaturedVideos } from "@/components/lessons/FeaturedVideos";
 import { LessonPageHead, sectionKind } from "@/components/lessons/LessonSectionMark";
 import { Panel } from "@/components/ui/panel";
 import { CardGridSkeleton, HeadSkeleton } from "@/components/ui/skeletons";
@@ -72,9 +73,12 @@ function SkillWatchPage() {
         subtitle={data.topic.description ?? "Taught walkthroughs for this skill."}
       />
 
-      {data.lessons.length === 0 ? (
+      {data.recommended.length > 0 && (
+        <FeaturedVideos heading="Teacher added" videos={data.recommended} />
+      )}
+      {data.lessons.length === 0 && data.recommended.length === 0 ? (
         <p className="text-sm text-slate-500">No published lessons for this skill yet.</p>
-      ) : (
+      ) : data.lessons.length > 0 ? (
         <div className="lesson-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.lessons.map((lesson) => (
             <LessonTile
@@ -85,7 +89,7 @@ function SkillWatchPage() {
             />
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

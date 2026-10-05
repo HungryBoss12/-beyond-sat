@@ -444,6 +444,7 @@ export function ClassroomWorkspace({
             />
           ) : search.tab === "results" ? (
             <ResultsGrid
+              subject={group.subject}
               lessons={lessons}
               people={gridPeople}
               results={results}

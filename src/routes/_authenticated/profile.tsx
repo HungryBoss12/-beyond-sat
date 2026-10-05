@@ -13,6 +13,7 @@ import {
   Sparkles,
   KeyRound,
   Link2,
+  Wallet,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -33,6 +34,8 @@ import {
 import { linkGoogleAccount } from "@/lib/auth/google";
 import { signOutCurrent } from "@/lib/auth/account-switcher";
 import { displayAccountEmail } from "@/lib/auth/login-email";
+import { studentBillingHome } from "@/lib/billing/api";
+import { formatUzs } from "@/lib/billing/money";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   component: Profile,
@@ -397,6 +400,8 @@ function Profile() {
       <Surface className="p-5">
         <AttendanceGrid rows={attendance} />
       </Surface>
+
+      <MoneyCard />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Personal info */}
@@ -863,6 +868,50 @@ function Input({
         className="block w-full rounded-lg border border-brand-400/60 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
       />
     </label>
+  );
+}
+
+function MoneyCard() {
+  const [money, setMoney] = useState<{
+    balance: bigint;
+    recent: { id: string; kind: string; amount_uzs: bigint; note: string | null; occurred_on: string }[];
+  } | null>(null);
+  useEffect(() => {
+    void studentBillingHome()
+      .then(setMoney)
+      .catch(() => setMoney({ balance: 0n, recent: [] }));
+  }, []);
+  return (
+    <Surface tone="brand" className="relative overflow-hidden p-5">
+      <PanelGlow />
+      <div className="relative">
+        <div className="flex items-center gap-2">
+          <Wallet className="h-5 w-5" aria-hidden="true" />
+          <h2 className="text-lg font-black text-white">Balance</h2>
+        </div>
+        <p className="mt-2 text-3xl font-black tabular-nums text-white">
+          {money ? formatUzs(money.balance) : "…"}
+        </p>
+        <ul className="mt-4 space-y-1 text-sm text-white">
+          {(money?.recent ?? []).length === 0 ? (
+            <li>No payments yet.</li>
+          ) : (
+            money!.recent.map((row) => (
+              <li key={row.id} className="tabular-nums">
+                <span className="font-bold">
+                  {row.kind === "charge" || row.kind === "refund" ? "−" : "+"}
+                  {formatUzs(row.amount_uzs)}
+                </span>
+                <span>
+                  {" "}
+                  · {row.note || row.kind} · {row.occurred_on}
+                </span>
+              </li>
+            ))
+          )}
+        </ul>
+      </div>
+    </Surface>
   );
 }
 

@@ -654,7 +654,7 @@ function QuestionBody({
                     className={
                       "mt-0.5 grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full border text-sm font-bold " +
                       (isCorrect
-                        ? "border-emerald-600 bg-white text-emerald-700"
+                        ? "border-emerald-600 bg-emerald-600 text-white"
                         : isWrongPick
                           ? "border-red-600 bg-red-600 text-white"
                           : selected

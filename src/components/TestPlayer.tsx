@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import {
   QuestionCard,
   emptyAnswer,
@@ -240,7 +241,7 @@ export function TestPlayer({
         const snapshot = { ...metaRef.current };
         const { error } = await supabase
           .from("test_sessions")
-          .update({ metadata: snapshot })
+          .update({ metadata: snapshot as Json })
           .eq("id", sessionId);
         if (error) console.error("[session metadata]", error);
       })
@@ -579,6 +580,23 @@ export function TestPlayer({
     }
   }
 
+  async function fillGrade(questionId: string, rec: GradeRec) {
+    const { data: rows, error: fErr } = await supabase.rpc("get_attempt_feedback", {
+      p_session_id: sessionId,
+      p_question_id: questionId,
+    });
+    const row = !fErr ? rows?.[0] : null;
+    if (!row) return;
+    const filled: GradeRec = {
+      ...rec,
+      correctChoiceId: row.correct_choice_id ?? null,
+      correctGridAnswers: row.correct_grid_answers ?? null,
+      explanation: row.explanation ?? null,
+    };
+    gradesRef.current = { ...gradesRef.current, [questionId]: filled };
+    setGrades({ ...gradesRef.current });
+  }
+
   async function handlePracticeNext() {
     if (checking || submittingRef.current) return;
     const qq = questions[idx];
@@ -597,22 +615,8 @@ export function TestPlayer({
     const existing = gradesRef.current[qq.id];
     if (existing) {
       if (!feedbackOpen) {
-        if (!existing.isCorrect && !existing.explanation) {
-          const { data: rows } = await supabase.rpc("get_attempt_feedback", {
-            p_session_id: sessionId,
-            p_question_id: qq.id,
-          });
-          const row = rows?.[0];
-          if (row) {
-            const filled: GradeRec = {
-              ...existing,
-              correctChoiceId: row.correct_choice_id ?? null,
-              correctGridAnswers: row.correct_grid_answers ?? null,
-              explanation: row.explanation ?? null,
-            };
-            gradesRef.current = { ...gradesRef.current, [qq.id]: filled };
-            setGrades(gradesRef.current);
-          }
+        if (!existing.correctChoiceId && !existing.explanation) {
+          await fillGrade(qq.id, existing);
         }
         setFeedbackOpen(true);
         return;
@@ -642,28 +646,15 @@ export function TestPlayer({
         p_time_spent: timePerQ.current[idx] ?? 0,
       });
       if (error) throw new Error(error.message);
-      const ok = data === true;
       const rec: GradeRec = {
-        isCorrect: ok,
+        isCorrect: data === true,
         correctChoiceId: null,
         correctGridAnswers: null,
         explanation: null,
       };
       gradesRef.current = { ...gradesRef.current, [qq.id]: rec };
       setGrades(gradesRef.current);
-      if (!ok) {
-        const { data: rows, error: fErr } = await supabase.rpc("get_attempt_feedback", {
-          p_session_id: sessionId,
-          p_question_id: qq.id,
-        });
-        if (!fErr && rows?.[0]) {
-          rec.correctChoiceId = rows[0].correct_choice_id ?? null;
-          rec.correctGridAnswers = rows[0].correct_grid_answers ?? null;
-          rec.explanation = rows[0].explanation ?? null;
-          gradesRef.current = { ...gradesRef.current, [qq.id]: rec };
-          setGrades(gradesRef.current);
-        }
-      }
+      await fillGrade(qq.id, rec);
       setFeedbackOpen(true);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Could not check this answer.");
@@ -672,7 +663,7 @@ export function TestPlayer({
     }
   }
 
-  async function checkAnswered() {
+  async function checkAnswered(finish: boolean) {
     if (checking || submittingRef.current) return;
     setChecking(true);
     setSubmitError(null);
@@ -681,7 +672,8 @@ export function TestPlayer({
       timePerQ.current[idx] = (timePerQ.current[idx] ?? 0) + elapsed;
       questionStartRef.current = Date.now();
       const currentAnswers = answersRef.current;
-      for (let i = 0; i < questions.length; i++) {
+      const scope = useSections ? indicesForPhase(phase) : questions.map((_, i) => i);
+      for (const i of scope) {
         const q = questions[i]!;
         if (gradesRef.current[q.id]) continue;
         const a = currentAnswers[i] ?? emptyAnswer();
@@ -703,23 +695,18 @@ export function TestPlayer({
           correctGridAnswers: null,
           explanation: null,
         };
-        if (!rec.isCorrect) {
-          const { data: rows } = await supabase.rpc("get_attempt_feedback", {
-            p_session_id: sessionId,
-            p_question_id: q.id,
-          });
-          const row = rows?.[0];
-          if (row) {
-            rec.correctChoiceId = row.correct_choice_id ?? null;
-            rec.correctGridAnswers = row.correct_grid_answers ?? null;
-            rec.explanation = row.explanation ?? null;
-          }
-        }
         gradesRef.current = { ...gradesRef.current, [q.id]: rec };
-        setGrades({ ...gradesRef.current });
+        await fillGrade(q.id, rec);
       }
+      setGrades({ ...gradesRef.current });
       const current = questions[idx];
-      if (current && gradesRef.current[current.id]) setFeedbackOpen(true);
+      if (finish) {
+        setFeedbackOpen(false);
+        if (useSections && nextPhase(phaseOrder, phase)) setShowReview(true);
+        else await submit();
+      } else if (current && gradesRef.current[current.id]) {
+        setFeedbackOpen(true);
+      }
     } catch (err) {
       setGrades({ ...gradesRef.current });
       setSubmitError(err instanceof Error ? err.message : "Could not check these answers.");
@@ -743,6 +730,10 @@ export function TestPlayer({
   );
   const answeredCount = answered.filter(Boolean).length;
   const marked = questions.map((_, i) => answers[i]?.markedForReview ?? false);
+  const gradeMarks = questions.map((qq) => {
+    const grade = grades[qq.id];
+    return grade ? grade.isCorrect : null;
+  });
 
   if (result)
     return (
@@ -802,6 +793,13 @@ export function TestPlayer({
   const sectionAnsweredCount = useSections
     ? activeIndices.filter((i) => answered[i]).length
     : answeredCount;
+  const sqbScope = activeIndices;
+  const sqbSectionDone = sqbScope.length > 0 && sqbScope.every((i) => answered[i]);
+  const sqbNeedsGrade = sqbScope.some((i) => answered[i] && !grades[questions[i]!.id]);
+  const sqbCheck =
+    instantCheck &&
+    questions.some((qq) => qq.bank_format === "sqb") &&
+    (sqbSectionDone ? sqbScope.some((i) => answered[i]) : sqbNeedsGrade);
 
   /* Sized with dvh rather than `fixed inset-0` so the runner can't be collapsed
      by an animated/transformed ancestor turning into its containing block, and
@@ -1028,6 +1026,7 @@ export function TestPlayer({
             questions={questions}
             answered={answered}
             marked={marked}
+            correct={gradeMarks}
             current={idx}
             moduleLabel={useSections ? phaseLabel(phase) : moduleLabel}
             rwIndices={useSections && (phase === "rw1" || phase === "rw2") ? activeIndices : rwNav}
@@ -1095,7 +1094,7 @@ export function TestPlayer({
             correctGridAnswers={
               instantCheck && feedbackOpen ? (grades[q.id]?.correctGridAnswers ?? null) : null
             }
-            showRationale={instantCheck && feedbackOpen ? !grades[q.id]?.isCorrect : false}
+            showRationale={Boolean(instantCheck && feedbackOpen && grades[q.id])}
             showNotes={showNotes}
             onCloseNotes={() => setShowNotes(false)}
           />
@@ -1110,6 +1109,7 @@ export function TestPlayer({
           idx={idx}
           answered={answered}
           marked={marked}
+          correct={gradeMarks}
           answeredCount={sectionAnsweredCount}
           showReview={showReview}
           studentName={studentName}
@@ -1156,14 +1156,9 @@ export function TestPlayer({
           }}
           nextLabel={isLastInSection ? (instantCheck ? "See results" : "Review") : "Next"}
           nextBusy={checking}
-          onCheckAll={
-            instantCheck &&
-            questions.some((q) => q.bank_format === "sqb") &&
-            questions.some((qq, i) => answered[i] && !grades[qq.id])
-              ? () => void checkAnswered()
-              : undefined
-          }
+          onCheckAll={sqbCheck ? () => void checkAnswered(sqbSectionDone) : undefined}
           checkAllBusy={checking}
+          checkLabel={sqbSectionDone ? "Check all" : "Check"}
           onGoto={(i) => goto(i)}
           isFirst={isFirstInSection}
           isLast={isLastInSection}
@@ -1202,11 +1197,20 @@ function BreakScreen({
   );
 }
 
+function questionBoxClass(answered: boolean, correct: boolean | null, current: boolean) {
+  const ring = current ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "";
+  if (correct === true) return ring + "bg-emerald-600 text-white ";
+  if (correct === false) return ring + "bg-red-600 text-white ";
+  if (answered) return ring + "bg-test-dark text-white ";
+  return ring + "border border-dashed border-test-ink text-test-ink hover:bg-test-well ";
+}
+
 function QuestionSectionGrid({
   title,
   indices,
   answered,
   marked,
+  correct,
   current,
   locked,
   onGoto,
@@ -1216,6 +1220,7 @@ function QuestionSectionGrid({
   indices: number[];
   answered: boolean[];
   marked: boolean[];
+  correct?: (boolean | null)[];
   current: number;
   locked?: boolean;
   onGoto: (i: number) => void;
@@ -1244,10 +1249,7 @@ function QuestionSectionGrid({
               }}
               className={
                 "tap relative h-9 rounded-sm text-sm font-semibold tabular-nums disabled:cursor-not-allowed " +
-                (cur ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "") +
-                (a
-                  ? "bg-test-dark text-white "
-                  : "border border-dashed border-test-ink text-test-ink hover:bg-test-well ")
+                questionBoxClass(a, correct?.[i] ?? null, cur)
               }
             >
               {local + 1}
@@ -1268,6 +1270,7 @@ function BottomBar({
   idx,
   answered,
   marked,
+  correct,
   answeredCount,
   showReview,
   studentName,
@@ -1283,12 +1286,14 @@ function BottomBar({
   nextBusy,
   onCheckAll,
   checkAllBusy,
+  checkLabel,
 }: {
   displayNum: number;
   displayTotal: number;
   idx: number;
   answered: boolean[];
   marked: boolean[];
+  correct?: (boolean | null)[];
   answeredCount: number;
   showReview: boolean;
   studentName: string;
@@ -1304,6 +1309,7 @@ function BottomBar({
   nextBusy?: boolean;
   onCheckAll?: () => void;
   checkAllBusy?: boolean;
+  checkLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const split = Boolean(rwIndices && mathIndices);
@@ -1345,6 +1351,14 @@ function BottomBar({
                 Answered
               </span>
               <span className="inline-flex items-center gap-1.5">
+                <span className="h-3.5 w-3.5 rounded-sm bg-emerald-600" />
+                Correct
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3.5 w-3.5 rounded-sm bg-red-600" />
+                Incorrect
+              </span>
+              <span className="inline-flex items-center gap-1.5">
                 <Bookmark className="h-3.5 w-3.5 fill-test-accent text-test-accent" />
                 For review
               </span>
@@ -1359,6 +1373,7 @@ function BottomBar({
                   indices={rwIndices!}
                   answered={answered}
                   marked={marked}
+                  correct={correct}
                   current={idx}
                   locked={rwIndices!.some((i) => locked.has(i))}
                   onGoto={onGoto}
@@ -1369,6 +1384,7 @@ function BottomBar({
                   indices={mathIndices!}
                   answered={answered}
                   marked={marked}
+                  correct={correct}
                   current={idx}
                   locked={mathIndices!.some((i) => locked.has(i))}
                   onGoto={onGoto}
@@ -1390,10 +1406,7 @@ function BottomBar({
                       }}
                       className={
                         "tap relative h-9 rounded-sm text-sm font-semibold tabular-nums " +
-                        (cur ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "") +
-                        (a
-                          ? "bg-test-dark text-white "
-                          : "border border-dashed border-test-ink text-test-ink hover:bg-test-well ")
+                        questionBoxClass(a, correct?.[i] ?? null, cur)
                       }
                     >
                       {i + 1}
@@ -1426,7 +1439,7 @@ function BottomBar({
             className="tap inline-flex items-center gap-1.5 rounded-full border border-test-accent bg-white px-4 py-2 text-sm font-bold text-test-accent hover:bg-test-tint disabled:pointer-events-none disabled:opacity-40"
           >
             {checkAllBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Check all
+            {checkLabel ?? "Check all"}
           </button>
         ) : null}
         <button
@@ -1447,6 +1460,7 @@ function ReviewPanel({
   questions,
   answered,
   marked,
+  correct,
   current,
   moduleLabel,
   rwIndices,
@@ -1461,6 +1475,7 @@ function ReviewPanel({
   questions: QuestionRow[];
   answered: boolean[];
   marked: boolean[];
+  correct?: (boolean | null)[];
   current: number;
   moduleLabel: string;
   rwIndices?: number[];
@@ -1505,6 +1520,14 @@ function ReviewPanel({
             Answered
           </span>
           <span className="inline-flex items-center gap-1.5">
+            <span className="h-3.5 w-3.5 rounded-sm bg-emerald-600" />
+            Correct
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3.5 w-3.5 rounded-sm bg-red-600" />
+            Incorrect
+          </span>
+          <span className="inline-flex items-center gap-1.5">
             <Bookmark className="h-3.5 w-3.5 fill-test-accent text-test-accent" />
             For review
           </span>
@@ -1516,6 +1539,7 @@ function ReviewPanel({
               indices={rwIndices!}
               answered={answered}
               marked={marked}
+              correct={correct}
               current={current}
               locked={allowed ? rwIndices!.some((i) => !allowed.has(i)) : false}
               onGoto={onGoto}
@@ -1525,6 +1549,7 @@ function ReviewPanel({
               indices={mathIndices!}
               answered={answered}
               marked={marked}
+              correct={correct}
               current={current}
               locked={allowed ? mathIndices!.some((i) => !allowed.has(i)) : false}
               onGoto={onGoto}
@@ -1542,10 +1567,7 @@ function ReviewPanel({
                   onClick={() => onGoto(i)}
                   className={
                     "tap relative aspect-square rounded-sm text-sm font-semibold tabular-nums " +
-                    (cur ? "ring-2 ring-test-accent ring-offset-2 ring-offset-white " : "") +
-                    (a
-                      ? "bg-test-dark text-white "
-                      : "border border-dashed border-test-ink text-test-ink hover:bg-test-well ")
+                    questionBoxClass(!!a, correct?.[i] ?? null, cur)
                   }
                 >
                   {i + 1}

@@ -12,6 +12,19 @@ export const Route = createFileRoute("/_authenticated/lessons/$subjectSlug/")({
   component: LessonSkills,
 });
 
+function topicMeta(topic: SyllabusTopic): string {
+  const parts: string[] = [];
+  if (topic.teacherVideoCount > 0) {
+    parts.push(
+      `${topic.teacherVideoCount} teacher video${topic.teacherVideoCount === 1 ? "" : "s"}`,
+    );
+  }
+  if (topic.lessons.length > 0) {
+    parts.push(`${topic.lessons.length} lesson${topic.lessons.length === 1 ? "" : "s"}`);
+  }
+  return parts.join(" · ") || "No videos yet";
+}
+
 function LessonSkills() {
   const { subjectSlug } = Route.useParams();
   const [title, setTitle] = useState("Lessons");
@@ -79,7 +92,7 @@ function LessonSkills() {
                 <p className="mt-1 text-sm text-brand-100">{topic.description}</p>
               )}
               <p className="mt-3 text-xs font-semibold text-brand-200">
-                {topic.lessons.length} lesson{topic.lessons.length === 1 ? "" : "s"}
+                {topicMeta(topic)}
               </p>
               <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-brand-200">
                 Open videos{" "}
@@ -90,7 +103,11 @@ function LessonSkills() {
         ))}
       </div>
       <ForYouVideos section={sectionKind(subjectSlug)} />
-      <FeaturedVideos videos={featured} />
+      <FeaturedVideos
+        heading="Teacher added"
+        videos={featured}
+        emptyMessage="No teacher videos for this section yet."
+      />
     </div>
   );
 }

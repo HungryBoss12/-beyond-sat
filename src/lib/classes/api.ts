@@ -433,7 +433,7 @@ export async function listHomework(
   let q = db
     .from("homework_assignments")
     .select(
-      "id,class_id,subject,title,body,due_at,created_at,created_by,var_kind,lesson_id,max_score",
+      "id,class_id,subject,title,body,due_at,created_at,created_by,var_kind,lesson_id,max_score,video_url",
     )
     .eq("class_id", classId)
     .order("created_at", { ascending: false });
@@ -452,6 +452,7 @@ export async function createHomework(input: {
   var_kind?: "vocab" | "assignment" | "article" | "formulas" | null;
   lesson_id?: string | null;
   max_score?: number | null;
+  video_url?: string | null;
 }): Promise<HomeworkAssignment> {
   const { data: u } = await supabase.auth.getUser();
   const { data, error } = await db
@@ -466,9 +467,10 @@ export async function createHomework(input: {
       var_kind: input.var_kind ?? null,
       lesson_id: input.lesson_id ?? null,
       max_score: input.max_score ?? null,
+      video_url: input.video_url ?? null,
     })
     .select(
-      "id,class_id,subject,title,body,due_at,created_at,created_by,var_kind,lesson_id,max_score",
+      "id,class_id,subject,title,body,due_at,created_at,created_by,var_kind,lesson_id,max_score,video_url",
     )
     .single();
   if (error) throw error;

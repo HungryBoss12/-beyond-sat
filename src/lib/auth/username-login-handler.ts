@@ -2,7 +2,6 @@ import { createClient } from "@supabase/supabase-js";
 import { jsonResponse } from "@/lib/vocab/rest";
 import { readSupabaseConfig } from "@/lib/server-env";
 import { normalizeUsername } from "@/lib/classes/types";
-import { rateLimit } from "@/lib/rate-limit";
 
 /** Coarse client key for rate limiting: IP when present, else "unknown". */
 function clientKey(request: Request): string {
@@ -32,15 +31,24 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
   const config = readSupabaseConfig(env);
   if (!config) return jsonResponse({ error: "Server is not configured" }, 500);
 
-  /* Brute-force throttle: 5 tokens, refill 1 per 3 minutes (5 per 15min per
-     IP, matching the plan). Per-isolate caveat applies (lib/rate-limit.ts).
-     Runs before body parsing so junk requests are rejected at the door. */
+  /* Same rule as before: 5 attempts, then one more every 3 minutes, per IP.
+     The count lives in the database so every Worker shares it. */
   const ip = clientKey(request);
-  const limit = rateLimit(`username-login:${ip}`, 5, 1 / 3);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: limitData, error: limitErr } = await (supabaseAdmin as any).rpc(
+    "bs_take_login_attempt",
+    { p_key: ip },
+  );
+  const limit = limitData as { ok?: boolean; retry_after?: number } | null;
+  if (limitErr || !limit) {
+    console.error("[username-login] rate limit failed", limitErr?.message);
+    return jsonResponse({ error: "Could not sign in. Try again." }, 503);
+  }
   if (!limit.ok) {
     return jsonResponse(
       { error: "Too many sign-in attempts. Wait a few minutes and try again." },
-      { status: 429, headers: { "retry-after": String(limit.retryAfter) } },
+      { status: 429, headers: { "retry-after": String(limit.retry_after ?? 180) } },
     );
   }
 
@@ -57,7 +65,6 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
     return jsonResponse({ error: "Enter your username and password." }, 400);
   }
 
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: rows, error: lookupErr } = await supabaseAdmin
     .from("profiles")
     .select("id,banned")

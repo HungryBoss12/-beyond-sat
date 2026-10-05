@@ -352,6 +352,85 @@ export async function recordRefund(input: EntryInput): Promise<string> {
   });
 }
 
+export type StudentDiscount = {
+  id: string;
+  user_id: string;
+  full_name: string | null;
+  class_id: string;
+  class_name: string;
+  mode: "percent" | "amount";
+  value: bigint;
+  ends_on: string | null;
+};
+
+export type DiscountStudent = {
+  user_id: string;
+  full_name: string | null;
+  class_id: string;
+  class_name: string;
+};
+
+export async function listStudentDiscounts(): Promise<StudentDiscount[]> {
+  const rows = await call("admin_list_student_discounts");
+  return (rows ?? []).map((r) => ({
+    id: r.id,
+    user_id: r.user_id,
+    full_name: r.full_name ?? null,
+    class_id: r.class_id,
+    class_name: r.class_name,
+    mode: r.mode === "percent" ? "percent" : "amount",
+    value: toUzs(r.value),
+    ends_on: r.ends_on ?? null,
+  }));
+}
+
+export async function listDiscountStudents(): Promise<DiscountStudent[]> {
+  const rows = await call("admin_discount_students");
+  return (rows ?? []).map((r) => ({
+    user_id: r.user_id,
+    full_name: r.full_name ?? null,
+    class_id: r.class_id,
+    class_name: r.class_name,
+  }));
+}
+
+export async function setStudentDiscount(input: {
+  userId: string;
+  classId: string;
+  mode: "percent" | "amount";
+  value: bigint;
+  endsOn: string | null;
+}): Promise<void> {
+  await call("admin_set_student_discount", {
+    p_user_id: input.userId,
+    p_class_id: input.classId,
+    p_mode: input.mode,
+    p_value: uzsParam(input.value),
+    p_ends_on: input.endsOn,
+  });
+}
+
+export async function clearStudentDiscount(userId: string, classId: string): Promise<void> {
+  await call("admin_clear_student_discount", { p_user_id: userId, p_class_id: classId });
+}
+
+export async function studentBillingHome(): Promise<{
+  balance: bigint;
+  recent: { id: string; kind: string; amount_uzs: bigint; note: string | null; occurred_on: string }[];
+}> {
+  const data = await call<Raw>("student_billing_home");
+  return {
+    balance: toUzs(data?.balance),
+    recent: ((data?.recent ?? []) as Raw[]).map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      amount_uzs: toUzs(r.amount_uzs),
+      note: r.note ?? null,
+      occurred_on: r.occurred_on,
+    })),
+  };
+}
+
 export async function voidEntry(id: string, reason: string): Promise<void> {
   await call("admin_void_entry", { p_id: id, p_reason: reason });
 }

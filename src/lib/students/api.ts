@@ -19,6 +19,20 @@ export type StudentRow = {
   class_ids?: string[] | null;
 };
 
+export async function updateStudentProfile(input: {
+  userId: string;
+  fullName: string;
+  description: string;
+}): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).rpc("admin_update_student_profile", {
+    p_user_id: input.userId,
+    p_full_name: input.fullName,
+    p_description: input.description,
+  });
+  if (error) throw error;
+}
+
 export async function listStudents(search = ""): Promise<StudentRow[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any).rpc("staff_list_students", { p_search: search });

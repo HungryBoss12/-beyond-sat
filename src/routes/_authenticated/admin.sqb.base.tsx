@@ -59,11 +59,10 @@ function AdminSqbTestBase() {
 
   async function addToTests(id: string) {
     setBusyId(id);
-    const { error } = await supabase
-      .from("tests")
-      .update({ in_test_base: false })
-      .eq("id", id)
-      .eq("bank_format", "sqb");
+    const { error } = await supabase.rpc("staff_publish_sqb_test", {
+      p_test_id: id,
+      p_publish: true,
+    });
     setBusyId(null);
     if (error) {
       alert(error.message);

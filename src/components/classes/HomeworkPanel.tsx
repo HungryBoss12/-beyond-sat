@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, NotebookPen, Plus, X } from "lucide-react";
+import { Loader2, NotebookPen, Play, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { RevealCard } from "@/components/ui/reveal-card";
 import { EmptyState } from "@/components/ui/panel";
@@ -17,6 +17,7 @@ import { listGroupLessons, type ClassGroup, type GroupLesson } from "@/lib/class
 import { HW_ITEM_LABEL, HW_ITEM_LETTER, itemsFor, type HwItem } from "@/lib/classes/schemes";
 import { shortDate } from "@/lib/classes/schedule";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import { CLASS_CONTROL } from "./control";
 import type { GridPerson } from "./LessonGrids";
 
@@ -28,6 +29,54 @@ const STATUS_LABEL: Record<string, string> = {
   accepted: "Accepted",
   needs_revision: "Needs revision",
 };
+
+function packName(row: { lesson_topics: unknown }): string {
+  const topic = row.lesson_topics as
+    | { lesson_subjects: { title: string } | { title: string }[] | null }
+    | { lesson_subjects: { title: string } | { title: string }[] | null }[]
+    | null;
+  const one = Array.isArray(topic) ? topic[0] : topic;
+  const subject = one?.lesson_subjects;
+  const named = Array.isArray(subject) ? subject[0]?.title : subject?.title;
+  return named || "Lessons";
+}
+
+async function loadLessonVideos(): Promise<
+  { id: string; title: string; video_url: string; pack: string }[]
+> {
+  const [lessonsRes, recRes] = await Promise.all([
+    supabase
+      .from("lessons")
+      .select("id, title, video_url, lesson_topics(lesson_subjects(title))")
+      .eq("published", true)
+      .not("video_url", "is", null),
+    supabase
+      .from("lesson_recommended_videos")
+      .select("id, title, youtube_url, lesson_topics(lesson_subjects(title))")
+      .order("sort_order"),
+  ]);
+  if (lessonsRes.error) throw new Error(lessonsRes.error.message);
+  if (recRes.error) throw new Error(recRes.error.message);
+  const uploaded = (lessonsRes.data ?? []).flatMap((row) =>
+    row.video_url
+      ? [
+          {
+            id: row.id,
+            title: row.title,
+            video_url: row.video_url,
+            pack: packName(row),
+          },
+        ]
+      : [],
+  );
+  const teacher = (recRes.data ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    video_url: row.youtube_url,
+    pack: packName(row),
+  }));
+  return [...teacher, ...uploaded];
+}
 
 /** Teacher check / grade / feedback for one sub-class. Kinds follow the scheme (AFL: A F). */
 export function HomeworkPanel({
@@ -48,6 +97,12 @@ export function HomeworkPanel({
   const [lessonId, setLessonId] = useState("");
   const [maxScore, setMaxScore] = useState("");
   const [due, setDue] = useState("");
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoTitle, setVideoTitle] = useState("");
+  const [packOpen, setPackOpen] = useState(false);
+  const [packLessons, setPackLessons] = useState<
+    { id: string; title: string; video_url: string; pack: string }[]
+  >([]);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState<HomeworkAssignment | null>(null);
   const [kindFilter, setKindFilter] = useState<HwItem | "">("");
@@ -84,9 +139,12 @@ export function HomeworkPanel({
         var_kind: kind || null,
         lesson_id: lessonId || null,
         max_score: max,
+        video_url: videoUrl,
       });
       setTitle("");
       setBody("");
+      setVideoUrl(null);
+      setVideoTitle("");
       toast.success("Homework published");
       await reload();
       setOpen(hw);
@@ -178,6 +236,17 @@ export function HomeworkPanel({
               onChange={(e) => setDue(e.target.value)}
             />
           </label>
+          <IconButton
+            icon={Play}
+            label={videoTitle ? `Video: ${videoTitle}` : "Attach a lesson video"}
+            className="text-white"
+            onClick={() => {
+              setPackOpen(true);
+              void loadLessonVideos().then(setPackLessons).catch((e) => {
+                toast.error(e instanceof Error ? e.message : "Could not load lesson videos");
+              });
+            }}
+          />
           <button
             type="submit"
             disabled={saving}
@@ -192,6 +261,38 @@ export function HomeworkPanel({
           </button>
         </div>
       </form>
+      {packOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-brand-900/70 p-4">
+          <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-2xl bg-brand-600 p-4 text-white">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-black">Lesson video</h2>
+              <IconButton icon={X} label="Close" className="text-white" onClick={() => setPackOpen(false)} />
+            </div>
+            {packLessons.length === 0 ? (
+              <p className="text-sm text-brand-100">No lesson videos yet.</p>
+            ) : (
+            <ul className="space-y-1">
+              {packLessons.map((lesson) => (
+                <li key={lesson.id}>
+                  <button
+                    type="button"
+                    className="tap w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-brand-500"
+                    onClick={() => {
+                      setVideoUrl(lesson.video_url);
+                      setVideoTitle(`${lesson.pack} · ${lesson.title}`);
+                      setPackOpen(false);
+                    }}
+                  >
+                    <span className="block text-[10px] font-bold uppercase text-brand-100">{lesson.pack}</span>
+                    {lesson.title}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <select

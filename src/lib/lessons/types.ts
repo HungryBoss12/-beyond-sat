@@ -63,6 +63,7 @@ export type SkillWatch = {
 
 export type SyllabusTopic = LessonTopic & {
   lessons: LessonListItem[];
+  teacherVideoCount: number;
 };
 
 export type PlayerPayload = {

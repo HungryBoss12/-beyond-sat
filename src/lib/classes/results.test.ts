@@ -1,23 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { doneSummary, itemsFor, schemeFor, slugToSubject } from "./schemes";
-import { parseModule, resultLabel } from "./results";
+import { moduleMax, parseModule, resultLabel } from "./results";
 
 describe("results", () => {
-  it("rejects a module above 27", () => {
+  it("rejects a module above the subject maximum", () => {
+    expect(moduleMax("ebrw")).toBe(27);
+    expect(moduleMax("math")).toBe(22);
     expect(parseModule("28").kind).toBe("error");
     expect(parseModule("27")).toEqual({ kind: "ok", value: 27 });
+    expect(parseModule("23", 22).kind).toBe("error");
+    expect(parseModule("22", 22)).toEqual({ kind: "ok", value: 22 });
     expect(parseModule("-1").kind).toBe("error");
     expect(parseModule("").kind).toBe("empty");
   });
 
   it("maps the raw total to a section score", () => {
-    expect(resultLabel(21, 20)).toBe("750-760");
-    expect(resultLabel(22, 22)).toBe("800");
-    expect(resultLabel(12, 11)).toBe("480");
-    expect(resultLabel(14, 15)).toBe("560");
-    expect(resultLabel(10, 10)).toBe("N.A.");
-    expect(resultLabel(27, 27)).toBe("N.A.");
-    expect(resultLabel(15, null)).toBe("—");
+    expect(resultLabel(21, 20, "math")).toBe("750-760");
+    expect(resultLabel(22, 22, "math")).toBe("800");
+    expect(resultLabel(12, 11, "math")).toBe("480");
+    expect(resultLabel(14, 15, "math")).toBe("560");
+    expect(resultLabel(10, 10, "math")).toBe("N.A.");
+    expect(resultLabel(27, 27, "math")).toBe("N.A.");
+    expect(resultLabel(27, 27, "ebrw")).toBe("800");
+    expect(resultLabel(15, null, "ebrw")).toBe("—");
   });
 });
 

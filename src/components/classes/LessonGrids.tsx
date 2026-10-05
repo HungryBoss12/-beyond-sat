@@ -7,6 +7,7 @@ import type { MemberStatus } from "@/lib/classes/types";
 import {
   addGroupLesson,
   setGroupAttendance,
+  setGroupAttendanceMany,
   setHwMarks,
   tickAllComplete,
   untickAll,
@@ -187,6 +188,7 @@ export function AttendanceGrid({
   onChanged: () => Promise<void>;
 }) {
   const [local, setLocal] = useState<Map<string, AttendanceState>>(new Map());
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
     setLocal(
       new Map(
@@ -238,9 +240,56 @@ export function AttendanceGrid({
   }
   const columns = `${NAME_COL} repeat(${Math.max(lessons.length, 1)}, minmax(52px, 1fr))`;
 
+  async function markListed(state: "present" | "empty") {
+    if (!selected || people.length === 0) return;
+    const before = new Map(local);
+    setLocal((cur) => {
+      const copy = new Map(cur);
+      for (const person of people) {
+        const key = `${person.userId}:${selected.lesson_date}`;
+        if (state === "empty") copy.delete(key);
+        else copy.set(key, "present");
+      }
+      return copy;
+    });
+    setBusy(true);
+    try {
+      await setGroupAttendanceMany({
+        groupId,
+        userIds: people.map((person) => person.userId),
+        lessonDate: selected.lesson_date,
+        state,
+      });
+      await onChanged();
+    } catch (err) {
+      setLocal(before);
+      toast.error(err instanceof Error ? err.message : "Could not save attendance");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-2">
-      <p className="text-xs text-white">Click a cell: present → absent → clear</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs text-white">Click a cell: present → absent → clear</p>
+        <div className="ml-auto flex gap-1">
+          <IconButton
+            icon={Eraser}
+            label="Clear all"
+            className="text-white hover:bg-brand-500"
+            disabled={busy || !selected || people.length === 0}
+            onClick={() => void markListed("empty")}
+          />
+          <IconButton
+            icon={CheckCheck}
+            label="Tick all present"
+            variant="brand"
+            disabled={busy || !selected || people.length === 0}
+            onClick={() => void markListed("present")}
+          />
+        </div>
+      </div>
       <GlowScroll>
         <div role="grid" aria-label="Attendance" className="min-w-max">
           <div role="row" className="grid" style={{ gridTemplateColumns: columns }}>

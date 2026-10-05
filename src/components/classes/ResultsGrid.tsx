@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { setResult, type GroupLesson, type ResultRow } from "@/lib/classes/groups";
-import { RESULT_MODULE_MAX, parseModule, resultLabel } from "@/lib/classes/results";
+import { moduleMax, parseModule, resultLabel } from "@/lib/classes/results";
+import type { ClassSubject } from "@/lib/classes/types";
 import { shortDate } from "@/lib/classes/schedule";
 import { cn } from "@/lib/utils";
 import type { GridPerson } from "./LessonGrids";
@@ -14,12 +15,14 @@ type Draft = { m1: string; m2: string };
  * Enter moves down the column.
  */
 export function ResultsGrid({
+  subject,
   lessons,
   people,
   results,
   selectedId,
   onSelect,
 }: {
+  subject: ClassSubject;
   lessons: GroupLesson[];
   people: GridPerson[];
   results: ResultRow[];
@@ -58,8 +61,8 @@ export function ResultsGrid({
   async function commit(person: GridPerson) {
     if (!selected) return;
     const draft = drafts.get(person.userId) ?? { m1: "", m2: "" };
-    const a = parseModule(draft.m1);
-    const b = parseModule(draft.m2);
+    const a = parseModule(draft.m1, moduleMax(subject));
+    const b = parseModule(draft.m2, moduleMax(subject));
     if (a.kind === "error" || b.kind === "error") return;
     const m1 = a.kind === "ok" ? a.value : null;
     const m2 = b.kind === "ok" ? b.value : null;
@@ -87,8 +90,9 @@ export function ResultsGrid({
   return (
     <div className="space-y-2">
       <p className="text-xs text-white">
-        M1 and M2 are correct answers (0–{RESULT_MODULE_MAX}). Score is the section score for M1 +
-        M2. Totals outside 23–44 show N.A. Enter moves down.
+        M1 and M2 are correct answers (0–{moduleMax(subject)}). Score is the{" "}
+        {subject === "math" ? "Math" : "Reading & Writing"} section score for M1 + M2. Enter moves
+        down.
       </p>
       <div className="overflow-x-auto overflow-y-clip">
         <table className="min-w-max text-left text-sm">
@@ -135,16 +139,17 @@ export function ResultsGrid({
                         key={lesson.id}
                         className="px-2 py-2 text-center tabular-nums text-white"
                       >
-                        {resultLabel(row?.m1 ?? null, row?.m2 ?? null)}
+                        {resultLabel(row?.m1 ?? null, row?.m2 ?? null, subject)}
                       </td>
                     );
                   }
                   const draft = drafts.get(person.userId) ?? { m1: "", m2: "" };
-                  const a = parseModule(draft.m1);
-                  const b = parseModule(draft.m2);
+                  const a = parseModule(draft.m1, moduleMax(subject));
+                  const b = parseModule(draft.m2, moduleMax(subject));
                   const label = resultLabel(
                     a.kind === "ok" ? a.value : null,
                     b.kind === "ok" ? b.value : null,
+                    subject,
                   );
                   return (
                     <ResultCells
@@ -153,6 +158,7 @@ export function ResultsGrid({
                       draft={draft}
                       errors={{ m1: a.kind === "error", m2: b.kind === "error" }}
                       label={label}
+                      max={moduleMax(subject)}
                       refs={refs.current}
                       onChange={(field, value) =>
                         setDrafts((cur) =>
@@ -178,6 +184,7 @@ function ResultCells({
   draft,
   errors,
   label,
+  max,
   refs,
   onChange,
   onCommit,
@@ -187,6 +194,7 @@ function ResultCells({
   draft: Draft;
   errors: { m1: boolean; m2: boolean };
   label: string;
+  max: number;
   refs: Map<string, HTMLInputElement>;
   onChange: (field: "m1" | "m2", value: string) => void;
   onCommit: () => void;
@@ -224,7 +232,7 @@ function ResultCells({
       <td className="bg-brand-500 px-2 py-1 text-center font-black tabular-nums text-white">
         {label}
         {(errors.m1 || errors.m2) && (
-          <span className="sr-only"> (enter 0 to {RESULT_MODULE_MAX})</span>
+          <span className="sr-only"> (enter 0 to {max})</span>
         )}
       </td>
     </>

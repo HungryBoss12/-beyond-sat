@@ -345,6 +345,21 @@ export async function setGroupAttendance(input: {
   if (error) throw error;
 }
 
+export async function setGroupAttendanceMany(input: {
+  groupId: string;
+  userIds: string[];
+  lessonDate: string;
+  state: "present" | "absent" | "empty";
+}): Promise<void> {
+  const { error } = await db.rpc("set_group_attendance_many", {
+    p_group_id: input.groupId,
+    p_user_ids: input.userIds,
+    p_lesson_date: input.lessonDate,
+    p_state: input.state,
+  });
+  if (error) throw error;
+}
+
 // Homework marks (VAR / AFL) ---------------------------------------------------
 
 export async function listHwMarks(lessonIds: string[]): Promise<HwMark[]> {

@@ -1,15 +1,19 @@
-import { createFileRoute, Link, type SearchSchemaInput } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createFileRoute, getRouteApi, Link, type SearchSchemaInput } from "@tanstack/react-router";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
   CalendarCheck,
   Banknote,
+  ChevronsUpDown,
   Download,
   HandCoins,
   Layers,
   ListChecks,
+  Percent,
+  Plus,
   ReceiptText,
+  Trash2,
   Search,
   SlidersHorizontal,
   TriangleAlert,
@@ -21,6 +25,15 @@ import {
 import { EmptyState } from "@/components/ui/panel";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { IconButton } from "@/components/ui/icon-button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MoneyTile } from "@/components/billing/MoneyTile";
 import { RecordPaymentDialog, type PaymentTarget } from "@/components/billing/RecordPaymentDialog";
@@ -30,16 +43,21 @@ import { KIND_META } from "@/components/billing/meta";
 import { chargeThisMonth } from "@/components/billing/charge";
 import { txMethodOrPeriod, txSign, txType } from "@/lib/billing/ledger";
 import { CLASS_CONTROL } from "@/components/classes/control";
-import { SubclassChip } from "@/components/classes/SubclassChip";
 import { FeeDialog } from "@/components/billing/FeeDialog";
 import {
   applyRecurringFees,
   classFees,
   groupFees,
   listAllLedger,
+  clearStudentDiscount,
   listBalances,
+  listDiscountStudents,
+  listStudentDiscounts,
   paymentsSummary,
   setClassFee,
+  setStudentDiscount,
+  type DiscountStudent,
+  type StudentDiscount,
 } from "@/lib/billing/api";
 import { downloadCsv, toCsv } from "@/lib/billing/csv";
 import { tashkentToday } from "@/lib/billing/dates";
@@ -59,7 +77,7 @@ const CHIP_LABEL: Record<Chip, string> = {
 const digits = z.string().regex(/^\d*$/).catch("");
 
 const searchSchema = z.object({
-  view: z.enum(["balances", "ledger"]).catch("balances"),
+  view: z.enum(["balances", "ledger", "discounts"]).catch("balances"),
   chip: z.enum(CHIPS).catch("all"),
   group: z.string().catch(""),
   q: z.string().catch(""),
@@ -92,6 +110,18 @@ export const Route = createFileRoute("/_authenticated/admin/payments/")({
   component: PaymentsPage,
 });
 
+const adminRoute = getRouteApi("/_authenticated/admin");
+
+function parentClassLabel(name: string): string {
+  return name.replace(/\s+(eng|english|maths|math)$/i, "").trim() || name;
+}
+
+function groupChipLabel(group: { name: string; subject: string }): string {
+  if (/\b(eng|english|maths|math)\b/i.test(group.name)) return group.name;
+  const subject = group.subject === "math" ? "Math" : "Eng";
+  return `${parentClassLabel(group.name)} ${subject}`;
+}
+
 function studentName(row: Pick<BalanceRow, "full_name" | "username" | "user_id">): string {
   return row.full_name || row.username || row.user_id.slice(0, 8);
 }
@@ -101,6 +131,8 @@ function isActiveStudent(row: BalanceRow): boolean {
 }
 
 function PaymentsPage() {
+  const { staffRole } = adminRoute.useRouteContext();
+  const teacher = staffRole === "teacher";
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const [rows, setRows] = useState<BalanceRow[]>([]);
@@ -115,6 +147,9 @@ function PaymentsPage() {
   const [feeClasses, setFeeClasses] = useState<{ id: string; name: string }[]>([]);
   const [query, setQuery] = useState(search.q);
   const applied = useRef(false);
+  const tabListRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef(new Map<string, HTMLButtonElement>());
+  const [pill, setPill] = useState({ left: 0, width: 0 });
 
   const patch = useCallback(
     (next: Partial<Search>) => void navigate({ search: (prev) => ({ ...prev, ...next }) }),
@@ -123,10 +158,27 @@ function PaymentsPage() {
 
   useEffect(() => setQuery(search.q), [search.q]);
   useEffect(() => {
+    if (teacher && search.view !== "discounts") patch({ view: "discounts" });
+  }, [teacher, search.view, patch]);
+  useEffect(() => {
     if (query === search.q) return;
     const handle = window.setTimeout(() => patch({ q: query }), 300);
     return () => window.clearTimeout(handle);
   }, [query, search.q, patch]);
+
+  useLayoutEffect(() => {
+    const list = tabListRef.current;
+    if (!list) return;
+    const measure = () => {
+      const el = tabRefs.current.get(search.view);
+      if (!el) return;
+      setPill({ left: el.offsetLeft, width: el.offsetWidth });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [search.view, teacher]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -210,17 +262,38 @@ function PaymentsPage() {
     );
   }, [ledger, search.q, search.group, search.method, search.kind, search.source]);
 
-  const debtors = rows.filter((row) => row.balance < 0n);
-  const owed = debtors.reduce((sum, row) => sum - row.balance, 0n);
+  const mergedRows = useMemo(() => {
+    const map = new Map<string, BalanceRow>();
+    for (const row of rows) {
+      const prev = map.get(row.user_id);
+      if (!prev) {
+        map.set(row.user_id, row);
+        continue;
+      }
+      const groups = [...prev.groups];
+      for (const group of row.groups) {
+        if (!groups.some((item) => item.id === group.id)) groups.push(group);
+      }
+      map.set(row.user_id, {
+        ...prev,
+        groups,
+        class_name: prev.class_name || row.class_name,
+        class_id: prev.class_id || row.class_id,
+      });
+    }
+    return [...map.values()];
+  }, [rows]);
   const sortedRows = useMemo(() => {
     const activeFirst = search.activeSort !== "other";
-    return [...rows].sort((a, b) => {
+    return [...mergedRows].sort((a, b) => {
       const rank = Number(isActiveStudent(b)) - Number(isActiveStudent(a));
       const byActive = activeFirst ? rank : -rank;
       if (byActive !== 0) return byActive;
       return studentName(a).localeCompare(studentName(b));
     });
-  }, [rows, search.activeSort]);
+  }, [mergedRows, search.activeSort]);
+  const debtors = mergedRows.filter((row) => row.balance < 0n);
+  const owed = debtors.reduce((sum, row) => sum - row.balance, 0n);
 
   const revenue = useMemo(() => {
     const seen = new Set<string>();
@@ -400,25 +473,38 @@ function PaymentsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative isolate flex rounded-full bg-brand-25 p-1" role="tablist">
-          <span
-            aria-hidden="true"
-            className="nav-tab-pill absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-brand-500"
-            style={{ transform: `translateX(${search.view === "ledger" ? "100%" : "0"})` }}
-          />
+        <div
+          ref={tabListRef}
+          className="relative isolate flex max-w-full shrink-0 overflow-x-auto rounded-full bg-brand-25 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+        >
+          {pill.width > 0 && (
+            <span
+              aria-hidden="true"
+              className="nav-tab-pill pointer-events-none absolute top-1 bottom-1 rounded-full bg-brand-500"
+              style={{ left: pill.left, width: pill.width }}
+            />
+          )}
           {(
-            [
-              ["balances", "Balances", Wallet],
-              ["ledger", "All transactions", ListChecks],
-            ] as const
+            teacher
+              ? ([["discounts", "Discounts", Percent]] as const)
+              : ([
+                  ["balances", "Balances", Wallet],
+                  ["ledger", "All transactions", ListChecks],
+                  ["discounts", "Discounts", Percent],
+                ] as const)
           ).map(([view, label, Icon]) => (
             <button
               key={view}
+              ref={(node) => {
+                if (node) tabRefs.current.set(view, node);
+                else tabRefs.current.delete(view);
+              }}
               type="button"
               role="tab"
               aria-selected={search.view === view}
               className={cn(
-                "tap relative z-10 flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-bold transition-colors duration-200",
+                "tap relative z-10 flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-bold transition-colors duration-200",
                 search.view === view ? "text-white" : "text-brand-700",
               )}
               onClick={() => patch({ view })}
@@ -552,6 +638,8 @@ function PaymentsPage() {
             </button>
           }
         />
+      ) : search.view === "discounts" ? (
+        <DiscountBoard />
       ) : search.view === "ledger" ? (
         <>
           <TransactionsTable rows={txRows} showGroup />
@@ -648,8 +736,13 @@ function BalancesTable({
                 </div>
                 <div className="mt-0.5 text-xs text-white">{row.phone || "No phone"}</div>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {row.groups.map((g) => (
-                    <SubclassChip key={g.id} subject={g.subject} name={g.name} />
+                  {row.groups.map((group) => (
+                    <span
+                      key={group.id}
+                      className="rounded-full bg-brand-400 px-2 py-0.5 text-[10px] font-bold text-white shadow-brand"
+                    >
+                      {groupChipLabel(group)}
+                    </span>
                   ))}
                 </div>
               </td>
@@ -849,5 +942,316 @@ function MoreFilters({
         )}
       </PopoverContent>
     </Popover>
+  );
+}
+
+function studentKeyOf(person: DiscountStudent): string {
+  return `${person.user_id}|${person.class_id}`;
+}
+
+function DiscountStudentPicker({
+  people,
+  value,
+  onChange,
+}: {
+  people: DiscountStudent[];
+  value: string;
+  onChange: (key: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [classFilter, setClassFilter] = useState("");
+  const classes = useMemo(
+    () => [...new Set(people.map((person) => parentClassLabel(person.class_name)))].sort(),
+    [people],
+  );
+  const selected = people.find((person) => studentKeyOf(person) === value);
+  const shown = classFilter
+    ? people.filter((person) => parentClassLabel(person.class_name) === classFilter)
+    : people;
+
+  return (
+    <div>
+      <div className="text-xs font-bold text-white">Student</div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="mt-1 flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-brand-400/40 bg-brand-800 px-3 text-left text-sm text-white transition-colors duration-200 hover:border-brand-300/60"
+            aria-expanded={open}
+          >
+            <span className="min-w-0 flex-1 truncate">
+              {selected
+                ? `${selected.full_name || "Student"} · ${selected.class_name}`
+                : "Choose a student"}
+            </span>
+            <ChevronsUpDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-white transition-transform duration-200",
+                open && "rotate-180",
+              )}
+              aria-hidden="true"
+            />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="z-[80] w-[var(--radix-popover-trigger-width)] border-brand-400/40 bg-brand-800 p-0 text-white data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2"
+        >
+          <div className="flex flex-wrap gap-1.5 border-b border-brand-400/30 p-2">
+            <button
+              type="button"
+              className={cn(
+                "rounded-full px-2.5 py-1 text-xs font-bold transition-colors duration-200",
+                classFilter === "" ? "bg-brand-400 text-white" : "bg-brand-700 text-white",
+              )}
+              onClick={() => setClassFilter("")}
+            >
+              All classes
+            </button>
+            {classes.map((name) => (
+              <button
+                key={name}
+                type="button"
+                className={cn(
+                  "rounded-full px-2.5 py-1 text-xs font-bold transition-colors duration-200",
+                  classFilter === name ? "bg-brand-400 text-white" : "bg-brand-700 text-white",
+                )}
+                onClick={() => setClassFilter(name)}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+          <Command className="bg-brand-800 text-white [&_[cmdk-input-wrapper]]:border-white/20">
+            <CommandInput
+              placeholder="Search students…"
+              className="text-white placeholder:text-white/70"
+            />
+            <CommandList>
+              <CommandEmpty className="text-white">No students found.</CommandEmpty>
+              <CommandGroup>
+                {shown.map((person) => {
+                  const key = studentKeyOf(person);
+                  const label = `${person.full_name || "Student"} · ${person.class_name}`;
+                  return (
+                    <CommandItem
+                      key={key}
+                      value={key}
+                      keywords={[person.full_name || "Student", person.class_name]}
+                      onSelect={() => {
+                        onChange(key);
+                        setOpen(false);
+                      }}
+                      className="cursor-pointer text-white data-[selected=true]:!bg-brand-400 data-[selected=true]:!text-white"
+                    >
+                      {label}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+function ModeToggle({
+  active,
+  label,
+  icon: Icon,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  icon: typeof Percent;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      aria-label={label}
+      onClick={onClick}
+      className={cn(
+        "grid h-11 w-11 place-items-center rounded-full shadow-none transition-colors duration-200",
+        active ? "bg-brand-400 text-white" : "bg-brand-800 text-white",
+      )}
+    >
+      <Icon className="h-4 w-4" aria-hidden="true" />
+    </button>
+  );
+}
+
+function DiscountBoard() {
+  const [rows, setRows] = useState<StudentDiscount[]>([]);
+  const [people, setPeople] = useState<DiscountStudent[]>([]);
+  const [open, setOpen] = useState(false);
+  const [studentKey, setStudentKey] = useState("");
+  const [mode, setMode] = useState<"percent" | "amount">("percent");
+  const [value, setValue] = useState("");
+  const [endsOn, setEndsOn] = useState("");
+  const [unlimited, setUnlimited] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    const [discounts, students] = await Promise.all([
+      listStudentDiscounts(),
+      listDiscountStudents(),
+    ]);
+    setRows(discounts);
+    setPeople(students);
+    setStudentKey((current) =>
+      current || (students[0] ? `${students[0].user_id}|${students[0].class_id}` : ""),
+    );
+  }, []);
+
+  useEffect(() => {
+    void load().catch((err) =>
+      toast.error(err instanceof Error ? err.message : "Could not load discounts"),
+    );
+  }, [load]);
+
+  async function save() {
+    const [userId, classId] = studentKey.split("|");
+    if (!userId || !classId) return toast.error("Pick a student");
+    const amount = mode === "percent" ? BigInt(Number(value) || 0) : parseUzsInput(value);
+    if (amount == null || amount <= 0n) return toast.error("Enter a discount");
+    setBusy(true);
+    try {
+      await setStudentDiscount({
+        userId,
+        classId,
+        mode,
+        value: amount,
+        endsOn: unlimited ? null : endsOn || null,
+      });
+      setOpen(false);
+      setValue("");
+      toast.success("Discount saved");
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save the discount");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex h-11 items-center gap-2 rounded-full bg-brand-500 px-5 text-sm font-bold text-white shadow-none transition-colors duration-200 hover:bg-brand-400"
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Add
+        </button>
+      </div>
+      {rows.length === 0 ? (
+        <EmptyState icon={Percent} title="No discounts" body="Add a percent or a fixed sum." />
+      ) : (
+        <ul className="divide-y divide-brand-400/30 rounded-2xl border border-brand-400/40 bg-brand-600 text-white">
+          {rows.map((row) => (
+            <li key={row.id} className="flex items-center gap-3 p-3">
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-bold">{row.full_name || "Student"}</div>
+                <div className="text-xs text-white">
+                  {row.class_name} ·{" "}
+                  {row.mode === "percent" ? `${row.value}%` : formatUzs(row.value)} ·{" "}
+                  {row.ends_on ? `until ${row.ends_on}` : "no end date"}
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label={`Remove discount for ${row.full_name || "student"}`}
+                className="grid h-10 w-10 place-items-center rounded-full text-white shadow-none transition-colors duration-200 hover:bg-brand-500"
+                onClick={() =>
+                  void clearStudentDiscount(row.user_id, row.class_id)
+                    .then(() => load())
+                    .catch((err) =>
+                      toast.error(err instanceof Error ? err.message : "Could not remove it"),
+                    )
+                }
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md border-brand-400/40 bg-brand-600 text-white shadow-none sm:rounded-2xl [&>button]:!bg-transparent [&>button]:!text-white [&>button]:shadow-none">
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void save();
+            }}
+          >
+            <DialogHeader className="space-y-0 text-left">
+              <DialogTitle className="text-lg font-black text-white">Discount</DialogTitle>
+            </DialogHeader>
+            <DiscountStudentPicker people={people} value={studentKey} onChange={setStudentKey} />
+            <div className="flex gap-2">
+              <ModeToggle
+                active={mode === "percent"}
+                label="Percent"
+                icon={Percent}
+                onClick={() => setMode("percent")}
+              />
+              <ModeToggle
+                active={mode === "amount"}
+                label="Fixed sum"
+                icon={Banknote}
+                onClick={() => setMode("amount")}
+              />
+            </div>
+            <label
+              key={mode}
+              className="block animate-in fade-in-0 slide-in-from-top-1 text-xs font-bold text-white duration-200"
+            >
+              {mode === "percent" ? "Percent" : "Sum"}
+              <input
+                className={CLASS_CONTROL + " mt-1 text-white"}
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                inputMode="numeric"
+              />
+            </label>
+            <label className="flex items-center gap-2 text-xs font-bold text-white">
+              <input
+                type="checkbox"
+                checked={unlimited}
+                onChange={(event) => setUnlimited(event.target.checked)}
+              />
+              No end date
+            </label>
+            {!unlimited && (
+              <label className="block animate-in fade-in-0 slide-in-from-top-2 text-xs font-bold text-white duration-200">
+                Active until
+                <input
+                  type="date"
+                  className={CLASS_CONTROL + " mt-1 text-white [color-scheme:dark]"}
+                  value={endsOn}
+                  onChange={(event) => setEndsOn(event.target.value)}
+                />
+              </label>
+            )}
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={busy}
+                className="inline-flex h-11 items-center rounded-full bg-brand-400 px-5 text-sm font-bold text-white shadow-none transition-colors duration-200 hover:bg-brand-300 disabled:opacity-50"
+              >
+                {busy ? "Saving" : "Save"}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

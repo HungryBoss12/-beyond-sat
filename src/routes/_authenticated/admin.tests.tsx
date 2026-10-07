@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchTestQuestionCounts } from "@/lib/test-question-counts";
 import {
   Plus,
   Trash2,
@@ -163,14 +164,14 @@ function AdminTests() {
 
   async function load() {
     setLoading(true);
-    const [{ data }, { data: links }] = await Promise.all([
+    const [{ data }, tally] = await Promise.all([
       supabase
         .from("tests")
         .select("*")
         .eq("bank_format", "ordinary")
         .order("module")
         .order("created_at", { ascending: false }),
-      supabase.from("test_questions").select("test_id"),
+      fetchTestQuestionCounts(),
     ]);
     const mapped = ((data ?? []) as Test[]).map((t) => ({
       ...t,
@@ -178,10 +179,6 @@ function AdminTests() {
       bank_format: (t.bank_format as BankFormat) || bank,
     }));
     setItems(mapped);
-    const tally = new Map<string, number>();
-    for (const l of (links ?? []) as { test_id: string }[]) {
-      tally.set(l.test_id, (tally.get(l.test_id) ?? 0) + 1);
-    }
     setCounts(tally);
     setLoading(false);
   }

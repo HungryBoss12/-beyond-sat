@@ -26,7 +26,7 @@ export async function enqueueMissedWords(
       await restFetch(
         config,
         token,
-        `user_card_states?id=eq.${existing[0].id}`,
+        `user_card_states?id=eq.${encodeURIComponent(existing[0].id)}`,
         {
           method: "PATCH",
           body: JSON.stringify({

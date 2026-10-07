@@ -103,6 +103,7 @@ export function QuestionCard({
   showRationale = true,
   showNotes,
   onCloseNotes,
+  commitHighlightOnRelease = false,
 }: {
   q: QuestionRow;
   index: number;
@@ -119,6 +120,8 @@ export function QuestionCard({
      review screen does) simply never opens the panel. */
   showNotes?: boolean;
   onCloseNotes?: () => void;
+  /** Test sessions save the selection as a highlight when the mouse button is released. */
+  commitHighlightOnRelease?: boolean;
 }) {
   const choices = useMemo(() => (Array.isArray(q.choices) ? q.choices : []), [q.choices]);
   const stemText = (q.question_text ?? "").trim();
@@ -160,18 +163,20 @@ export function QuestionCard({
 
   // Selection toolbar for highlighting
   const passageRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const [toolbar, setToolbar] = useState<{ x: number; y: number; text: string } | null>(null);
 
   function computeSelectionToolbar(): { x: number; y: number; text: string } | null {
     const sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !passageRef.current) return null;
+    const root = cardRef.current;
+    if (!sel || sel.isCollapsed || !root) return null;
     const text = sel.toString().trim();
     if (!text) return null;
     const anchor = sel.anchorNode as Node | null;
-    if (!anchor || !passageRef.current.contains(anchor)) return null;
+    if (!anchor || !root.contains(anchor)) return null;
     const range = sel.getRangeAt(0);
     const rect = range.getBoundingClientRect();
-    const parent = passageRef.current.getBoundingClientRect();
+    const parent = root.getBoundingClientRect();
     return {
       x: rect.left - parent.left + rect.width / 2,
       y: rect.top - parent.top - 8,
@@ -179,8 +184,24 @@ export function QuestionCard({
     };
   }
 
-  function handlePassageMouseUp() {
-    setToolbar(computeSelectionToolbar());
+  function handleSelectMouseUp(e: React.MouseEvent) {
+    if (e.button !== 0) return;
+    if ((e.target as HTMLElement).closest("button, input, textarea")) return;
+    const tb = computeSelectionToolbar();
+    if (!tb) {
+      setToolbar(null);
+      return;
+    }
+    if (
+      commitHighlightOnRelease &&
+      !answer.highlights.some((h) => h.text === tb.text)
+    ) {
+      onChange({
+        ...answer,
+        highlights: [...answer.highlights, { id: crypto.randomUUID(), text: tb.text, note: "" }],
+      });
+    }
+    setToolbar(tb);
   }
 
   function handlePassageContextMenu(e: React.MouseEvent) {
@@ -190,15 +211,27 @@ export function QuestionCard({
     setToolbar(tb);
   }
 
+  function upsertHighlight(text: string, note: string) {
+    const existing = answer.highlights.find((h) => h.text === text);
+    if (existing) {
+      if (note && note !== existing.note) {
+        onChange({
+          ...answer,
+          highlights: answer.highlights.map((h) => (h.id === existing.id ? { ...h, note } : h)),
+        });
+      }
+      return;
+    }
+    onChange({
+      ...answer,
+      highlights: [...answer.highlights, { id: crypto.randomUUID(), text, note }],
+    });
+  }
+
   function addHighlight(withNote: boolean) {
     if (!toolbar) return;
     const note = withNote ? (window.prompt("Add a note for this highlight:", "") ?? "") : "";
-    const h: Highlight = {
-      id: crypto.randomUUID(),
-      text: toolbar.text,
-      note,
-    };
-    onChange({ ...answer, highlights: [...answer.highlights, h] });
+    upsertHighlight(toolbar.text, note);
     setToolbar(null);
     window.getSelection()?.removeAllRanges();
   }
@@ -227,16 +260,56 @@ export function QuestionCard({
       const tb = computeSelectionToolbar();
       if (!tb) return;
       e.preventDefault();
-      const withNote = isNote;
-      const note = withNote ? (window.prompt("Add a note for this highlight:", "") ?? "") : "";
-      const h: Highlight = { id: crypto.randomUUID(), text: tb.text, note };
-      onChange({ ...answer, highlights: [...answer.highlights, h] });
+      const note = isNote ? (window.prompt("Add a note for this highlight:", "") ?? "") : "";
+      const existing = answer.highlights.find((h) => h.text === tb.text);
+      if (existing) {
+        if (note && note !== existing.note) {
+          onChange({
+            ...answer,
+            highlights: answer.highlights.map((h) => (h.id === existing.id ? { ...h, note } : h)),
+          });
+        }
+      } else {
+        onChange({
+          ...answer,
+          highlights: [...answer.highlights, { id: crypto.randomUUID(), text: tb.text, note }],
+        });
+      }
       setToolbar(null);
       window.getSelection()?.removeAllRanges();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [answer, onChange, bindings]);
+
+  useEffect(() => {
+    if (!toolbar) return;
+    const root = cardRef.current;
+    function reposition() {
+      const sel = window.getSelection();
+      const card = cardRef.current;
+      if (!sel || sel.isCollapsed || !card || sel.rangeCount === 0) return;
+      const anchor = sel.anchorNode;
+      if (!anchor || !card.contains(anchor)) return;
+      const rect = sel.getRangeAt(0).getBoundingClientRect();
+      const parent = card.getBoundingClientRect();
+      setToolbar((current) =>
+        current
+          ? {
+              ...current,
+              x: rect.left - parent.left + rect.width / 2,
+              y: rect.top - parent.top - 8,
+            }
+          : current,
+      );
+    }
+    root?.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      root?.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [toolbar?.text]);
 
   // Render passage with highlight underlines
   const renderedPassage = useMemo(() => {
@@ -282,7 +355,11 @@ export function QuestionCard({
        right, with a single hairline between them. `min-h-0` on every level of
        this column is what lets the two panes scroll independently instead of
        stretching the runner and pushing the footer off-screen. */
-    <div className="relative flex min-h-0 flex-1 flex-col bg-test-canvas">
+    <div
+      ref={cardRef}
+      onMouseUp={handleSelectMouseUp}
+      className="relative flex min-h-0 flex-1 flex-col bg-test-canvas"
+    >
       {hasPassage ? (
         <div ref={containerRef} className="flex min-h-0 flex-1 flex-col md:flex-row">
           {/* Passage */}
@@ -292,7 +369,6 @@ export function QuestionCard({
           >
             <div
               ref={passageRef}
-              onMouseUp={handlePassageMouseUp}
               onContextMenu={handlePassageContextMenu}
               className="whitespace-pre-wrap px-6 py-6 text-[18px] leading-[1.7] text-test-ink selection:bg-[#ffe566] md:px-10 md:py-8 md:text-[19px]"
             >
@@ -305,38 +381,6 @@ export function QuestionCard({
                 />
               ) : null}
             </div>
-
-            {toolbar && (
-              <div
-                className="pop-in absolute z-10 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-lg border border-test-line bg-white px-1.5 py-1 shadow-float"
-                style={{ left: toolbar.x, top: toolbar.y }}
-              >
-                <button
-                  onClick={() => addHighlight(false)}
-                  className="tap inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-test-ink hover:bg-test-tint"
-                >
-                  <Highlighter className="h-3.5 w-3.5 text-test-accent" /> Highlight
-                  <kbd
-                    title="Change in Profile → Highlight shortcuts"
-                    className="ml-1 rounded bg-test-well px-1 font-mono text-[10px] text-test-muted"
-                  >
-                    {formatBinding(bindings.highlight)}
-                  </kbd>
-                </button>
-                <button
-                  onClick={() => addHighlight(true)}
-                  className="tap inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-test-ink hover:bg-test-tint"
-                >
-                  <StickyNote className="h-3.5 w-3.5 text-test-accent" /> Note
-                  <kbd
-                    title="Change in Profile → Highlight shortcuts"
-                    className="ml-1 rounded bg-test-well px-1 font-mono text-[10px] text-test-muted"
-                  >
-                    {formatBinding(bindings.note)}
-                  </kbd>
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Drag handle — Bluebook's is a thin rail with a grip, sitting on the
@@ -371,6 +415,7 @@ export function QuestionCard({
               showRationale={showRationale}
               crossOut={crossOut}
               onToggleCrossOut={() => setCrossOut((v) => !v)}
+              highlights={answer.highlights}
             />
           </div>
         </div>
@@ -392,8 +437,43 @@ export function QuestionCard({
               showRationale={showRationale}
               crossOut={crossOut}
               onToggleCrossOut={() => setCrossOut((v) => !v)}
+              highlights={answer.highlights}
             />
           </div>
+        </div>
+      )}
+
+      {toolbar && (
+        <div
+          className="pop-in absolute z-10 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-lg border border-test-line bg-white px-1.5 py-1 shadow-float"
+          style={{ left: toolbar.x, top: toolbar.y }}
+        >
+          {!commitHighlightOnRelease && (
+            <button
+              onClick={() => addHighlight(false)}
+              className="tap inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-test-ink hover:bg-test-tint"
+            >
+              <Highlighter className="h-3.5 w-3.5 text-test-accent" /> Highlight
+              <kbd
+                title="Change in Profile → Highlight shortcuts"
+                className="ml-1 rounded bg-test-well px-1 font-mono text-[10px] text-test-muted"
+              >
+                {formatBinding(bindings.highlight)}
+              </kbd>
+            </button>
+          )}
+          <button
+            onClick={() => addHighlight(true)}
+            className="tap inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-test-ink hover:bg-test-tint"
+          >
+            <StickyNote className="h-3.5 w-3.5 text-test-accent" /> Note
+            <kbd
+              title="Change in Profile → Highlight shortcuts"
+              className="ml-1 rounded bg-test-well px-1 font-mono text-[10px] text-test-muted"
+            >
+              {formatBinding(bindings.note)}
+            </kbd>
+          </button>
         </div>
       )}
 
@@ -474,6 +554,34 @@ function CrossOutIcon({ className }: { className?: string }) {
   );
 }
 
+function renderMarked(text: string, highlights: Highlight[]): React.ReactNode {
+  type R = { start: number; end: number; hid: string; note: string };
+  const ranges: R[] = [];
+  for (const h of highlights) {
+    const i = text.indexOf(h.text);
+    if (i >= 0) ranges.push({ start: i, end: i + h.text.length, hid: h.id, note: h.note });
+  }
+  ranges.sort((a, b) => a.start - b.start);
+  const clean: R[] = [];
+  for (const r of ranges) {
+    if (clean.length === 0 || r.start >= clean[clean.length - 1].end) clean.push(r);
+  }
+  if (clean.length === 0) return <MathText block>{text}</MathText>;
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+  clean.forEach((r, i) => {
+    if (r.start > cursor) parts.push(<MathText key={`t-${i}`}>{text.slice(cursor, r.start)}</MathText>);
+    parts.push(
+      <mark key={`h-${i}`} title={r.note || "Highlighted"} className="rounded bg-[#ffe566] px-0.5 text-test-ink">
+        <MathText>{text.slice(r.start, r.end)}</MathText>
+      </mark>,
+    );
+    cursor = r.end;
+  });
+  if (cursor < text.length) parts.push(<MathText key="t-end">{text.slice(cursor)}</MathText>);
+  return parts;
+}
+
 function QuestionBody({
   q,
   stem,
@@ -487,6 +595,7 @@ function QuestionBody({
   showRationale = true,
   crossOut,
   onToggleCrossOut,
+  highlights = [],
 }: {
   q: QuestionRow;
   stem: string;
@@ -499,6 +608,7 @@ function QuestionBody({
   correctGridAnswers?: string[] | null;
   showRationale?: boolean;
   crossOut: boolean;
+  highlights?: Highlight[];
   onToggleCrossOut: () => void;
 }) {
   function toggleEliminate(id: string) {
@@ -598,12 +708,9 @@ function QuestionBody({
 
       <div className="border-t border-test-line" />
 
-      <MathText
-        block
-        className="whitespace-pre-wrap pt-5 text-[18px] font-medium leading-[1.7] text-test-ink md:text-[19px]"
-      >
-        {stem}
-      </MathText>
+      <div className="whitespace-pre-wrap pt-5 text-[18px] font-medium leading-[1.7] text-test-ink selection:bg-[#ffe566] md:text-[19px]">
+        {renderMarked(stem, highlights)}
+      </div>
 
       {q.kind === "grid_in" ? (
         <div className="mt-6">

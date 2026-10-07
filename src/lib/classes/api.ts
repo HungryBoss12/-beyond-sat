@@ -13,6 +13,7 @@ import type {
   HomeworkSubmissionStatus,
   LessonAttendance,
 } from "./types";
+import { quoteFilterValue } from "@/lib/postgrest-filter";
 import { normalizeUsername } from "./types";
 
 /** Loose casts — Classes tables ship ahead of regenerated supabase types. */
@@ -218,7 +219,7 @@ function sanitizeSearchNeedle(q: string): string {
   return q
     .trim()
     .replace(/^@/, "")
-    .replace(/[%(),]/g, "")
+    .replace(/[%(),.\\"]/g, "")
     .slice(0, 80);
 }
 
@@ -231,11 +232,11 @@ export async function searchUsersForAdmin(q: string, limit = 20): Promise<ChatPr
     .select(ADMIN_PROFILE_COLS)
     .or(
       [
-        `username.ilike.${needle}%`,
-        `email.ilike.%${needle}%`,
-        `full_name.ilike.%${needle}%`,
-        `first_name.ilike.${needle}%`,
-        `last_name.ilike.${needle}%`,
+        `username.ilike.${quoteFilterValue(`${needle}%`)}`,
+        `email.ilike.${quoteFilterValue(`%${needle}%`)}`,
+        `full_name.ilike.${quoteFilterValue(`%${needle}%`)}`,
+        `first_name.ilike.${quoteFilterValue(`${needle}%`)}`,
+        `last_name.ilike.${quoteFilterValue(`${needle}%`)}`,
       ].join(","),
     )
     .limit(limit);

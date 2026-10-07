@@ -13,6 +13,7 @@ export const PAY_METHOD_LABEL: Record<PayMethod, string> = {
 
 export type BalanceGroup = {
   id: string;
+  class_id?: string | null;
   name: string;
   subject: ClassSubject;
   status: MemberStatus;

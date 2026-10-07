@@ -93,6 +93,25 @@ export function reissueStudentInvite(userId: string): Promise<InviteLink> {
   return postInvite({ userId });
 }
 
+export async function scheduleStudentInvites(input: {
+  userIds: string[];
+  activatesAt: string;
+  returnLink?: boolean;
+}): Promise<{ updated: number; url: string | null }> {
+  const headers = await sessionAuthHeaders();
+  const res = await fetch("/api/admin/student-invite", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(input),
+  });
+  const payload = (await res.json()) as { error?: string; updated?: number; path?: string };
+  if (!res.ok) throw new Error(payload.error ?? "Could not schedule the links.");
+  return {
+    updated: payload.updated ?? 0,
+    url: payload.path ? `${window.location.origin}${payload.path}` : null,
+  };
+}
+
 export async function previewInvite(token: string): Promise<{ name: string; username: string }> {
   const res = await fetch("/api/auth/preview-invite", {
     method: "POST",

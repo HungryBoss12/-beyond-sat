@@ -177,6 +177,14 @@ async function createAdminUser(request: Request, env: unknown): Promise<Response
   }
 
   const email = accountEmailFor(username);
+  const { error: passErr } = await db.from("staff_account_passes").upsert({ email });
+  if (passErr) {
+    console.error("[create-user] staff pass failed", passErr.message);
+    return jsonResponse(
+      { error: `Could not prepare the account: ${failureSentence(passErr, "database error")}` },
+      500,
+    );
+  }
   const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
@@ -191,6 +199,7 @@ async function createAdminUser(request: Request, env: unknown): Promise<Response
     },
   });
   if (createErr || !created.user) {
+    await db.from("staff_account_passes").delete().eq("email", email);
     const msg = failureSentence(createErr, "Could not create the account.");
     if (/already/i.test(msg)) {
       return jsonResponse(

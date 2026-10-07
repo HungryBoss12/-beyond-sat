@@ -2,6 +2,7 @@ import {
   buildRequestBody,
   latestUserMessageHasImages,
   normalizeMessages,
+  storageHostFromUrl,
   prepareMessagesForTask,
   resolveChatModelChoice,
   resolveGeminiVisionModel,
@@ -237,7 +238,9 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
     return json({ error: "Request body must be JSON" }, 400);
   }
 
-  const normalized = normalizeMessages(payload.messages);
+  const normalized = normalizeMessages(payload.messages, {
+    storageHost: storageHostFromUrl(config.url),
+  });
   if ("error" in normalized) {
     return json({ error: normalized.error }, 400);
   }

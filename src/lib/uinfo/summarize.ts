@@ -135,11 +135,13 @@ async function flushUinfo(
     body: JSON.stringify({ user_id: userId, summary, updated_at: new Date().toISOString() }),
   });
 
-  const ids = logs.map((row) => row.id);
-  await fetch(`${url}/rest/v1/uinfo_log?id=in.(${ids.join(",")})`, {
-    method: "DELETE",
-    headers: restHeaders(key),
-  });
+  await fetch(
+    `${url}/rest/v1/uinfo_log?id=in.(${logs.map((row) => encodeURIComponent(row.id)).join(",")})`,
+    {
+      method: "DELETE",
+      headers: restHeaders(key),
+    },
+  );
 
   return { flushed: true, pending: 0 };
 }

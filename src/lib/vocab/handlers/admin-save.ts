@@ -34,7 +34,7 @@ async function upsertDeckTree(
     );
     if (existing?.[0]) {
       pathToId.set(node.path, existing[0].id);
-      await restFetch(config, token, `vocab_decks?id=eq.${existing[0].id}`, {
+      await restFetch(config, token, `vocab_decks?id=eq.${encodeURIComponent(existing[0].id)}`, {
         method: "PATCH",
         body: JSON.stringify({
           title: node.title,
@@ -212,7 +212,7 @@ export async function handleVocabAdminSave(request: Request, env: unknown): Prom
           return jsonResponse({ error: `Duplicate word: ${item.word}` }, 409);
         }
         cardId = existing[0].id;
-        await restFetch(auth.config, auth.token, `vocab_cards?id=eq.${cardId}`, {
+        await restFetch(auth.config, auth.token, `vocab_cards?id=eq.${encodeURIComponent(cardId)}`, {
           method: "PATCH",
           body: JSON.stringify(cardPayload),
         });

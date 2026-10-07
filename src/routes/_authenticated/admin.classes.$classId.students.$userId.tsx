@@ -6,6 +6,7 @@ import { Panel, PanelGlow, PanelHead } from "@/components/ui/panel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useClassContext } from "@/components/classes/ClassContext";
 import { StudentMoney } from "@/components/classes/StudentMoney";
+import { EditGroupsDialog } from "@/components/classes/EditGroupsDialog";
 import { RankBadge } from "@/components/classes/RankBadge";
 import { SubclassChip } from "@/components/classes/SubclassChip";
 import { LevelValue, SectionToggle } from "@/components/classes/LevelTab";
@@ -79,6 +80,7 @@ function StudentProfilePage() {
   >([]);
   const [submissions, setSubmissions] = useState<StudentSubmission[]>([]);
   const [editOpen, setEditOpen] = useState(false);
+  const [groupsOpen, setGroupsOpen] = useState(false);
   const [editName, setEditName] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
@@ -203,6 +205,15 @@ function StudentProfilePage() {
             </button>
           )}
           {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setGroupsOpen(true)}
+              className="tap inline-flex h-10 items-center gap-1.5 rounded-full border border-brand-200 px-4 text-sm font-bold text-brand-700 hover:bg-brand-25"
+            >
+              Groups
+            </button>
+          )}
+          {isAdmin && (
             <Link
               to="/admin/payments"
               className="tap inline-flex h-10 items-center gap-1.5 rounded-full border border-brand-200 px-4 text-sm font-bold text-brand-700 hover:bg-brand-25"
@@ -273,6 +284,14 @@ function StudentProfilePage() {
       </Panel>
 
       {isAdmin && <StudentMoney userId={userId} name={name} />}
+
+      <EditGroupsDialog
+        open={groupsOpen}
+        userId={userId}
+        name={name}
+        onClose={() => setGroupsOpen(false)}
+        onSaved={() => void load()}
+      />
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-md border-brand-400/40 bg-brand-600 text-white shadow-none sm:rounded-2xl [&>button]:!bg-transparent [&>button]:!text-white">

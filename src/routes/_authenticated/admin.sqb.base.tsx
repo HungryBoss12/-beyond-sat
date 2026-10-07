@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Edit3, Eye, Trash2, ListPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchTestQuestionCounts } from "@/lib/test-question-counts";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { RevealCard } from "@/components/ui/reveal-card";
 import { SqbTestDeleteDialog } from "@/components/admin/SqbTestDeleteDialog";
@@ -35,20 +36,16 @@ function AdminSqbTestBase() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data }, { data: links }] = await Promise.all([
+    const [{ data }, tally] = await Promise.all([
       supabase
         .from("tests")
         .select("id,title,section,difficulty,source_month,source_year")
         .eq("bank_format", "sqb")
         .eq("in_test_base", true)
         .order("created_at", { ascending: false }),
-      supabase.from("test_questions").select("test_id"),
+      fetchTestQuestionCounts(),
     ]);
     setTests((data ?? []) as SqbTest[]);
-    const tally = new Map<string, number>();
-    for (const l of (links ?? []) as { test_id: string }[]) {
-      tally.set(l.test_id, (tally.get(l.test_id) ?? 0) + 1);
-    }
     setCounts(tally);
     setLoading(false);
   }, []);

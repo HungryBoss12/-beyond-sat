@@ -1097,6 +1097,7 @@ export function TestPlayer({
             showRationale={Boolean(instantCheck && feedbackOpen && grades[q.id])}
             showNotes={showNotes}
             onCloseNotes={() => setShowNotes(false)}
+            commitHighlightOnRelease
           />
         </>
       )}

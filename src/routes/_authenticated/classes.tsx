@@ -1060,9 +1060,9 @@ function HomeworkVideo({ url }: { url: string }) {
   const list = /[?&]list=([^&]+)/.exec(trimmed)?.[1];
   const id = /(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{6,})/.exec(trimmed)?.[1];
   const youtube = list
-    ? `https://www.youtube.com/embed/videoseries?list=${encodeURIComponent(list)}`
+    ? `https://www.youtube-nocookie.com/embed/videoseries?list=${encodeURIComponent(list)}`
     : id && /youtube\.com|youtu\.be/i.test(trimmed)
-      ? `https://www.youtube.com/embed/${id}`
+      ? `https://www.youtube-nocookie.com/embed/${id}`
       : null;
   if (youtube) {
     return (

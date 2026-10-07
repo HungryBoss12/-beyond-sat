@@ -1,5 +1,6 @@
 import { formatISO, getISOWeek, getISOWeekYear } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { quoteFilterValue } from "@/lib/postgrest-filter";
 import { createNotification } from "@/lib/notifications/client";
 import type { NotificationAudience } from "@/lib/notifications/types";
 
@@ -80,7 +81,7 @@ export async function listActiveHomeworkForUser(): Promise<VocabHomeworkAssignme
     .select("*")
     .eq("active", true)
     .lte("starts_at", now)
-    .or(`ends_at.is.null,ends_at.gte.${now}`)
+    .or(`ends_at.is.null,ends_at.gte.${quoteFilterValue(now)}`)
     .order("due_at", { ascending: true, nullsFirst: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as VocabHomeworkAssignment[];

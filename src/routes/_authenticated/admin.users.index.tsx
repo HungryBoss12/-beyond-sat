@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   BadgeDollarSign,
   Ban,
+  CalendarClock,
   ChevronRight,
   CircleCheck,
   Copy,
@@ -25,6 +26,7 @@ import { PanelGlow } from "@/components/ui/panel";
 import { RevealCard } from "@/components/ui/reveal-card";
 import { AdminSelect } from "@/components/admin/AdminSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DateTimeField } from "@/components/ui/date-time-field";
 import {
   fetchAdminUsersSummary,
   type AdminUserSummaryRow,
@@ -39,7 +41,7 @@ import { listAllClasses, addClassMember } from "@/lib/classes/api";
 import { addGroupMember, listGroups, type ClassGroup } from "@/lib/classes/groups";
 import type { ClassRow } from "@/lib/classes/types";
 import { isOnline, lastSeenLabel } from "@/lib/presence";
-import { unclaimedUserIds } from "@/lib/students/api";
+import { scheduleStudentInvites, unclaimedUserIds } from "@/lib/students/api";
 import { errorMessage } from "@/lib/utils";
 
 type Role = "student" | "editor" | "admin" | "teacher";
@@ -264,7 +266,14 @@ function AdminStudents() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [created, setCreated] = useState<(CreatedStudent & { password: string }) | null>(null);
-  const [copied, setCopied] = useState<"username" | "password" | "both" | null>(null);
+  const [copied, setCopied] = useState<"username" | "password" | "both" | "link" | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [includeLink, setIncludeLink] = useState(false);
+  const [linkNow, setLinkNow] = useState(true);
+  const [linkAt, setLinkAt] = useState("");
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [bulkLinkAt, setBulkLinkAt] = useState("");
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkClassId, setBulkClassId] = useState("");
@@ -434,7 +443,27 @@ function AdminStudents() {
       setCreatePassword("");
       setMustChange(true);
       setEnroll(null);
-      setPageTab("provisioning");
+      setInviteUrl(null);
+      if (includeLink) {
+        const when = linkNow ? new Date().toISOString() : linkAt;
+        if (!linkNow && !linkAt) {
+          setCreateError("Account created. Pick when the setup link turns on.");
+        } else {
+          try {
+            const scheduled = await scheduleStudentInvites({
+              userIds: [row.userId],
+              activatesAt: when,
+              returnLink: true,
+            });
+            setInviteUrl(scheduled.url);
+          } catch (linkErr) {
+            const detail = linkErr instanceof Error ? linkErr.message.trim() : "";
+            setCreateError(
+              `Account created, but the setup link was not saved${detail ? `: ${detail}` : "."}`,
+            );
+          }
+        }
+      }
       if (chosen && chosen.groups.length > 0) {
         try {
           for (const group of chosen.groups) {
@@ -460,7 +489,7 @@ function AdminStudents() {
     }
   }
 
-  async function copyText(kind: "username" | "password" | "both", value: string) {
+  async function copyText(kind: "username" | "password" | "both" | "link", value: string) {
     try {
       await navigator.clipboard.writeText(value);
       setCopied(kind);
@@ -700,7 +729,7 @@ function AdminStudents() {
               </div>
               <button
                 type="button"
-                onClick={() => setPageTab("provisioning")}
+                onClick={() => setCreateOpen(true)}
                 className="btn-brand inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white shadow-brand"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -739,6 +768,15 @@ function AdminStudents() {
                     <Plus className="h-3.5 w-3.5" />
                   )}
                   Add to class
+                </button>
+                <button
+                  type="button"
+                  disabled={bulkBusy}
+                  onClick={() => setLinkOpen(true)}
+                  className="tap inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white"
+                >
+                  <CalendarClock className="h-3.5 w-3.5" />
+                  Link activation
                 </button>
                 <IconButton
                   icon={BadgeDollarSign}
@@ -851,9 +889,105 @@ function AdminStudents() {
         </>
       ) : (
         <>
-          <RevealCard className="relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 p-4 text-white shadow-panel lift">
-            <PanelGlow />
-            <div className="relative">
+          <section className="space-y-2">
+            <div className="flex flex-wrap items-end justify-between gap-2 px-0.5">
+              <div>
+                <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-200">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Admin-created accounts
+                </h2>
+                <p className="text-xs text-brand-100">
+                  Previously and newly provisioned logins, with progress stats.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCreateOpen(true)}
+                  className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white shadow-brand"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Create student
+                </button>
+                <span className="rounded-md bg-brand-800 px-2 py-1 text-[11px] font-bold text-brand-100 ring-1 ring-brand-400/40">
+                  {staffCreatedRows.length} accounts
+                </span>
+              </div>
+            </div>
+            {loading && !err ? (
+              <ListSkeleton rows={4} />
+            ) : (
+              <div className="relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel">
+                <div className="relative">
+                  {staffCreatedRows.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-brand-100">
+                      No admin-created accounts yet. Use Create student.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="hidden border-b border-brand-400/30 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200 md:grid md:grid-cols-[1fr_72px_72px_72px_100px_100px] md:gap-3">
+                        <span>Account</span>
+                        <span>Tests</span>
+                        <span>Accuracy</span>
+                        <span>Streak</span>
+                        <span>Class</span>
+                        <span>Created</span>
+                      </div>
+                      <ul className="divide-y divide-brand-400/30">
+                        {staffCreatedRows.map((u) => (
+                          <li key={`staff-${u.id}`}>
+                            <Link
+                              to="/admin/users/$userId"
+                              params={{ userId: u.id }}
+                              className="tap flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-brand-800/40 md:grid md:grid-cols-[1fr_72px_72px_72px_100px_100px] md:gap-3"
+                            >
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-semibold text-white">
+                                  {u.full_name || "—"}
+                                  {u.username ? (
+                                    <span className="ml-1.5 text-[11px] font-normal text-brand-200">
+                                      @{u.username}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div className="truncate text-xs text-white">
+                                  {unclaimed.has(u.id)
+                                    ? "Not registered yet"
+                                    : u.banned
+                                      ? "Banned"
+                                      : isOnline(u.last_seen_at)
+                                        ? "Online now"
+                                        : lastSeenLabel(u.last_seen_at)}
+                                </div>
+                              </div>
+                              <div className="text-sm tabular-nums text-white">{u.tests_total}</div>
+                              <div className="text-sm tabular-nums text-white">
+                                {u.accuracy_pct == null ? "—" : `${u.accuracy_pct}%`}
+                              </div>
+                              <div className="text-sm font-semibold text-white">{u.current_streak}</div>
+                              <div className="truncate text-xs text-brand-100">
+                                {u.class_name || "—"}
+                              </div>
+                              <div className="text-xs text-brand-100">
+                                {format(new Date(u.created_at), "MMM d, yyyy")}
+                              </div>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        </>
+      )}
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-brand-400/40 bg-brand-600 text-white shadow-none sm:rounded-2xl [&>button]:!bg-transparent [&>button]:!text-white">
+          <DialogHeader className="space-y-0 text-left">
+            <DialogTitle className="text-lg font-black text-white">Create student</DialogTitle>
+          </DialogHeader>
               <div className="flex flex-wrap items-center gap-2">
                 <Plus className="h-4 w-4 text-brand-100" />
                 <h2 className="text-xs font-bold uppercase tracking-wider text-brand-100">
@@ -923,6 +1057,38 @@ function AdminStudents() {
                       : "Not in a class"}
                   </button>
                 </div>
+              <div className="space-y-2 rounded-lg bg-brand-800/60 p-3">
+                <label className="tap inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-white">
+                  <input
+                    type="checkbox"
+                    checked={includeLink}
+                    onChange={(e) => setIncludeLink(e.target.checked)}
+                    className="h-4 w-4 rounded border-brand-400 bg-brand-800"
+                  />
+                  Include a setup link
+                </label>
+                {includeLink && (
+                  <div className="space-y-2 pl-6">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setLinkNow(true)}
+                        className={"rounded-full px-3 py-1.5 text-xs font-bold transition duration-150 " + (linkNow ? "bg-brand-400 text-white" : "bg-brand-900 text-brand-100")}
+                      >
+                        Active now
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLinkNow(false)}
+                        className={"rounded-full px-3 py-1.5 text-xs font-bold transition duration-150 " + (!linkNow ? "bg-brand-400 text-white" : "bg-brand-900 text-brand-100")}
+                      >
+                        Inactive until
+                      </button>
+                    </div>
+                    {!linkNow && <DateTimeField value={linkAt} onChange={setLinkAt} />}
+                  </div>
+                )}
+              </div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <label className="tap inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-brand-100">
                     <input
@@ -996,6 +1162,15 @@ function AdminStudents() {
                     >
                       {copied === "both" ? "Copied both" : "Copy username and password"}
                     </button>
+                    {inviteUrl && (
+                      <button
+                        type="button"
+                        onClick={() => void copyText("link", inviteUrl)}
+                        className="text-[11px] font-bold text-white underline-offset-2 hover:underline"
+                      >
+                        {copied === "link" ? "Link copied" : "Copy setup link"}
+                      </button>
+                    )}
                     <Link
                       to="/admin/users/$userId"
                       params={{ userId: created.userId }}
@@ -1006,94 +1181,53 @@ function AdminStudents() {
                   </div>
                 </div>
               )}
-            </div>
-          </RevealCard>
+          </DialogContent>
+      </Dialog>
 
-          <section className="space-y-2">
-            <div className="flex flex-wrap items-end justify-between gap-2 px-0.5">
-              <div>
-                <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-200">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Admin-created accounts
-                </h2>
-                <p className="text-xs text-brand-100">
-                  Previously and newly provisioned logins, with progress stats.
-                </p>
-              </div>
-              <span className="rounded-md bg-brand-800 px-2 py-1 text-[11px] font-bold text-brand-100 ring-1 ring-brand-400/40">
-                {staffCreatedRows.length} accounts
-              </span>
-            </div>
-            {loading && !err ? (
-              <ListSkeleton rows={4} />
-            ) : (
-              <div className="relative overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel">
-                <div className="relative">
-                  {staffCreatedRows.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-brand-100">
-                      No admin-created accounts yet. Use Create student above.
-                    </div>
-                  ) : (
-                    <>
-                      <div className="hidden border-b border-brand-400/30 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200 md:grid md:grid-cols-[1fr_72px_72px_72px_100px_100px] md:gap-3">
-                        <span>Account</span>
-                        <span>Tests</span>
-                        <span>Accuracy</span>
-                        <span>Streak</span>
-                        <span>Class</span>
-                        <span>Created</span>
-                      </div>
-                      <ul className="divide-y divide-brand-400/30">
-                        {staffCreatedRows.map((u) => (
-                          <li key={`staff-${u.id}`}>
-                            <Link
-                              to="/admin/users/$userId"
-                              params={{ userId: u.id }}
-                              className="tap flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-brand-800/40 md:grid md:grid-cols-[1fr_72px_72px_72px_100px_100px] md:gap-3"
-                            >
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold text-white">
-                                  {u.full_name || "—"}
-                                  {u.username ? (
-                                    <span className="ml-1.5 text-[11px] font-normal text-brand-200">
-                                      @{u.username}
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <div className="truncate text-xs text-white">
-                                  {unclaimed.has(u.id)
-                                    ? "Not registered yet"
-                                    : u.banned
-                                      ? "Banned"
-                                      : isOnline(u.last_seen_at)
-                                        ? "Online now"
-                                        : lastSeenLabel(u.last_seen_at)}
-                                </div>
-                              </div>
-                              <div className="text-sm tabular-nums text-white">{u.tests_total}</div>
-                              <div className="text-sm tabular-nums text-white">
-                                {u.accuracy_pct == null ? "—" : `${u.accuracy_pct}%`}
-                              </div>
-                              <div className="text-sm font-semibold text-white">{u.current_streak}</div>
-                              <div className="truncate text-xs text-brand-100">
-                                {u.class_name || "—"}
-                              </div>
-                              <div className="text-xs text-brand-100">
-                                {format(new Date(u.created_at), "MMM d, yyyy")}
-                              </div>
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </section>
-        </>
-      )}
-      <EnrollDialog
+
+      <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
+        <DialogContent className="max-w-md border-brand-400/40 bg-brand-600 text-white shadow-none sm:rounded-2xl [&>button]:!bg-transparent [&>button]:!text-white">
+          <DialogHeader className="space-y-0 text-left">
+            <DialogTitle className="text-lg font-black text-white">Link activation</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-brand-100">
+            The selected students get a setup link that turns on at this time. Teachers are skipped.
+            A link that already exists keeps its address and changes its start time.
+          </p>
+          <DateTimeField value={bulkLinkAt} onChange={setBulkLinkAt} />
+          <div className="flex justify-end">
+            <button
+              type="button"
+              disabled={bulkBusy || !bulkLinkAt}
+              onClick={() => {
+                setBulkBusy(true);
+                setBulkError(null);
+                void scheduleStudentInvites({
+                  userIds: [...selectedIds],
+                  activatesAt: bulkLinkAt,
+                })
+                  .then((result) => {
+                    toast.success(
+                      result.updated === 0
+                        ? "No student links were changed."
+                        : `Link time set for ${result.updated}.`,
+                    );
+                    setLinkOpen(false);
+                  })
+                  .catch((err) =>
+                    setBulkError(err instanceof Error ? err.message : "Could not schedule the links."),
+                  )
+                  .finally(() => setBulkBusy(false));
+              }}
+              className="rounded-full bg-brand-400 px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
+            >
+              Set activation time
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+            <EnrollDialog
         open={enrollOpen}
         classes={classes}
         initial={enroll}

@@ -82,7 +82,7 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
   }
   if (profile.banned) {
     await timingFloor(startedAt);
-    return jsonResponse({ error: "This account is banned." }, 403);
+    return jsonResponse({ error: "That username and password don't match." }, 401);
   }
 
   const { data: authUser, error: userErr } = await supabaseAdmin.auth.admin.getUserById(profile.id);

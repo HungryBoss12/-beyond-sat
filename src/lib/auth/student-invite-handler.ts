@@ -39,6 +39,23 @@ async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
 }
 
+const STAFF_ROLES = ["admin", "editor", "teacher"];
+
+async function isStaffAccount(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await db
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .in("role", STAFF_ROLES)
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return (data ?? []).length > 0;
+}
+
 async function adminDb() {
   const { resetSupabaseAdmin, ensureSupabaseAdmin, supabaseAdmin } = await import(
     "@/integrations/supabase/client.server"
@@ -54,16 +71,19 @@ async function issueInvite(
   db: any,
   studentId: string,
   createdBy: string | null,
+  activatesAt?: string | null,
 ): Promise<string> {
   const now = new Date().toISOString();
   await db.from("student_invites").update({ used_at: now }).eq("student_id", studentId).is("used_at", null);
   const token = randomToken();
   const token_hash = await sha256Hex(token);
-  const expires_at = new Date(Date.now() + INVITE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const start = activatesAt ? new Date(activatesAt) : new Date();
+  const expires_at = new Date(start.getTime() + INVITE_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const { error } = await db.from("student_invites").insert({
     student_id: studentId,
     token_hash,
     expires_at,
+    activates_at: start.toISOString(),
     created_by: createdBy,
   });
   if (error) throw new Error(error.message);
@@ -78,7 +98,7 @@ async function loadInvite(
   const token_hash = await sha256Hex(token.trim());
   const { data, error } = await db
     .from("student_invites")
-    .select("id, student_id, expires_at, used_at, students(id, full_name, user_id, claimed_at)")
+    .select("id, student_id, expires_at, activates_at, used_at, students(id, full_name, user_id, claimed_at)")
     .eq("token_hash", token_hash)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -90,14 +110,23 @@ async function loadInvite(
     id: string;
     student_id: string;
     expires_at: string;
+    activates_at: string | null;
     used_at: string | null;
     students: { id: string; full_name: string; user_id: string | null; claimed_at: string | null } | null;
   } | null;
 }
 
-function inviteClosed(row: { expires_at: string; used_at: string | null; students: { claimed_at: string | null } | null }): string | null {
+function inviteClosed(row: {
+  expires_at: string;
+  activates_at?: string | null;
+  used_at: string | null;
+  students: { claimed_at: string | null } | null;
+}): string | null {
   if (!row.students) return "This link is not valid.";
   if (row.used_at || row.students.claimed_at) return "This link has already been used.";
+  if (row.activates_at && new Date(row.activates_at).getTime() > Date.now()) {
+    return "This link is not active yet.";
+  }
   if (new Date(row.expires_at).getTime() < Date.now()) return "This link has expired. Ask your teacher for a new one.";
   return null;
 }
@@ -165,6 +194,9 @@ export async function handleClaimStudentInvite(request: Request, env: unknown): 
     if (closed) return jsonResponse({ error: closed }, 410);
     const userId = row.students!.user_id;
     if (!userId) return jsonResponse({ error: "This account is not ready yet." }, 500);
+    if (await isStaffAccount(db, userId)) {
+      return jsonResponse({ error: "This link is not valid." }, 404);
+    }
 
     const { data: taken } = await db.from("profiles").select("id").eq("username", username).maybeSingle();
     if (taken && taken.id !== userId) {
@@ -238,7 +270,15 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
   const auth = await requireAdmin(request, env);
   if (!auth.ok) return auth.response;
 
-  let body: { name?: unknown; classId?: unknown; studentId?: unknown; userId?: unknown };
+  let body: {
+    name?: unknown;
+    classId?: unknown;
+    studentId?: unknown;
+    userId?: unknown;
+    userIds?: unknown;
+    activatesAt?: unknown;
+    returnLink?: unknown;
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -249,9 +289,61 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
   const userId = typeof body.userId === "string" ? body.userId.trim() : "";
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const classId = typeof body.classId === "string" ? body.classId.trim() : "";
+  const userIds = Array.isArray(body.userIds)
+    ? body.userIds.filter((id): id is string => typeof id === "string" && UUID_RE.test(id))
+    : [];
+  const activatesAt = typeof body.activatesAt === "string" ? body.activatesAt : null;
+  if (activatesAt && Number.isNaN(new Date(activatesAt).getTime())) {
+    return jsonResponse({ error: "Pick a valid date and time." }, 400);
+  }
 
   try {
     const { supabaseAdmin, db } = await adminDb();
+
+    if (userIds.length > 0) {
+      let updated = 0;
+      let path: string | undefined;
+      for (const id of userIds) {
+        if (await isStaffAccount(db, id)) continue;
+        const { data: profile } = await db.from("profiles").select("full_name").eq("id", id).maybeSingle();
+        let { data: student } = await db.from("students").select("id, claimed_at").eq("user_id", id).maybeSingle();
+        if (!student) {
+          const inserted = await db
+            .from("students")
+            .insert({
+              full_name: (profile?.full_name as string | null) || "Student",
+              user_id: id,
+              created_by: auth.user.id,
+            })
+            .select("id, claimed_at")
+            .single();
+          if (inserted.error || !inserted.data) continue;
+          student = inserted.data;
+        }
+        if (student.claimed_at) continue;
+        const { data: live } = await db
+          .from("student_invites")
+          .select("id")
+          .eq("student_id", student.id)
+          .is("used_at", null)
+          .gt("expires_at", new Date().toISOString())
+          .maybeSingle();
+        const start = activatesAt ? new Date(activatesAt) : new Date();
+        const expires_at = new Date(start.getTime() + INVITE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+        if (live?.id) {
+          const { error } = await db
+            .from("student_invites")
+            .update({ activates_at: start.toISOString(), expires_at })
+            .eq("id", live.id);
+          if (error) return jsonResponse({ error: error.message }, 500);
+        } else {
+          const token = await issueInvite(db, student.id, auth.user.id, start.toISOString());
+          if (body.returnLink === true) path = `/join/${token}`;
+        }
+        updated += 1;
+      }
+      return jsonResponse({ updated, path });
+    }
 
     if (studentId || userId) {
       if (studentId && !UUID_RE.test(studentId)) return jsonResponse({ error: "Student not found." }, 404);
@@ -262,6 +354,9 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
         : await query.eq("user_id", userId).maybeSingle();
       if (error) return jsonResponse({ error: error.message }, 500);
       if (!student) return jsonResponse({ error: "No student record for this account." }, 404);
+      if (student.user_id && (await isStaffAccount(db, student.user_id))) {
+        return jsonResponse({ error: "No student record for this account." }, 404);
+      }
       if (student.claimed_at) return jsonResponse({ error: "This student has already registered." }, 409);
       const token = await issueInvite(db, student.id, auth.user.id);
       const { data: prof } = student.user_id
@@ -293,15 +388,29 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
       username = `${base.slice(0, Math.max(3, 24 - suffix.length))}${suffix}`;
     }
     const email = accountEmailFor(username);
+    const { error: passErr } = await db.from("staff_account_passes").upsert({ email });
+    if (passErr) {
+      return jsonResponse({ error: `Could not prepare the account: ${passErr.message}` }, 500);
+    }
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: randomPassword(),
       email_confirm: true,
       app_metadata: { staff_created: true },
-      user_metadata: { first_name, last_name, full_name, username },
+      user_metadata: { first_name, last_name, full_name, username, staff_created: true },
     });
     if (createErr || !created.user) {
-      return jsonResponse({ error: createErr?.message ?? "Could not create the account." }, 400);
+      await db.from("staff_account_passes").delete().eq("email", email);
+      const message = createErr?.message?.trim();
+      return jsonResponse(
+        {
+          error:
+            message && message !== "{}"
+              ? message
+              : "Could not create the account.",
+        },
+        400,
+      );
     }
     const newUserId = created.user.id;
     for (let i = 0; i < 10; i++) {

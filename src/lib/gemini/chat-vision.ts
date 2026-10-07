@@ -6,6 +6,7 @@ import { GeminiError, mapGeminiSdkError } from "./errors";
 
 const VISION_TEMPERATURE = 0.3;
 const RECOGNITION_MAX_TOKENS = 1200;
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
 type GeminiPart = { text?: string; inlineData?: { mimeType: string; data: string } };
 
@@ -23,7 +24,21 @@ async function inlineImageFromUrl(url: string): Promise<{ mimeType: string; data
     return { mimeType, data: buffer.toString("base64") };
   }
 
-  const response = await fetch(url);
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new GeminiError("INVALID_IMAGE", "Could not load the attached image.", 400);
+  }
+  if (
+    parsed.protocol !== "https:" ||
+    !parsed.hostname.endsWith(".supabase.co") ||
+    !/^\/storage\/v1\/object\/(?:sign|public|authenticated)\//i.test(parsed.pathname)
+  ) {
+    throw new GeminiError("INVALID_IMAGE", "Could not load the attached image.", 400);
+  }
+
+  const response = await fetch(url, { redirect: "error" });
   if (!response.ok) {
     throw new GeminiError("INVALID_IMAGE", "Could not load the attached image.", 400);
   }
@@ -31,8 +46,38 @@ async function inlineImageFromUrl(url: string): Promise<{ mimeType: string; data
   if (!/^image\//i.test(mimeType)) {
     throw new GeminiError("INVALID_IMAGE", "The image URL did not return an image.", 400);
   }
-  const buffer = Buffer.from(await response.arrayBuffer());
+  const buffer = Buffer.from(await readCappedBody(response, MAX_IMAGE_BYTES));
   return { mimeType, data: buffer.toString("base64") };
+}
+
+async function readCappedBody(response: Response, maxBytes: number): Promise<Uint8Array> {
+  const declared = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw new GeminiError("INVALID_IMAGE", "That image is too large.", 400);
+  }
+  if (!response.body) {
+    throw new GeminiError("INVALID_IMAGE", "Could not load the attached image.", 400);
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new GeminiError("INVALID_IMAGE", "That image is too large.", 400);
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
 }
 
 async function toGeminiParts(content: AiMessage["content"]): Promise<GeminiPart[]> {

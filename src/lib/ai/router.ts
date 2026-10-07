@@ -202,7 +202,40 @@ export function resolveGeminiVisionModel(
  * only `user` and `assistant` survive and the system prompt is added
  * server-side in `buildRequestBody`.
  */
-export function normalizeMessages(input: unknown): { messages: AiMessage[] } | { error: string } {
+const DATA_IMAGE_RE = /^data:image\/(png|jpe?g|webp|gif);base64,/i;
+const STORAGE_PATH_RE = /^\/storage\/v1\/object\/(?:sign|public|authenticated)\//i;
+
+/** Data images, or an object URL on this project's Supabase host. */
+export function isAllowedImageUrl(url: string, storageHost: string | undefined): boolean {
+  if (DATA_IMAGE_RE.test(url)) return true;
+  if (!storageHost) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  return (
+    parsed.protocol === "https:" &&
+    parsed.hostname === storageHost &&
+    STORAGE_PATH_RE.test(parsed.pathname)
+  );
+}
+
+export function storageHostFromUrl(supabaseUrl: string | undefined): string | undefined {
+  if (!supabaseUrl) return undefined;
+  try {
+    const host = new URL(supabaseUrl).hostname;
+    return host.endsWith(".supabase.co") ? host : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function normalizeMessages(
+  input: unknown,
+  options?: { storageHost?: string },
+): { messages: AiMessage[] } | { error: string } {
   if (!Array.isArray(input) || input.length === 0) {
     return { error: "messages must be a non-empty array" };
   }
@@ -228,7 +261,7 @@ export function normalizeMessages(input: unknown): { messages: AiMessage[] } | {
     }
 
     if (Array.isArray(content)) {
-      const parts = normalizeParts(content);
+      const parts = normalizeParts(content, options);
       if ("error" in parts) return parts;
       messages.push({ role, content: parts.parts });
       continue;
@@ -246,7 +279,10 @@ export function normalizeMessages(input: unknown): { messages: AiMessage[] } | {
   return { messages };
 }
 
-function normalizeParts(content: unknown[]): { parts: AiContentPart[] } | { error: string } {
+function normalizeParts(
+  content: unknown[],
+  options?: { storageHost?: string },
+): { parts: AiContentPart[] } | { error: string } {
   if (content.length === 0) return { error: "message content array must not be empty" };
   const parts: AiContentPart[] = [];
   for (const raw of content) {
@@ -269,11 +305,8 @@ function normalizeParts(content: unknown[]): { parts: AiContentPart[] } | { erro
       if (typeof url !== "string" || !url) {
         return { error: "image parts require 'image_url.url'" };
       }
-      /* Only data URLs and https are accepted. An arbitrary URL would make the
-         Worker fetch whatever a client names, on the platform's credentials —
-         a server-side request forgery vector, not a feature. */
-      if (!/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(url) && !/^https:\/\//i.test(url)) {
-        return { error: "image_url must be an https URL or a base64 image data URL" };
+      if (!isAllowedImageUrl(url, options?.storageHost)) {
+        return { error: "image_url must be a base64 image or a file in this site's storage" };
       }
       parts.push({ type: "image_url", image_url: { url } });
       continue;

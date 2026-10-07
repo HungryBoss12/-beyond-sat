@@ -32,7 +32,7 @@ export async function recordUserActivity(
   const firstVocabToday = !existing?.[0];
 
   if (existing?.[0]) {
-    await restFetch(config, token, `vocab_activity_logs?id=eq.${existing[0].id}`, {
+    await restFetch(config, token, `vocab_activity_logs?id=eq.${encodeURIComponent(existing[0].id)}`, {
       method: "PATCH",
       body: JSON.stringify({
         cards_reviewed: existing[0].cards_reviewed + cardsReviewed,

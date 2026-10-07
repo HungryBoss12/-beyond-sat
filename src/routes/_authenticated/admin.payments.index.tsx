@@ -22,6 +22,8 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { monthKey } from "@/lib/classes/classroom";
+import { subjectToSlug } from "@/lib/classes/schemes";
 import { EmptyState } from "@/components/ui/panel";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { IconButton } from "@/components/ui/icon-button";
@@ -736,14 +738,33 @@ function BalancesTable({
                 </div>
                 <div className="mt-0.5 text-xs text-white">{row.phone || "No phone"}</div>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {row.groups.map((group) => (
-                    <span
-                      key={group.id}
-                      className="rounded-full bg-brand-400 px-2 py-0.5 text-[10px] font-bold text-white shadow-brand"
-                    >
-                      {groupChipLabel(group)}
-                    </span>
-                  ))}
+                  {row.groups.map((group) =>
+                    group.class_id ? (
+                      <Link
+                        key={group.id}
+                        to="/admin/classes/$classId/$subject"
+                        params={{ classId: group.class_id, subject: subjectToSlug(group.subject) }}
+                        search={{
+                          tab: "attendance",
+                          month: monthKey(),
+                          lesson: "",
+                          q: "",
+                          status: "",
+                          sections: 0,
+                        }}
+                        className="rounded-full bg-brand-400 px-2 py-0.5 text-[10px] font-bold text-white shadow-brand transition duration-150 hover:bg-brand-300"
+                      >
+                        {groupChipLabel(group)}
+                      </Link>
+                    ) : (
+                      <span
+                        key={group.id}
+                        className="rounded-full bg-brand-400 px-2 py-0.5 text-[10px] font-bold text-white shadow-brand"
+                      >
+                        {groupChipLabel(group)}
+                      </span>
+                    ),
+                  )}
                 </div>
               </td>
               <td className="p-3">

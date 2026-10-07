@@ -56,6 +56,8 @@ export function securityHeaders(env: unknown): Record<string, string> {
   const headers: Record<string, string> = {
     "x-content-type-options": "nosniff",
     "referrer-policy": "strict-origin-when-cross-origin",
+    "x-frame-options": "DENY",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
   };
   if (cspEnforced(env)) {
     headers["content-security-policy"] = CSP_POLICY;

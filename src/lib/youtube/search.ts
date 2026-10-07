@@ -242,7 +242,7 @@ async function readCache(
   const parts = [`user_id=eq.${encodeURIComponent(userId)}`];
   // Explicit section match so a stale cross-section row can never leak.
   // '' (empty string) marks unscoped legacy/chat rows.
-  parts.push(section ? `section=eq.${section}` : `section=eq.`);
+  parts.push(section ? `section=eq.${encodeURIComponent(section)}` : `section=eq.`);
   const res = await fetch(
     `${url}/rest/v1/youtube_rec_cache?${parts.join("&")}&select=query,section,videos,updated_at`,
     { headers: restHeaders(serviceKey) },

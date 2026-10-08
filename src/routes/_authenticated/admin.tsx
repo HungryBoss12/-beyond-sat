@@ -14,6 +14,7 @@ import { ArrowLeft, Menu, X, ChevronRight } from "lucide-react";
 import { AmbientGlow, RevealLink } from "@/components/ui/reveal-card";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AdminNavIcon, type AdminAnim } from "@/components/admin/AdminNavIcon";
+import { SectionBack } from "@/components/SectionBack";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   /* Runs again on every navigation within /admin, so it doubles as the
@@ -173,6 +174,7 @@ function AdminLayout() {
               </div>
             </header>
             <main className="flex-1 px-4 py-6 text-brand-900 lg:px-8 lg:py-8">
+              <SectionBack />
               <Outlet />
             </main>
           </div>

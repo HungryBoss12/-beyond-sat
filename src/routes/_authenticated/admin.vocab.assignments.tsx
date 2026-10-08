@@ -54,7 +54,19 @@ function AdminVocabAssignmentsPage() {
         listVocabHomeworkAssignments(),
         listActiveClasses(),
         fetchVocabDecks(),
-        supabase.from("vocab_quizzes").select("id,title").order("title"),
+        (supabase as unknown as {
+          from: (table: string) => {
+            select: (cols: string) => {
+              eq: (col: string, value: string) => {
+                order: (col: string) => Promise<{ data: { id: string; title: string }[] | null }>;
+              };
+            };
+          };
+        })
+          .from("vocab_quizzes")
+          .select("id,title")
+          .eq("visibility", "published")
+          .order("title"),
         supabase.from("profiles").select("id,full_name").order("full_name").limit(200),
       ]);
       setAssignments(a);

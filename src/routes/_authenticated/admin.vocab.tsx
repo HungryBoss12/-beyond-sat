@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { FolderTree, Upload, ClipboardList } from "lucide-react";
+import { FolderTree, Upload, ClipboardList, Inbox } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/vocab")({
   component: AdminVocabLayout,
@@ -10,6 +10,7 @@ const SUB_NAV = [
   { to: "/admin/vocab", label: "Import", icon: Upload, exact: true },
   { to: "/admin/vocab/decks", label: "Manage decks", icon: FolderTree },
   { to: "/admin/vocab/assignments", label: "Assignments", icon: ClipboardList },
+  { to: "/admin/vocab/applies", label: "Applies", icon: Inbox },
 ] as const;
 
 function AdminVocabLayout() {
@@ -20,7 +21,7 @@ function AdminVocabLayout() {
       <div className="flex flex-wrap gap-2">
         {SUB_NAV.map((item) => {
           const Icon = item.icon;
-          const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+          const active = "exact" in item && item.exact ? pathname === item.to : pathname.startsWith(item.to);
           return (
             <Link
               key={item.to}

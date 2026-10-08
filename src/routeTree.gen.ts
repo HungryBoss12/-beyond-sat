@@ -77,6 +77,7 @@ import { Route as AuthenticatedAdminSqbQuestionsRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminUsersIndexRouteImport } from './routes/_authenticated/admin.users.index'
 import { Route as AuthenticatedAdminUsersUserIdRouteImport } from './routes/_authenticated/admin.users.$userId'
 import { Route as AuthenticatedAdminVocabIndexRouteImport } from './routes/_authenticated/admin.vocab.index'
+import { Route as AuthenticatedAdminVocabAppliesRouteImport } from './routes/_authenticated/admin.vocab.applies'
 import { Route as AuthenticatedAdminVocabAssignmentsRouteImport } from './routes/_authenticated/admin.vocab.assignments'
 import { Route as AuthenticatedAdminVocabDecksRouteImport } from './routes/_authenticated/admin.vocab.decks'
 import { Route as AuthenticatedAnalysisSessionIdRouteImport } from './routes/_authenticated/analysis.session.$id'
@@ -465,6 +466,12 @@ const AuthenticatedAdminVocabIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedAdminVocabRoute,
   } as any)
+const AuthenticatedAdminVocabAppliesRoute =
+  AuthenticatedAdminVocabAppliesRouteImport.update({
+    id: '/applies',
+    path: '/applies',
+    getParentRoute: () => AuthenticatedAdminVocabRoute,
+  } as any)
 const AuthenticatedAdminVocabAssignmentsRoute =
   AuthenticatedAdminVocabAssignmentsRouteImport.update({
     id: '/assignments',
@@ -649,6 +656,7 @@ export interface FileRoutesByFullPath {
   '/admin/sqb/import': typeof AuthenticatedAdminSqbImportRoute
   '/admin/sqb/questions': typeof AuthenticatedAdminSqbQuestionsRouteWithChildren
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
+  '/admin/vocab/applies': typeof AuthenticatedAdminVocabAppliesRoute
   '/admin/vocab/assignments': typeof AuthenticatedAdminVocabAssignmentsRoute
   '/admin/vocab/decks': typeof AuthenticatedAdminVocabDecksRoute
   '/analysis/session/$id': typeof AuthenticatedAnalysisSessionIdRoute
@@ -722,6 +730,7 @@ export interface FileRoutesByTo {
   '/admin/sqb/base': typeof AuthenticatedAdminSqbBaseRoute
   '/admin/sqb/import': typeof AuthenticatedAdminSqbImportRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
+  '/admin/vocab/applies': typeof AuthenticatedAdminVocabAppliesRoute
   '/admin/vocab/assignments': typeof AuthenticatedAdminVocabAssignmentsRoute
   '/admin/vocab/decks': typeof AuthenticatedAdminVocabDecksRoute
   '/analysis/session/$id': typeof AuthenticatedAnalysisSessionIdRoute
@@ -812,6 +821,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/sqb/import': typeof AuthenticatedAdminSqbImportRoute
   '/_authenticated/admin/sqb/questions': typeof AuthenticatedAdminSqbQuestionsRouteWithChildren
   '/_authenticated/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
+  '/_authenticated/admin/vocab/applies': typeof AuthenticatedAdminVocabAppliesRoute
   '/_authenticated/admin/vocab/assignments': typeof AuthenticatedAdminVocabAssignmentsRoute
   '/_authenticated/admin/vocab/decks': typeof AuthenticatedAdminVocabDecksRoute
   '/_authenticated/analysis/session/$id': typeof AuthenticatedAnalysisSessionIdRoute
@@ -903,6 +913,7 @@ export interface FileRouteTypes {
     | '/admin/sqb/import'
     | '/admin/sqb/questions'
     | '/admin/users/$userId'
+    | '/admin/vocab/applies'
     | '/admin/vocab/assignments'
     | '/admin/vocab/decks'
     | '/analysis/session/$id'
@@ -976,6 +987,7 @@ export interface FileRouteTypes {
     | '/admin/sqb/base'
     | '/admin/sqb/import'
     | '/admin/users/$userId'
+    | '/admin/vocab/applies'
     | '/admin/vocab/assignments'
     | '/admin/vocab/decks'
     | '/analysis/session/$id'
@@ -1065,6 +1077,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/sqb/import'
     | '/_authenticated/admin/sqb/questions'
     | '/_authenticated/admin/users/$userId'
+    | '/_authenticated/admin/vocab/applies'
     | '/_authenticated/admin/vocab/assignments'
     | '/_authenticated/admin/vocab/decks'
     | '/_authenticated/analysis/session/$id'
@@ -1587,6 +1600,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminVocabIndexRouteImport
       parentRoute: typeof AuthenticatedAdminVocabRoute
     }
+    '/_authenticated/admin/vocab/applies': {
+      id: '/_authenticated/admin/vocab/applies'
+      path: '/applies'
+      fullPath: '/admin/vocab/applies'
+      preLoaderRoute: typeof AuthenticatedAdminVocabAppliesRouteImport
+      parentRoute: typeof AuthenticatedAdminVocabRoute
+    }
     '/_authenticated/admin/vocab/assignments': {
       id: '/_authenticated/admin/vocab/assignments'
       path: '/assignments'
@@ -1843,6 +1863,7 @@ const AuthenticatedAdminUsersRouteWithChildren =
   )
 
 interface AuthenticatedAdminVocabRouteChildren {
+  AuthenticatedAdminVocabAppliesRoute: typeof AuthenticatedAdminVocabAppliesRoute
   AuthenticatedAdminVocabAssignmentsRoute: typeof AuthenticatedAdminVocabAssignmentsRoute
   AuthenticatedAdminVocabDecksRoute: typeof AuthenticatedAdminVocabDecksRoute
   AuthenticatedAdminVocabIndexRoute: typeof AuthenticatedAdminVocabIndexRoute
@@ -1851,6 +1872,7 @@ interface AuthenticatedAdminVocabRouteChildren {
 
 const AuthenticatedAdminVocabRouteChildren: AuthenticatedAdminVocabRouteChildren =
   {
+    AuthenticatedAdminVocabAppliesRoute: AuthenticatedAdminVocabAppliesRoute,
     AuthenticatedAdminVocabAssignmentsRoute:
       AuthenticatedAdminVocabAssignmentsRoute,
     AuthenticatedAdminVocabDecksRoute: AuthenticatedAdminVocabDecksRoute,

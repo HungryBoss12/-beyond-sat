@@ -291,6 +291,46 @@ function loadDeckName(db: Database): string {
   return readDeckName(row.decks);
 }
 
+/**
+ * One card per line, in the same field order the Anki parser uses:
+ * word, then definition, split by a tab, a bar, or a dash.
+ */
+export function parsePastedCards(text: string): GeneratedVocabItem[] {
+  const items: GeneratedVocabItem[] = [];
+  const seen = new Set<string>();
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    let word = "";
+    let definition = "";
+    if (line.includes("\t")) {
+      const [left, ...rest] = line.split("\t");
+      word = left;
+      definition = rest.join("\t");
+    } else if (line.includes("|")) {
+      const [left, ...rest] = line.split("|");
+      word = left;
+      definition = rest.join("|");
+    } else {
+      const match = line.match(/^(.{1,80}?)\s+[-–—:]\s+(.+)$/);
+      if (!match) continue;
+      word = match[1];
+      definition = match[2];
+    }
+    const item = mapAnkiNoteToVocabItem({
+      flds: `${word}\u001f${definition}`,
+      tags: "",
+      model: { name: "Basic", flds: [{ name: "Word" }, { name: "Definition" }] },
+    });
+    if (!item) continue;
+    const key = item.word.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(item);
+  }
+  return items;
+}
+
 export async function parseApkgFile(file: File): Promise<ApkgParseResult> {
   if (file.size > 80 * 1024 * 1024) {
     throw new Error("Deck file is too large (max 80 MB).");

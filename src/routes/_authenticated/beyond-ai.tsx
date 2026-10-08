@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { BeyondAiMark } from "@/components/ai/BeyondAiMark";
 import { ChatTurn } from "@/components/ai/ChatTurn";
-import { WelcomeEmblem } from "@/components/ai/WelcomeEmblem";
 import { scrollNearBottom, scrollToBottom, scrollWindowToTop } from "@/lib/smooth-scroll";
 import { messageText, useBeyondAi, type ChatMessage } from "@/lib/ai/client";
 import { ACCEPTED_IMAGE_TYPES, imageFromFiles, prepareAttachment } from "@/lib/ai/attachment";
@@ -538,7 +537,6 @@ function Welcome({
       <div className="mb-4 flex justify-center">
         <BeyondAiMark />
       </div>
-      <WelcomeEmblem />
       <h2 className="mt-4 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
         What are we working on?
       </h2>

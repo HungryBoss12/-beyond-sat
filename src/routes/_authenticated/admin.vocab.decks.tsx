@@ -121,7 +121,12 @@ function AdminDeckNode({
   return (
     <Panel className="flex items-center justify-between gap-3 p-3" style={{ marginLeft: depth * 12 }}>
       <div className="min-w-0">
-        <div className="truncate font-bold text-white">{deck.title}</div>
+        <div className="truncate font-bold text-white">
+          {deck.title}
+          {deck.owner_username ? (
+            <span className="ml-2 text-xs font-semibold text-brand-200">@{deck.owner_username}</span>
+          ) : null}
+        </div>
         {deck.path ? <div className="truncate text-xs text-brand-200/70">{deck.path}</div> : null}
       </div>
       <div className="flex shrink-0 items-center gap-1">

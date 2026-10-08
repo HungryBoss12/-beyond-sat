@@ -11,6 +11,7 @@ import { fetchVocabDueSummary } from "@/lib/vocab/client";
 import { startVocabReminderPoll } from "@/lib/vocab/reminders";
 import { supabase } from "@/integrations/supabase/client";
 import { VocabHomeworkPanel } from "@/components/vocab/VocabHomeworkPanel";
+import { YourDecks } from "@/components/vocab/YourDecks";
 import { hasSeenTip, markTipSeen } from "@/lib/first-visit";
 
 export const Route = createFileRoute("/_authenticated/vocab/")({
@@ -72,7 +73,17 @@ function VocabHub() {
         const [summary, cards, quizzes] = await Promise.all([
           fetchVocabDueSummary(),
           supabase.from("vocab_cards").select("id", { count: "exact", head: true }),
-          supabase.from("vocab_quizzes").select("id", { count: "exact", head: true }),
+          (supabase as unknown as {
+            from: (table: string) => {
+              select: (
+                cols: string,
+                opts: { count: "exact"; head: true },
+              ) => { eq: (col: string, value: string) => Promise<{ count: number | null }> };
+            };
+          })
+            .from("vocab_quizzes")
+            .select("id", { count: "exact", head: true })
+            .eq("visibility", "published"),
         ]);
         setDue(summary.totalDue);
         setTopDeckId(summary.topDeck?.id);
@@ -158,6 +169,8 @@ function VocabHub() {
           </Panel>
         </RevealLink>
       </div>
+
+      <YourDecks />
 
       <VocabHubTip />
     </div>

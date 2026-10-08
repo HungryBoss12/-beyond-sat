@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { PageHead, Panel } from "@/components/ui/panel";
 import { DeckTreeList } from "@/components/vocab/DeckTreeList";
 import { AnkiDeckCountLegend } from "@/components/vocab/AnkiDeckCounts";
@@ -53,15 +53,6 @@ function VocabDecksPage() {
           totalDue > 0
             ? `${totalDue} cards due across your collections.`
             : "Pick a collection to review. Counts show new, learning, and review."
-        }
-        action={
-          <Link
-            to="/vocab"
-            className="tap inline-flex items-center gap-2 text-sm font-bold text-brand-300 hover:text-brand-200"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Vocab hub
-          </Link>
         }
       />
 

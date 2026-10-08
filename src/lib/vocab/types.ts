@@ -2,6 +2,8 @@
 
 export type DifficultyTier = "Foundational" | "Medium" | "Advanced";
 
+export type VocabVisibility = "private" | "pending" | "published";
+
 export type VocabDeck = {
   id: string;
   title: string;
@@ -11,6 +13,10 @@ export type VocabDeck = {
   is_folder: boolean;
   path: string | null;
   created_at: string;
+  owner_id?: string | null;
+  visibility?: VocabVisibility;
+  submitted_at?: string | null;
+  owner_username?: string | null;
 };
 
 export type VocabCard = {
@@ -58,6 +64,10 @@ export type VocabQuiz = {
   description: string | null;
   time_limit_seconds: number | null;
   created_at: string;
+  owner_id?: string | null;
+  visibility?: VocabVisibility;
+  submitted_at?: string | null;
+  owner_username?: string | null;
 };
 
 export type VocabQuizQuestion = {

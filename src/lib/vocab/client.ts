@@ -1,5 +1,6 @@
 import { format, subDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { creatorNameMap } from "./user-content";
 import type { GeneratedVocabItem, ReviewRating, SessionCard, VocabDeck } from "./types";
 
 function friendlyVocabError(raw: string | undefined, status: number): string {
@@ -226,7 +227,11 @@ export async function fetchVocabDecks(): Promise<VocabDeck[]> {
     .select("*")
     .order("title", { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []) as VocabDeck[];
+  const rows = ((data ?? []) as VocabDeck[]).filter(
+    (deck) => !deck.visibility || deck.visibility === "published",
+  );
+  const names = await creatorNameMap(rows.map((deck) => deck.id));
+  return rows.map((deck) => ({ ...deck, owner_username: names.get(deck.id) ?? null }));
 }
 
 export type DeckPickerRow = VocabDeck & {
@@ -236,6 +241,7 @@ export type DeckPickerRow = VocabDeck & {
   learningCount: number;
   reviewCount: number;
   lastStudied: string | null;
+  ownerUsername: string | null;
 };
 
 async function fetchDeckStats(deckId: string): Promise<{
@@ -256,12 +262,16 @@ async function fetchDeckStats(deckId: string): Promise<{
 }
 
 export async function fetchDeckPickerRows(): Promise<DeckPickerRow[]> {
-  const { data: decks, error } = await supabase
+  const { data: deckRows, error } = await supabase
     .from("vocab_decks")
     .select("*")
     .order("sort_order", { ascending: true })
     .order("title", { ascending: true });
   if (error) throw new Error(error.message);
+  const decks = ((deckRows ?? []) as VocabDeck[]).filter(
+    (deck) => !deck.visibility || deck.visibility === "published",
+  );
+  const ownerNames = await creatorNameMap(decks.map((deck) => deck.id));
 
   const { data: sess } = await supabase.auth.getSession();
   const uid = sess.session?.user?.id;
@@ -342,6 +352,7 @@ export async function fetchDeckPickerRows(): Promise<DeckPickerRow[]> {
         learningCount: stats.learning_count,
         reviewCount: stats.review_count,
         lastStudied,
+        ownerUsername: ownerNames.get(deck.id) ?? null,
       };
     }),
   );

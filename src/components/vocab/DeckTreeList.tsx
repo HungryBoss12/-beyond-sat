@@ -16,7 +16,12 @@ function DeckRow({ row }: { row: DeckPickerRow }) {
               <Layers className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <h3 className="truncate font-bold text-white">{row.title}</h3>
+              <h3 className="truncate font-bold text-white">
+                {row.title}
+                {row.ownerUsername ? (
+                  <span className="ml-2 text-xs font-semibold text-brand-100">@{row.ownerUsername}</span>
+                ) : null}
+              </h3>
               <p className="text-xs text-brand-100">
                 {row.cardCount} card{row.cardCount === 1 ? "" : "s"}
               </p>

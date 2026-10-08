@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { Clock, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHead, Panel, EmptyState } from "@/components/ui/panel";
+import { creatorNameMap } from "@/lib/vocab/user-content";
 import type { VocabQuiz } from "@/lib/vocab/types";
 import { ListSkeleton } from "@/components/ui/skeletons";
+import { YourTests } from "@/components/vocab/YourTests";
 
 export const Route = createFileRoute("/_authenticated/vocab/tests/")({
   component: VocabTestsList,
@@ -16,11 +18,25 @@ function VocabTestsList() {
 
   useEffect(() => {
     void (async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as unknown as {
+        from: (table: string) => {
+          select: (cols: string) => {
+            eq: (col: string, value: string) => {
+              order: (
+                col: string,
+                opts: { ascending: boolean },
+              ) => Promise<{ data: VocabQuiz[] | null }>;
+            };
+          };
+        };
+      })
         .from("vocab_quizzes")
         .select("*")
+        .eq("visibility", "published")
         .order("created_at", { ascending: false });
-      setQuizzes((data ?? []) as VocabQuiz[]);
+      const rows = (data ?? []) as VocabQuiz[];
+      const names = await creatorNameMap(rows.map((row) => row.id));
+      setQuizzes(rows.map((row) => ({ ...row, owner_username: names.get(row.id) ?? null })));
       setLoading(false);
     })();
   }, []);
@@ -32,6 +48,8 @@ function VocabTestsList() {
         subtitle="Digital SAT Words-in-Context practice with timed quizzes."
       />
 
+      <YourTests />
+
       {loading ? (
         <ListSkeleton rows={4} />
       ) : quizzes.length === 0 ? (
@@ -42,7 +60,12 @@ function VocabTestsList() {
             <Link key={q.id} to="/vocab/tests/$id" params={{ id: q.id }} className="block">
               <Panel className="group flex items-center justify-between p-5 transition hover:border-brand-400/40">
                 <div>
-                  <h2 className="font-bold text-white">{q.title}</h2>
+                  <h2 className="font-bold text-white">
+                    {q.title}
+                    {q.owner_username ? (
+                      <span className="ml-2 text-xs font-semibold text-white/60">@{q.owner_username}</span>
+                    ) : null}
+                  </h2>
                   {q.description ? (
                     <p className="mt-1 text-sm text-white/60">{q.description}</p>
                   ) : null}

@@ -13,23 +13,41 @@ function sameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function formatLabel(date: Date): string {
+function formatLabel(date: Date, dateOnly: boolean): string {
   const day = date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  if (dateOnly) return day;
   const hh = String(date.getHours()).padStart(2, "0");
   const mm = String(date.getMinutes()).padStart(2, "0");
   return `${day}, ${hh}:${mm}`;
+}
+
+function parseFieldValue(value: string, dateOnly: boolean): Date {
+  if (dateOnly && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }
+  const parsed = value ? new Date(value) : new Date();
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+function toDateOnly(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
 }
 
 /** Month grid plus hour and minute lists. No native date or select controls. */
 export function DateTimeField({
   value,
   onChange,
+  dateOnly = false,
 }: {
   value: string;
   onChange: (iso: string) => void;
+  /** Emit `YYYY-MM-DD` and hide the clock. */
+  dateOnly?: boolean;
 }) {
-  const selected = value ? new Date(value) : new Date();
-  const safe = Number.isNaN(selected.getTime()) ? new Date() : selected;
+  const safe = parseFieldValue(value, dateOnly);
   const [open, setOpen] = useState(false);
   const [cursor, setCursor] = useState(() => startOfMonth(safe));
 
@@ -45,13 +63,14 @@ export function DateTimeField({
   }, [cursor, safe]);
 
   function commit(next: Date) {
-    onChange(next.toISOString());
+    onChange(dateOnly ? toDateOnly(next) : next.toISOString());
   }
 
   function pickDay(day: Date) {
     const next = new Date(day);
     next.setHours(safe.getHours(), safe.getMinutes(), 0, 0);
     commit(next);
+    if (dateOnly) setOpen(false);
   }
 
   return (
@@ -62,7 +81,7 @@ export function DateTimeField({
           className="inline-flex w-full items-center gap-2 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-left text-sm font-semibold text-white transition duration-200 hover:border-brand-200"
         >
           <CalendarClock className="h-4 w-4 text-brand-100" />
-          {value ? formatLabel(safe) : "Choose date and time"}
+          {value ? formatLabel(safe, dateOnly) : dateOnly ? "Choose a date" : "Choose date and time"}
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -114,6 +133,7 @@ export function DateTimeField({
             ),
           )}
         </div>
+        {!dateOnly && (
         <div className="mt-3 grid grid-cols-2 gap-2">
           <div>
             <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-brand-100">Hour</p>
@@ -160,6 +180,7 @@ export function DateTimeField({
             </div>
           </div>
         </div>
+        )}
       </PopoverContent>
     </Popover>
   );

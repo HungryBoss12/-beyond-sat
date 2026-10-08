@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   CalendarClock,
@@ -294,7 +294,6 @@ export function GroupRail({
 
 function MoveDialog({
   person,
-  group,
   klass,
   allClasses,
   onClose,
@@ -308,24 +307,47 @@ function MoveDialog({
   onMoved: () => Promise<void>;
 }) {
   const [target, setTarget] = useState("");
+  const [groupIds, setGroupIds] = useState<string[]>([]);
+  const [groups, setGroups] = useState<ClassGroup[]>([]);
   const [busy, setBusy] = useState(false);
-  const options = allClasses.filter((c) => c.id !== klass.id);
+  const options = allClasses.filter((c) => c.id !== klass.id && c.active);
+  const classGroups = groups.filter((row) => row.class_id === target && row.active);
+
+  useEffect(() => {
+    if (!person) return;
+    setTarget("");
+    setGroupIds([]);
+    void listGroups()
+      .then(setGroups)
+      .catch(() => toast.error("Could not load groups"));
+  }, [person]);
+
+  function pickClass(id: string) {
+    setTarget(id);
+    setGroupIds([]);
+  }
 
   async function move() {
-    if (!person || !target) return;
+    if (!person || !target || groupIds.length === 0) return;
+    const chosen = classGroups.filter((row) => groupIds.includes(row.id));
+    if (chosen.length === 0) return;
     setBusy(true);
     try {
-      const groups = await listGroups(target);
-      const destination = groups.find((g) => g.subject === group.subject);
-      if (!destination) throw new Error("That class has no matching sub-class");
       await addGroupMember({
-        groupId: destination.id,
+        groupId: chosen[0].id,
         userId: person.userId,
         status: person.status,
         move: true,
         fromClassId: klass.id,
       });
-      toast.success(`${person.name} moved to ${destination.name}`);
+      for (const extra of chosen.slice(1)) {
+        await addGroupMember({
+          groupId: extra.id,
+          userId: person.userId,
+          status: person.status,
+        });
+      }
+      toast.success(`${person.name} moved to ${chosen.map((row) => row.name).join(", ")}`);
       onClose();
       await onMoved();
     } catch (err) {
@@ -341,30 +363,55 @@ function MoveDialog({
         <DialogHeader>
           <DialogTitle className="text-white">Move student</DialogTitle>
           <DialogDescription className="text-white">
-            {person?.name} leaves {klass.name} (both sub-classes) and joins the same subject in the
-            new class.
+            {person?.name} leaves {klass.name} and joins the groups you tick in the new class.
           </DialogDescription>
         </DialogHeader>
-        <select
-          aria-label="Target class"
-          className={CLASS_CONTROL}
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
-        >
-          <option value="">Pick a class</option>
-          {options.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
+        <div className="flex flex-wrap gap-1.5">
+          {options.map((row) => (
+            <button
+              key={row.id}
+              type="button"
+              onClick={() => pickClass(row.id)}
+              className={
+                "rounded-full px-3 py-1.5 text-xs font-bold transition duration-150 " +
+                (target === row.id ? "bg-brand-400 text-white" : "bg-brand-900 text-white hover:bg-brand-950")
+              }
+            >
+              {row.name}
+            </button>
           ))}
-        </select>
+        </div>
+        {target && (
+          <ul className="space-y-1">
+            {classGroups.map((row) => (
+              <li key={row.id}>
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-brand-900">
+                  <input
+                    type="checkbox"
+                    checked={groupIds.includes(row.id)}
+                    onChange={() =>
+                      setGroupIds((ids) =>
+                        ids.includes(row.id) ? ids.filter((id) => id !== row.id) : [...ids, row.id],
+                      )
+                    }
+                    className="h-4 w-4 rounded border-brand-400 bg-brand-900"
+                  />
+                  {row.name}
+                </label>
+              </li>
+            ))}
+            {classGroups.length === 0 && (
+              <li className="text-xs text-white">This class has no groups yet.</li>
+            )}
+          </ul>
+        )}
         <div className="flex justify-end gap-2">
           <button type="button" className="tap px-4 py-2 text-sm font-bold" onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            disabled={busy || !target}
+            disabled={busy || !target || groupIds.length === 0}
             onClick={() => void move()}
             className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
           >

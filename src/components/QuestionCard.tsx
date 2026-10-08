@@ -186,7 +186,7 @@ export function QuestionCard({
 
   function handleSelectMouseUp(e: React.MouseEvent) {
     if (e.button !== 0) return;
-    if ((e.target as HTMLElement).closest("button, input, textarea")) return;
+    if ((e.target as HTMLElement).closest("mark[data-highlight-id], button, input, textarea")) return;
     const tb = computeSelectionToolbar();
     if (!tb) {
       setToolbar(null);
@@ -239,6 +239,8 @@ export function QuestionCard({
   function removeHighlight(id: string) {
     onChange({ ...answer, highlights: answer.highlights.filter((h) => h.id !== id) });
   }
+  const removeHighlightRef = useRef(removeHighlight);
+  removeHighlightRef.current = removeHighlight;
 
   // Keyboard shortcuts — edited from the Profile page, shared via localStorage.
   const [bindings, setBindings] = useState<HighlightBindings>(DEFAULT_HIGHLIGHT_BINDINGS);
@@ -335,13 +337,9 @@ export function QuestionCard({
       if (r.start > cursor)
         parts.push(<MathText key={`t-${i}`}>{text.slice(cursor, r.start)}</MathText>);
       parts.push(
-        <mark
-          key={`h-${i}`}
-          title={r.note || "Highlighted"}
-          className="rounded bg-[#ffe566] px-0.5 text-test-ink"
-        >
+        <HighlightMark key={`h-${i}`} id={r.hid} note={r.note} onRemove={(id) => removeHighlightRef.current(id)}>
           <MathText>{text.slice(r.start, r.end)}</MathText>
-        </mark>,
+        </HighlightMark>,
       );
       cursor = r.end;
     });
@@ -416,6 +414,7 @@ export function QuestionCard({
               crossOut={crossOut}
               onToggleCrossOut={() => setCrossOut((v) => !v)}
               highlights={answer.highlights}
+              onRemoveHighlight={removeHighlight}
             />
           </div>
         </div>
@@ -438,6 +437,7 @@ export function QuestionCard({
               crossOut={crossOut}
               onToggleCrossOut={() => setCrossOut((v) => !v)}
               highlights={answer.highlights}
+              onRemoveHighlight={removeHighlight}
             />
           </div>
         </div>
@@ -497,7 +497,7 @@ export function QuestionCard({
           <div className="max-h-[50vh] space-y-2 overflow-y-auto p-3">
             {answer.highlights.length === 0 ? (
               <p className="px-1 py-2 text-xs text-test-muted">
-                Select text in the passage, then choose Highlight or Note.
+                Select text to highlight it. Click a yellow highlight to remove it.
               </p>
             ) : (
               answer.highlights.map((h) => (
@@ -554,7 +554,42 @@ function CrossOutIcon({ className }: { className?: string }) {
   );
 }
 
-function renderMarked(text: string, highlights: Highlight[]): React.ReactNode {
+function HighlightMark({
+  id,
+  note,
+  onRemove,
+  children,
+}: {
+  id: string;
+  note: string;
+  onRemove: (id: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <mark
+      data-highlight-id={id}
+      title={note ? `${note}. Click to remove.` : "Click to remove highlight"}
+      className="cursor-pointer rounded bg-[#ffe566] px-0.5 text-test-ink"
+      onMouseDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onRemove(id);
+      }}
+    >
+      {children}
+    </mark>
+  );
+}
+
+function renderMarked(
+  text: string,
+  highlights: Highlight[],
+  onRemove: (id: string) => void,
+): React.ReactNode {
   type R = { start: number; end: number; hid: string; note: string };
   const ranges: R[] = [];
   for (const h of highlights) {
@@ -572,9 +607,9 @@ function renderMarked(text: string, highlights: Highlight[]): React.ReactNode {
   clean.forEach((r, i) => {
     if (r.start > cursor) parts.push(<MathText key={`t-${i}`}>{text.slice(cursor, r.start)}</MathText>);
     parts.push(
-      <mark key={`h-${i}`} title={r.note || "Highlighted"} className="rounded bg-[#ffe566] px-0.5 text-test-ink">
+      <HighlightMark key={`h-${i}`} id={r.hid} note={r.note} onRemove={onRemove}>
         <MathText>{text.slice(r.start, r.end)}</MathText>
-      </mark>,
+      </HighlightMark>,
     );
     cursor = r.end;
   });
@@ -596,6 +631,7 @@ function QuestionBody({
   crossOut,
   onToggleCrossOut,
   highlights = [],
+  onRemoveHighlight,
 }: {
   q: QuestionRow;
   stem: string;
@@ -609,6 +645,7 @@ function QuestionBody({
   showRationale?: boolean;
   crossOut: boolean;
   highlights?: Highlight[];
+  onRemoveHighlight: (id: string) => void;
   onToggleCrossOut: () => void;
 }) {
   function toggleEliminate(id: string) {
@@ -709,7 +746,7 @@ function QuestionBody({
       <div className="border-t border-test-line" />
 
       <div className="whitespace-pre-wrap pt-5 text-[18px] font-medium leading-[1.7] text-test-ink selection:bg-[#ffe566] md:text-[19px]">
-        {renderMarked(stem, highlights)}
+        {renderMarked(stem, highlights, onRemoveHighlight)}
       </div>
 
       {q.kind === "grid_in" ? (

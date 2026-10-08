@@ -4,12 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   BadgeDollarSign,
   Ban,
+  CalendarCheck,
   CalendarClock,
   ChevronRight,
   CircleCheck,
   Copy,
   Eye,
   EyeOff,
+  Link2,
   Loader2,
   Plus,
   Search,
@@ -20,7 +22,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { FeeDialog } from "@/components/billing/FeeDialog";
 import { IconButton } from "@/components/ui/icon-button";
-import { setStudentFee } from "@/lib/billing/api";
+import { previewActivationChange, setActivationDate, setStudentFee } from "@/lib/billing/api";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { PanelGlow } from "@/components/ui/panel";
 import { RevealCard } from "@/components/ui/reveal-card";
@@ -38,10 +40,10 @@ import {
 } from "@/lib/auth/create-user";
 import { isSyntheticAccountEmail } from "@/lib/auth/login-email";
 import { listAllClasses, addClassMember } from "@/lib/classes/api";
-import { addGroupMember, listGroups, type ClassGroup } from "@/lib/classes/groups";
+import { addGroupMember, listGroups, listUserGroupMemberships, type ClassGroup } from "@/lib/classes/groups";
 import type { ClassRow } from "@/lib/classes/types";
 import { isOnline, lastSeenLabel } from "@/lib/presence";
-import { scheduleStudentInvites, unclaimedUserIds } from "@/lib/students/api";
+import { reissueStudentInvite, scheduleStudentInvites, unclaimedUserIds, type InviteLink } from "@/lib/students/api";
 import { errorMessage } from "@/lib/utils";
 
 type Role = "student" | "editor" | "admin" | "teacher";
@@ -274,6 +276,18 @@ function AdminStudents() {
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [bulkLinkAt, setBulkLinkAt] = useState("");
+  const [freshOpen, setFreshOpen] = useState(false);
+  const [freshLinks, setFreshLinks] = useState<InviteLink[]>([]);
+  const [freshSkipped, setFreshSkipped] = useState<string[]>([]);
+  const [freshCopied, setFreshCopied] = useState(false);
+  const [actOpen, setActOpen] = useState(false);
+  const [actDate, setActDate] = useState("");
+  const [actPreview, setActPreview] = useState<{
+    date: string;
+    targets: { userId: string; groupId: string }[];
+    voids: number;
+    skipped: string[];
+  } | null>(null);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkClassId, setBulkClassId] = useState("");
@@ -594,6 +608,101 @@ function AdminStudents() {
     }
   }
 
+  function selectedPeople(): UserRow[] {
+    return [...selectedIds].flatMap((id) => {
+      const row = rows.find((item) => item.id === id);
+      return row ? [row] : [];
+    });
+  }
+
+  function personLabel(row: { full_name: string | null; username: string | null; email: string | null }) {
+    return row.full_name || row.username || row.email || "Student";
+  }
+
+  async function issueFreshLinks() {
+    setBulkError(null);
+    setBulkBusy(true);
+    setFreshCopied(false);
+    const links: InviteLink[] = [];
+    const skipped: string[] = [];
+    try {
+      for (const row of selectedPeople()) {
+        if (row.role !== "student") {
+          skipped.push(personLabel(row));
+          continue;
+        }
+        try {
+          links.push(await reissueStudentInvite(row.id));
+        } catch {
+          skipped.push(personLabel(row));
+        }
+      }
+      setFreshLinks(links);
+      setFreshSkipped(skipped);
+      setFreshOpen(true);
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function reviewBulkActivation() {
+    if (!actDate) return;
+    setBulkError(null);
+    setBulkBusy(true);
+    try {
+      const skipped: string[] = [];
+      const students = selectedPeople().filter((row) => {
+        if (row.role === "student") return true;
+        skipped.push(personLabel(row));
+        return false;
+      });
+      const members = await listUserGroupMemberships(students.map((row) => row.id));
+      const targets: { userId: string; groupId: string }[] = [];
+      for (const row of students) {
+        const groups = members.filter(
+          (member) => member.user_id === row.id && String(member.status) !== "left",
+        );
+        if (groups.length === 0) {
+          skipped.push(personLabel(row));
+          continue;
+        }
+        for (const group of groups) targets.push({ userId: row.id, groupId: group.group_id });
+      }
+      let voids = 0;
+      for (const target of targets) {
+        voids += (await previewActivationChange(target.userId, target.groupId, actDate)).length;
+      }
+      setActPreview({ date: actDate, targets, voids, skipped });
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : "Could not check the charges");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function applyBulkActivation() {
+    if (!actPreview || actPreview.date !== actDate) return;
+    setBulkBusy(true);
+    setBulkError(null);
+    try {
+      let voided = 0;
+      for (const target of actPreview.targets) {
+        voided += await setActivationDate(target.userId, target.groupId, actDate);
+      }
+      toast.success(
+        voided
+          ? `Activation saved for ${new Set(actPreview.targets.map((row) => row.userId)).size}. ${voided} charge(s) voided and re-applied.`
+          : "Activation saved",
+      );
+      setActOpen(false);
+      setActPreview(null);
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : "Could not save the activation date");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   const studentCount = rows.filter((r) => r.role === "student").length;
   const onlineCount = rows.filter((r) => isOnline(r.last_seen_at)).length;
   const filterTabs: [Filter, string][] = [
@@ -768,6 +877,27 @@ function AdminStudents() {
                     <Plus className="h-3.5 w-3.5" />
                   )}
                   Add to class
+                </button>
+                <button
+                  type="button"
+                  disabled={bulkBusy}
+                  onClick={() => void issueFreshLinks()}
+                  className="tap inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  New sign-in links
+                </button>
+                <button
+                  type="button"
+                  disabled={bulkBusy}
+                  onClick={() => {
+                    setActPreview(null);
+                    setActOpen(true);
+                  }}
+                  className="tap inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
+                >
+                  <CalendarCheck className="h-3.5 w-3.5" />
+                  Activation date
                 </button>
                 <button
                   type="button"
@@ -1184,6 +1314,113 @@ function AdminStudents() {
           </DialogContent>
       </Dialog>
 
+
+      <Dialog open={freshOpen} onOpenChange={setFreshOpen}>
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-brand-400/40 bg-brand-600 text-white shadow-none sm:rounded-2xl [&>button]:!bg-transparent [&>button]:!text-white">
+          <DialogHeader className="space-y-0 text-left">
+            <DialogTitle className="text-lg font-black text-white">New sign-in links</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-brand-100">
+            Each link replaces that student&apos;s previous unused setup link. Staff accounts are skipped.
+          </p>
+          {freshLinks.length === 0 ? (
+            <p className="text-sm text-white">No new links were issued.</p>
+          ) : (
+            <ul className="space-y-2">
+              {freshLinks.map((link) => (
+                <li key={link.url} className="rounded-lg bg-brand-800 px-3 py-2">
+                  <p className="text-sm font-bold text-white">
+                    {link.name}
+                    {link.username ? <span className="ml-1 font-normal text-brand-100">@{link.username}</span> : null}
+                  </p>
+                  <p className="truncate text-xs text-brand-100">{link.url}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {freshSkipped.length > 0 && (
+            <p className="text-xs text-brand-100">Skipped: {freshSkipped.join(", ")}</p>
+          )}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              disabled={freshLinks.length === 0}
+              onClick={() => {
+                const text = freshLinks
+                  .map((link) => `${link.name}${link.username ? ` (@${link.username})` : ""}\n${link.url}`)
+                  .join("\n\n");
+                void navigator.clipboard.writeText(text).then(() => setFreshCopied(true));
+              }}
+              className="rounded-full bg-brand-400 px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
+            >
+              {freshCopied ? "Copied" : "Copy all links"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={actOpen}
+        onOpenChange={(next) => {
+          setActOpen(next);
+          if (!next) setActPreview(null);
+        }}
+      >
+        <DialogContent className="max-w-md border-brand-400/40 bg-brand-600 text-white shadow-none sm:rounded-2xl [&>button]:!bg-transparent [&>button]:!text-white">
+          <DialogHeader className="space-y-0 text-left">
+            <DialogTitle className="text-lg font-black text-white">Activation date</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-brand-100">
+            This is the date fees start for every group the selected students still belong to. Manual
+            payments stay.
+          </p>
+          <DateTimeField
+            dateOnly
+            value={actDate}
+            onChange={(next) => {
+              setActDate(next);
+              setActPreview(null);
+            }}
+          />
+          {actPreview && (
+            <div className="space-y-1 text-sm text-white">
+              <p>
+                {new Set(actPreview.targets.map((row) => row.userId)).size} students,{" "}
+                {actPreview.targets.length} groups.
+              </p>
+              <p>
+                {actPreview.voids === 0
+                  ? "No automatic charges need to be replaced."
+                  : `${actPreview.voids} automatic charge(s) will be voided and re-applied.`}
+              </p>
+              {actPreview.skipped.length > 0 && (
+                <p className="text-xs text-brand-100">Skipped: {actPreview.skipped.join(", ")}</p>
+              )}
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            {!actPreview ? (
+              <button
+                type="button"
+                disabled={bulkBusy || !actDate}
+                onClick={() => void reviewBulkActivation()}
+                className="rounded-full bg-brand-400 px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
+              >
+                {bulkBusy ? "Checking…" : "Review changes"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={bulkBusy || actPreview.targets.length === 0}
+                onClick={() => void applyBulkActivation()}
+                className="rounded-full bg-brand-400 px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
+              >
+                {bulkBusy ? "Saving…" : "Save activation date"}
+              </button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
         <DialogContent className="max-w-md border-brand-400/40 bg-brand-600 text-white shadow-none sm:rounded-2xl [&>button]:!bg-transparent [&>button]:!text-white">

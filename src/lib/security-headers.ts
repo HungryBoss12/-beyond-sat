@@ -23,25 +23,28 @@
  *    wss: covers Supabase realtime sockets.
  *  - media-src https:            : lesson videos come from signed storage URLs,
  *    and homework videos can be a direct link to any site.
- *  - cloudflareinsights          : Cloudflare injects its analytics beacon into
- *    every page and it reports back to cloudflareinsights.com.
  *  - desmos connect/font         : the Desmos API build loads its own assets
  *    when an admin sets a key.
  *
  * Enforced when CSP_ENFORCE=1 (set in wrangler.jsonc vars); otherwise sent as
  * `Content-Security-Policy-Report-Only`.
+ *
+ * HTML also gets `Cache-Control: no-transform`. Cloudflare's proxy injects the
+ * Web Analytics beacon by rewriting the document, and it skips that rewrite
+ * when the origin forbids transformations. `private` keeps a signed-in page
+ * out of shared caches.
  */
 
 import { readEnv } from "./server-env";
 
 const CSP_POLICY = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.desmos.com https://static.cloudflareinsights.com",
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.desmos.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com https://www.desmos.com",
   "img-src 'self' data: blob: https://i.pravatar.cc https://img.youtube.com https://*.supabase.co https://www.desmos.com",
   "media-src 'self' blob: https:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cloudflareinsights.com https://www.desmos.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.desmos.com",
   "frame-src https://www.youtube-nocookie.com https://www.desmos.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
@@ -55,6 +58,20 @@ function cspEnforced(env: unknown): boolean {
   if (import.meta.env.DEV) return false; // never hard-fail HMR/dev
   const raw = readEnv(env, "CSP_ENFORCE");
   return raw === "1" || raw === "true";
+}
+
+/**
+ * Cache-Control for an HTML document: keep any directive the handler already
+ * set, and add `no-transform` so the Cloudflare proxy does not inject scripts.
+ * Returns null when the response is not HTML or already opts out of transforms.
+ */
+function htmlCacheControl(response: Response): string | null {
+  const type = response.headers.get("content-type") ?? "";
+  if (!type.includes("text/html")) return null;
+  const existing = response.headers.get("cache-control");
+  if (!existing) return "private, no-transform";
+  if (/\bno-transform\b/i.test(existing)) return null;
+  return `${existing}, no-transform`;
 }
 
 /** The always-on, non-CSP hardening headers. */
@@ -82,15 +99,18 @@ export function securityHeaders(env: unknown): Record<string, string> {
  */
 export function applySecurityHeaders(response: Response, env: unknown): Response {
   const headers = securityHeaders(env);
+  const cacheControl = htmlCacheControl(response);
+  if (cacheControl) headers["cache-control"] = cacheControl;
   try {
     for (const [name, value] of Object.entries(headers)) {
-      if (!response.headers.has(name)) response.headers.set(name, value);
+      // cache-control may already exist; it still has to gain no-transform.
+      if (name === "cache-control" || !response.headers.has(name)) response.headers.set(name, value);
     }
     return response;
   } catch {
     const merged = new Headers(response.headers);
     for (const [name, value] of Object.entries(headers)) {
-      if (!merged.has(name)) merged.set(name, value);
+      if (name === "cache-control" || !merged.has(name)) merged.set(name, value);
     }
     return new Response(response.body, {
       status: response.status,

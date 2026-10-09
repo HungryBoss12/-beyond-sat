@@ -187,11 +187,14 @@ function StaticEmblem() {
 export default function BeyondCoreScene({
   animate,
   highDpr,
+  onContextLost,
 }: {
   /** false under `prefers-reduced-motion` — renders one frame and stops. */
   animate: boolean;
   /** false on small viewports; caps the pixel ratio to keep phones cool. */
   highDpr: boolean;
+  /** The GPU dropped the live context. The parent swaps in the 2D mockup. */
+  onContextLost: () => void;
 }) {
   return (
     <Canvas
@@ -206,6 +209,15 @@ export default function BeyondCoreScene({
          transparent and the hero's own background shows through. */
       gl={{ antialias: highDpr, alpha: true, powerPreference: "low-power" }}
       style={{ width: "100%", height: "100%" }}
+      onCreated={({ gl }) => {
+        gl.domElement.addEventListener("webglcontextlost", (event) => {
+          event.preventDefault();
+          // Three.js force-loses the context when the canvas unmounts, after
+          // React has already detached it. That cleanup is not a failed render.
+          if (!gl.domElement.isConnected) return;
+          onContextLost();
+        });
+      }}
     >
       {/* Two point lights plus a dim ambient: the ambient stops the unlit faces
           going pure black, which on a white page looks like a hole. */}

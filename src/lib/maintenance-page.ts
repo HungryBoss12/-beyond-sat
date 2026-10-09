@@ -100,7 +100,7 @@ export function maintenanceResponse(message: string): Response {
       "content-type": "text/html; charset=utf-8",
       // Must never be cached — the whole point is that it stops applying the
       // moment an admin flips the switch back.
-      "cache-control": "no-store, must-revalidate",
+      "cache-control": "no-store, must-revalidate, no-transform",
       "retry-after": "600",
     },
   });

@@ -32,7 +32,11 @@ import { DashboardMockup } from "@/components/landing/DashboardMockup";
  * replaced, and fails silently so nobody finds out.
  */
 
-type SceneProps = { animate: boolean; highDpr: boolean };
+type SceneProps = {
+  animate: boolean;
+  highDpr: boolean;
+  onContextLost: () => void;
+};
 
 /**
  * `React.lazy` alone does NOT keep three out of the server build.
@@ -60,19 +64,22 @@ const BeyondCoreScene: ComponentType<SceneProps> = import.meta.env.SSR
       () => import("@/components/landing/BeyondCoreScene"),
     ) as unknown as ComponentType<SceneProps>);
 
-/** Feature-detects a real WebGL context once, on the client. */
+/**
+ * Feature-detects a real WebGL context once, on the client.
+ *
+ * The throwaway canvas is discarded with this call, so its context is collected
+ * with it. Do not call loseContext() here: the browser logs "WebGL context was
+ * lost" for that, and releasing a context in the same turn can take the real
+ * scene's context down with it.
+ */
 function detectWebgl(): boolean {
   try {
     const canvas = document.createElement("canvas");
-    const gl =
+    return !!(
       canvas.getContext("webgl2") ??
       canvas.getContext("webgl") ??
-      canvas.getContext("experimental-webgl");
-    if (!gl) return false;
-    // Some environments hand back a context that is immediately lost; releasing
-    // it explicitly also stops this probe from holding a GPU context open.
-    (gl as WebGLRenderingContext).getExtension("WEBGL_lose_context")?.loseContext();
-    return true;
+      canvas.getContext("experimental-webgl")
+    );
   } catch {
     return false;
   }
@@ -188,7 +195,11 @@ export function BeyondCore() {
         {support === "webgl" && (
           <SceneBoundary fallback={<DashboardMockup />}>
             <Suspense fallback={null}>
-              <BeyondCoreScene animate={animate} highDpr={highDpr} />
+              <BeyondCoreScene
+                animate={animate}
+                highDpr={highDpr}
+                onContextLost={() => setSupport("fallback")}
+              />
             </Suspense>
           </SceneBoundary>
         )}

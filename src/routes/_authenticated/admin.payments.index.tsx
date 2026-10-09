@@ -84,7 +84,7 @@ const searchSchema = z.object({
   group: z.string().catch(""),
   q: z.string().catch(""),
   status: z.enum(["", "active", "trial", "frozen"]).catch(""),
-  activeSort: z.enum(["active", "other"]).catch("active"),
+  activeSort: z.enum(["active", "other", "debt"]).catch("active"),
   rank: z.enum(["", "S", "A", "B", "C", "D"]).catch(""),
   minDebt: digits,
   maxDebt: digits,
@@ -286,8 +286,13 @@ function PaymentsPage() {
     return [...map.values()];
   }, [rows]);
   const sortedRows = useMemo(() => {
-    const activeFirst = search.activeSort !== "other";
     return [...mergedRows].sort((a, b) => {
+      if (search.activeSort === "debt") {
+        if (a.balance < b.balance) return -1;
+        if (a.balance > b.balance) return 1;
+        return studentName(a).localeCompare(studentName(b));
+      }
+      const activeFirst = search.activeSort !== "other";
       const rank = Number(isActiveStudent(b)) - Number(isActiveStudent(a));
       const byActive = activeFirst ? rank : -rank;
       if (byActive !== 0) return byActive;
@@ -579,11 +584,12 @@ function PaymentsPage() {
             </button>
           ))}
         </div>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Sort by active">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Sort balances">
           {(
             [
               ["active", "Active first"],
               ["other", "Not active first"],
+              ["debt", "Highest debt"],
             ] as const
           ).map(([value, label]) => (
             <button

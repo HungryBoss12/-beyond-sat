@@ -694,6 +694,7 @@ function AdminStudents() {
           ? `Activation saved for ${new Set(actPreview.targets.map((row) => row.userId)).size}. ${voided} charge(s) voided and re-applied.`
           : "Activation saved",
       );
+      setSelectedIds(new Set());
       setActOpen(false);
       setActPreview(null);
     } catch (err) {
@@ -1449,6 +1450,7 @@ function AdminStudents() {
                         ? "No student links were changed."
                         : `Link time set for ${result.updated}.`,
                     );
+                    setSelectedIds(new Set());
                     setLinkOpen(false);
                   })
                   .catch((err) =>

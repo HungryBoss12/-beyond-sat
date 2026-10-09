@@ -117,7 +117,13 @@ export function formatUserOverview(detail: AdminUserDetail): string {
     `Vocab reviews (7d): ${s.vocab_reviews_7d}`,
   ].filter(Boolean);
   if (p.city || p.school) {
-    lines.push("", [p.city, p.school].filter(Boolean).map(escapeHtml).join(" · "));
+    lines.push(
+      "",
+      [p.city, p.school]
+        .filter((v): v is string => Boolean(v))
+        .map(escapeHtml)
+        .join(" · "),
+    );
   }
   return lines.join("\n");
 }

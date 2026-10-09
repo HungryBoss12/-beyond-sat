@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminWrite, replaceDailyTests } from "@/lib/admin-writes";
 import { Plus, Trash2, X, ChevronUp, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { ListSkeleton } from "@/components/ui/skeletons";
@@ -76,15 +77,11 @@ function AdminDaily() {
 
   async function save() {
     if (!editing) return;
-    await supabase.from("daily_test_tests").delete().eq("daily_test_id", editing.dt.id);
-    if (editing.tests.length > 0) {
-      await supabase.from("daily_test_tests").insert(
-        editing.tests.map((tid, i) => ({
-          daily_test_id: editing.dt.id,
-          test_id: tid,
-          position: i + 1,
-        })),
-      );
+    try {
+      await replaceDailyTests(editing.dt.id, editing.tests);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Could not save the daily lineup.");
+      return;
     }
     setEditing(null);
     load();
@@ -92,7 +89,9 @@ function AdminDaily() {
 
   async function remove(id: string) {
     if (!confirm("Delete this daily test?")) return;
-    await supabase.from("daily_tests").delete().eq("id", id);
+    await adminWrite("Could not delete the daily test", () =>
+      supabase.from("daily_tests").delete().eq("id", id),
+    );
     load();
   }
 

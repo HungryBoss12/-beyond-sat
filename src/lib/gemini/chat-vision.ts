@@ -164,19 +164,18 @@ export async function replaceImagesWithDescriptions(
   for (let index = 0; index < messages.length; index++) {
     const message = messages[index];
     const isLatestUser = index === lastIndex && message.role === "user";
-    const hasImages =
-      typeof message.content !== "string" &&
-      message.content.some((part) => part.type === "image_url");
+    const parts = typeof message.content === "string" ? null : message.content;
+    const hasImages = !!parts && parts.some((part) => part.type === "image_url");
 
-    if (!hasImages || message.role !== "user") {
+    if (!parts || !hasImages || message.role !== "user") {
       enriched.push(message);
       continue;
     }
 
-    const textParts = message.content
+    const textParts = parts
       .filter((part): part is { type: "text"; text: string } => part.type === "text")
       .map((part) => part.text);
-    const imageParts = message.content.filter((part) => part.type === "image_url");
+    const imageParts = parts.filter((part) => part.type === "image_url");
     const userText = textParts.join("\n").trim();
 
     if (!isLatestUser) {

@@ -172,7 +172,7 @@ function AdminUserDetailPage() {
     const { error } = await supabase.rpc("admin_set_banned", {
       p_user_id: userId,
       p_banned: !banned,
-      p_reason: reason || null,
+      p_reason: reason || undefined,
     });
     setBusy(false);
     if (error) {
@@ -381,7 +381,7 @@ function OverviewTab({ detail }: { detail: AdminUserDetail }) {
                 key={String(k)}
                 className="rounded-xl border border-brand-400/40 bg-brand-600 px-3 py-2 shadow-panel"
               >
-                <dt className="text-[10px] font-bold uppercase tracking-wider text-brand-200">{k}</dt>
+                <dt className="text-[10px] font-bold uppercase tracking-wider text-brand-200">{String(k)}</dt>
                 <dd className="text-sm font-semibold text-white">{String(v)}</dd>
               </div>
             ))}
@@ -396,7 +396,7 @@ function OverviewTab({ detail }: { detail: AdminUserDetail }) {
                 key={String(k)}
                 className="rounded-xl border border-brand-400/40 bg-brand-600 px-3 py-2 shadow-panel"
               >
-                <dt className="text-[10px] font-bold uppercase tracking-wider text-brand-200">{k}</dt>
+                <dt className="text-[10px] font-bold uppercase tracking-wider text-brand-200">{String(k)}</dt>
                 <dd className="text-sm font-semibold text-white">{String(v)}</dd>
               </div>
             ))}

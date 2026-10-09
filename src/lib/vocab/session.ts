@@ -56,10 +56,12 @@ export async function fetchDueSession(
   const deckIds = deckId ? await resolveDeckScopeIds(config, token, deckId) : null;
   const deckFilter = deckIds ? `&vocab_cards.deck_id=${deckIdInFilter(deckIds)}` : "";
 
+  /* `!inner` makes the deck filter drop parent rows; without it the limit was
+     spent on other decks' cards before the filter ran. */
   const { data: dueRows, error: dueErr } = await restFetch<StateRow[]>(
     config,
     token,
-    `user_card_states?user_id=eq.${encodeURIComponent(userId)}&due=lte.${encodeURIComponent(nowIso)}${deckFilter}&select=*,vocab_cards(*)&limit=50`,
+    `user_card_states?user_id=eq.${encodeURIComponent(userId)}&due=lte.${encodeURIComponent(nowIso)}${deckFilter}&select=*,vocab_cards!inner(*)&order=due.asc&limit=50`,
   );
   if (dueErr) throw new Error(dueErr);
 
@@ -68,21 +70,18 @@ export async function fetchDueSession(
   if (states.length < SESSION_LIMIT) {
     const need = SESSION_LIMIT - states.length;
 
-    const { data: ownedStates } = await restFetch<{ card_id: string }[]>(
+    const { data: newCardRows, error: newErr } = await restFetch<VocabCard[]>(
       config,
       token,
-      `user_card_states?user_id=eq.${encodeURIComponent(userId)}&select=card_id`,
+      "rpc/vocab_new_cards",
+      {
+        method: "POST",
+        body: JSON.stringify({ p_deck_id: deckId ?? null, p_limit: need }),
+      },
     );
-    const ownedIds = new Set((ownedStates ?? []).map((s) => s.card_id));
-    states.forEach((s) => ownedIds.add(s.card_id));
-
-    const cardPath = deckIds
-      ? `vocab_cards?deck_id=${deckIdInFilter(deckIds)}&select=*&order=created_at.asc&limit=500`
-      : "vocab_cards?select=*&order=created_at.asc&limit=500";
-
-    const { data: allCards } = await restFetch<VocabCard[]>(config, token, cardPath);
-
-    const newCards = (allCards ?? []).filter((c) => !ownedIds.has(c.id)).slice(0, need);
+    if (newErr) throw new Error(newErr);
+    const taken = new Set(states.map((s) => s.card_id));
+    const newCards = (newCardRows ?? []).filter((c) => !taken.has(c.id)).slice(0, need);
 
     for (const card of newCards) {
       const seed = emptyFsrsState();

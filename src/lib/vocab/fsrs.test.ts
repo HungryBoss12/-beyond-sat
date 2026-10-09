@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createEmptyCard, Rating } from "ts-fsrs";
+import { createEmptyCard, Rating, State } from "ts-fsrs";
 import {
   applyReview,
   emptyFsrsState,
@@ -41,6 +41,15 @@ describe("vocab fsrs", () => {
     const after = applyReview(before, 3);
     expect(new Date(after.due).getTime()).toBeGreaterThan(Date.now() - 1000);
     expect(after.reps).toBeGreaterThanOrEqual(before.reps);
+  });
+
+  it("graduates a new card to Review after Good then Good", () => {
+    const start = new Date("2026-10-01T09:00:00Z");
+    const first = applyReview(seedState(), 3, start);
+    expect(first.state).toBe(State.Learning);
+    expect(first.learning_steps).toBe(1);
+    const second = applyReview(seedState(first), 3, new Date(first.due));
+    expect(second.state).toBe(State.Review);
   });
 
   it("previewIntervals returns four labels", () => {

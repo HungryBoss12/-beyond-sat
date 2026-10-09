@@ -1,5 +1,6 @@
 import { jsonResponse, requireAdmin } from "@/lib/vocab/rest";
 import { hydrateServerEnv } from "@/lib/server-env";
+import { requestIp, takeRateToken } from "@/lib/shared-rate-limit";
 import { accountEmailFor, slugUsernameFromName } from "./login-email";
 import { isValidUsername, normalizeUsername } from "@/lib/classes/types";
 
@@ -131,9 +132,29 @@ function inviteClosed(row: {
   return null;
 }
 
+async function inviteRateLimited(
+  request: Request,
+  env: unknown,
+  kind: "preview" | "claim",
+): Promise<Response | null> {
+  const limit = await takeRateToken(
+    env,
+    `invite-${kind}:${requestIp(request)}`,
+    kind === "preview" ? 40 : 20,
+    kind === "preview" ? 10 : 5,
+  );
+  if (!limit || limit.ok) return null;
+  return jsonResponse(
+    { error: "Too many tries. Wait a minute and open the link again." },
+    { status: 429, headers: { "retry-after": String(limit.retryAfter || 60) } },
+  );
+}
+
 export async function handlePreviewStudentInvite(request: Request, env: unknown): Promise<Response> {
   if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
   hydrateServerEnv(env);
+  const limited = await inviteRateLimited(request, env, "preview");
+  if (limited) return limited;
   let body: { token?: unknown };
   try {
     body = (await request.json()) as typeof body;
@@ -164,6 +185,8 @@ export async function handlePreviewStudentInvite(request: Request, env: unknown)
 export async function handleClaimStudentInvite(request: Request, env: unknown): Promise<Response> {
   if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
   hydrateServerEnv(env);
+  const limited = await inviteRateLimited(request, env, "claim");
+  if (limited) return limited;
   let body: { token?: unknown; name?: unknown; username?: unknown; password?: unknown };
   try {
     body = (await request.json()) as typeof body;

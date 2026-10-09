@@ -1,5 +1,6 @@
-import { formatISO, getISOWeek, getISOWeekYear } from "date-fns";
+import { getISOWeek, getISOWeekYear } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { tashkentToday } from "@/lib/billing/dates";
 import { quoteFilterValue } from "@/lib/postgrest-filter";
 import { createNotification } from "@/lib/notifications/client";
 import type { NotificationAudience } from "@/lib/notifications/types";
@@ -59,10 +60,14 @@ export type CreateVocabHomeworkInput = {
   displaySeconds?: number;
 };
 
+/** Periods follow the Tashkent calendar day, whatever the device clock says. */
 export function homeworkPeriodKey(recurrence: VocabHomeworkRecurrence, at = new Date()): string {
   if (recurrence === "once") return "once";
-  if (recurrence === "daily") return formatISO(at, { representation: "date" });
-  return `${getISOWeekYear(at)}-W${String(getISOWeek(at)).padStart(2, "0")}`;
+  const day = tashkentToday(at);
+  if (recurrence === "daily") return day;
+  const [y, m, d] = day.split("-").map(Number);
+  const local = new Date(y!, m! - 1, d!);
+  return `${getISOWeekYear(local)}-W${String(getISOWeek(local)).padStart(2, "0")}`;
 }
 
 export async function listVocabHomeworkAssignments(): Promise<VocabHomeworkAssignment[]> {
@@ -195,37 +200,16 @@ export async function recordDeckHomeworkProgress(
 
   const isGreen = rating === 3 || rating === 4;
 
+  /* One statement in the database per rating: ratings are sent in parallel, and
+     a read-then-write here lost counts. */
   for (const a of assignments) {
-    const periodKey = homeworkPeriodKey(a.recurrence);
-    const { data: existing } = await supabase
-      .from("vocab_homework_completions")
-      .select("*")
-      .eq("assignment_id", a.id)
-      .eq("user_id", uid)
-      .eq("period_key", periodKey)
-      .maybeSingle();
-
-    const cards = (existing?.cards_reviewed ?? 0) + 1;
-    const green = (existing?.green_reviews ?? 0) + (isGreen ? 1 : 0);
-    const target = a.card_target ?? 1;
-    const greenOk = !a.require_green_only || green === cards;
-    const done = cards >= target && greenOk;
-
-    const payload = {
-      assignment_id: a.id,
-      user_id: uid,
-      period_key: periodKey,
-      cards_reviewed: cards,
-      green_reviews: green,
-      status: done ? ("completed" as const) : ("in_progress" as const),
-      completed_at: done ? new Date().toISOString() : null,
-    };
-
-    if (existing) {
-      await supabase.from("vocab_homework_completions").update(payload).eq("id", existing.id);
-    } else {
-      await supabase.from("vocab_homework_completions").insert(payload);
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).rpc("bs_bump_vocab_homework", {
+      p_assignment_id: a.id,
+      p_period_key: homeworkPeriodKey(a.recurrence),
+      p_green: isGreen,
+    });
+    if (error) console.error("[vocab/homework] progress", error.message);
   }
 }
 
@@ -254,18 +238,9 @@ export async function recordQuizHomeworkCompletion(
       completed_at: new Date().toISOString(),
     };
 
-    const { data: existing } = await supabase
+    const { error } = await supabase
       .from("vocab_homework_completions")
-      .select("id")
-      .eq("assignment_id", a.id)
-      .eq("user_id", uid)
-      .eq("period_key", periodKey)
-      .maybeSingle();
-
-    if (existing) {
-      await supabase.from("vocab_homework_completions").update(payload).eq("id", existing.id);
-    } else {
-      await supabase.from("vocab_homework_completions").insert(payload);
-    }
+      .upsert(payload, { onConflict: "assignment_id,user_id,period_key" });
+    if (error) console.error("[vocab/homework] quiz completion", error.message);
   }
 }

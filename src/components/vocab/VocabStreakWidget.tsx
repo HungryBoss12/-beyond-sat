@@ -1,8 +1,9 @@
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
 import { Check, Flame } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchVocabActivityLast7 } from "@/lib/vocab/client";
+import { liveStreak, tashkentDayOffset } from "@/lib/streak";
 import { Panel, PanelHead } from "@/components/ui/panel";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -20,13 +21,13 @@ export function VocabStreakWidget({ compact }: { compact?: boolean }) {
       const [{ data: sp }, days] = await Promise.all([
         supabase
           .from("student_profiles")
-          .select("current_streak")
+          .select("current_streak,last_active_at,last_daily_completed_date")
           .eq("user_id", uid)
           .maybeSingle(),
         fetchVocabActivityLast7(),
       ]);
 
-      setStreak(sp?.current_streak ?? 0);
+      setStreak(liveStreak(sp));
       setActiveDays(days);
     })();
   }, []);
@@ -76,11 +77,10 @@ export function VocabStreakWidget({ compact }: { compact?: boolean }) {
 }
 
 function buildWeekLabels(): string[] {
-  const today = new Date();
   const labels: string[] = [];
   for (let i = 6; i >= 0; i--) {
-    const d = subDays(today, i);
-    labels.push(format(d, "EEE").slice(0, 3));
+    const [y, m, d] = tashkentDayOffset(i).split("-").map(Number);
+    labels.push(format(new Date(y!, m! - 1, d!), "EEE").slice(0, 3));
   }
   return labels.length === 7 ? labels : DAYS;
 }

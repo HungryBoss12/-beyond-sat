@@ -20,7 +20,7 @@ function GlowButton({
   children: React.ReactNode;
   className: string;
   onClick?: () => void;
-  to?: string;
+  to?: "/vocab/decks" | "/vocab/tests";
 }) {
   const ref = usePointerGlow<HTMLButtonElement>();
   if (to) {

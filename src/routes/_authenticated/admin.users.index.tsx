@@ -234,15 +234,15 @@ function isStaffCreated(r: Pick<UserRow, "staff_created" | "email">): boolean {
 }
 
 export const Route = createFileRoute("/_authenticated/admin/users/")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    tab: search.tab === "provisioning" ? ("provisioning" as const) : ("directory" as const),
+  validateSearch: (search: Record<string, unknown>): { tab?: "provisioning" | "directory" } => ({
+    tab: search.tab === "provisioning" ? "provisioning" : "directory",
   }),
   component: AdminStudents,
   head: () => ({ meta: [{ title: "Students — Admin — BeyondSAT" }] }),
 });
 
 function AdminStudents() {
-  const { tab } = Route.useSearch();
+  const tab = Route.useSearch().tab ?? "directory";
   const navigate = useNavigate({ from: Route.fullPath });
   const [rows, setRows] = useState<UserRow[]>([]);
   const [unclaimed, setUnclaimed] = useState<Set<string>>(new Set());
@@ -411,7 +411,7 @@ function AdminStudents() {
     const { error } = await supabase.rpc("admin_set_banned", {
       p_user_id: u.id,
       p_banned: !u.banned,
-      p_reason: reason || null,
+      p_reason: reason || undefined,
     });
     setBusy(null);
     if (error) {

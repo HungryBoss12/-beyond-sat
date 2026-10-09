@@ -24,6 +24,7 @@ import {
   loadQuestionWithAnswers,
 } from "@/components/admin/question-edit-modal";
 import type { AdminChoice, AdminQuestion, BankFormat } from "@/lib/admin/question";
+import { adminWrite, replaceTestQuestions } from "@/lib/admin-writes";
 import {
   SECTION_LABEL,
   LETTER_DIFFICULTIES,
@@ -143,7 +144,8 @@ function groupTests(items: Test[]): { papers: PaperGroup[]; singles: PaperGroup[
 }
 
 function AdminTests() {
-  const { bank, edit: editId, preview: previewId } = Route.useSearch();
+  const { bank: bankParam, edit: editId, preview: previewId } = Route.useSearch();
+  const bank: BankFormat = bankParam ?? "ordinary";
   const navigate = useNavigate();
   const [items, setItems] = useState<Test[]>([]);
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
@@ -411,14 +413,10 @@ function AdminTests() {
       if (error) return alert(error.message);
       testId = data.id as string;
     }
-    await supabase.from("test_questions").delete().eq("test_id", testId);
-    if (editingQs.length > 0) {
-      const { error: linkErr } = await supabase
-        .from("test_questions")
-        .insert(
-          editingQs.map((qid, i) => ({ test_id: testId, question_id: qid, position: i + 1 })),
-        );
-      if (linkErr) return alert(linkErr.message);
+    try {
+      await replaceTestQuestions(testId, editingQs);
+    } catch (e) {
+      return alert(e instanceof Error ? e.message : "Could not save the test's questions.");
     }
     if (bank === "sqb" && wantPublished) {
       const { error: publishErr } = await supabase.rpc("staff_publish_sqb_test", {
@@ -434,7 +432,7 @@ function AdminTests() {
 
   async function remove(id: string) {
     if (!confirm("Delete this test?")) return;
-    await supabase.from("tests").delete().eq("id", id);
+    await adminWrite("Could not delete the test", () => supabase.from("tests").delete().eq("id", id));
     load();
   }
 
@@ -484,7 +482,7 @@ function AdminTests() {
             onClick={() => openEditor()}
             className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
           >
-            <Plus className="h-4 w-4" /> {bank === "sqb" ? "New SQB test" : "New test"}
+            <Plus className="h-4 w-4" /> New test
           </button>
         </div>
       </div>
@@ -837,12 +835,8 @@ function AdminTests() {
                               {q.question_text}
                             </div>
                             <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-brand-100">
-                              {bank === "sqb" && q.external_id ? (
-                                <span className="mr-1 font-mono normal-case">{q.external_id}</span>
-                              ) : null}
                               {q.skill}
                               {q.subskill ? ` · ${q.subskill}` : ""} · {q.difficulty}
-                              {bank === "sqb" && q.published === false ? " · draft" : ""}
                             </div>
                           </div>
                           <button

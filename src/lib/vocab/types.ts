@@ -55,6 +55,7 @@ export type UserCardState = {
   reps: number;
   lapses: number;
   state: number;
+  learning_steps?: number;
   last_review: string | null;
 };
 

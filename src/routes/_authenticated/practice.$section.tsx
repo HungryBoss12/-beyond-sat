@@ -45,6 +45,7 @@ import type { AnswerState } from "@/components/QuestionCard";
 import { Panel, EmptyState, Skeleton } from "@/components/ui/panel";
 import { RevealCard } from "@/components/ui/reveal-card";
 import { errorMessage, cn } from "@/lib/utils";
+import { fetchPracticeCounts } from "@/lib/practice-counts";
 
 export const Route = createFileRoute("/_authenticated/practice/$section")({
   parseParams: (p) => {
@@ -236,12 +237,13 @@ function parseSessionMetadata(raw: unknown): {
   return raw as { test_id?: string; draft_answers?: AnswerState[] | null };
 }
 
-/** PostgREST `.in()` lists get long; chunk so a big bank never 400s the page. */
+/** PostgREST `.in()` lists get long, and one response stops at 1000 rows. A
+    chunk of 15 tests stays well under that even for 54-question papers. */
 async function fetchQuestionCounts(testIds: string[]): Promise<Map<string, number>> {
   const counts = new Map<string, number>();
   if (!testIds.length) return counts;
 
-  const chunkSize = 40;
+  const chunkSize = 15;
   for (let i = 0; i < testIds.length; i += chunkSize) {
     const chunk = testIds.slice(i, i + chunkSize);
     const { data, error } = await supabase
@@ -363,19 +365,14 @@ export function SectionPaperBrowse({
         setSets(mergeSets(rows, counts, new Map()));
         setLoading(false);
 
-        const [sessionsResult, countsResult] = await Promise.all([
+        const [sessionsResult, practiceCounts] = await Promise.all([
           supabase
             .from("test_sessions")
             .select("id,metadata,completed_at,correct_count,total_questions,started_at")
             .eq("type", "practice")
             .order("started_at", { ascending: false })
             .limit(300),
-          supabase
-            .from("questions")
-            .select("difficulty")
-            .eq("section", section)
-            .eq("bank_format", bankFormat)
-            .limit(5000),
+          fetchPracticeCounts(),
         ]);
 
         const byTest = new Map<
@@ -408,8 +405,9 @@ export function SectionPaperBrowse({
         }
 
         const diffTally: Record<string, number> = {};
-        for (const row of (countsResult.data as { difficulty: string }[]) ?? []) {
-          diffTally[row.difficulty] = (diffTally[row.difficulty] ?? 0) + 1;
+        for (const row of practiceCounts.questions) {
+          if (row.section !== section || row.bank_format !== bankFormat) continue;
+          diffTally[row.difficulty] = (diffTally[row.difficulty] ?? 0) + row.n;
         }
 
         if (cancelled) return;

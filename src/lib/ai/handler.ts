@@ -25,6 +25,7 @@ import {
 import { userIsBanned } from "@/lib/vocab/rest";
 import { loadUinfoSummary } from "@/lib/uinfo/summarize";
 import { dailyCap, rateLimit } from "@/lib/rate-limit";
+import { takeAiQuota } from "@/lib/shared-rate-limit";
 import {
   formatYoutubePromptBlock,
   latestUserText,
@@ -210,11 +211,11 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
     return json({ error: "This account is banned." }, 403);
   }
 
-  /* Rate limit (per-isolate token bucket; see lib/rate-limit.ts for the
-     multi-isolate caveat): 20-request burst, 6/minute sustained, plus a daily
-     cap so one account can't burn the OpenRouter budget overnight. The daily
-     cap reads `ai_chat_daily_cap` from app_settings when present. Rate limits
-     run after auth but before any billable work — a 429 costs nothing. */
+  /* The per-minute burst limit is per isolate (see lib/rate-limit.ts). The
+     daily cap is counted in the database so it holds across isolates; the
+     in-memory counter only covers a database outage. The cap reads
+     `ai_chat_daily_cap` from app_settings when present. Both run after auth but
+     before any billable work — a 429 costs nothing. */
   const perMinute = rateLimit(`ai-chat:${user.id}`, 20, 6);
   if (!perMinute.ok) {
     return json(
@@ -223,7 +224,8 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
     );
   }
   const dailyMax = await readDailyChatCap(config, token);
-  const day = dailyCap(`ai-chat-day:${user.id}`, dailyMax);
+  const day =
+    (await takeAiQuota(env, user.id, dailyMax)) ?? dailyCap(`ai-chat-day:${user.id}`, dailyMax);
   if (!day.ok) {
     return json(
       { error: "You've hit today's Beyond AI limit. Come back tomorrow." },
@@ -350,7 +352,7 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
 
   // Withdrawn free models return 404. Retry once with the code default when the
   // live override (or a freshly withdrawn default) no longer exists.
-  if (upstream.status === 404 && task !== "vision") {
+  if (upstream.status === 404) {
     const fallback = DEFAULT_MODELS[task];
     if (fallback && fallback !== model) {
       console.error(

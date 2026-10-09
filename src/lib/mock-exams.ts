@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { replaceMockSections } from "@/lib/admin-writes";
 import {
   SECTION_LABEL,
   formatSourceDate,
@@ -300,18 +301,19 @@ export async function saveMockExam(
     mockId = data.id as string;
   }
 
-  await supabase.from("mock_exam_sections").delete().eq("mock_exam_id", mockId);
   const rows = [rwPaper, mathPaper].flatMap((paper, sectionIndex) =>
     ([1, 2] as const).map((module) => ({
-      mock_exam_id: mockId,
       module,
       section_index: sectionIndex + 1,
       section_name: SECTION_LABEL[paper.section],
       test_id: module === 1 ? paper.module1.id : paper.module2.id,
     })),
   );
-  const { error: sectionsError } = await supabase.from("mock_exam_sections").insert(rows);
-  if (sectionsError) return { mockId: "", error: sectionsError.message };
+  try {
+    await replaceMockSections(mockId, rows);
+  } catch (e) {
+    return { mockId: "", error: e instanceof Error ? e.message : "Could not save the mock sections" };
+  }
 
   return { mockId };
 }

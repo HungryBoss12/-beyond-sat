@@ -53,7 +53,7 @@ function VocabTestsList() {
       {loading ? (
         <ListSkeleton rows={4} />
       ) : quizzes.length === 0 ? (
-        <EmptyState title="No quizzes yet" description="Your instructor will publish vocab tests soon." />
+        <EmptyState title="No quizzes yet" body="Your instructor will publish vocab tests soon." />
       ) : (
         <div className="space-y-3">
           {quizzes.map((q) => (

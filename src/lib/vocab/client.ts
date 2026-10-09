@@ -1,5 +1,5 @@
-import { format, subDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { tashkentDayOffset } from "@/lib/streak";
 import { creatorNameMap } from "./user-content";
 import type { GeneratedVocabItem, ReviewRating, SessionCard, VocabDeck } from "./types";
 
@@ -211,7 +211,7 @@ export async function deleteVocabCard(cardId: string): Promise<void> {
 
 export async function fetchDeckDueCount(deckId?: string): Promise<number> {
   const { data, error } = await supabase.rpc("vocab_due_count", {
-    p_deck_id: deckId ?? null,
+    p_deck_id: deckId,
   });
   if (error) throw new Error(error.message);
   return typeof data === "number" ? data : 0;
@@ -244,53 +244,37 @@ export type DeckPickerRow = VocabDeck & {
   ownerUsername: string | null;
 };
 
-async function fetchDeckStats(deckId: string): Promise<{
+type DeckOverviewRow = {
+  deck_id: string;
   new_count: number;
   learning_count: number;
   review_count: number;
   total_count: number;
-}> {
-  const { data, error } = await supabase.rpc("vocab_deck_stats", { p_deck_id: deckId });
-  if (error) throw new Error(error.message);
-  const row = Array.isArray(data) ? data[0] : data;
-  return {
-    new_count: row?.new_count ?? 0,
-    learning_count: row?.learning_count ?? 0,
-    review_count: row?.review_count ?? 0,
-    total_count: row?.total_count ?? 0,
-  };
-}
+  last_studied: string | null;
+};
 
 export async function fetchDeckPickerRows(): Promise<DeckPickerRow[]> {
-  const { data: deckRows, error } = await supabase
-    .from("vocab_decks")
-    .select("*")
-    .order("sort_order", { ascending: true })
-    .order("title", { ascending: true });
+  const [{ data: deckRows, error }, overview] = await Promise.all([
+    supabase
+      .from("vocab_decks")
+      .select("*")
+      .order("sort_order", { ascending: true })
+      .order("title", { ascending: true }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).rpc("vocab_deck_overview") as Promise<{
+      data: DeckOverviewRow[] | null;
+      error: { message: string } | null;
+    }>,
+  ]);
   if (error) throw new Error(error.message);
+  if (overview.error) throw new Error(overview.error.message);
   const decks = ((deckRows ?? []) as VocabDeck[]).filter(
     (deck) => !deck.visibility || deck.visibility === "published",
   );
   const ownerNames = await creatorNameMap(decks.map((deck) => deck.id));
 
-  const { data: sess } = await supabase.auth.getSession();
-  const uid = sess.session?.user?.id;
-
-  const statsByDeck = new Map<
-    string,
-    { new_count: number; learning_count: number; review_count: number; total_count: number }
-  >();
-
-  await Promise.all(
-    (decks ?? []).map(async (deck) => {
-      try {
-        const stats = await fetchDeckStats(deck.id);
-        statsByDeck.set(deck.id, stats);
-      } catch {
-        statsByDeck.set(deck.id, { new_count: 0, learning_count: 0, review_count: 0, total_count: 0 });
-      }
-    }),
-  );
+  const statsByDeck = new Map<string, DeckOverviewRow>();
+  for (const row of overview.data ?? []) statsByDeck.set(row.deck_id, row);
 
   const childrenByParent = new Map<string | null, string[]>();
   for (const deck of decks ?? []) {
@@ -305,57 +289,40 @@ export async function fetchDeckPickerRows(): Promise<DeckPickerRow[]> {
     review_count: number;
     total_count: number;
   } {
-    const deck = (decks ?? []).find((d) => d.id === deckId);
-    const direct = statsByDeck.get(deckId) ?? {
-      new_count: 0,
-      learning_count: 0,
-      review_count: 0,
-      total_count: 0,
+    const deck = decks.find((d) => d.id === deckId);
+    const row = statsByDeck.get(deckId);
+    const direct = {
+      new_count: row?.new_count ?? 0,
+      learning_count: row?.learning_count ?? 0,
+      review_count: row?.review_count ?? 0,
+      total_count: row?.total_count ?? 0,
     };
     if (!deck?.is_folder) return direct;
     const kids = childrenByParent.get(deckId) ?? [];
-    return kids.reduce(
-      (acc, kid) => {
-        const s = aggregateStats(kid);
-        return {
-          new_count: acc.new_count + s.new_count,
-          learning_count: acc.learning_count + s.learning_count,
-          review_count: acc.review_count + s.review_count,
-          total_count: acc.total_count + s.total_count,
-        };
-      },
-      { new_count: 0, learning_count: 0, review_count: 0, total_count: 0 },
-    );
+    return kids.reduce((acc, kid) => {
+      const s = aggregateStats(kid);
+      return {
+        new_count: acc.new_count + s.new_count,
+        learning_count: acc.learning_count + s.learning_count,
+        review_count: acc.review_count + s.review_count,
+        total_count: acc.total_count + s.total_count,
+      };
+    }, direct);
   }
 
-  const rows = await Promise.all(
-    (decks ?? []).map(async (deck) => {
-      const stats = aggregateStats(deck.id);
-      let lastStudied: string | null = null;
-      if (uid && !deck.is_folder) {
-        const { data: states } = await supabase
-          .from("user_card_states")
-          .select("last_review, vocab_cards!inner(deck_id)")
-          .eq("user_id", uid)
-          .eq("vocab_cards.deck_id", deck.id)
-          .not("last_review", "is", null)
-          .order("last_review", { ascending: false })
-          .limit(1);
-        lastStudied = states?.[0]?.last_review ?? null;
-      }
-
-      return {
-        ...(deck as VocabDeck),
-        cardCount: stats.total_count,
-        dueCount: stats.review_count + stats.new_count,
-        newCount: stats.new_count,
-        learningCount: stats.learning_count,
-        reviewCount: stats.review_count,
-        lastStudied,
-        ownerUsername: ownerNames.get(deck.id) ?? null,
-      };
-    }),
-  );
+  const rows = decks.map((deck) => {
+    const stats = aggregateStats(deck.id);
+    return {
+      ...deck,
+      cardCount: stats.total_count,
+      dueCount: stats.review_count + stats.new_count,
+      newCount: stats.new_count,
+      learningCount: stats.learning_count,
+      reviewCount: stats.review_count,
+      lastStudied: deck.is_folder ? null : (statsByDeck.get(deck.id)?.last_studied ?? null),
+      ownerUsername: ownerNames.get(deck.id) ?? null,
+    };
+  });
 
   return rows.filter((r) => r.cardCount > 0);
 }
@@ -382,7 +349,7 @@ export async function fetchVocabActivityLast7(): Promise<string[]> {
 
   const dates: string[] = [];
   for (let i = 6; i >= 0; i--) {
-    dates.push(format(subDays(new Date(), i), "yyyy-MM-dd"));
+    dates.push(tashkentDayOffset(i));
   }
 
   const { data } = await supabase

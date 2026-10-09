@@ -102,7 +102,7 @@ export async function resolveDisplayUrls(
           .createSignedUrls(chunk, DISPLAY_TTL_SECONDS);
         if (!data) continue;
         for (const row of data) {
-          if (!row.signedUrl || row.error) continue;
+          if (!row.signedUrl || row.error || !row.path) continue;
           for (const original of paths.get(row.path) ?? []) {
             out.set(original, row.signedUrl);
           }

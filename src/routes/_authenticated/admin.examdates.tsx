@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminWrite } from "@/lib/admin-writes";
 import { Plus, Trash2, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import { ListSkeleton } from "@/components/ui/skeletons";
@@ -60,12 +61,16 @@ function AdminExamDates() {
   }
 
   async function toggle(row: ExamDate) {
-    await supabase.from("exam_dates").update({ active: !row.active }).eq("id", row.id);
+    await adminWrite("Could not change the exam date", () =>
+      supabase.from("exam_dates").update({ active: !row.active }).eq("id", row.id),
+    );
     load();
   }
   async function remove(id: string) {
     if (!confirm("Remove this exam date?")) return;
-    await supabase.from("exam_dates").delete().eq("id", id);
+    await adminWrite("Could not remove the exam date", () =>
+      supabase.from("exam_dates").delete().eq("id", id),
+    );
     load();
   }
 

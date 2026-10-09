@@ -20,20 +20,28 @@
  *    blob: fallback).
  *  - connect-src supabase.co     : the browser only ever talks to this origin
  *    plus our own /api/* routes. OpenRouter/Telegram/etc. are server-side only.
+ *    wss: covers Supabase realtime sockets.
+ *  - media-src https:            : lesson videos come from signed storage URLs,
+ *    and homework videos can be a direct link to any site.
+ *  - cloudflareinsights          : Cloudflare injects its analytics beacon into
+ *    every page and it reports back to cloudflareinsights.com.
+ *  - desmos connect/font         : the Desmos API build loads its own assets
+ *    when an admin sets a key.
  *
- * ROLLOUT: the CSP ships as `Content-Security-Policy-Report-Only` by default.
- * After one deploy of clean reports, set the env var CSP_ENFORCE=1 (wrangler
- * vars or secret) to move it to the enforced `Content-Security-Policy` header.
- * This mirrors the plan's "report-only for one deploy, then enforce".
+ * Enforced when CSP_ENFORCE=1 (set in wrangler.jsonc vars); otherwise sent as
+ * `Content-Security-Policy-Report-Only`.
  */
+
+import { readEnv } from "./server-env";
 
 const CSP_POLICY = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.desmos.com",
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.desmos.com https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
+  "font-src 'self' data: https://fonts.gstatic.com https://www.desmos.com",
   "img-src 'self' data: blob: https://i.pravatar.cc https://img.youtube.com https://*.supabase.co https://www.desmos.com",
-  "connect-src 'self' https://*.supabase.co",
+  "media-src 'self' blob: https:",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cloudflareinsights.com https://www.desmos.com",
   "frame-src https://www.youtube-nocookie.com https://www.desmos.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
@@ -45,10 +53,8 @@ const CSP_POLICY = [
 
 function cspEnforced(env: unknown): boolean {
   if (import.meta.env.DEV) return false; // never hard-fail HMR/dev
-  const raw = typeof env === "object" && env !== null
-    ? (env as Record<string, unknown>)["CSP_ENFORCE"]
-    : undefined;
-  return raw === "1" || raw === "true" || raw === true;
+  const raw = readEnv(env, "CSP_ENFORCE");
+  return raw === "1" || raw === "true";
 }
 
 /** The always-on, non-CSP hardening headers. */

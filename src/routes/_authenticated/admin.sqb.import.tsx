@@ -1,11 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { replaceTestQuestions } from "@/lib/admin-writes";
+import { fetchAllRows } from "@/lib/supabase-pages";
 import {
   parseJson,
   validateRecord,
   flagDuplicates,
   dedupeKey,
+  type DedupeFields,
   forceBankFormat,
   JSON_TEMPLATE,
   type RowResult,
@@ -48,7 +51,7 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/sqb/import")({
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { testId?: string } => ({
     testId: typeof s.testId === "string" && s.testId.trim() ? s.testId.trim() : undefined,
   }),
   component: AdminSqbImportWizard,
@@ -157,10 +160,21 @@ function AdminSqbImportWizard() {
   }
 
   async function fetchExisting() {
-    const { data } = await supabase.from("questions").select("section,question_text").limit(5000);
     const keys = new Set<string>();
-    for (const r of (data ?? []) as { section: string; question_text: string }[]) {
-      keys.add(dedupeKey(r.section, r.question_text));
+    try {
+      const rows = await fetchAllRows<DedupeFields>((from, to) =>
+        supabase
+          .from("questions")
+          .select("section,question_text,prompt,choices")
+          .order("id")
+          .range(from, to) as unknown as PromiseLike<{
+          data: DedupeFields[] | null;
+          error: { message: string } | null;
+        }>,
+      );
+      for (const r of rows) keys.add(dedupeKey(r));
+    } catch (e) {
+      console.error("[sqb import] could not load existing questions", e);
     }
     setExistingKeys(keys);
   }
@@ -465,18 +479,12 @@ function AdminSqbImportWizard() {
           if (ue) {
             errors.push(`Could not update set: ${ue.message}`);
           } else {
-            await supabase.from("test_questions").delete().eq("test_id", existingTestId);
-            const { error: le } = await supabase.from("test_questions").insert(
-              insertedIds.map((qid, i) => ({
-                test_id: existingTestId,
-                question_id: qid,
-                position: i + 1,
-              })),
-            );
-            if (le) errors.push(`Link failed: ${le.message}`);
-            else {
+            try {
+              await replaceTestQuestions(existingTestId, insertedIds);
               createdTestId = existingTestId;
               createdSet = label;
+            } catch (e) {
+              errors.push(e instanceof Error ? e.message : "Link failed.");
             }
           }
         } else {

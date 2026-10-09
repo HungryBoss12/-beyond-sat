@@ -46,7 +46,7 @@ export async function ensureCatalogEntries(
         p_video_id: id,
         p_title: video.title.trim(),
         p_youtube_url: video.youtube_url.trim() || `https://www.youtube.com/watch?v=${id}`,
-        p_duration_seconds: video.duration_seconds ?? null,
+        p_duration_seconds: video.duration_seconds ?? undefined,
       });
       if (error) console.error("[lessons] catalog upsert failed", error.message);
     }),

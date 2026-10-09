@@ -37,17 +37,23 @@ export function Panel({
   tone = "plain",
   interactive = false,
   as: Tag = "div",
+  id,
+  style,
 }: {
   children: React.ReactNode;
   className?: string;
   tone?: "plain" | "soft" | "brand";
   interactive?: boolean;
   as?: "div" | "section" | "article";
+  id?: string;
+  style?: React.CSSProperties;
 }) {
   const ref = usePointerGlow<HTMLElement>();
   return (
     <Tag
       ref={ref as never}
+      id={id}
+      style={style}
       className={cx(
         "reveal-surface relative rounded-2xl border p-5 md:p-6 text-white",
         tone === "plain" && "border-brand-400/40 bg-brand-600 shadow-panel",

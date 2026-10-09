@@ -25,6 +25,7 @@ export function toFsrsCard(row: UserCardState): Card {
     reps: row.reps,
     lapses: row.lapses,
     state: row.state as State,
+    learning_steps: row.learning_steps ?? 0,
     last_review: row.last_review ? new Date(row.last_review) : undefined,
   };
 }
@@ -39,6 +40,7 @@ export function fromFsrsCard(card: Card): Omit<UserCardState, "id" | "user_id" |
     reps: card.reps,
     lapses: card.lapses,
     state: card.state,
+    learning_steps: card.learning_steps ?? 0,
     last_review: card.last_review ? card.last_review.toISOString() : null,
   };
 }
@@ -68,9 +70,10 @@ export function previewIntervals(row: UserCardState): Record<ReviewRating, strin
 export function applyReview(
   row: UserCardState,
   rating: ReviewRating,
+  now: Date = new Date(),
 ): Omit<UserCardState, "id" | "user_id" | "card_id"> {
   const card = toFsrsCard(row);
-  const result = scheduler.next(card, new Date(), ratingToGrade(rating));
+  const result = scheduler.next(card, now, ratingToGrade(rating));
   return fromFsrsCard(result.card);
 }
 

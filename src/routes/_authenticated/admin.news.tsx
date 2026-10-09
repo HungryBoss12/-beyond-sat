@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminWrite } from "@/lib/admin-writes";
 import { slugify } from "@/lib/admin";
 import { Plus, Trash2, Edit3, X, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
@@ -65,30 +66,38 @@ function AdminNews() {
       published: editing.published,
       published_at: editing.published ? editing.published_at || new Date().toISOString() : null,
     };
-    if (editing.id) {
-      await supabase.from("news_articles").update(payload).eq("id", editing.id);
-    } else {
-      const { data: u } = await supabase.auth.getUser();
-      await supabase.from("news_articles").insert({ ...payload, author_id: u.user?.id });
-    }
+    const id = editing.id;
+    const ok = id
+      ? await adminWrite("Could not save the article", () =>
+          supabase.from("news_articles").update(payload).eq("id", id),
+        )
+      : await adminWrite("Could not save the article", async () => {
+          const { data: u } = await supabase.auth.getUser();
+          return supabase.from("news_articles").insert({ ...payload, author_id: u.user?.id });
+        });
+    if (!ok) return;
     setEditing(null);
     load();
   }
 
   async function remove(id: string) {
     if (!confirm("Delete this article?")) return;
-    await supabase.from("news_articles").delete().eq("id", id);
+    await adminWrite("Could not delete the article", () =>
+      supabase.from("news_articles").delete().eq("id", id),
+    );
     load();
   }
 
   async function togglePublish(a: Article) {
-    await supabase
-      .from("news_articles")
-      .update({
-        published: !a.published,
-        published_at: !a.published ? new Date().toISOString() : a.published_at,
-      })
-      .eq("id", a.id);
+    await adminWrite("Could not change the article", () =>
+      supabase
+        .from("news_articles")
+        .update({
+          published: !a.published,
+          published_at: !a.published ? new Date().toISOString() : a.published_at,
+        })
+        .eq("id", a.id),
+    );
     load();
   }
 

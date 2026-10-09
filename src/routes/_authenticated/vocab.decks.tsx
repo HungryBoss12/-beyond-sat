@@ -9,7 +9,7 @@ import { startVocabReminderPoll } from "@/lib/vocab/reminders";
 
 export const Route = createFileRoute("/_authenticated/vocab/decks")({
   component: VocabDecksPage,
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { hint?: string } => ({
     hint: typeof search.hint === "string" ? search.hint : undefined,
   }),
   head: () => ({ meta: [{ title: "Decks — BeyondSAT" }] }),

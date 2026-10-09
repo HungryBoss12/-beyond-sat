@@ -1,12 +1,15 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { replaceTestQuestions } from "@/lib/admin-writes";
+import { fetchAllRows } from "@/lib/supabase-pages";
 import {
   parseDelimited,
   parseJson,
   validateRecord,
   flagDuplicates,
   dedupeKey,
+  type DedupeFields,
   dryRunImport,
   forceBankFormat,
   JSON_TEMPLATE,
@@ -89,12 +92,12 @@ import { uploadQuestionImage } from "@/lib/import/upload-question-image";
 import { toPersistableImageRef } from "@/lib/storage-url";
 
 export const Route = createFileRoute("/_authenticated/admin/import")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    bank: s.bank === "sqb" ? ("sqb" as const) : ("ordinary" as const),
+  validateSearch: (s: Record<string, unknown>): { bank?: "sqb" | "ordinary" } => ({
+    bank: s.bank === "sqb" ? "sqb" : "ordinary",
   }),
   beforeLoad: ({ search }) => {
-    if ((search as { bank?: string }).bank === "sqb") {
-      throw redirect({ to: "/admin/sqb/import" });
+    if (search.bank === "sqb") {
+      throw redirect({ to: "/admin/sqb/import", search: {} });
     }
   },
   component: AdminImport,
@@ -150,7 +153,7 @@ async function persistQuestionImage(
 }
 
 function AdminImport() {
-  const { bank: defaultBank } = Route.useSearch();
+  const defaultBank = Route.useSearch().bank ?? "ordinary";
   const [step, setStep] = useState<ImportWizardStep>("setup");
   const [mode, setMode] = useState<Mode>("upload");
 
@@ -238,14 +241,20 @@ function AdminImport() {
 
   async function fetchExisting(): Promise<Set<string>> {
     const keys = new Set<string>();
-    const { data, error } = await supabase
-      .from("questions")
-      .select("section,question_text")
-      .limit(5000);
-    if (!error) {
-      for (const r of (data ?? []) as { section: string; question_text: string }[]) {
-        keys.add(dedupeKey(r.section, r.question_text));
-      }
+    try {
+      const rows = await fetchAllRows<DedupeFields>((from, to) =>
+        supabase
+          .from("questions")
+          .select("section,question_text,prompt,choices")
+          .order("id")
+          .range(from, to) as unknown as PromiseLike<{
+          data: DedupeFields[] | null;
+          error: { message: string } | null;
+        }>,
+      );
+      for (const r of rows) keys.add(dedupeKey(r));
+    } catch (e) {
+      console.error("[import] could not load existing questions", e);
     }
     setExistingKeys(keys);
     return keys;
@@ -1130,32 +1139,11 @@ function AdminImport() {
         }
       }
 
-      const { data: existingLinks } = await supabase
-        .from("test_questions")
-        .select("test_id,question_id,position")
-        .eq("test_id", tid);
-      const snapshot = existingLinks ?? [];
-      await supabase.from("test_questions").delete().eq("test_id", tid);
-
-      const links = ids.map((question_id, i) => ({
-        test_id: tid!,
-        question_id,
-        position: i + 1,
-      }));
-      const { error: le } = await supabase.from("test_questions").insert(links);
-      if (le) {
-        if (snapshot.length > 0) {
-          const { error: restoreErr } = await supabase.from("test_questions").insert(snapshot);
-          if (restoreErr) {
-            errors.push(
-              `"${label}" links failed and the previous list could not be restored: ${restoreErr.message}.`,
-            );
-          } else {
-            errors.push(`"${label}" links failed: ${le.message}. Previous questions were restored.`);
-          }
-        } else {
-          errors.push(`"${label}" links failed: ${le.message}.`);
-        }
+      try {
+        await replaceTestQuestions(tid!, ids);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "links failed";
+        errors.push(`"${label}" ${msg}. The previous questions were kept.`);
         return null;
       }
       return label;

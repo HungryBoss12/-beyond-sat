@@ -772,9 +772,33 @@ export function validateRecord(
 // Duplicate detection
 // ---------------------------------------------------------------------------
 
-/** Loose key for comparing question text across a batch and the existing bank. */
-export function dedupeKey(section: string, questionText: string): string {
-  return section + "|" + questionText.trim().toLowerCase().replace(/\s+/g, " ");
+export type DedupeFields = {
+  section: string;
+  question_text: string | null;
+  prompt?: string | null;
+  choices?: unknown;
+};
+
+function normalizeText(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function choiceTexts(choices: unknown): string {
+  if (!Array.isArray(choices)) return "";
+  return choices
+    .map((c) => normalizeText(c && typeof c === "object" ? (c as { text?: string }).text : ""))
+    .join("|");
+}
+
+/**
+ * Key for comparing questions across a batch and the existing bank. Many SAT
+ * stems are shared ("Which choice completes the text…"), so the passage and the
+ * answer choices are part of the key.
+ */
+export function dedupeKey(q: DedupeFields): string {
+  return [q.section, normalizeText(q.question_text), normalizeText(q.prompt), choiceTexts(q.choices)].join(
+    "\u001f",
+  );
 }
 
 /**
@@ -786,7 +810,7 @@ export function flagDuplicates(rows: RowResult[], existingKeys: Set<string>): Ro
   const seen = new Set<string>();
   return rows.map((r) => {
     if (!r.question) return r;
-    const key = dedupeKey(r.question.section, r.question.question_text);
+    const key = dedupeKey(r.question);
     const warnings = [...r.warnings];
     let duplicate = false;
     if (seen.has(key)) {

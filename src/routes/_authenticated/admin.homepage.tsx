@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminWrite } from "@/lib/admin-writes";
 import type { Json } from "@/integrations/supabase/types";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -243,21 +244,28 @@ function AdminHomepage() {
 
   async function saveSection(s: Section) {
     setSaving(s.id);
-    await supabase.from("homepage_sections").update({ data: drafts[s.id] }).eq("id", s.id);
+    const ok = await adminWrite("Could not save the section", () =>
+      supabase.from("homepage_sections").update({ data: drafts[s.id] }).eq("id", s.id),
+    );
     setSaving(null);
+    if (!ok) return;
     setDirty((x) => ({ ...x, [s.id]: false }));
     setSavedFlash(s.id);
     setTimeout(() => setSavedFlash((v) => (v === s.id ? null : v)), 1600);
   }
 
   async function toggleVisible(s: Section) {
-    await supabase.from("homepage_sections").update({ visible: !s.visible }).eq("id", s.id);
+    await adminWrite("Could not change the section", () =>
+      supabase.from("homepage_sections").update({ visible: !s.visible }).eq("id", s.id),
+    );
     load();
   }
 
   async function remove(s: Section) {
     if (!confirm("Delete this section? This cannot be undone.")) return;
-    await supabase.from("homepage_sections").delete().eq("id", s.id);
+    await adminWrite("Could not delete the section", () =>
+      supabase.from("homepage_sections").delete().eq("id", s.id),
+    );
     load();
   }
 
@@ -265,22 +273,27 @@ function AdminHomepage() {
     const idx = sections.findIndex((x) => x.id === s.id);
     const other = sections[idx + dir];
     if (!other) return;
-    await Promise.all([
-      supabase.from("homepage_sections").update({ position: other.position }).eq("id", s.id),
-      supabase.from("homepage_sections").update({ position: s.position }).eq("id", other.id),
-    ]);
+    await adminWrite("Could not move the section", async () => {
+      const [a, b] = await Promise.all([
+        supabase.from("homepage_sections").update({ position: other.position }).eq("id", s.id),
+        supabase.from("homepage_sections").update({ position: s.position }).eq("id", other.id),
+      ]);
+      return a.error ? a : b;
+    });
     load();
   }
 
   async function addSection() {
     const tpl = KIND_META[newKind];
     const maxPos = sections.reduce((m, s) => Math.max(m, s.position), 0);
-    await supabase.from("homepage_sections").insert({
-      kind: newKind,
-      position: maxPos + 10,
-      visible: true,
-      data: tpl?.template ?? {},
-    });
+    await adminWrite("Could not add the section", () =>
+      supabase.from("homepage_sections").insert({
+        kind: newKind,
+        position: maxPos + 10,
+        visible: true,
+        data: tpl?.template ?? {},
+      }),
+    );
     load();
   }
 

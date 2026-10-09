@@ -28,6 +28,7 @@ import {
   type SavedAccount,
 } from "@/lib/auth/account-switcher";
 import { scrollWindowToTop } from "@/lib/smooth-scroll";
+import { liveStreak } from "@/lib/streak";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { NotificationAnchorProvider } from "@/components/notifications/NotificationAnchorContext";
 import { AmbientGlow, RevealLink } from "@/components/ui/reveal-card";
@@ -338,7 +339,7 @@ function BrandMark({ className }: { className?: string }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const historyAction = useRouterState({ select: (s) => s.historyAction });
+  const backForwardRef = useRef(false);
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [streak, setStreak] = useState<number>(0);
@@ -374,7 +375,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         supabase.from("profiles").select("full_name,first_name,username").eq("id", u.id).maybeSingle(),
         supabase
           .from("student_profiles")
-          .select("current_streak")
+          .select("current_streak,last_active_at,last_daily_completed_date")
           .eq("user_id", u.id)
           .maybeSingle(),
         getStaffRole(u.id),
@@ -386,7 +387,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           displayAccountEmail(u.email)?.split("@")[0] ||
           "Student",
       );
-      setStreak(sp?.current_streak ?? 0);
+      setStreak(liveStreak(sp));
       setStaffRole(role);
       setAccounts(listSavedAccounts());
     })();
@@ -436,10 +437,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
+  /* Back and forward keep the router's restored scroll position. `popstate`
+     fires before the router updates the path, so the flag is set in time. */
   useEffect(() => {
-    if (historyAction === "POP") return;
+    const markBackForward = () => {
+      backForwardRef.current = true;
+    };
+    window.addEventListener("popstate", markBackForward);
+    return () => window.removeEventListener("popstate", markBackForward);
+  }, []);
+
+  useEffect(() => {
+    if (backForwardRef.current) {
+      backForwardRef.current = false;
+      return;
+    }
     scrollWindowToTop();
-  }, [pathname, historyAction]);
+  }, [pathname]);
 
   useEffect(() => {
     return () => {
@@ -792,7 +806,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     }
                   >
                     <NavGlyph
-                      icon={"icon" in n ? n.icon : undefined}
+                      icon={"icon" in n ? (n.icon as LucideIcon) : undefined}
                       kind={n.kind}
                       className="h-5 w-5"
                     />

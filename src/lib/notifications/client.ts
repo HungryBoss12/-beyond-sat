@@ -7,6 +7,8 @@ import {
 import type { CreateNotificationInput, UserNotification } from "./types";
 import type { StaffNotificationRow } from "./admin";
 
+export type { CreateNotificationInput, UserNotification };
+
 /** Inbox retention — notifications stay until the user deletes them. */
 const INBOX_RETENTION_SECONDS = 365 * 24 * 3600;
 
@@ -147,8 +149,8 @@ export async function createNotification(input: CreateNotificationInput): Promis
   const { error: fanErr } = await supabase.rpc("fan_out_notification", {
     p_notification_id: notif.id,
     p_audience_type: input.audienceType,
-    p_class_id: input.classId ?? null,
-    p_user_ids: input.userIds?.length ? input.userIds : null,
+    p_class_id: input.classId ?? undefined,
+    p_user_ids: input.userIds?.length ? input.userIds : undefined,
   });
   if (fanErr) throw new Error(fanErr.message);
 

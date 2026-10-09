@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminWrite } from "@/lib/admin-writes";
 import { Plus, Trash2, Edit3, X, Eye, EyeOff, Layers } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import {
@@ -148,11 +149,15 @@ function AdminMocks() {
 
   async function remove(id: string) {
     if (!confirm("Delete this mock exam?")) return;
-    await supabase.from("mock_exams").delete().eq("id", id);
+    await adminWrite("Could not delete the mock exam", () =>
+      supabase.from("mock_exams").delete().eq("id", id),
+    );
     load();
   }
   async function togglePublish(m: Mock) {
-    await supabase.from("mock_exams").update({ published: !m.published }).eq("id", m.id);
+    await adminWrite("Could not change the mock exam", () =>
+      supabase.from("mock_exams").update({ published: !m.published }).eq("id", m.id),
+    );
     load();
   }
 

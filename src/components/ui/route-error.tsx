@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, type ErrorComponentProps } from "@tanstack/react-router";
 import { RotateCcw, TriangleAlert } from "lucide-react";
 import { NotFoundPage } from "@/components/NotFoundPage";
 
@@ -11,7 +11,8 @@ import { NotFoundPage } from "@/components/NotFoundPage";
  * nobody sees — every "the page is just white" report starts here. These turn
  * it into something readable and reportable.
  */
-export function RouteError({ error }: { error: Error }) {
+export function RouteError({ error: raw }: ErrorComponentProps) {
+  const error = raw instanceof Error ? raw : new Error(String(raw ?? "Unknown error"));
   return (
     <div className="grid min-h-[70vh] w-full place-items-center px-4 py-10">
       <div className="w-full max-w-lg rounded-2xl border border-brand-400/40 bg-brand-600 p-8 text-center shadow-panel">

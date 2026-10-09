@@ -23,6 +23,7 @@
     "SUPABASE_URL": "https://qlzvngegsemrzmyxwykl.supabase.co",
     "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsenZuZ2Vnc2VtcnpteXh3eWtsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjY3OTMsImV4cCI6MjA5OTg0Mjc5M30.Sf8sS6xglwog8DrsKfKQnpngxdCpjvyW32Lwbax_V_8",
     "WORKER_PUBLIC_URL": "https://beyond-sat-v0.javazbek80.workers.dev",
+    "CSP_ENFORCE": "1",
   },
   // Re-register the Telegram webhook hourly so it stays pointed at this Worker.
   "triggers": {

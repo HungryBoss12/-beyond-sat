@@ -1,6 +1,7 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminWrite } from "@/lib/admin-writes";
 import {
   SECTION_LABEL,
   formatSourceDate,
@@ -38,7 +39,7 @@ export const Route = createFileRoute("/_authenticated/admin/questions")({
 });
 
 function AdminQuestions() {
-  const { bank } = Route.useSearch();
+  const bank: BankFormat = Route.useSearch().bank ?? "ordinary";
   const navigate = useNavigate();
   const [items, setItems] = useState<AdminQuestion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +81,9 @@ function AdminQuestions() {
 
   async function remove(id: string) {
     if (!confirm("Delete this question?")) return;
-    await supabase.from("questions").delete().eq("id", id);
+    await adminWrite("Could not delete the question", () =>
+      supabase.from("questions").delete().eq("id", id),
+    );
     void load();
   }
 

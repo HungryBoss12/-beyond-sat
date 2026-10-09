@@ -213,7 +213,7 @@ export async function setAdminBanned(
   const { error } = await supabase.rpc("admin_set_banned", {
     p_user_id: userId,
     p_banned: banned,
-    p_reason: reason ?? null,
+    p_reason: reason ?? undefined,
   });
   if (error) throw new Error(error.message);
 }

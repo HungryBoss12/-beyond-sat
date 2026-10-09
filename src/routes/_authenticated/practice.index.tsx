@@ -14,6 +14,7 @@ import { PageHead, Panel } from "@/components/ui/panel";
 import { RevealLink } from "@/components/ui/reveal-card";
 import { HeadSkeleton, CardGridSkeleton } from "@/components/ui/skeletons";
 import { errorMessage } from "@/lib/utils";
+import { fetchPracticeCounts, sumQuestions } from "@/lib/practice-counts";
 
 export const Route = createFileRoute("/_authenticated/practice/")({
   component: PracticeLanding,
@@ -33,34 +34,22 @@ function PracticeLanding() {
   useEffect(() => {
     (async () => {
       try {
-        /* Old approach used `{ count: "exact", head: true }`, which relies on the
-           PostgREST Content-Range response header being readable by the browser.
-           Some Supabase clients / proxies don't expose it, so the count silently
-           lands as null and the page renders "0 questions available". Fetching
-           `select("id")` rows and counting on the client side doesn't have that
-           problem — and for a question bank under a few thousand rows it adds no
-           meaningful latency. The difficulty tally in `practice.$section.tsx`
-           already uses this pattern successfully. */
-        const [
-          { data: rwRows },
-          { data: mRows },
-          { data: mockRows },
-          { data: sqbRows },
-          { data: dt },
-          { data: sess },
-        ] = await Promise.all([
-          supabase.from("questions").select("id").eq("section", "reading_writing").neq("bank_format", "sqb"),
-          supabase.from("questions").select("id").eq("section", "math").neq("bank_format", "sqb"),
-          supabase.from("mock_exams").select("id").eq("published", true),
-          supabase.from("tests").select("id").eq("bank_format", "sqb").eq("published", true).eq("in_test_base", false),
+        /* Counts come back in the body of an RPC: the Content-Range count header
+           is not always readable, and loading rows to count them stops at 1000. */
+        const [counts, { data: dt }, { data: sess }] = await Promise.all([
+          fetchPracticeCounts(),
           supabase.from("daily_tests").select("id").eq("date", today).maybeSingle(),
           supabase.auth.getSession(),
         ]);
 
-        setRwCount((rwRows ?? []).length);
-        setMathCount((mRows ?? []).length);
-        setMockCount((mockRows ?? []).length);
-        setSqbCount((sqbRows ?? []).length);
+        setRwCount(
+          sumQuestions(counts.questions, (r) => r.section === "reading_writing" && r.bank_format !== "sqb"),
+        );
+        setMathCount(
+          sumQuestions(counts.questions, (r) => r.section === "math" && r.bank_format !== "sqb"),
+        );
+        setMockCount(counts.mocks);
+        setSqbCount(counts.sqb_tests);
         setDailyExists(!!dt);
 
         /* `getSession()` resolves to `{ data: { session }, error }`, so the user

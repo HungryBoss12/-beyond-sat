@@ -33,6 +33,7 @@ export async function handleVocabSession(request: Request, env: unknown): Promis
           reps: r.reps,
           lapses: r.lapses,
           state: r.state,
+          learning_steps: r.learning_steps ?? 0,
           last_review: r.last_review,
         },
         intervals: previewIntervals(r),
@@ -80,6 +81,7 @@ export async function handleVocabReview(request: Request, env: unknown): Promise
       reps: number;
       lapses: number;
       state: number;
+      learning_steps?: number;
       last_review: string | null;
     }[]
   >(

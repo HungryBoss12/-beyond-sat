@@ -31,6 +31,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { getStaffRole, staffHome, type StaffRole } from "@/lib/admin";
+import { liveStreak } from "@/lib/streak";
 import { RW_SKILLS, MATH_SKILLS, scoreBand } from "@/lib/sat";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { FocusNextPanel } from "@/components/ai/FocusNextPanel";
@@ -71,6 +72,7 @@ type StudentProfile = {
   current_streak: number;
   longest_streak: number;
   last_daily_completed_date: string | null;
+  last_active_at: string | null;
 };
 
 function parseLocalDate(ymd: string): Date {
@@ -121,7 +123,7 @@ function Dashboard() {
         supabase
           .from("student_profiles")
           .select(
-            "target_score,exam_date,level,fears,current_streak,longest_streak,last_daily_completed_date",
+            "target_score,exam_date,level,fears,current_streak,longest_streak,last_daily_completed_date,last_active_at",
           )
           .eq("user_id", uid)
           .maybeSingle(),
@@ -289,11 +291,11 @@ function Dashboard() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <DailyPanel
           done={dailyDoneToday}
-          streak={sp?.current_streak ?? 0}
+          streak={liveStreak(sp)}
           dailyExists={dailyExists}
         />
         <StreakPanel
-          current={sp?.current_streak ?? 0}
+          current={liveStreak(sp)}
           longest={sp?.longest_streak ?? 0}
           daysToExam={daysToExam}
         />
@@ -441,7 +443,7 @@ function ProgressPanel({
                     cy?: number;
                     payload?: MockTrendPoint;
                   }) => {
-                    if (props.payload?.anchor) return null;
+                    if (props.payload?.anchor) return <g />;
                     const incomplete = props.payload?.incomplete;
                     return (
                       <circle

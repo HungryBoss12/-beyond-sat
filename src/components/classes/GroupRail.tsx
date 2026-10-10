@@ -40,7 +40,7 @@ import {
   setGroupMemberStatus,
   type ClassGroup,
 } from "@/lib/classes/groups";
-import { scheduleLine } from "@/lib/classes/schedule";
+import { scheduleLine, shortDate } from "@/lib/classes/schedule";
 import { formatUzs, type BalanceKind } from "@/lib/billing/money";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +55,13 @@ export type RailPerson = {
 };
 
 export type RailFilter = "" | "active" | "trial" | "frozen" | "debt";
+
+export type FormerPerson = {
+  userId: string;
+  name: string;
+  effectiveOn: string;
+  movedTo: string | null;
+};
 
 const LEGEND: {
   id: Exclude<RailFilter, "">;
@@ -72,6 +79,7 @@ export function GroupRail({
   klass,
   group,
   people,
+  former,
   teacherName,
   fee,
   isAdmin,
@@ -87,6 +95,7 @@ export function GroupRail({
   klass: ClassRow;
   group: ClassGroup;
   people: RailPerson[];
+  former: FormerPerson[];
   teacherName: string | null;
   /** undefined = editor (hidden); null = not set. */
   fee: bigint | null | undefined;
@@ -101,6 +110,20 @@ export function GroupRail({
   onChanged: () => Promise<void>;
 }) {
   const [moving, setMoving] = useState<RailPerson | null>(null);
+  const [formerOpen, setFormerOpen] = useState(false);
+  const formerNeedle = query.trim().toLowerCase();
+  const formerShown = former.filter(
+    (person) => !formerNeedle || person.name.toLowerCase().includes(formerNeedle),
+  );
+
+  useEffect(() => {
+    setFormerOpen(false);
+  }, [group.id]);
+
+  useEffect(() => {
+    if (!formerNeedle) return;
+    if (formerShown.length > 0) setFormerOpen(true);
+  }, [formerNeedle, formerShown.length]);
 
   async function changeStatus(person: RailPerson, status: Exclude<MemberStatus, "left">) {
     try {
@@ -278,6 +301,48 @@ export function GroupRail({
             <li className="px-2 py-4 text-sm text-white">No students match.</li>
           )}
         </ul>
+        {former.length > 0 && (
+          <div className="border-t border-white/20 pt-2">
+            <button
+              type="button"
+              aria-expanded={formerOpen}
+              onClick={() => setFormerOpen((open) => !open)}
+              className="tap w-full rounded-lg px-2 py-2 text-left text-xs font-bold text-white hover:bg-brand-500/60"
+            >
+              {formerOpen ? "Hide left students" : `Left students · ${former.length}`}
+            </button>
+            {formerOpen && (
+              <ul className="space-y-0.5">
+                {formerShown.map((person) => (
+                  <li
+                    key={person.userId}
+                    className="flex items-center gap-1 rounded-lg px-1 hover:bg-brand-500/60"
+                  >
+                    <div className="min-w-0 flex-1 py-1.5">
+                      <div className="truncate text-sm font-bold text-white/80">{person.name}</div>
+                      <div className="truncate text-[11px] text-white">
+                        {person.movedTo
+                          ? `Moved to ${person.movedTo}`
+                          : `Left ${shortDate(person.effectiveOn)}`}
+                      </div>
+                    </div>
+                    <Link
+                      to="/admin/classes/$classId/students/$userId"
+                      params={{ classId: klass.id, userId: person.userId }}
+                      aria-label={`Profile of ${person.name}`}
+                      className="tap grid h-9 w-9 shrink-0 place-items-center rounded-full hover:bg-brand-500 focus-visible:ring-2 focus-visible:ring-brand-200"
+                    >
+                      <Info className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+                {formerShown.length === 0 && (
+                  <li className="px-2 py-2 text-xs text-white">No left students match.</li>
+                )}
+              </ul>
+            )}
+          </div>
+        )}
       </Panel>
 
       <MoveDialog

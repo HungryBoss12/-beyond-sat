@@ -221,6 +221,26 @@ export async function removeGroupMember(groupId: string, userId: string): Promis
   if (error) throw error;
 }
 
+export type FormerMember = {
+  userId: string;
+  effectiveOn: string;
+  /** Other sub-classes they attend now. Empty when they are not in one. */
+  movedTo: string | null;
+};
+
+/** Latest departure per student. Someone who rejoined this sub-class is omitted. */
+export async function listFormerMembers(groupId: string): Promise<FormerMember[]> {
+  const { data, error } = await db.rpc("group_former_members", { p_group_id: groupId });
+  if (error) throw error;
+  return ((data ?? []) as { user_id: string; effective_on: string; moved_to: string | null }[]).map(
+    (row) => ({
+      userId: row.user_id,
+      effectiveOn: row.effective_on,
+      movedTo: row.moved_to,
+    }),
+  );
+}
+
 // Lessons and attendance -----------------------------------------------------
 
 export async function ensureGroupLessons(groupId: string, month: string): Promise<number> {

@@ -40,6 +40,7 @@ import {
   levelBoard,
   listGroupAttendance,
   listGroupLessons,
+  listFormerMembers,
   listGroupMembers,
   listUserGroupMemberships,
   listHwMarks,
@@ -49,6 +50,7 @@ import {
   personName,
   type AttendanceRow,
   type ClassGroup,
+  type FormerMember,
   type GroupLesson,
   type GroupMember,
   type HwMark,
@@ -112,6 +114,7 @@ export function ClassroomWorkspace({
 }) {
   const navigate = useNavigate();
   const [members, setMembers] = useState<GroupMember[]>([]);
+  const [former, setFormer] = useState<FormerMember[]>([]);
   const [alsoIn, setAlsoIn] = useState<Map<string, string[]>>(new Map());
   const [profiles, setProfiles] = useState<Map<string, PersonProfile>>(new Map());
   const [lessons, setLessons] = useState<GroupLesson[]>([]);
@@ -144,8 +147,9 @@ export function ClassroomWorkspace({
   const load = useCallback(async () => {
     try {
       await ensureGroupLessons(group.id, search.month).catch(() => 0);
-      const [memberRows, lessonRows, attendanceRows, sectionRows] = await Promise.all([
+      const [memberRows, formerRows, lessonRows, attendanceRows, sectionRows] = await Promise.all([
         listGroupMembers(group.id),
+        listFormerMembers(group.id),
         listGroupLessons(group.id, search.month),
         listGroupAttendance(group.id, search.month),
         listLevelSections(group.subject),
@@ -154,6 +158,7 @@ export function ClassroomWorkspace({
       const [people, markRows, resultRows] = await Promise.all([
         listProfiles([
           ...memberRows.map((m) => m.user_id),
+          ...formerRows.map((row) => row.userId),
           ...(group.teacher_id ? [group.teacher_id] : []),
         ]),
         listHwMarks(lessonIds),
@@ -176,6 +181,7 @@ export function ClassroomWorkspace({
       }
       for (const list of extra.values()) list.sort((a, b) => a.localeCompare(b));
       setMembers(memberRows);
+      setFormer(formerRows);
       setAlsoIn(extra);
       setLessons(lessonRows);
       setAttendance(attendanceRows);
@@ -200,6 +206,19 @@ export function ClassroomWorkspace({
     setLoading(true);
     void load();
   }, [load]);
+
+  const formerPeople = useMemo(
+    () =>
+      former
+        .map((row) => ({
+          userId: row.userId,
+          name: personName(profiles.get(row.userId), row.userId),
+          effectiveOn: row.effectiveOn,
+          movedTo: row.movedTo,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [former, profiles],
+  );
 
   const railPeople = useMemo<RailPerson[]>(
     () =>
@@ -319,6 +338,7 @@ export function ClassroomWorkspace({
           klass={klass}
           group={group}
           people={filtered}
+          former={formerPeople}
           teacherName={
             group.teacher_id ? personName(profiles.get(group.teacher_id), group.teacher_id) : null
           }

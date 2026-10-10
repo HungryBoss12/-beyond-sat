@@ -46,6 +46,7 @@ import { chargeThisMonth } from "@/components/billing/charge";
 import { txMethodOrPeriod, txSign, txType } from "@/lib/billing/ledger";
 import { CLASS_CONTROL } from "@/components/classes/control";
 import { FeeDialog } from "@/components/billing/FeeDialog";
+import { VoidDialog } from "@/components/billing/VoidDialog";
 import {
   applyRecurringFees,
   classFees,
@@ -58,6 +59,7 @@ import {
   paymentsSummary,
   setClassFee,
   setStudentDiscount,
+  voidEntry,
   type DiscountStudent,
   type StudentDiscount,
 } from "@/lib/billing/api";
@@ -146,6 +148,7 @@ function PaymentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [payFor, setPayFor] = useState<PaymentTarget | null>(null);
   const [feeOpen, setFeeOpen] = useState(false);
+  const [voiding, setVoiding] = useState<{ id: string; label: string } | null>(null);
   const [feeClasses, setFeeClasses] = useState<{ id: string; name: string }[]>([]);
   const [query, setQuery] = useState(search.q);
   const applied = useRef(false);
@@ -678,6 +681,12 @@ function PaymentsPage() {
                 if (charged) return load();
               })
             }
+            onVoidCharge={(entry, name) =>
+              setVoiding({
+                id: entry.id,
+                label: `${formatUzs(entry.amount_uzs)} for ${name}`,
+              })
+            }
           />
           <p className="text-xs text-brand-700 tabular-nums">
             {rows.length} shown · {debtors.length} debtors · owed {compactUzs(owed)} · fee auto-runs
@@ -687,6 +696,22 @@ function PaymentsPage() {
       )}
 
       <RecordPaymentDialog target={payFor} onClose={() => setPayFor(null)} onSaved={load} />
+      <VoidDialog
+        open={voiding != null}
+        title="Delete unpaid charge"
+        description={
+          voiding
+            ? `Remove ${voiding.label} from the balance. Payments on this row stay.`
+            : ""
+        }
+        onClose={() => setVoiding(null)}
+        onVoid={async (reason) => {
+          if (!voiding) return;
+          await voidEntry(voiding.id, reason);
+          toast.success("Charge removed");
+          await load();
+        }}
+      />
       <FeeDialog
         open={feeOpen}
         title="Class fee"
@@ -708,10 +733,12 @@ function BalancesTable({
   rows,
   onPay,
   onCharge,
+  onVoidCharge,
 }: {
   rows: BalanceRow[];
   onPay: (row: BalanceRow) => void;
   onCharge: (row: BalanceRow) => void;
+  onVoidCharge: (entry: BalanceRow["recent"][number], name: string) => void;
 }) {
   return (
     <div className="min-w-0 overflow-x-auto rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel">
@@ -792,15 +819,25 @@ function BalancesTable({
                 ) : (
                   <ul className="space-y-0.5">
                     {row.recent.map((entry) => (
-                      <li key={entry.id} className="break-words tabular-nums">
-                        <span className="font-bold">
-                          {entry.kind === "charge" || entry.kind === "refund" ? "−" : "+"}
-                          {formatUzs(entry.amount_uzs)}
+                      <li key={entry.id} className="flex items-start gap-1 break-words tabular-nums">
+                        <span className="min-w-0 flex-1">
+                          <span className="font-bold">
+                            {entry.kind === "charge" || entry.kind === "refund" ? "−" : "+"}
+                            {formatUzs(entry.amount_uzs)}
+                          </span>
+                          <span className="text-white">
+                            {" "}
+                            · {entry.note ?? entry.kind} · {entry.occurred_on}
+                          </span>
                         </span>
-                        <span className="text-white">
-                          {" "}
-                          · {entry.note ?? entry.kind} · {entry.occurred_on}
-                        </span>
+                        {row.balance < 0n && entry.kind === "charge" && (
+                          <IconButton
+                            icon={Trash2}
+                            label={`Delete unpaid charge for ${studentName(row)}`}
+                            className="h-8 min-w-8 text-white hover:bg-brand-500"
+                            onClick={() => onVoidCharge(entry, studentName(row))}
+                          />
+                        )}
                       </li>
                     ))}
                   </ul>

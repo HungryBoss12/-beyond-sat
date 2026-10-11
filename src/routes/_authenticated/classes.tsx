@@ -36,7 +36,7 @@ import {
 } from "@/lib/classes/groups";
 import { levelOverall } from "@/lib/classes/level";
 import { rankFor, totalScore } from "@/lib/classes/ranking";
-import { resultLabel } from "@/lib/classes/results";
+import { resultLabel, resultValues } from "@/lib/classes/results";
 import { schemeFor } from "@/lib/classes/schemes";
 import { AmbientGlow, RevealCard } from "@/components/ui/reveal-card";
 import { usePointerGlow } from "@/hooks/usePointerGlow";
@@ -1039,7 +1039,7 @@ function OwnProgress() {
           .filter((r) => r.group_id === member.group_id)
           .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
         out.push(
-          `${group?.name ?? (member.subject === "math" ? "Maths" : "Eng")}: ${ticks} ${schemeFor(member.subject)} ticks · Level ${level ?? "—"}${latest ? ` · last result ${resultLabel(latest.m1, latest.m2, member.subject)}` : ""}`,
+          `${group?.name ?? (member.subject === "math" ? "Maths" : "Eng")}: ${ticks} ${schemeFor(member.subject)} ticks · Level ${level ?? "—"}${latest ? ` · last result ${resultLabel(resultValues(latest), member.subject)}` : ""}`,
         );
       }
       setLines(out);

@@ -42,6 +42,7 @@ const NAV = [
   { to: "/practice", label: "Practice", kind: "practice", icon: BookOpen },
   { to: "/lessons", label: "Lessons", kind: "lessons" },
   { to: "/vocab", label: "Vocab", kind: "vocab" },
+  { to: "/support-lessons", label: "Support", kind: "support", icon: GraduationCap },
   { to: "/classes", label: "Classes", kind: "classes" },
   { to: "/analysis", label: "Analysis", kind: "analysis" },
   { to: "/beyond-ai", label: "Beyond AI", kind: "ai" },
@@ -52,7 +53,7 @@ const MOBILE_PRIMARY = NAV.filter((n) =>
   n.kind === "dashboard" || n.kind === "practice" || n.kind === "lessons" || n.kind === "vocab",
 );
 const MOBILE_MORE = NAV.filter((n) =>
-  n.kind === "classes" || n.kind === "analysis" || n.kind === "ai" || n.kind === "profile",
+  n.kind === "classes" || n.kind === "analysis" || n.kind === "ai" || n.kind === "profile" || n.kind === "support",
 );
 
 const NAV_OPEN_KEY = "beyond-sat-nav-open";

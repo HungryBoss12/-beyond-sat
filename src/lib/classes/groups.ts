@@ -38,6 +38,8 @@ export type GroupLesson = {
   subject: ClassSubject;
   lesson_date: string;
   topic: string | null;
+  /** How many passage boxes this lesson's Results grid shows. */
+  result_slots: number;
 };
 
 export type AttendanceRow = { user_id: string; lesson_date: string; participated: boolean };
@@ -89,12 +91,13 @@ export type ResultRow = {
   user_id: string;
   m1: number | null;
   m2: number | null;
+  scores: (number | null)[] | null;
 };
 
 const GROUP_COLS =
   "id,class_id,subject,name,teacher_id,schedule_days,start_time,end_time,room,level,active";
 const MEMBER_COLS = "group_id,user_id,class_id,subject,status,enrolled_on,activated_on,joined_at";
-const LESSON_COLS = "id,group_id,class_id,subject,lesson_date,topic";
+const LESSON_COLS = "id,group_id,class_id,subject,lesson_date,topic,result_slots";
 
 function monthRange(month: string): { start: string; end: string } {
   const [y, m] = month.split("-").map(Number);
@@ -515,7 +518,7 @@ export async function listResults(lessonIds: string[]): Promise<ResultRow[]> {
   if (!lessonIds.length) return [];
   const { data, error } = await db
     .from("lesson_results")
-    .select("lesson_id,user_id,m1,m2")
+    .select("lesson_id,user_id,m1,m2,scores")
     .in("lesson_id", lessonIds);
   if (error) throw error;
   return (data ?? []) as ResultRow[];
@@ -526,7 +529,7 @@ export async function listUserResults(
 ): Promise<(ResultRow & { group_id: string; updated_at: string })[]> {
   const { data, error } = await db
     .from("lesson_results")
-    .select("lesson_id,user_id,group_id,m1,m2,updated_at")
+    .select("lesson_id,user_id,group_id,m1,m2,scores,updated_at")
     .eq("user_id", userId);
   if (error) throw error;
   return data ?? [];
@@ -535,14 +538,20 @@ export async function listUserResults(
 export async function setResult(
   lessonId: string,
   userId: string,
-  m1: number | null,
-  m2: number | null,
+  scores: (number | null)[],
 ): Promise<void> {
   const { error } = await db.rpc("staff_set_result", {
     p_lesson_id: lessonId,
     p_user_id: userId,
-    p_m1: m1,
-    p_m2: m2,
+    p_scores: scores,
+  });
+  if (error) throw error;
+}
+
+export async function setResultSlots(lessonId: string, slots: number): Promise<void> {
+  const { error } = await db.rpc("staff_set_result_slots", {
+    p_lesson_id: lessonId,
+    p_slots: slots,
   });
   if (error) throw error;
 }

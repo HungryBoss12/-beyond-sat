@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { doneSummary, itemsFor, schemeFor, slugToSubject } from "./schemes";
 import { moduleMax, parseModule, resultLabel } from "./results";
+import { rwRawToScaled } from "@/lib/sat";
 
 describe("results", () => {
   it("rejects a module above the subject maximum", () => {
@@ -15,14 +16,17 @@ describe("results", () => {
   });
 
   it("maps the raw total to a section score", () => {
-    expect(resultLabel(21, 20, "math")).toBe("750-760");
-    expect(resultLabel(22, 22, "math")).toBe("800");
-    expect(resultLabel(12, 11, "math")).toBe("480");
-    expect(resultLabel(14, 15, "math")).toBe("560");
-    expect(resultLabel(10, 10, "math")).toBe("N.A.");
-    expect(resultLabel(27, 27, "math")).toBe("N.A.");
-    expect(resultLabel(27, 27, "ebrw")).toBe("800");
-    expect(resultLabel(15, null, "ebrw")).toBe("—");
+    expect(resultLabel([21, 20], "math")).toBe("750-760");
+    expect(resultLabel([22, 22], "math")).toBe("800");
+    expect(resultLabel([12, 11], "math")).toBe("480");
+    expect(resultLabel([14, 15], "math")).toBe("560");
+    expect(resultLabel([10, 10], "math")).toBe("N.A.");
+    expect(resultLabel([27, 27], "math")).toBe("N.A.");
+    expect(resultLabel([27, 27], "ebrw")).toBe("800");
+    expect(resultLabel([15, null], "ebrw")).toBe("—");
+    expect(resultLabel([10, 10, null], "ebrw")).toBe("—");
+    expect(resultLabel([10, 10, 5], "ebrw")).toBe(String(rwRawToScaled(25)));
+    expect(resultLabel([27, 27, 27], "ebrw")).toBe("N.A.");
   });
 });
 

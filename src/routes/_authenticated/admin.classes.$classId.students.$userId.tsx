@@ -33,7 +33,7 @@ import {
   type StudentSubmission,
 } from "@/lib/classes/groups";
 import { rankFor, totalScore } from "@/lib/classes/ranking";
-import { resultLabel } from "@/lib/classes/results";
+import { resultLabel, resultValues } from "@/lib/classes/results";
 import { HW_ITEM_LABEL, HW_ITEM_LETTER, itemsFor, subjectToSlug } from "@/lib/classes/schemes";
 import { shortDate } from "@/lib/classes/schedule";
 import { cn } from "@/lib/utils";
@@ -76,7 +76,7 @@ function StudentProfilePage() {
   >([]);
   const [marks, setMarks] = useState<(HwMark & { group_id: string })[]>([]);
   const [results, setResults] = useState<
-    { lesson: GroupLesson | undefined; m1: number | null; m2: number | null; group_id: string }[]
+    { lesson: GroupLesson | undefined; scores: (number | null)[]; group_id: string }[]
   >([]);
   const [submissions, setSubmissions] = useState<StudentSubmission[]>([]);
   const [editOpen, setEditOpen] = useState(false);
@@ -115,8 +115,7 @@ function StudentProfilePage() {
       resultRows
         .map((r) => ({
           lesson: lessonMap.get(r.lesson_id),
-          m1: r.m1,
-          m2: r.m2,
+          scores: resultValues(r),
           group_id: r.group_id,
         }))
         .sort((a, b) => (a.lesson?.lesson_date ?? "").localeCompare(b.lesson?.lesson_date ?? "")),
@@ -467,7 +466,7 @@ function StudentProfilePage() {
                 )}
               </section>
               <section aria-label="Results">
-                <p className="text-xs font-bold text-white">Results (M1 + M2)</p>
+                <p className="text-xs font-bold text-white">Results</p>
                 {groupResults.length === 0 ? (
                   <p className="mt-1 text-xs text-white">No results yet</p>
                 ) : (
@@ -475,7 +474,7 @@ function StudentProfilePage() {
                     {groupResults.map((r, i) => (
                       <li key={i} className="rounded-lg bg-brand-800 px-2 py-1 tabular-nums">
                         {r.lesson ? shortDate(r.lesson.lesson_date) : "—"}:{" "}
-                        <span className="font-black">{resultLabel(r.m1, r.m2, block.group.subject)}</span>
+                        <span className="font-black">{resultLabel(r.scores, block.group.subject)}</span>
                       </li>
                     ))}
                   </ul>

@@ -31,7 +31,8 @@ export const Route = createFileRoute("/_authenticated/admin")({
     if (
       role === "teacher" &&
       !location.pathname.startsWith("/admin/classes") &&
-      !location.pathname.startsWith("/admin/payments")
+      !location.pathname.startsWith("/admin/payments") &&
+      !location.pathname.startsWith("/admin/support")
     ) {
       throw redirect({ to: TEACHER_HOME });
     }
@@ -91,6 +92,7 @@ const NAV = [
   { to: "/admin/vocab", label: "Vocab", anim: "vocab", group: "Content" },
   { to: "/admin/lessons", label: "Lessons", anim: "lessons", group: "Content" },
   { to: "/admin/classes", label: "Classes", anim: "classes", group: "Content" },
+  { to: "/admin/support", label: "Support", anim: "lessons", group: "Manage", adminOnly: true },
   { to: "/admin/users", label: "Students", anim: "users", group: "Students", adminOnly: true },
   { to: "/admin/payments", label: "Payments", anim: "payments", group: "Students", adminOnly: true },
   { to: "/admin/notifications", label: "Notifications", anim: "notifications", group: "Manage" },
@@ -110,7 +112,7 @@ function visibleNav(role: StaffRole) {
      result: filter still returns the array's own element type, so `to` stays a
      literal and <Link> keeps accepting it. */
   if (role === "teacher") {
-    return NAV.filter((n: NavItem) => n.to === "/admin/classes" || n.to === "/admin/payments");
+    return NAV.filter((n: NavItem) => n.to === "/admin/classes" || n.to === "/admin/payments" || n.to === "/admin/support");
   }
   return NAV.filter((n: NavItem) => role === "admin" || !n.adminOnly);
 }

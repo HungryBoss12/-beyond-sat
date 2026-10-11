@@ -470,6 +470,13 @@ export function ClassroomWorkspace({
               results={results}
               selectedId={selectedId}
               onSelect={(lesson) => onNavigate({ lesson })}
+              onSlots={(lessonId, count) =>
+                setLessons((current) =>
+                  current.map((lesson) =>
+                    lesson.id === lessonId ? { ...lesson, result_slots: count } : lesson,
+                  ),
+                )
+              }
             />
           ) : search.tab === "homework" ? (
             <HomeworkPanel group={group} month={search.month} people={gridPeople} />

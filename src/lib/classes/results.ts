@@ -1,7 +1,7 @@
 import type { ClassSubject } from "./types";
 import { rwRawToScaled } from "@/lib/sat";
 
-/** Per-lesson Results: M1 + M2 correct answers, shown as a section score. */
+/** Per-lesson Results: one correct-answer count per passage, shown as a section score. */
 
 /** Reading & Writing module length. */
 export const ENGLISH_MODULE_MAX = 27;
@@ -50,22 +50,28 @@ export function parseModule(raw: string, max = ENGLISH_MODULE_MAX): ModuleParse 
   return value <= max ? { kind: "ok", value } : { kind: "error" };
 }
 
-export function resultScore(m1: number | null, m2: number | null): number | null {
-  if (m1 == null || m2 == null) return null;
-  return m1 + m2;
+export function resultScore(scores: (number | null)[]): number | null {
+  if (scores.length === 0 || scores.some((score) => score == null)) return null;
+  return scores.reduce((sum, score) => sum + (score ?? 0), 0);
 }
 
-/** "—" until both modules are in. Math uses the class table. English uses the Reading & Writing curve. */
-export function resultLabel(
-  m1: number | null,
-  m2: number | null,
-  subject: ClassSubject = "math",
-): string {
-  const score = resultScore(m1, m2);
+/** Prefer the stored list. Older rows only have M1 and M2. */
+export function resultValues(row: {
+  scores?: (number | null)[] | null;
+  m1?: number | null;
+  m2?: number | null;
+}): (number | null)[] {
+  if (row.scores && row.scores.length > 0) return row.scores;
+  return [row.m1 ?? null, row.m2 ?? null];
+}
+
+/** "—" until every passage is in. Math uses the class table. English uses the Reading & Writing curve. */
+export function resultLabel(scores: (number | null)[], subject: ClassSubject = "math"): string {
+  const max = moduleMax(subject);
+  if (scores.some((score) => score != null && score > max)) return "N.A.";
+  const score = resultScore(scores);
   if (score == null) return "—";
-  if (subject === "ebrw") {
-    if (m1! > ENGLISH_MODULE_MAX || m2! > ENGLISH_MODULE_MAX) return "N.A.";
-    return String(rwRawToScaled(score));
-  }
+  // The Reading & Writing curve stops at two modules (54). A larger sum is not a section score.
+  if (subject === "ebrw") return score > ENGLISH_MODULE_MAX * 2 ? "N.A." : String(rwRawToScaled(score));
   return MATH_SECTION_SCORE[score] ?? "N.A.";
 }

@@ -32,6 +32,7 @@ import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/n
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedPracticeRouteImport } from './routes/_authenticated/practice'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthenticatedSupportLessonsRouteImport } from './routes/_authenticated/support-lessons'
 import { Route as AuthenticatedVocabRouteImport } from './routes/_authenticated/vocab'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
@@ -49,6 +50,7 @@ import { Route as AuthenticatedAdminPaymentsRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminQuestionsRouteImport } from './routes/_authenticated/admin.questions'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminSqbRouteImport } from './routes/_authenticated/admin.sqb'
+import { Route as AuthenticatedAdminSupportRouteImport } from './routes/_authenticated/admin.support'
 import { Route as AuthenticatedAdminTestsRouteImport } from './routes/_authenticated/admin.tests'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminVocabRouteImport } from './routes/_authenticated/admin.vocab'
@@ -213,6 +215,12 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSupportLessonsRoute =
+  AuthenticatedSupportLessonsRouteImport.update({
+    id: '/support-lessons',
+    path: '/support-lessons',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedVocabRoute = AuthenticatedVocabRouteImport.update({
   id: '/vocab',
   path: '/vocab',
@@ -307,6 +315,12 @@ const AuthenticatedAdminSqbRoute = AuthenticatedAdminSqbRouteImport.update({
   path: '/sqb',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminSupportRoute =
+  AuthenticatedAdminSupportRouteImport.update({
+    id: '/support',
+    path: '/support',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminTestsRoute = AuthenticatedAdminTestsRouteImport.update({
   id: '/tests',
   path: '/tests',
@@ -616,6 +630,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/practice': typeof AuthenticatedPracticeRouteWithChildren
   '/profile': typeof AuthenticatedProfileRoute
+  '/support-lessons': typeof AuthenticatedSupportLessonsRoute
   '/vocab': typeof AuthenticatedVocabRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/join/$token': typeof JoinTokenRoute
@@ -632,6 +647,7 @@ export interface FileRoutesByFullPath {
   '/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/sqb': typeof AuthenticatedAdminSqbRouteWithChildren
+  '/admin/support': typeof AuthenticatedAdminSupportRoute
   '/admin/tests': typeof AuthenticatedAdminTestsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/admin/vocab': typeof AuthenticatedAdminVocabRouteWithChildren
@@ -701,6 +717,7 @@ export interface FileRoutesByTo {
   '/first-login': typeof AuthenticatedFirstLoginRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/support-lessons': typeof AuthenticatedSupportLessonsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/join/$token': typeof JoinTokenRoute
   '/admin/daily': typeof AuthenticatedAdminDailyRoute
@@ -713,6 +730,7 @@ export interface FileRoutesByTo {
   '/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
   '/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/support': typeof AuthenticatedAdminSupportRoute
   '/admin/tests': typeof AuthenticatedAdminTestsRoute
   '/news/$slug': typeof AuthenticatedNewsSlugRoute
   '/practice/$section': typeof AuthenticatedPracticeSectionRoute
@@ -781,6 +799,7 @@ export interface FileRoutesById {
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/practice': typeof AuthenticatedPracticeRouteWithChildren
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/_authenticated/support-lessons': typeof AuthenticatedSupportLessonsRoute
   '/_authenticated/vocab': typeof AuthenticatedVocabRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/join/$token': typeof JoinTokenRoute
@@ -797,6 +816,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/sqb': typeof AuthenticatedAdminSqbRouteWithChildren
+  '/_authenticated/admin/support': typeof AuthenticatedAdminSupportRoute
   '/_authenticated/admin/tests': typeof AuthenticatedAdminTestsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/_authenticated/admin/vocab': typeof AuthenticatedAdminVocabRouteWithChildren
@@ -873,6 +893,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/practice'
     | '/profile'
+    | '/support-lessons'
     | '/vocab'
     | '/auth/callback'
     | '/join/$token'
@@ -889,6 +910,7 @@ export interface FileRouteTypes {
     | '/admin/questions'
     | '/admin/settings'
     | '/admin/sqb'
+    | '/admin/support'
     | '/admin/tests'
     | '/admin/users'
     | '/admin/vocab'
@@ -958,6 +980,7 @@ export interface FileRouteTypes {
     | '/first-login'
     | '/onboarding'
     | '/profile'
+    | '/support-lessons'
     | '/auth/callback'
     | '/join/$token'
     | '/admin/daily'
@@ -970,6 +993,7 @@ export interface FileRouteTypes {
     | '/admin/notifications'
     | '/admin/questions'
     | '/admin/settings'
+    | '/admin/support'
     | '/admin/tests'
     | '/news/$slug'
     | '/practice/$section'
@@ -1037,6 +1061,7 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/_authenticated/practice'
     | '/_authenticated/profile'
+    | '/_authenticated/support-lessons'
     | '/_authenticated/vocab'
     | '/auth/callback'
     | '/join/$token'
@@ -1053,6 +1078,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/questions'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/sqb'
+    | '/_authenticated/admin/support'
     | '/_authenticated/admin/tests'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/vocab'
@@ -1285,6 +1311,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/support-lessons': {
+      id: '/_authenticated/support-lessons'
+      path: '/support-lessons'
+      fullPath: '/support-lessons'
+      preLoaderRoute: typeof AuthenticatedSupportLessonsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/vocab': {
       id: '/_authenticated/vocab'
       path: '/vocab'
@@ -1402,6 +1435,13 @@ declare module '@tanstack/react-router' {
       path: '/sqb'
       fullPath: '/admin/sqb'
       preLoaderRoute: typeof AuthenticatedAdminSqbRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/support': {
+      id: '/_authenticated/admin/support'
+      path: '/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AuthenticatedAdminSupportRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/tests': {
@@ -1900,6 +1940,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminQuestionsRoute: typeof AuthenticatedAdminQuestionsRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminSqbRoute: typeof AuthenticatedAdminSqbRouteWithChildren
+  AuthenticatedAdminSupportRoute: typeof AuthenticatedAdminSupportRoute
   AuthenticatedAdminTestsRoute: typeof AuthenticatedAdminTestsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRouteWithChildren
   AuthenticatedAdminVocabRoute: typeof AuthenticatedAdminVocabRouteWithChildren
@@ -1920,6 +1961,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminQuestionsRoute: AuthenticatedAdminQuestionsRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminSqbRoute: AuthenticatedAdminSqbRouteWithChildren,
+  AuthenticatedAdminSupportRoute: AuthenticatedAdminSupportRoute,
   AuthenticatedAdminTestsRoute: AuthenticatedAdminTestsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRouteWithChildren,
   AuthenticatedAdminVocabRoute: AuthenticatedAdminVocabRouteWithChildren,
@@ -2105,6 +2147,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedPracticeRoute: typeof AuthenticatedPracticeRouteWithChildren
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedSupportLessonsRoute: typeof AuthenticatedSupportLessonsRoute
   AuthenticatedVocabRoute: typeof AuthenticatedVocabRouteWithChildren
 }
 
@@ -2120,6 +2163,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedPracticeRoute: AuthenticatedPracticeRouteWithChildren,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedSupportLessonsRoute: AuthenticatedSupportLessonsRoute,
   AuthenticatedVocabRoute: AuthenticatedVocabRouteWithChildren,
 }
 

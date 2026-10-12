@@ -36,13 +36,13 @@ export function mockPhaseOrder(schedule: MockSchedule): MockPhase[] {
 export function phaseLabel(phase: MockPhase): string {
   switch (phase) {
     case "rw1":
-      return "Reading and Writing · Module 1";
+      return "Section 1, Module 1: Reading and Writing";
     case "rw2":
-      return "Reading and Writing · Module 2";
+      return "Section 1, Module 2: Reading and Writing";
     case "math1":
-      return "Math · Module 1";
+      return "Section 2, Module 1: Math";
     case "math2":
-      return "Math · Module 2";
+      return "Section 2, Module 2: Math";
     case "break":
       return "Break";
   }

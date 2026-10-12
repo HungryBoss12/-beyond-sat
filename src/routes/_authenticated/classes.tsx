@@ -1071,7 +1071,7 @@ function HomeworkVideo({ url }: { url: string }) {
           className="h-full w-full"
           src={youtube}
           title="Homework video"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow="picture-in-picture"
           allowFullScreen
         />
       </div>

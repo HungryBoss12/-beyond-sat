@@ -2,13 +2,15 @@ import sharp from "sharp";
 
 const SRC = "public/pwa-icon.svg";
 
+const png = { compressionLevel: 9, effort: 10 };
+
 async function writeAny(size) {
-  await sharp(SRC).resize(size, size).png().toFile(`public/pwa-${size}x${size}.png`);
+  await sharp(SRC).resize(size, size).png(png).toFile(`public/pwa-${size}x${size}.png`);
 }
 
 async function writeMaskable(size) {
   const inset = Math.round(size * 0.72);
-  const logo = await sharp(SRC).resize(inset, inset).png().toBuffer();
+  const logo = await sharp(SRC).resize(inset, inset).png(png).toBuffer();
   await sharp({
     create: {
       width: size,
@@ -18,7 +20,7 @@ async function writeMaskable(size) {
     },
   })
     .composite([{ input: logo, gravity: "center" }])
-    .png()
+    .png(png)
     .toFile(`public/pwa-maskable-${size}x${size}.png`);
 }
 

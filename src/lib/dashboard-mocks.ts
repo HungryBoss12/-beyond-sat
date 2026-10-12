@@ -233,6 +233,7 @@ export function latestMockSummary(sessions: MockSessionRow[]) {
       math: current.type === "mock" ? current.math_score : null,
       delta: previousScore != null ? currentScore - previousScore : null,
       at: current.completed_at,
+      source: current.type,
       incomplete: false as const,
       progressPct: null as number | null,
     };
@@ -248,6 +249,7 @@ export function latestMockSummary(sessions: MockSessionRow[]) {
     math: null,
     delta: null,
     at: inProgress!.started_at,
+    source: inProgress!.type,
     incomplete: true as const,
     progressPct: pt.progressPct,
   };

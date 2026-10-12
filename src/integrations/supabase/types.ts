@@ -4572,7 +4572,7 @@ export type Database = {
       };
     };
     Enums: {
-      app_role: "student" | "admin" | "editor" | "teacher";
+      app_role: "student" | "admin" | "editor" | "teacher" | "support_teacher";
       chat_thread_kind: "subject_group" | "class_group" | "direct";
       class_member_status: "active" | "trial" | "frozen" | "left";
       class_subject: "math" | "ebrw";
@@ -4714,7 +4714,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["student", "admin", "editor", "teacher"],
+      app_role: ["student", "admin", "editor", "teacher", "support_teacher"],
       chat_thread_kind: ["subject_group", "class_group", "direct"],
       class_member_status: ["active", "trial", "frozen", "left"],
       class_subject: ["math", "ebrw"],

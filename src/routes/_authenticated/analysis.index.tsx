@@ -10,6 +10,7 @@ import {
   Legend,
   type PieLabelRenderProps,
 } from "recharts";
+import { MathText } from "@/components/MathText";
 import {
   BarChart3,
   ChevronRight,
@@ -893,7 +894,7 @@ function SessionItem({
                           </span>
                         </div>
                         <div className="mt-1.5 text-sm text-white line-clamp-2">
-                          {q.question_text}
+                          <MathText>{q.question_text}</MathText>
                         </div>
                         <div className="mt-1 text-xs text-brand-100">
                           {q.kind === "multiple_choice" ? (

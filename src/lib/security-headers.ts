@@ -13,7 +13,7 @@
  *    attributes; React inline styles generally.
  *  - style/font Google Fonts     : loaded from __root.tsx head links.
  *  - img-src supabase.co         : signed storage URLs (question images,
- *    notification images); pravatar (landing avatars); img.youtube.com thumbs.
+ *    notification images); img.youtube.com thumbs.
  *  - frame-src youtube-nocookie  : FeaturedVideos embeds.
  *    www.desmos.com              : Desmos calculator iframe fallback.
  *  - worker-src 'self' blob:     : pdf.js worker (same-origin via Vite ?url,
@@ -42,7 +42,7 @@ const CSP_POLICY = [
   "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.desmos.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com https://www.desmos.com",
-  "img-src 'self' data: blob: https://i.pravatar.cc https://img.youtube.com https://*.supabase.co https://www.desmos.com",
+  "img-src 'self' data: blob: https://img.youtube.com https://*.supabase.co https://www.desmos.com",
   "media-src 'self' blob: https:",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.desmos.com",
   "frame-src https://www.youtube-nocookie.com https://www.desmos.com",

@@ -147,7 +147,7 @@ function VocabHub() {
             <p className="mt-1 text-sm text-brand-100">
               Review {cardCount || "SAT"} vocab cards with FSRS intervals. Keyboard: Space, 1–4.
             </p>
-            <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-brand-200 group-hover:gap-2 transition-all">
+            <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-brand-200 transition-all group-hover:gap-2 group-active:gap-2">
               Start review <ArrowRight className="h-4 w-4" />
             </span>
           </Panel>
@@ -163,7 +163,7 @@ function VocabHub() {
               {quizCount} Words-in-Context quiz{quizCount === 1 ? "" : "zes"}. Missed words auto-queue
               for review.
             </p>
-            <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-brand-200 group-hover:gap-2 transition-all">
+            <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-brand-200 transition-all group-hover:gap-2 group-active:gap-2">
               Browse tests <ArrowRight className="h-4 w-4" />
             </span>
           </Panel>

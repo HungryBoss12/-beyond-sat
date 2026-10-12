@@ -207,6 +207,10 @@ export async function billingNote(userId: string): Promise<string> {
   return data ?? "";
 }
 
+export async function setStudentBalance(userId: string, balance: bigint): Promise<void> {
+  await call("admin_set_student_balance", { p_user_id: userId, p_balance: balance.toString() });
+}
+
 export async function setBillingNote(userId: string, note: string): Promise<void> {
   await call("admin_set_billing_note", { p_user_id: userId, p_note: note });
 }

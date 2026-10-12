@@ -82,12 +82,12 @@ const ICONS: Record<string, LucideIcon> = {
   ShieldCheck,
 };
 
-/** Social proof faces. Avatar falls back to initials if the CDN is unreachable. */
+/** Social proof faces, hosted here so the hero does not depend on a third-party avatar CDN. */
 const AVATARS = [
-  { src: "https://i.pravatar.cc/64?img=12", initials: "AR" },
-  { src: "https://i.pravatar.cc/64?img=32", initials: "MK" },
-  { src: "https://i.pravatar.cc/64?img=45", initials: "JL" },
-  { src: "https://i.pravatar.cc/64?img=68", initials: "SD" },
+  { src: "/avatars/ar.jpg", initials: "AR" },
+  { src: "/avatars/mk.jpg", initials: "MK" },
+  { src: "/avatars/jl.jpg", initials: "JL" },
+  { src: "/avatars/sd.jpg", initials: "SD" },
 ];
 
 /**

@@ -46,7 +46,7 @@ import { isOnline, lastSeenLabel } from "@/lib/presence";
 import { reissueStudentInvite, scheduleStudentInvites, unclaimedUserIds, type InviteLink } from "@/lib/students/api";
 import { errorMessage } from "@/lib/utils";
 
-type Role = "student" | "editor" | "admin" | "teacher";
+type Role = "student" | "editor" | "admin" | "teacher" | "support_teacher";
 type Filter = "students" | "all" | "online" | "staff" | "banned";
 type ClassFilter = "all" | "unassigned" | string;
 type SortKey = "created_at" | "tests_total" | "last_seen";
@@ -60,6 +60,7 @@ const CONTROL =
 const ROLE_OPTIONS = [
   { value: "student", label: "Student" },
   { value: "teacher", label: "Teacher" },
+  { value: "support_teacher", label: "Support teacher" },
   { value: "editor", label: "Editor" },
   { value: "admin", label: "Admin" },
 ];
@@ -353,6 +354,11 @@ function AdminStudents() {
         roleOf.get(r.user_id) !== "editor"
       )
         roleOf.set(r.user_id, "teacher");
+      else if (
+        r.role === "support_teacher" &&
+        !roleOf.get(r.user_id)
+      )
+        roleOf.set(r.user_id, "support_teacher");
     }
     setRows(
       (full.data ?? []).map((p) => ({
@@ -1583,7 +1589,7 @@ function UserListRow({
                 )}
                 {u.role !== "student" && (
                   <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 ring-1 ring-brand-400/40">
-                    {u.role}
+                    {u.role.replaceAll("_", " ")}
                   </span>
                 )}
                 {u.banned && (
@@ -1629,7 +1635,7 @@ function UserListRow({
             onValueChange={(v) => onRole(v as Role)}
             disabled={busy}
             size="sm"
-            className="w-[110px]"
+            className="w-[148px]"
             options={ROLE_OPTIONS}
           />
           <button

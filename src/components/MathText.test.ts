@@ -87,4 +87,37 @@ describe("MathText", () => {
     expect(html).toContain("katex");
     expect(html).not.toMatch(/2a\/b/);
   });
+
+  it("turns imported \\n breaks into line breaks and leaves \\neq alone", () => {
+    const html = renderMathText(
+      "She typically weaves them from willow and sedge.\\n\\nWhich choice completes the text?",
+    );
+    expect(html).toContain("<br/>");
+    expect(html).not.toContain("\\n");
+    expect(html).toContain("Which choice");
+    const neq = renderMathText("where $x \\neq 0$ and $y \\leq 2$");
+    expect(neq).toContain("katex");
+    expect(neq).not.toContain("<br/>");
+  });
+
+  it("closes a missing dollar before the next sentence", () => {
+    const html = renderMathText(
+      "In the triangle shown, $RS=√105. What is the value of $sin R$?",
+    );
+    const text = html
+      .replace(/<annotation[\s\S]*?<\/annotation>/g, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ");
+    expect(text).toContain("What is the value of");
+    expect(html).toContain("sqrt");
+    expect(html).not.toContain("sin R$");
+  });
+
+  it("still renders a short dollar amount next to a later sentence", () => {
+    const html = renderMathText(
+      "The width of a rectangle is $6$ centimeters. The length is $50$ centimeters longer.",
+    );
+    expect(html).toContain("katex");
+    expect(html).toContain("centimeters. The length");
+  });
 });

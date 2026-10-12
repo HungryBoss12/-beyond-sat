@@ -57,10 +57,10 @@ export async function handleUinfoFlush(request: Request, env: unknown): Promise<
      spammable. Per-isolate caveat applies (lib/rate-limit.ts). */
   const limit = rateLimit(`uinfo-flush:${user.id}`, 1, 1 / 10);
   if (!limit.ok) {
-    return json(
-      { error: "Profile insights were just updated. Try again in a few minutes." },
-      { status: 429, headers: { "retry-after": String(limit.retryAfter) } },
-    );
+    return new Response(null, {
+      status: 204,
+      headers: { "retry-after": String(limit.retryAfter) },
+    });
   }
 
   let targetId = user.id;

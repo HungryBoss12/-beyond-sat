@@ -27,7 +27,10 @@ const smallSource = Buffer.from(
 );
 
 const render = (size, svg = source) =>
-  sharp(svg, { density: 384 }).resize(size, size, { fit: "contain" }).png().toBuffer();
+  sharp(svg, { density: 384 })
+    .resize(size, size, { fit: "contain" })
+    .png({ compressionLevel: 9, effort: 10 })
+    .toBuffer();
 
 /** ICO container holding one PNG per size (Vista-era PNG-in-ICO, read everywhere). */
 function packIco(images) {

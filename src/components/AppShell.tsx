@@ -42,7 +42,7 @@ const NAV = [
   { to: "/practice", label: "Practice", kind: "practice", icon: BookOpen },
   { to: "/lessons", label: "Lessons", kind: "lessons" },
   { to: "/vocab", label: "Vocab", kind: "vocab" },
-  { to: "/support-lessons", label: "Support", kind: "support", icon: GraduationCap },
+  { to: "/support-lessons", label: "Support", kind: "support" },
   { to: "/classes", label: "Classes", kind: "classes" },
   { to: "/analysis", label: "Analysis", kind: "analysis" },
   { to: "/beyond-ai", label: "Beyond AI", kind: "ai" },
@@ -285,6 +285,26 @@ function NavGlyph({
     );
   }
 
+  if (kind === "support") {
+    return (
+      <svg viewBox="0 0 24 24" className={cls} aria-hidden="true" fill="none">
+        <g className="nav-ring" stroke="currentColor" strokeLinecap="round">
+          <path d="M19.2 14.1A7.5 7.5 0 0 1 14.1 19.2" strokeWidth="2.35" />
+          <path d="M9.9 19.2A7.5 7.5 0 0 1 4.8 14.1" strokeWidth="2.35" />
+          <path d="M4.8 9.9A7.5 7.5 0 0 1 9.9 4.8" strokeWidth="2.35" />
+          <path d="M14.1 4.8A7.5 7.5 0 0 1 19.2 9.9" strokeWidth="2.35" />
+          <circle cx="12" cy="12" r="3.05" strokeWidth="1.55" />
+        </g>
+        <g className="nav-ring-straps" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+          <line x1="12" y1="1.35" x2="12" y2="2.85" />
+          <line x1="22.65" y1="12" x2="21.15" y2="12" />
+          <line x1="12" y1="22.65" x2="12" y2="21.15" />
+          <line x1="1.35" y1="12" x2="2.85" y2="12" />
+        </g>
+      </svg>
+    );
+  }
+
   if (kind === "lessons") {
     return (
       <GraduationCap
@@ -518,6 +538,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMoreOpen(false);
   }, [pathname]);
+
+  /* Phones never hover, so the glyph motions would stay frozen. Play each
+     visible icon once on arrival, and again when More opens. */
+  useEffect(() => {
+    if (prefersReducedMotion()) return;
+    if (!window.matchMedia("(hover: none), (pointer: coarse)").matches) return;
+    const timers: number[] = [];
+    document.querySelectorAll<HTMLElement>("a.group, button.group").forEach((node, i) => {
+      if (!node.querySelector(".nav-ico")) return;
+      if (node.getClientRects().length === 0) return;
+      timers.push(window.setTimeout(() => playNavMotion(node), 160 + i * 80));
+    });
+    return () => timers.forEach((id) => window.clearTimeout(id));
+  }, [pathname, moreOpen]);
 
   const navLinks = (opts: { onNavigate?: () => void; iconSize: string }) => (
     <>

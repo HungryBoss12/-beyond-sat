@@ -144,6 +144,20 @@ describe("dashboard-mocks", () => {
     expect(summary?.incomplete).toBe(false);
   });
 
+  it("latestMockSummary marks a practice score as practice, not a mock", () => {
+    const practice: MockSessionRow = {
+      ...base,
+      id: "p",
+      type: "practice",
+      completed_at: "2026-09-27T10:00:00Z",
+      correct_count: 10,
+      total_questions: 22,
+    };
+    const summary = latestMockSummary([practice]);
+    expect(summary?.source).toBe("practice");
+    expect(summary?.incomplete).toBe(false);
+  });
+
   it("latestMockSummary falls back to in-progress mock", () => {
     const summary = latestMockSummary([base]);
     expect(summary?.incomplete).toBe(true);

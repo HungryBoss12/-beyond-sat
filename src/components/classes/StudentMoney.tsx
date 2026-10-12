@@ -14,7 +14,9 @@ import {
   Wallet,
   Banknote,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { IconButton } from "@/components/ui/icon-button";
+import { CLASS_CONTROL } from "@/components/classes/control";
 import { MoneyTile } from "@/components/billing/MoneyTile";
 import { RecordPaymentDialog, type PaymentTarget } from "@/components/billing/RecordPaymentDialog";
 import { ActivationDateDialog } from "@/components/billing/ActivationDateDialog";
@@ -23,9 +25,9 @@ import { VoidDialog } from "@/components/billing/VoidDialog";
 import { KIND_META } from "@/components/billing/meta";
 import { chargeThisMonth } from "@/components/billing/charge";
 import { FeeDialog } from "@/components/billing/FeeDialog";
-import { billingNote, setBillingNote, setStudentFee, studentBilling, studentLedger, voidEntry } from "@/lib/billing/api";
+import { billingNote, setBillingNote, setFeeOverride, setStudentBalance, setStudentFee, studentBilling, studentLedger, voidEntry } from "@/lib/billing/api";
 import { listUserAttendance } from "@/lib/classes/groups";
-import { periodLabel } from "@/lib/billing/dates";
+import { periodLabel, tashkentToday } from "@/lib/billing/dates";
 import { balanceKind, formatUzs } from "@/lib/billing/money";
 import type { LedgerRow, StudentBillingRow } from "@/lib/billing/types";
 
@@ -38,6 +40,10 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
   const [activationOpen, setActivationOpen] = useState(false);
   const [voiding, setVoiding] = useState<TxRow | null>(null);
   const [feeOpen, setFeeOpen] = useState(false);
+  const [balanceOpen, setBalanceOpen] = useState(false);
+  const [balanceText, setBalanceText] = useState("");
+  const [feeRow, setFeeRow] = useState<StudentBillingRow | null>(null);
+  const [feeText, setFeeText] = useState("");
   const [note, setNote] = useState("");
   const [attended, setAttended] = useState<string[]>([]);
 
@@ -110,10 +116,13 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
           onClick={() => setActivationOpen(true)}
         />
         <IconButton
-          icon={BadgeDollarSign}
-          label="Set this student's fee"
+          icon={Wallet}
+          label="Set balance"
           variant="outline"
-          onClick={() => setFeeOpen(true)}
+          onClick={() => {
+            setBalanceText(balance.toString());
+            setBalanceOpen(true);
+          }}
         />
         <IconButton
           icon={ReceiptText}
@@ -174,7 +183,13 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
         />
       </div>
 
-      <GroupCharges rows={billing.filter((row) => row.monthly_fee_uzs != null || row.activated_on)} />
+      <GroupCharges
+        rows={billing.filter((row) => row.monthly_fee_uzs != null || row.activated_on)}
+        onEditFee={(row) => {
+          setFeeRow(row);
+          setFeeText(row.monthly_fee_uzs == null ? "" : row.monthly_fee_uzs.toString());
+        }}
+      />
       <div className="grid gap-4 lg:grid-cols-2">
         <NoteBox
           note={note}
@@ -227,6 +242,78 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
           await load();
         }}
       />
+      <Dialog open={balanceOpen} onOpenChange={setBalanceOpen}>
+        <DialogContent className="border-brand-400/40 bg-brand-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">Set balance</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-white">Negative means the student owes that amount. This adds one adjustment and leaves old charges in place.</p>
+          <input
+            className={CLASS_CONTROL + " mt-2"}
+            value={balanceText}
+            onChange={(event) => setBalanceText(event.target.value)}
+            inputMode="numeric"
+          />
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white"
+              onClick={() => {
+                if (!/^-?\d+$/.test(balanceText.trim())) {
+                  toast.error("Enter a whole number of so'm.");
+                  return;
+                }
+                void setStudentBalance(userId, BigInt(balanceText.trim()))
+                  .then(async () => {
+                    toast.success("Balance updated");
+                    setBalanceOpen(false);
+                    await load();
+                  })
+                  .catch((err: unknown) => toast.error(err instanceof Error ? err.message : "Could not set the balance"));
+              }}
+            >
+              Save balance
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={feeRow != null} onOpenChange={(next) => !next && setFeeRow(null)}>
+        <DialogContent className="border-brand-400/40 bg-brand-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {feeRow ? `${feeRow.group_name} fee` : "Course fee"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-white">This price is only for this student. Everyone else keeps the class fee.</p>
+          <input
+            className={CLASS_CONTROL + " mt-2"}
+            value={feeText}
+            onChange={(event) => setFeeText(event.target.value)}
+            inputMode="numeric"
+          />
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white"
+              onClick={() => {
+                if (!feeRow || !/^\d+$/.test(feeText.trim())) {
+                  toast.error("Enter the monthly fee in so'm.");
+                  return;
+                }
+                void setFeeOverride(userId, feeRow.group_id, BigInt(feeText.trim()), `${tashkentToday().slice(0, 7)}-01`)
+                  .then(async () => {
+                    toast.success("Fee saved");
+                    setFeeRow(null);
+                    await load();
+                  })
+                  .catch((err: unknown) => toast.error(err instanceof Error ? err.message : "Could not save the fee"));
+              }}
+            >
+              Save fee
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <ActivationDateDialog
         open={activationOpen}
         userId={userId}
@@ -269,7 +356,13 @@ function classChoices(rows: StudentBillingRow[]): { id: string; name: string }[]
   return [...map.entries()].map(([id, names]) => ({ id, name: names.join(" · ") }));
 }
 
-function GroupCharges({ rows }: { rows: StudentBillingRow[] }) {
+function GroupCharges({
+  rows,
+  onEditFee,
+}: {
+  rows: StudentBillingRow[];
+  onEditFee: (row: StudentBillingRow) => void;
+}) {
   if (rows.length === 0) return null;
   return (
     <div className="overflow-x-auto rounded-2xl border border-brand-400/40 bg-brand-600 text-white">
@@ -295,8 +388,14 @@ function GroupCharges({ rows }: { rows: StudentBillingRow[] }) {
                     }`}
               </td>
               <td className="whitespace-nowrap p-3 text-right font-bold tabular-nums">
-                {row.monthly_fee_uzs == null ? "—" : formatUzs(row.monthly_fee_uzs)}
-                {row.override_fee_uzs != null ? " · own price" : ""}
+                <button
+                  type="button"
+                  className="underline decoration-white/40 underline-offset-2"
+                  onClick={() => onEditFee(row)}
+                >
+                  {row.monthly_fee_uzs == null ? "Set fee" : formatUzs(row.monthly_fee_uzs)}
+                  {row.override_fee_uzs != null ? " · own price" : ""}
+                </button>
               </td>
             </tr>
           ))}

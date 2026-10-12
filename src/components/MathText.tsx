@@ -61,7 +61,7 @@ function normalizeUnderlineMarkup(input: string): string {
  * Exported for unit tests.
  */
 export function normalizeMathInput(input: string): string {
-  let s = latexifyAsciiMath(input);
+  let s = latexifyAsciiMath(unescapeLiteralBreaks(input));
   // `\3{,}270` / `\3,270` — broken money tokens (not LaTeX)
   s = s.replace(/\\(\d)\{,\}(\d)/g, "$$$1{,}$2");
   s = s.replace(/\\(\d),(\d)/g, "$$$1,$2");
@@ -74,11 +74,67 @@ export function normalizeMathInput(input: string): string {
     /(^|[^\\$])\$(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+\{,\}\d+(?:\.\d+)?|\d+\.\d+|\d+)(?=[\s,;:!?)\]}]|$|\.(?:[\s,;:!?)\]}]|$))/g,
     `$1${CURRENCY_PH}$2`,
   );
-  return s;
+  return healSwallowedMath(s);
 }
 
 function restoreCurrencyPlaceholders(s: string): string {
   return s.split(CURRENCY_PH).join("$");
+}
+
+/**
+ * Imports often store the two characters `\` + `n` instead of a line break.
+ * Turn those into real newlines, but leave LaTeX commands that start with n
+ * (`\neq`, `\nu`, `\nabla`, `\newline`) alone.
+ */
+function unescapeLiteralBreaks(input: string): string {
+  return input.replace(/\\n/g, (match, offset: number, whole: string) => {
+    const next = whole[offset + match.length];
+    if (next && /[a-z]/.test(next)) return match;
+    return "\n";
+  });
+}
+
+/**
+ * A missing closer makes `$RS=√105. What is the value of $sin R$` one math
+ * span, so the sentence is letter-spaced and the later expression never renders.
+ * If the text before ". Capital" looks like math, close the span there.
+ */
+function healSwallowedMath(input: string): string {
+  let out = "";
+  let i = 0;
+  while (i < input.length) {
+    const ch = input[i];
+    const prev = i > 0 ? input[i - 1] : "";
+    const next = input[i + 1] ?? "";
+    if (ch === "$" && prev !== "$" && prev !== "\\" && next !== "$") {
+      const close = input.indexOf("$", i + 1);
+      if (close > i) {
+        const inner = input.slice(i + 1, close);
+        const boundary = inner.search(/\.\s+[A-Z]/);
+        const head = boundary > 0 ? inner.slice(0, boundary) : "";
+        if (
+          boundary > 0 &&
+          boundary <= 80 &&
+          /[=\d√\\^_+*/]/.test(head) &&
+          !/\b(the|and|which|what|for|with)\b/i.test(head)
+        ) {
+          out += `$${head}$`;
+          i = i + 1 + boundary;
+          continue;
+        }
+      }
+    }
+    out += ch;
+    i += 1;
+  }
+  return out;
+}
+
+/** Unicode radicals that were already inside `$…$` still need a TeX command. */
+function polishTex(tex: string): string {
+  return tex
+    .replace(/√\s*\(([^)]+)\)/g, (_m, inner: string) => `\\sqrt{${inner.trim()}}`)
+    .replace(/√\s*([A-Za-z0-9]+)/g, (_m, inner: string) => `\\sqrt{${inner}}`);
 }
 
 /** Escape prose but keep allowlisted `<u>…</u>` as real underlines. */
@@ -120,7 +176,7 @@ export function renderMathText(input: string): string {
     } else if (tex.startsWith("$") && tex.endsWith("$")) {
       tex = tex.slice(1, -1);
     }
-    tex = restoreCurrencyPlaceholders(tex);
+    tex = polishTex(restoreCurrencyPlaceholders(tex));
     try {
       out += katex.renderToString(tex, {
         displayMode,

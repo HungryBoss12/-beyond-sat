@@ -1,34 +1,40 @@
-import { createFileRoute, getRouteApi } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { SupportCountdown } from "@/components/support/SupportCountdown";
+import { SupportHeatmap } from "@/components/support/SupportHeatmap";
+import { SupportWhenFields } from "@/components/support/SupportWhenFields";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState, Panel } from "@/components/ui/panel";
 import { CLASS_CONTROL } from "@/components/classes/control";
+import type { ClassSubject } from "@/lib/classes/types";
 import {
   addSupportMaterial,
-  addSupportSlot,
+  claimSupport,
   completeSupport,
-  decideSupport,
-  deleteSupportSlot,
+  declineSupport,
+  formatDay,
   formatWhen,
-  loadCenterHours,
-  loadOwnSlots,
   loadPublishedTests,
   loadStaffSessions,
-  saveCenterHours,
+  loadWindowBoard,
+  postSupportRange,
+  assignSupportWindow,
+  setSupportWindowOpen,
+  setSupportStart,
   subjectLabel,
-  type CenterHours,
+  tashkentCalendarDate,
+  tashkentCalendarToday,
+  tashkentFromDay,
   type SupportSession,
-  type SupportSlotRow,
   type SupportStatus,
+  type SupportWindow,
 } from "@/lib/support/api";
 
 export const Route = createFileRoute("/_authenticated/admin/support")({
   component: SupportAdminPage,
   head: () => ({ meta: [{ title: "Support sessions — BeyondSAT" }] }),
 });
-
-const adminRoute = getRouteApi("/_authenticated/admin");
 
 const TABS: { id: SupportStatus; label: string }[] = [
   { id: "pending", label: "Pending" },
@@ -38,17 +44,15 @@ const TABS: { id: SupportStatus; label: string }[] = [
 ];
 
 function SupportAdminPage() {
-  const { staffRole } = adminRoute.useRouteContext();
-  const isAdmin = staffRole === "admin";
-  const [hours, setHours] = useState<CenterHours | null>(null);
-  const [opens, setOpens] = useState("09:00");
-  const [closes, setCloses] = useState("21:00");
-  const [slots, setSlots] = useState<SupportSlotRow[]>([]);
   const [sessions, setSessions] = useState<SupportSession[]>([]);
   const [tests, setTests] = useState<{ id: string; title: string }[]>([]);
   const [tab, setTab] = useState<SupportStatus>("pending");
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
+  const [claimFor, setClaimFor] = useState<SupportSession | null>(null);
+  const [claimDay, setClaimDay] = useState<Date | undefined>(() => tashkentCalendarToday());
+  const [claimClock, setClaimClock] = useState("");
+  const [timeFor, setTimeFor] = useState<SupportSession | null>(null);
+  const [timeDay, setTimeDay] = useState<Date | undefined>(() => tashkentCalendarToday());
+  const [timeClock, setTimeClock] = useState("");
   const [declineFor, setDeclineFor] = useState<SupportSession | null>(null);
   const [reason, setReason] = useState("");
   const [materialFor, setMaterialFor] = useState<SupportSession | null>(null);
@@ -57,22 +61,22 @@ function SupportAdminPage() {
   const [testId, setTestId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [windows, setWindows] = useState<SupportWindow[]>([]);
+  const [rangeStart, setRangeStart] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
+  const [assignFor, setAssignFor] = useState<string | null>(null);
+  const [studentId, setStudentId] = useState("");
+  const [assignSubject, setAssignSubject] = useState<ClassSubject>("ebrw");
 
   async function load() {
-    const [nextHours, nextSlots, nextSessions, nextTests] = await Promise.all([
-      loadCenterHours(),
-      loadOwnSlots(),
+    const [nextSessions, nextTests, nextWindows] = await Promise.all([
       loadStaffSessions(),
       loadPublishedTests().catch(() => []),
+      loadWindowBoard().catch(() => []),
     ]);
-    setHours(nextHours);
-    if (nextHours) {
-      setOpens(nextHours.opens_at.slice(0, 5));
-      setCloses(nextHours.closes_at.slice(0, 5));
-    }
-    setSlots(nextSlots);
     setSessions(nextSessions);
     setTests(nextTests);
+    setWindows(nextWindows);
   }
 
   useEffect(() => {
@@ -82,34 +86,6 @@ function SupportAdminPage() {
   }, []);
 
   const shown = sessions.filter((session) => session.status === tab);
-
-  async function saveHours() {
-    setBusy(true);
-    try {
-      await saveCenterHours(opens, closes);
-      toast.success("Center hours saved");
-      await load();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save hours");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function createSlot() {
-    setBusy(true);
-    try {
-      await addSupportSlot(start, end);
-      toast.success("Slot added");
-      setStart("");
-      setEnd("");
-      await load();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not add the slot");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function run(action: () => Promise<void>, ok: string) {
     setBusy(true);
@@ -128,73 +104,78 @@ function SupportAdminPage() {
     <div className="space-y-4">
       <h1 className="text-2xl font-black text-brand-900">Support sessions</h1>
       {error && <p className="text-sm font-bold text-brand-900">{error}</p>}
-      {isAdmin && (
-        <Panel className="space-y-3 p-4">
-          <h2 className="text-sm font-black text-white">Center hours</h2>
-          <p className="text-xs text-white">
-            Teachers can only open slots inside this window.
-            {hours ? ` Now ${hours.opens_at.slice(0, 5)}–${hours.closes_at.slice(0, 5)}.` : ""}
-          </p>
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="text-xs font-bold text-white">
-              Opens
-              <input className={CLASS_CONTROL + " mt-1"} type="time" value={opens} onChange={(e) => setOpens(e.target.value)} />
-            </label>
-            <label className="text-xs font-bold text-white">
-              Closes
-              <input className={CLASS_CONTROL + " mt-1"} type="time" value={closes} onChange={(e) => setCloses(e.target.value)} />
-            </label>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void saveHours()}
-              className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
-            >
-              Save hours
-            </button>
-          </div>
-        </Panel>
-      )}
-      <Panel className="space-y-3 p-4">
-        <h2 className="text-sm font-black text-white">Open slots</h2>
+      <Panel className="p-4">
+        <SupportHeatmap sessions={sessions} />
+      </Panel>
+      <Panel className="space-y-3 p-4 text-white">
+        <h2 className="text-sm font-black text-white">Support sessions</h2>
+        <p className="text-xs">
+          A range such as 14:30–19:30 is split into 14:30–15:00, 15:00–15:30, and so on. You can
+          assign a student to any future session. Students can take an open session only when it
+          starts within 24 hours.
+        </p>
         <div className="flex flex-wrap items-end gap-2">
-          <label className="text-xs font-bold text-white">
-            Start
-            <input className={CLASS_CONTROL + " mt-1"} type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
+          <label className="text-xs font-bold">
+            From
+            <input className={CLASS_CONTROL + " mt-1"} type="datetime-local" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} />
           </label>
-          <label className="text-xs font-bold text-white">
-            End
-            <input className={CLASS_CONTROL + " mt-1"} type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
+          <label className="text-xs font-bold">
+            To
+            <input className={CLASS_CONTROL + " mt-1"} type="datetime-local" value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} />
           </label>
           <button
             type="button"
-            disabled={busy || !start || !end}
-            onClick={() => void createSlot()}
+            disabled={busy || !rangeStart || !rangeEnd}
             className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
+            onClick={() =>
+              void run(async () => {
+                await postSupportRange(rangeStart, rangeEnd);
+                setRangeStart("");
+                setRangeEnd("");
+              }, "Sessions posted")
+            }
           >
-            Add slot
+            Post sessions
           </button>
         </div>
-        {slots.length === 0 ? (
-          <p className="text-xs text-white">No upcoming slots.</p>
-        ) : (
-          <ul className="space-y-1 text-sm text-white">
-            {slots.map((slot) => (
-              <li key={slot.id} className="flex items-center justify-between gap-2">
-                <span>
-                  {formatWhen(slot.starts_at)} – {formatWhen(slot.ends_at)}
+        <ul className="space-y-1 text-sm">
+          {windows.map((window) => (
+            <li key={window.id} className="flex flex-wrap items-center justify-between gap-2">
+              <span>
+                {window.teacher_name} · {formatWhen(window.starts_at)} – {formatWhen(window.ends_at)}
+                {window.student_name ? ` · ${window.student_name}` : window.closed ? " · closed" : " · open"}
+              </span>
+              {!window.student_id && (
+                <span className="flex gap-3">
+                  <button
+                    type="button"
+                    className="text-xs font-bold underline"
+                    onClick={() => {
+                      setAssignFor(window.id);
+                      setStudentId("");
+                      setAssignSubject("ebrw");
+                    }}
+                  >
+                    Assign
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="text-xs font-bold underline disabled:opacity-40"
+                    onClick={() =>
+                      void run(
+                        () => setSupportWindowOpen(window.id, Boolean(window.closed)),
+                        window.closed ? "Session opened" : "Session closed",
+                      )
+                    }
+                  >
+                    {window.closed ? "Open" : "Close"}
+                  </button>
                 </span>
-                <button
-                  type="button"
-                  className="text-xs font-bold underline"
-                  onClick={() => void run(() => deleteSupportSlot(slot.id), "Slot removed")}
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+              )}
+            </li>
+          ))}
+        </ul>
       </Panel>
       <div className="flex flex-wrap gap-1">
         {TABS.map((item) => (
@@ -228,9 +209,19 @@ function SupportAdminPage() {
                   </span>
                 </div>
                 <p className="text-xs">
-                  {formatWhen(session.starts_at)} – {formatWhen(session.ends_at)}
+                  {session.starts_at
+                    ? `${formatWhen(session.starts_at)}${session.ends_at ? ` – ${formatWhen(session.ends_at)}` : ""}`
+                    : formatDay(session.preferred_on)
+                      ? `Preferred day ${formatDay(session.preferred_on)}`
+                      : "No time yet"}
                 </p>
+                <SupportCountdown startsAt={session.starts_at} />
                 {session.notes && <p className="text-xs">{session.notes}</p>}
+                {session.passes?.map((pass, index) => (
+                  <p key={`${pass.teacher_name}-${index}`} className="text-xs">
+                    {pass.teacher_name} declined{pass.note ? `: ${pass.note}` : "."}
+                  </p>
+                ))}
                 {session.rejection_reason && <p className="text-xs">Note: {session.rejection_reason}</p>}
                 {session.materials.length > 0 && (
                   <ul className="text-xs">
@@ -246,9 +237,13 @@ function SupportAdminPage() {
                         type="button"
                         disabled={busy}
                         className="btn-brand rounded-full bg-brand-400 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40"
-                        onClick={() => void run(() => decideSupport(session.id, true, ""), "Session confirmed")}
+                        onClick={() => {
+                          setClaimDay(tashkentCalendarToday());
+                          setClaimClock("");
+                          setClaimFor(session);
+                        }}
                       >
-                        Accept
+                        Claim
                       </button>
                       <button
                         type="button"
@@ -264,16 +259,30 @@ function SupportAdminPage() {
                     </>
                   )}
                   {session.status === "confirmed" && (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      className="rounded-full bg-brand-800 px-3 py-1.5 text-xs font-bold"
-                      onClick={() => void run(() => completeSupport(session.id), "Session completed")}
-                    >
-                      Mark completed
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="rounded-full bg-brand-800 px-3 py-1.5 text-xs font-bold"
+                        onClick={() => {
+                          setTimeDay(session.starts_at ? tashkentCalendarDate(session.starts_at) : tashkentCalendarToday());
+                          setTimeClock("");
+                          setTimeFor(session);
+                        }}
+                      >
+                        {session.starts_at ? "Change time" : "Set time"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="rounded-full bg-brand-800 px-3 py-1.5 text-xs font-bold"
+                        onClick={() => void run(() => completeSupport(session.id), "Session completed")}
+                      >
+                        Mark completed
+                      </button>
+                    </>
                   )}
-                  {session.status !== "rejected" && (
+                  {session.teacher_id && session.status !== "rejected" && (
                     <button
                       type="button"
                       className="rounded-full bg-brand-800 px-3 py-1.5 text-xs font-bold"
@@ -293,6 +302,44 @@ function SupportAdminPage() {
           ))}
         </ul>
       )}
+      <Dialog open={assignFor != null} onOpenChange={(next) => !next && setAssignFor(null)}>
+        <DialogContent className="border-brand-400/40 bg-brand-800 text-white sm:rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white">Assign student</DialogTitle>
+          </DialogHeader>
+          <label className="block text-xs font-bold">
+            Username
+            <input className={CLASS_CONTROL + " mt-1"} value={studentId} onChange={(e) => setStudentId(e.target.value)} />
+          </label>
+          <label className="mt-3 block text-xs font-bold">
+            Subject
+            <select
+              className={CLASS_CONTROL + " mt-1"}
+              value={assignSubject}
+              onChange={(e) => setAssignSubject(e.target.value as ClassSubject)}
+            >
+              <option value="ebrw">English</option>
+              <option value="math">Math</option>
+            </select>
+          </label>
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              disabled={busy || !assignFor || !studentId.trim()}
+              className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+              onClick={() => {
+                if (!assignFor) return;
+                void run(async () => {
+                  await assignSupportWindow(assignFor, studentId, assignSubject);
+                  setAssignFor(null);
+                }, "Student assigned");
+              }}
+            >
+              Assign
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={declineFor != null} onOpenChange={(next) => !next && setDeclineFor(null)}>
         <DialogContent className="border-brand-400/40 bg-brand-800 text-white sm:rounded-2xl">
           <DialogHeader>
@@ -310,12 +357,101 @@ function SupportAdminPage() {
               onClick={() => {
                 if (!declineFor) return;
                 void run(async () => {
-                  await decideSupport(declineFor.id, false, reason);
+                  await declineSupport(declineFor.id, reason);
                   setDeclineFor(null);
                 }, "Request declined");
               }}
             >
               Decline
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={claimFor != null} onOpenChange={(next) => !next && setClaimFor(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto border-brand-400/40 bg-brand-800 text-white sm:rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white">Claim request</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs">Add a start time, or claim it and set the time later.</p>
+          <SupportWhenFields
+            day={claimDay}
+            onDay={setClaimDay}
+            time={claimClock}
+            onTime={setClaimClock}
+            showTime
+          />
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              disabled={busy || !claimFor}
+              className="rounded-full bg-brand-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+              onClick={() => {
+                if (!claimFor) return;
+                void run(async () => {
+                  await claimSupport(claimFor.id, null);
+                  setClaimFor(null);
+                }, "Request claimed");
+              }}
+            >
+              Claim without a time
+            </button>
+            <button
+              type="button"
+              disabled={busy || !claimFor || !claimDay || !claimClock}
+              className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+              onClick={() => {
+                if (!claimFor || !claimDay || !claimClock) return;
+                void run(async () => {
+                  await claimSupport(claimFor.id, tashkentFromDay(claimDay, claimClock));
+                  setClaimFor(null);
+                }, "Request claimed");
+              }}
+            >
+              Claim
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={timeFor != null} onOpenChange={(next) => !next && setTimeFor(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto border-brand-400/40 bg-brand-800 text-white sm:rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white">Lesson time</DialogTitle>
+          </DialogHeader>
+          <SupportWhenFields
+            day={timeDay}
+            onDay={setTimeDay}
+            time={timeClock}
+            onTime={setTimeClock}
+            showTime
+          />
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              disabled={busy || !timeFor}
+              className="rounded-full bg-brand-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+              onClick={() => {
+                if (!timeFor) return;
+                void run(async () => {
+                  await setSupportStart(timeFor.id, null);
+                  setTimeFor(null);
+                }, "Time cleared");
+              }}
+            >
+              Clear time
+            </button>
+            <button
+              type="button"
+              disabled={busy || !timeFor || !timeDay || !timeClock}
+              className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+              onClick={() => {
+                if (!timeFor || !timeDay || !timeClock) return;
+                void run(async () => {
+                  await setSupportStart(timeFor.id, tashkentFromDay(timeDay, timeClock));
+                  setTimeFor(null);
+                }, "Time saved");
+              }}
+            >
+              Save time
             </button>
           </div>
         </DialogContent>

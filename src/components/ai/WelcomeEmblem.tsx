@@ -19,21 +19,6 @@ const WelcomeEmblemScene: ComponentType<SceneProps> = import.meta.env.SSR
       () => import("@/components/ai/WelcomeEmblemScene"),
     ) as unknown as ComponentType<SceneProps>);
 
-function detectWebgl(): boolean {
-  try {
-    const canvas = document.createElement("canvas");
-    // Same rule as BeyondCore: detect support, but do not call loseContext().
-    // That call is what prints "WebGL context was lost" on every visit.
-    return !!(
-      canvas.getContext("webgl2") ??
-      canvas.getContext("webgl") ??
-      canvas.getContext("experimental-webgl")
-    );
-  } catch {
-    return false;
-  }
-}
-
 class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
   state = { failed: false };
 
@@ -66,11 +51,6 @@ export function WelcomeEmblem() {
   const [highDpr, setHighDpr] = useState(true);
 
   useEffect(() => {
-    if (!detectWebgl()) {
-      setSupport("fallback");
-      return;
-    }
-
     let idle = 0;
     let timer = 0;
     const start = () => setSupport("webgl");

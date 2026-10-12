@@ -36,6 +36,9 @@ export const Route = createFileRoute("/_authenticated/admin")({
     ) {
       throw redirect({ to: TEACHER_HOME });
     }
+    if (role === "support_teacher" && !location.pathname.startsWith("/admin/support")) {
+      throw redirect({ to: "/admin/support" });
+    }
     return { staffRole: role, userId: data.user.id };
   },
   component: AdminLayout,
@@ -113,6 +116,9 @@ function visibleNav(role: StaffRole) {
      literal and <Link> keeps accepting it. */
   if (role === "teacher") {
     return NAV.filter((n: NavItem) => n.to === "/admin/classes" || n.to === "/admin/payments" || n.to === "/admin/support");
+  }
+  if (role === "support_teacher") {
+    return NAV.filter((n: NavItem) => n.to === "/admin/support");
   }
   return NAV.filter((n: NavItem) => role === "admin" || !n.adminOnly);
 }

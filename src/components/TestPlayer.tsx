@@ -3,13 +3,12 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Bookmark,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   ChevronUp,
   Clock,
   Loader2,
   MoreVertical,
   NotebookPen,
+  Sigma,
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -172,6 +171,8 @@ export function TestPlayer({
   const [showDirections, setShowDirections] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [showReference, setShowReference] = useState(false);
+  const [setLabel, setSetLabel] = useState<string | null>(null);
   const [hideTimer, setHideTimer] = useState(false);
   const [studentName, setStudentName] = useState("");
   const startedRef = useRef<number>(
@@ -188,6 +189,26 @@ export function TestPlayer({
   const submittingRef = useRef(false);
   const submitRef = useRef<() => Promise<void>>(async () => {});
   const endsAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const testId = sessionMetadata?.test_id;
+    if (typeof testId !== "string") return;
+    let cancelled = false;
+    void supabase
+      .from("tests")
+      .select("section,module")
+      .eq("id", testId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        const sectionNo = data.section === "math" ? 2 : 1;
+        const name = data.section === "math" ? "Math" : "Reading and Writing";
+        setSetLabel(`Section ${sectionNo}, Module ${data.module}: ${name}`);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionMetadata]);
 
   useEffect(() => {
     if (Object.keys(metaRef.current).length === 0 && sessionMetadata) {
@@ -772,9 +793,8 @@ export function TestPlayer({
   const moduleLabel =
     type === "mock" && useSections
       ? phaseLabel(phase)
-      : `${type === "daily" ? "Daily Test" : type === "mock" ? "Mock" : "Practice"}: ${
-          q.section === "math" ? "Math" : "Reading and Writing"
-        }`;
+      : setLabel ??
+        (q.section === "math" ? "Math" : "Reading and Writing");
 
   const activeIndices = useSections
     ? indicesForPhase(phase)
@@ -815,22 +835,13 @@ export function TestPlayer({
           ------------------------------------------------------------------ */}
       <header className="shrink-0 bg-test-chrome">
         <div className="grid grid-cols-3 items-start gap-2 px-4 pb-2 pt-3 sm:px-6">
-          <div className="flex min-w-0 flex-col items-start">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={requestExit}
-                className="tap grid h-7 w-7 shrink-0 place-items-center rounded text-test-muted hover:bg-test-well hover:text-test-ink"
-                aria-label="Exit"
-              >
-                <X className="h-4 w-4" />
-              </button>
-              <span className="truncate text-[15px] font-bold text-test-ink">{moduleLabel}</span>
-            </div>
+            <div className="flex min-w-0 flex-col items-start">
+            <span className="truncate text-[15px] font-bold text-test-ink">{moduleLabel}</span>
             {phase !== "break" && (
               <button
                 onClick={() => setShowDirections((v) => !v)}
                 aria-expanded={showDirections}
-                className="tap mt-0.5 inline-flex items-center gap-1 rounded pl-9 pr-1 text-[13px] text-test-ink hover:underline"
+                className="tap mt-0.5 inline-flex items-center gap-1 rounded pr-1 text-[13px] text-test-ink hover:underline"
               >
                 Directions
                 {showDirections ? (
@@ -870,7 +881,20 @@ export function TestPlayer({
           </div>
 
           <div className="flex items-start justify-end gap-1">
-            {phase !== "break" && (
+            {phase !== "break" && q?.section === "math" && (
+              <>
+                <DesmosCalculator chrome="header" />
+                <button
+                  type="button"
+                  onClick={() => setShowReference(true)}
+                  className="tap inline-flex flex-col items-center rounded px-2 py-1 text-[11px] font-semibold text-test-ink hover:bg-test-well"
+                >
+                  <Sigma className="h-5 w-5" />
+                  <span className="mt-0.5 hidden sm:inline">Reference</span>
+                </button>
+              </>
+            )}
+            {phase !== "break" && q?.section !== "math" && (
             <button
               onClick={() => setShowNotes((v) => !v)}
               aria-pressed={showNotes}
@@ -880,7 +904,7 @@ export function TestPlayer({
               }
             >
               <NotebookPen className="h-5 w-5" />
-              <span className="mt-0.5 hidden sm:inline">Notes</span>
+              <span className="mt-0.5 hidden sm:inline">Annotate</span>
             </button>
             )}
             {/* Bluebook's ⋮ is a menu, not a shortcut, and the two things a
@@ -997,21 +1021,36 @@ export function TestPlayer({
         <div className="border-b border-dashed border-test-edge" />
       </header>
 
-      {/* Bluebook's blue title strip. It carries the name of the thing you are
-          sitting, which is the one piece of orientation the header itself
-          doesn't give — the header names the section, not the test. */}
-      <div className="shrink-0 bg-test-banner px-4 py-1 text-center sm:px-6">
-        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-white">
-          {phase === "break"
-            ? "Section Break"
-            : type === "mock"
-              ? "Mock Exam"
-              : type === "daily"
-                ? "Daily Test"
-                : "Practice Test"}
-          <span className="hidden sm:inline"> · BeyondSAT</span>
-        </span>
-      </div>
+      {showReference && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-brand-900/40 p-4">
+          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border border-test-line bg-white p-5 text-test-ink shadow-float">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold">Reference</h2>
+              <button
+                type="button"
+                onClick={() => setShowReference(false)}
+                className="tap rounded px-2 py-1 text-sm font-semibold hover:bg-test-well"
+              >
+                Close
+              </button>
+            </div>
+            <ul className="mt-4 space-y-2 text-sm leading-6">
+              <li>Circle: A = πr², C = 2πr</li>
+              <li>Rectangle: A = ℓw</li>
+              <li>Triangle: A = ½bh</li>
+              <li>Right triangle: a² + b² = c²</li>
+              <li>Special right triangles: 45-45-90 and 30-60-90</li>
+              <li>Rectangular solid: V = ℓwh</li>
+              <li>Cylinder: V = πr²h</li>
+              <li>Sphere: V = ⁴⁄₃πr³</li>
+              <li>Cone: V = ⅓πr²h</li>
+              <li>Pyramid: V = ⅓ℓwh</li>
+              <li>The number of degrees of arc in a circle is 360.</li>
+              <li>The number of degrees in a triangle is 180.</li>
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* body — min-h-0 is what lets the panes scroll instead of stretching the
           column and pushing the footer off-screen. */}
@@ -1165,7 +1204,6 @@ export function TestPlayer({
           isLast={isLastInSection}
         />
       )}
-      {phase !== "break" && q?.section === "math" && <DesmosCalculator />}
     </div>
   );
 }
@@ -1424,14 +1462,15 @@ function BottomBar({
       </div>
 
       <div className="flex flex-1 items-center justify-end gap-2">
+        {!isFirst && (
         <button
           onClick={onPrev}
-          disabled={isFirst || showReview}
-          className="tap group inline-flex items-center gap-1.5 rounded-full border border-test-accent bg-white px-5 py-2 text-sm font-bold text-test-accent hover:bg-test-tint disabled:pointer-events-none disabled:opacity-40"
+          disabled={showReview}
+          className="btn-test inline-flex items-center rounded-full bg-test-accent px-5 py-2 text-sm font-bold text-white hover:bg-test-accent-deep disabled:pointer-events-none disabled:opacity-40"
         >
-          <ChevronLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
           Back
         </button>
+        )}
         {onCheckAll ? (
           <button
             type="button"
@@ -1449,8 +1488,7 @@ function BottomBar({
           className="btn-test group inline-flex items-center gap-1.5 rounded-full bg-test-accent px-5 py-2 text-sm font-bold text-white hover:bg-test-accent-deep disabled:pointer-events-none disabled:opacity-40"
         >
           {nextBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {nextLabel ?? (isLast ? "Review" : "Next")}{" "}
-          {!nextBusy ? <ChevronRight className="arrow-slide h-4 w-4" /> : null}
+          {nextLabel ?? (isLast ? "Review" : "Next")}
         </button>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const ROUTE_GAP_MS = 10 * 60 * 1000;
 const lastRoute = new Map<string, number>();
+let nextFlushAt = 0;
 
 function clip(value: string): string {
   return value.replace(/\s+/g, "").slice(0, 24);
@@ -28,6 +29,8 @@ export function logUinfo(k: "r" | "t" | "v" | "l", d = ""): void {
       if (error) return;
       const token = (await supabase.auth.getSession()).data.session?.access_token;
       if (!token) return;
+      if (Date.now() < nextFlushAt) return;
+      nextFlushAt = Date.now() + ROUTE_GAP_MS;
       await fetch("/api/ai/uinfo", {
         method: "POST",
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },

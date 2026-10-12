@@ -61,7 +61,7 @@ function defaultPos(minimized: boolean): Pos {
  * calculator in an iframe. The embed stays mounted across minimize/close so
  * expressions are not lost; the chrome is draggable in both sizes.
  */
-export function DesmosCalculator() {
+export function DesmosCalculator({ chrome = "float" }: { chrome?: "float" | "header" }) {
   const [key, setKey] = useState<string | null | undefined>(undefined);
   const [open, setOpen] = useState(false);
   const [everOpened, setEverOpened] = useState(false);
@@ -193,10 +193,15 @@ export function DesmosCalculator() {
         <button
           type="button"
           onClick={openPanel}
-          className="btn-test fixed bottom-24 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-test-accent px-4 py-2.5 text-sm font-bold text-white shadow-float hover:bg-test-accent-deep"
+          className={
+            chrome === "header"
+              ? "tap inline-flex flex-col items-center rounded px-2 py-1 text-[11px] font-semibold text-test-ink hover:bg-test-well"
+              : "btn-test fixed bottom-24 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-test-accent px-4 py-2.5 text-sm font-bold text-white shadow-float hover:bg-test-accent-deep"
+          }
           title="Open Desmos calculator"
         >
-          <Calculator className="h-4 w-4" /> Calculator
+          <Calculator className={chrome === "header" ? "h-5 w-5" : "h-4 w-4"} />
+          <span className={chrome === "header" ? "mt-0.5 hidden sm:inline" : ""}>Calculator</span>
         </button>
       )}
 

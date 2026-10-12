@@ -103,7 +103,7 @@ export function FeaturedVideos({
             <iframe
               title={watching.title}
               src={embed}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="picture-in-picture"
               allowFullScreen
               className="aspect-video w-full border-0"
             />

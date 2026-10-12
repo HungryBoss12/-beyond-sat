@@ -23,13 +23,14 @@ import { DashboardMockup } from "@/components/landing/DashboardMockup";
  *   3. deferred until idle  — the chunk never competes with hydration
  *   4. dpr / antialias step — capped on small viewports, shadows off everywhere
  *   5. prefers-reduced-motion → a static poster frame, no render loop
- *   6. no WebGL context     → falls back to <DashboardMockup />
- *   7. error boundary       → a failed chunk or a scene throw also falls back
+ *   6. under 768px           → flat mockup, the WebGL chunk is never requested
+ *   7. live context lost     → falls back to <DashboardMockup />
+ *   8. error boundary        → a failed chunk or a scene throw also falls back
  *
- * Guards 6 and 7 matter more than they look. Without them a machine with WebGL
- * disabled, or a browser that got a stale chunk URL after a deploy, gets a blank
- * column where the hero visual should be — which is worse than the 2D mockup it
- * replaced, and fails silently so nobody finds out.
+ * Guards 6, 7 and 8 matter more than they look. Without them a phone would
+ * download the WebGL chunk, a GPU that drops the live context would leave a
+ * dead canvas, or a stale chunk URL after a deploy would leave a blank column
+ * where the hero visual should be.
  */
 
 type SceneProps = {
@@ -65,27 +66,6 @@ const BeyondCoreScene: ComponentType<SceneProps> = import.meta.env.SSR
     ) as unknown as ComponentType<SceneProps>);
 
 /**
- * Feature-detects a real WebGL context once, on the client.
- *
- * The throwaway canvas is discarded with this call, so its context is collected
- * with it. Do not call loseContext() here: the browser logs "WebGL context was
- * lost" for that, and releasing a context in the same turn can take the real
- * scene's context down with it.
- */
-function detectWebgl(): boolean {
-  try {
-    const canvas = document.createElement("canvas");
-    return !!(
-      canvas.getContext("webgl2") ??
-      canvas.getContext("webgl") ??
-      canvas.getContext("experimental-webgl")
-    );
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Falls back to the 2D mockup if anything below it throws.
  *
  * A rejected `import()` — the stale-chunk case after a deploy, or a flaky
@@ -114,7 +94,7 @@ class SceneBoundary extends Component<
   }
 }
 
-type Support = "pending" | "webgl" | "fallback";
+type Support = "pending" | "narrow" | "webgl" | "fallback";
 
 export function BeyondCore() {
   /* Starts as "pending" rather than assuming support, because this runs during
@@ -125,51 +105,77 @@ export function BeyondCore() {
   const [highDpr, setHighDpr] = useState(true);
 
   useEffect(() => {
-    if (!detectWebgl()) {
-      setSupport("fallback");
-      return;
-    }
-
     /* Deferred to an idle callback rather than started here. The scene chunk is
        by far the largest thing the landing page can download, and requesting it
        during hydration makes it compete with the code that makes the page
        interactive — which is what "the site feels slow" actually is. One idle
-       tick costs the emblem nothing perceptible and gets the main thread back. */
+       tick costs the emblem nothing perceptible and gets the main thread back.
+       Phones never arm that download: the flat mockup is the whole emblem. */
     let idle = 0;
     let timer = 0;
-    const start = () => setSupport("webgl");
+    let stopped = false;
+    let ticket = 0;
 
-    if (typeof requestIdleCallback === "function") {
-      idle = requestIdleCallback(start, { timeout: 1500 });
-    } else {
-      // Safari has no requestIdleCallback; a short timeout is close enough,
-      // since the goal is only "after the page is interactive".
-      timer = window.setTimeout(start, 200);
+    const clearStart = () => {
+      cancelIdle(idle, timer);
+      idle = 0;
+      timer = 0;
+    };
+
+    const arm = (isWide: boolean) => {
+      clearStart();
+      const mine = ++ticket;
+      if (!isWide) {
+        setSupport((current) => (current === "fallback" ? current : "narrow"));
+        return;
+      }
+      setSupport((current) => (current === "fallback" || current === "webgl" ? current : "pending"));
+      const start = () => {
+        if (stopped || mine !== ticket) return;
+        setSupport((current) => (current === "fallback" ? current : "webgl"));
+      };
+      if (typeof requestIdleCallback === "function") {
+        idle = requestIdleCallback(start, { timeout: 1500 });
+      } else {
+        // Safari has no requestIdleCallback; a short timeout is close enough,
+        // since the goal is only "after the page is interactive".
+        timer = window.setTimeout(start, 200);
+      }
+    };
+
+    if (!window.matchMedia) {
+      arm(true);
+      return () => {
+        stopped = true;
+        clearStart();
+      };
     }
-
-    if (!window.matchMedia) return () => cancelIdle(idle, timer);
 
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const wide = window.matchMedia("(min-width: 768px)");
 
-    const sync = () => {
-      setAnimate(!motion.matches);
+    const onMotion = () => setAnimate(!motion.matches);
+    const onWide = () => {
       setHighDpr(wide.matches);
+      arm(wide.matches);
     };
-    sync();
+    setAnimate(!motion.matches);
+    setHighDpr(wide.matches);
+    arm(wide.matches);
 
     /* Listening rather than reading once: a visitor can change the OS setting
        mid-session, and rotating a tablet crosses the md breakpoint. */
-    motion.addEventListener("change", sync);
-    wide.addEventListener("change", sync);
+    motion.addEventListener("change", onMotion);
+    wide.addEventListener("change", onWide);
     return () => {
-      cancelIdle(idle, timer);
-      motion.removeEventListener("change", sync);
-      wide.removeEventListener("change", sync);
+      stopped = true;
+      clearStart();
+      motion.removeEventListener("change", onMotion);
+      wide.removeEventListener("change", onWide);
     };
   }, []);
 
-  if (support === "fallback") return <DashboardMockup />;
+  if (support === "fallback" || support === "narrow") return <DashboardMockup />;
 
   return (
     <div className="relative">

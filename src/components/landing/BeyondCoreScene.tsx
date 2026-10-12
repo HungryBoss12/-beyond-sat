@@ -1,6 +1,6 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
-import type { Mesh, Group } from "three";
+import { WebGLRenderer, type Group, type Mesh, type WebGLRendererParameters } from "three";
 
 /**
  * The WebGL half of the hero emblem (master_plan.md §1).
@@ -45,7 +45,7 @@ const POINTER_PITCH = 0.22;
  * group rather than the camera — moving the camera would also move the lights,
  * which are what give the facets their definition.
  */
-function Emblem() {
+function Emblem({ over }: { over: { current: boolean } }) {
   const group = useRef<Group>(null);
   const core = useRef<Mesh>(null);
   const shell = useRef<Mesh>(null);
@@ -62,10 +62,8 @@ function Emblem() {
   const aimX = useRef(0);
   const aimY = useRef(0);
 
-  /* Hover is tracked as a ref, not state: the only thing that reads it is the
-     frame loop, and putting it in state would re-render the whole scene each time
-     the pointer crosses the mesh's silhouette. `swell` is its eased shadow. */
-  const hover = useRef(false);
+  /* `swell` eases toward the canvas hover flag. The flag lives outside the
+     frame loop so a pointer enter does not re-render the scene. */
   const swell = useRef(0);
 
   useFrame((state, delta) => {
@@ -105,7 +103,7 @@ function Emblem() {
        frame loop rather than set from the event handler, so a fast pointer-out
        glides back instead of snapping — and eased through a ref rather than React
        state, which would re-render the scene on every enter and leave. */
-    swell.current += ((hover.current ? 1 : 0) - swell.current) * Math.min(1, step * 5);
+    swell.current += ((over.current ? 1 : 0) - swell.current) * Math.min(1, step * 5);
     group.current.scale.setScalar(1 + swell.current * 0.05);
 
     // The shell counter-rotates so the two layers shear against each other;
@@ -120,18 +118,10 @@ function Emblem() {
   const shellArgs = useMemo(() => [1.85, 1] as [number, number], []);
 
   return (
-    /* The handlers are on the group so the wireframe shell counts as part of the
-       target — hovering only the inner core would mean the emblem stops responding
-       whenever the cursor sits between two facets of the shell. */
-    <group
-      ref={group}
-      onPointerOver={() => {
-        hover.current = true;
-      }}
-      onPointerOut={() => {
-        hover.current = false;
-      }}
-    >
+    /* No R3F pointer handlers. Fiber copies every enumerable field of the native
+       event, and Firefox logs mozPressure / mozInputSource plus a file:// security
+       error for that copy. Hover is a DOM listener on the canvas instead. */
+    <group ref={group}>
       <mesh ref={core}>
         <icosahedronGeometry args={coreArgs} />
         {/* flatShading is what makes the facets legible — with smooth normals an
@@ -184,6 +174,52 @@ function StaticEmblem() {
   );
 }
 
+/**
+ * Three logs "Context Lost" from its own listener, and Fiber then calls
+ * `forceContextLoss` on unmount, which makes Firefox print the same loss again.
+ * A real GPU drop still reaches `onLost` while the canvas is on the page.
+ */
+function createRenderer(canvas: HTMLCanvasElement, antialias: boolean, onLost: () => void) {
+  const params: WebGLRendererParameters = {
+    canvas,
+    alpha: true,
+    antialias,
+    powerPreference: "low-power",
+  };
+
+  const nativeAdd = canvas.addEventListener.bind(canvas);
+  const held: { renderer?: WebGLRenderer } = {};
+  canvas.addEventListener = ((
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ) => {
+    if (type !== "webglcontextlost") {
+      nativeAdd(type, listener, options);
+      return;
+    }
+    nativeAdd(
+      type,
+      (event: Event) => {
+        event.preventDefault();
+        if (!canvas.isConnected) return;
+        held.renderer?.setAnimationLoop(null);
+        onLost();
+      },
+      options,
+    );
+  }) as typeof canvas.addEventListener;
+
+  try {
+    const renderer = new WebGLRenderer(params);
+    held.renderer = renderer;
+    renderer.forceContextLoss = () => {};
+    return renderer;
+  } finally {
+    canvas.addEventListener = nativeAdd;
+  }
+}
+
 export default function BeyondCoreScene({
   animate,
   highDpr,
@@ -196,6 +232,10 @@ export default function BeyondCoreScene({
   /** The GPU dropped the live context. The parent swaps in the 2D mockup. */
   onContextLost: () => void;
 }) {
+  const onLost = useRef(onContextLost);
+  onLost.current = onContextLost;
+  const over = useRef(false);
+
   return (
     <Canvas
       /* `frameloop: demand` renders exactly one frame and then only on request.
@@ -207,16 +247,28 @@ export default function BeyondCoreScene({
       camera={{ position: [0, 0, 5], fov: 42 }}
       /* The page is white and the emblem is deep blue, so the canvas stays
          transparent and the hero's own background shows through. */
-      gl={{ antialias: highDpr, alpha: true, powerPreference: "low-power" }}
+      gl={(defaults) => {
+        const canvas = defaults.canvas;
+        if (!(canvas instanceof HTMLCanvasElement)) {
+          return new WebGLRenderer({
+            alpha: true,
+            antialias: highDpr,
+            powerPreference: "low-power",
+          });
+        }
+        return createRenderer(canvas, highDpr, () => onLost.current());
+      }}
       style={{ width: "100%", height: "100%" }}
-      onCreated={({ gl }) => {
-        gl.domElement.addEventListener("webglcontextlost", (event) => {
-          event.preventDefault();
-          // Three.js force-loses the context when the canvas unmounts, after
-          // React has already detached it. That cleanup is not a failed render.
-          if (!gl.domElement.isConnected) return;
-          onContextLost();
-        });
+      onCreated={({ gl: renderer }) => {
+        const el = renderer.domElement;
+        const enter = () => {
+          over.current = true;
+        };
+        const leave = () => {
+          over.current = false;
+        };
+        el.addEventListener("pointerenter", enter);
+        el.addEventListener("pointerleave", leave);
       }}
     >
       {/* Two point lights plus a dim ambient: the ambient stops the unlit faces
@@ -224,7 +276,7 @@ export default function BeyondCoreScene({
       <ambientLight intensity={0.55} />
       <pointLight position={[4, 3, 5]} intensity={55} color="#ffffff" distance={18} />
       <pointLight position={[-4, -2, 3]} intensity={30} color={BRAND_200} distance={16} />
-      {animate ? <Emblem /> : <StaticEmblem />}
+      {animate ? <Emblem over={over} /> : <StaticEmblem />}
     </Canvas>
   );
 }

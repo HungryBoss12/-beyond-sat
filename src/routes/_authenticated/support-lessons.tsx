@@ -1,22 +1,24 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { SectionBack } from "@/components/SectionBack";
+import { SupportHeader } from "@/components/support/SupportHeader";
+import { SupportHeatmap } from "@/components/support/SupportHeatmap";
+import { SupportRecommendedVideo } from "@/components/support/SupportRecommendedVideo";
+import { SupportSessionCard } from "@/components/support/SupportSessionCard";
+import { SupportStats } from "@/components/support/SupportStats";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState, Panel } from "@/components/ui/panel";
 import { CLASS_CONTROL } from "@/components/classes/control";
 import type { ClassSubject } from "@/lib/classes/types";
-import { startTestSetSession } from "@/lib/session";
 import {
+  bookSupportWindow,
+  cancelSupport,
   formatWhen,
-  loadCenterHours,
+  loadBookableWindows,
   loadMySessions,
-  loadOpenSlots,
-  requestSupport,
-  subjectLabel,
-  type CenterHours,
-  type OpenSlot,
   type SupportSession,
+  type SupportWindow,
 } from "@/lib/support/api";
 
 export const Route = createFileRoute("/_authenticated/support-lessons")({
@@ -25,25 +27,21 @@ export const Route = createFileRoute("/_authenticated/support-lessons")({
 });
 
 function SupportLessonsPage() {
-  const [hours, setHours] = useState<CenterHours | null>(null);
   const [sessions, setSessions] = useState<SupportSession[]>([]);
-  const [slots, setSlots] = useState<OpenSlot[]>([]);
-  const [open, setOpen] = useState(false);
+  const [windows, setWindows] = useState<SupportWindow[]>([]);
+  const [takeFor, setTakeFor] = useState<SupportWindow | null>(null);
   const [subject, setSubject] = useState<ClassSubject>("ebrw");
-  const [slotId, setSlotId] = useState("");
-  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
-    const [nextHours, nextSessions, nextSlots] = await Promise.all([
-      loadCenterHours(),
+    const [nextSessions, nextWindows] = await Promise.all([
       loadMySessions(),
-      loadOpenSlots(),
+      loadBookableWindows().catch(() => []),
     ]);
-    setHours(nextHours);
     setSessions(nextSessions);
-    setSlots(nextSlots);
+    setWindows(nextWindows);
   }
 
   useEffect(() => {
@@ -53,29 +51,44 @@ function SupportLessonsPage() {
   }, []);
 
   const now = Date.now();
-  const upcoming = sessions.filter(
-    (session) =>
-      (session.status === "pending" || session.status === "confirmed") &&
-      new Date(session.ends_at).getTime() >= now,
-  );
+  const upcoming = sessions.filter((session) => {
+    if (session.status === "pending") return true;
+    if (session.status !== "confirmed") return false;
+    if (!session.ends_at) return true;
+    return new Date(session.ends_at).getTime() >= now;
+  });
   const past = sessions.filter((session) => !upcoming.includes(session));
 
-  async function submit() {
-    if (!slotId) {
-      toast.error("Pick an open time.");
-      return;
-    }
+  async function take(window: SupportWindow) {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     try {
-      await requestSupport(slotId, subject, notes);
-      toast.success("Request sent");
-      setOpen(false);
-      setNotes("");
-      setSlotId("");
+      await bookSupportWindow(window.id, subject);
+      toast.success("Session booked");
+      setTakeFor(null);
+      setSubject("ebrw");
       await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not send the request");
+      toast.error(err instanceof Error ? err.message : "Could not book");
     } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
+
+  async function cancel(session: SupportSession) {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      await cancelSupport(session.id);
+      toast.success("Request cancelled");
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not cancel the request");
+    } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }
@@ -83,32 +96,70 @@ function SupportLessonsPage() {
   return (
     <div className="space-y-4">
       <SectionBack />
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black text-brand-900">Support lessons</h1>
-          <p className="mt-1 text-sm text-brand-700">
-            {hours
-              ? `Center hours ${hours.opens_at.slice(0, 5)}–${hours.closes_at.slice(0, 5)}. Pick a free teacher slot that is not during your class.`
-              : "Center hours are not set yet."}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white"
-        >
-          Request a session
-        </button>
-      </div>
+      <SupportHeader />
+      <Panel className="space-y-2 p-4 text-white">
+        <h2 className="text-sm font-black text-white">Open sessions</h2>
+        <p className="text-xs">These are the only times you can request. Each one starts within 24 hours.</p>
+        {windows.length === 0 ? (
+          <p className="text-sm">Nothing is open in the next 24 hours.</p>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {windows.map((window) => (
+              <li key={window.id} className="flex items-center justify-between gap-2">
+                <span>
+                  {window.teacher_name} · {formatWhen(window.starts_at)} – {formatWhen(window.ends_at)}
+                </span>
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="text-xs font-bold underline disabled:opacity-40"
+                  onClick={() => {
+                    setSubject("ebrw");
+                    setTakeFor(window);
+                  }}
+                >
+                  Take this session
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
       {error && <p className="text-sm font-bold text-brand-900">{error}</p>}
-      <SessionList title="Upcoming" sessions={upcoming} empty="No upcoming sessions." />
-      <SessionList title="Past" sessions={past} empty="No past sessions." past />
-      <Dialog open={open} onOpenChange={setOpen}>
+      <SupportStats sessions={sessions} />
+      <Panel className="p-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <SupportHeatmap sessions={sessions} />
+          <SupportRecommendedVideo />
+        </div>
+      </Panel>
+      <SessionList
+        title="Upcoming"
+        sessions={upcoming}
+        empty="No upcoming sessions"
+        body="Take an open session above. A teacher can also assign one to you."
+        onCancel={(session) => void cancel(session)}
+        cancelling={busy}
+      />
+      <SessionList
+        title="Past"
+        sessions={past}
+        empty="No past sessions"
+        body="Completed and declined sessions show up here."
+        onCancel={(session) => void cancel(session)}
+        cancelling={busy}
+      />
+      <Dialog open={takeFor != null} onOpenChange={(next) => !next && setTakeFor(null)}>
         <DialogContent className="border-brand-400/40 bg-brand-800 text-white sm:rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-white">Request support</DialogTitle>
+            <DialogTitle className="text-white">Take this session</DialogTitle>
           </DialogHeader>
-          <label className="block text-xs font-bold">
+          {takeFor && (
+            <p className="text-xs">
+              {takeFor.teacher_name} · {formatWhen(takeFor.starts_at)} – {formatWhen(takeFor.ends_at)}
+            </p>
+          )}
+          <label className="mt-3 block text-xs font-bold">
             Subject
             <select
               className={CLASS_CONTROL + " mt-1"}
@@ -119,41 +170,17 @@ function SupportLessonsPage() {
               <option value="math">Math</option>
             </select>
           </label>
-          <label className="mt-3 block text-xs font-bold">
-            Teacher and time
-            <select
-              className={CLASS_CONTROL + " mt-1"}
-              value={slotId}
-              onChange={(event) => setSlotId(event.target.value)}
-            >
-              <option value="">Choose an open slot</option>
-              {slots.map((slot) => (
-                <option key={slot.slot_id} value={slot.slot_id}>
-                  {slot.teacher_name} · {formatWhen(slot.starts_at)}–{formatWhen(slot.ends_at)}
-                </option>
-              ))}
-            </select>
-          </label>
-          {slots.length === 0 && (
-            <p className="mt-2 text-xs text-white">No open slot fits your class schedule.</p>
-          )}
-          <label className="mt-3 block text-xs font-bold">
-            Notes
-            <textarea
-              className={CLASS_CONTROL + " mt-1 min-h-24"}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="What do you want to work on?"
-            />
-          </label>
           <div className="mt-4 flex justify-end">
             <button
               type="button"
-              disabled={busy}
-              onClick={() => void submit()}
+              disabled={busy || !takeFor}
+              onClick={() => {
+                if (!takeFor) return;
+                void take(takeFor);
+              }}
               className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
             >
-              Send request
+              Book
             </button>
           </div>
         </DialogContent>
@@ -166,93 +193,34 @@ function SessionList({
   title,
   sessions,
   empty,
-  past,
+  body,
+  onCancel,
+  cancelling = false,
 }: {
   title: string;
   sessions: SupportSession[];
   empty: string;
-  past?: boolean;
+  body: string;
+  onCancel?: (session: SupportSession) => void;
+  cancelling?: boolean;
 }) {
   return (
     <Panel className="space-y-3 p-4">
       <h2 className="text-sm font-black text-white">{title}</h2>
       {sessions.length === 0 ? (
-        <EmptyState title={empty} body="" />
+        <EmptyState title={empty} body={body} />
       ) : (
         <ul className="space-y-2">
           {sessions.map((session) => (
-            <li key={session.id} className="rounded-xl bg-brand-800 px-3 py-3 text-sm text-white">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-bold">
-                  {subjectLabel(session.subject)} · {session.teacher_name}
-                </p>
-                <StatusBadge status={session.status} />
-              </div>
-              <p className="mt-1 text-xs">
-                {formatWhen(session.starts_at)} – {formatWhen(session.ends_at)}
-              </p>
-              {session.notes && <p className="mt-2 text-xs">{session.notes}</p>}
-              {session.rejection_reason && (
-                <p className="mt-2 text-xs">Declined: {session.rejection_reason}</p>
-              )}
-              {session.materials.length > 0 && (
-                <ul className="mt-2 space-y-1 text-xs">
-                  {session.materials.map((item) => (
-                    <li key={item.id}>
-                      <MaterialLink item={item} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
+            <SupportSessionCard
+              key={session.id}
+              session={session}
+              onCancel={onCancel}
+              cancelling={cancelling}
+            />
           ))}
         </ul>
       )}
     </Panel>
-  );
-}
-
-function MaterialLink({ item }: { item: SupportSession["materials"][number] }) {
-  const navigate = useNavigate();
-  const [busy, setBusy] = useState(false);
-  if (item.test_id) {
-    return (
-      <button
-        type="button"
-        disabled={busy}
-        className="font-bold underline disabled:opacity-40"
-        onClick={() => {
-          const testId = item.test_id;
-          if (!testId) return;
-          setBusy(true);
-          void startTestSetSession(testId)
-            .then(({ sessionId }) =>
-              navigate({ to: "/practice/session/$id", params: { id: sessionId } }),
-            )
-            .catch((err: unknown) =>
-              toast.error(err instanceof Error ? err.message : "Could not open the test"),
-            )
-            .finally(() => setBusy(false));
-        }}
-      >
-        {item.title}
-      </button>
-    );
-  }
-  if (item.material_url?.startsWith("https://")) {
-    return (
-      <a className="font-bold underline" href={item.material_url} target="_blank" rel="noopener noreferrer">
-        {item.title}
-      </a>
-    );
-  }
-  return <span>{item.title}</span>;
-}
-
-function StatusBadge({ status }: { status: SupportSession["status"] }) {
-  return (
-    <span className="rounded-full bg-brand-400 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-      {status}
-    </span>
   );
 }

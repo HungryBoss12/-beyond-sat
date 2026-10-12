@@ -316,35 +316,7 @@ export function QuestionCard({
   // Render passage with highlight underlines
   const renderedPassage = useMemo(() => {
     if (!leftPassage) return null;
-    const text = leftPassage;
-    // For visual highlight, wrap each highlight substring (first occurrence)
-    // Build a list of ranges
-    type R = { start: number; end: number; hid: string; note: string };
-    const ranges: R[] = [];
-    for (const h of answer.highlights) {
-      const i = text.indexOf(h.text);
-      if (i >= 0) ranges.push({ start: i, end: i + h.text.length, hid: h.id, note: h.note });
-    }
-    ranges.sort((a, b) => a.start - b.start);
-    // dedupe overlapping
-    const clean: R[] = [];
-    for (const r of ranges) {
-      if (clean.length === 0 || r.start >= clean[clean.length - 1].end) clean.push(r);
-    }
-    const parts: React.ReactNode[] = [];
-    let cursor = 0;
-    clean.forEach((r, i) => {
-      if (r.start > cursor)
-        parts.push(<MathText key={`t-${i}`}>{text.slice(cursor, r.start)}</MathText>);
-      parts.push(
-        <HighlightMark key={`h-${i}`} id={r.hid} note={r.note} onRemove={(id) => removeHighlightRef.current(id)}>
-          <MathText>{text.slice(r.start, r.end)}</MathText>
-        </HighlightMark>,
-      );
-      cursor = r.end;
-    });
-    if (cursor < text.length) parts.push(<MathText key="t-end">{text.slice(cursor)}</MathText>);
-    return parts;
+    return renderMarked(leftPassage, answer.highlights, (id) => removeHighlightRef.current(id));
   }, [leftPassage, answer.highlights]);
 
   return (
@@ -375,7 +347,7 @@ export function QuestionCard({
                 <img
                   src={q.image_url}
                   alt={q.image_alt ?? ""}
-                  className="mt-5 max-w-full rounded border border-test-line"
+                  className="mt-5 h-auto max-h-[32rem] w-auto max-w-full rounded border border-test-line object-contain"
                 />
               ) : null}
             </div>
@@ -602,19 +574,31 @@ function renderMarked(
     if (clean.length === 0 || r.start >= clean[clean.length - 1].end) clean.push(r);
   }
   if (clean.length === 0) return <MathText block>{text}</MathText>;
-  const parts: React.ReactNode[] = [];
-  let cursor = 0;
-  clean.forEach((r, i) => {
-    if (r.start > cursor) parts.push(<MathText key={`t-${i}`}>{text.slice(cursor, r.start)}</MathText>);
-    parts.push(
-      <HighlightMark key={`h-${i}`} id={r.hid} note={r.note} onRemove={onRemove}>
-        <MathText>{text.slice(r.start, r.end)}</MathText>
-      </HighlightMark>,
-    );
-    cursor = r.end;
-  });
-  if (cursor < text.length) parts.push(<MathText key="t-end">{text.slice(cursor)}</MathText>);
-  return parts;
+  const math = [...text.matchAll(/(\$\$[\s\S]+?\$\$)|(\\\[[\s\S]+?\\\])|(\$[^\n$]+?\$)|(\\\([\s\S]+?\\\))/g)].map(
+    (match) => ({ start: match.index ?? 0, end: (match.index ?? 0) + match[0].length }),
+  );
+  const safe = clean.filter((range) => !math.some((span) => range.start < span.end && range.end > span.start));
+  let source = text;
+  for (const range of [...safe].sort((a, b) => b.start - a.start)) {
+    source = `${source.slice(0, range.start)}<u>${source.slice(range.start, range.end)}</u>${source.slice(range.end)}`;
+  }
+  return (
+    <div>
+      <MathText block>{source}</MathText>
+      <div className="mt-1 flex flex-wrap gap-2">
+        {clean.map((range) => (
+          <button
+            key={range.hid}
+            type="button"
+            className="text-xs font-bold underline"
+            onClick={() => onRemove(range.hid)}
+          >
+            {range.note || "Remove highlight"}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function QuestionBody({
@@ -673,7 +657,7 @@ function QuestionBody({
           belongs to the question — moving it up to the top bar is the single
           biggest thing that makes a clone read as "not Bluebook". */}
       <div className="flex items-center gap-3 pb-2.5">
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-sm bg-test-dark text-sm font-bold tabular-nums text-white">
+        <span className="grid h-7 w-7 shrink-0 place-items-center bg-test-dark text-sm font-bold tabular-nums text-white">
           {index + 1}
         </span>
         <button
@@ -688,17 +672,6 @@ function QuestionBody({
           )}
           Mark for Review
         </button>
-        <span className="ml-auto hidden items-center gap-3 truncate lg:inline-flex">
-          <span className="text-xs font-semibold uppercase tracking-wider text-test-muted">
-            {q.skill}
-          </span>
-          {q.bank_format !== "sqb" ? <DifficultyBars difficulty={q.difficulty} /> : null}
-        </span>
-        {q.bank_format !== "sqb" ? (
-          <span className="ml-auto inline-flex lg:hidden">
-            <DifficultyBars difficulty={q.difficulty} />
-          </span>
-        ) : null}
         {!reveal && q.kind !== "grid_in" && (
           <button
             onClick={onToggleCrossOut}
@@ -720,7 +693,7 @@ function QuestionBody({
         </div>
       ) : null}
 
-      {(q.bank_format === "sqb" || q.domain || q.subskill) && (
+      {q.bank_format === "sqb" && (q.domain || q.subskill) && (
         <div className="flex flex-wrap items-center gap-1.5 pb-2 pt-1">
           {q.bank_format === "sqb" && (
             <span className="rounded bg-test-well px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-test-muted">
@@ -824,7 +797,7 @@ function QuestionBody({
                         src={c.image_url}
                         alt=""
                         className={
-                          "max-h-40 w-auto max-w-full rounded-md border border-test-edge object-contain " +
+                          "h-auto max-h-72 w-auto max-w-full self-start rounded-md border border-test-edge object-contain " +
                           (eliminated ? "opacity-50" : "")
                         }
                       />

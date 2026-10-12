@@ -25,3 +25,13 @@ export function consumeLastCapturedError(): unknown {
   lastCapturedError = undefined;
   return error;
 }
+
+/** A visitor left while the page was still rendering. Not a server failure. */
+export function isClientAbort(error: unknown): boolean {
+  if (typeof error === "string") return /\baborted\b|ECONNRESET/i.test(error);
+  if (!error || typeof error !== "object") return false;
+  const record = error as { name?: unknown; message?: unknown; code?: unknown; cause?: unknown };
+  if (record.name === "AbortError" || record.code === "ECONNRESET") return true;
+  if (typeof record.message === "string" && /\baborted\b|ECONNRESET/i.test(record.message)) return true;
+  return isClientAbort(record.cause);
+}

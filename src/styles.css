@@ -314,6 +314,12 @@
     letter-spacing: -0.02em;
   }
 
+  /* Panels are navy. A heading must pick up the panel's white text instead of
+     the page foreground, which is near-black. */
+  .reveal-surface :is(h1, h2, h3, h4, h5, h6) {
+    color: inherit;
+  }
+
   /* Tailwind v4 preflight no longer styles <u>; MathText emits these for
      College Board–style source emphasis in stems, passages, and choices. */
   u,
@@ -1509,6 +1515,7 @@
    (JS retrigger with fresh random bar heights) all fire the one-shot. */
 .nav-ico {
   transform-origin: center;
+  transform-box: view-box;
   display: block;
   overflow: visible;
 }
@@ -2003,6 +2010,24 @@
   animation: nav-shield 0.7s ease-in-out;
 }
 
+.nav-ring,
+.nav-ring-straps {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.group:hover .nav-ring,
+.group:focus-visible .nav-ring,
+.group:active .nav-ring,
+.group[data-nav-play] .nav-ring {
+  animation: nav-ring-toss 0.72s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.group:hover .nav-ring-straps,
+.group:focus-visible .nav-ring-straps,
+.group:active .nav-ring-straps,
+.group[data-nav-play] .nav-ring-straps {
+  animation: nav-ring-straps 0.72s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .nav-rail-pill,
 .nav-tab-pill {
   transition:
@@ -2094,13 +2119,13 @@
 @keyframes nav-book {
   0%,
   100% {
-    transform: perspective(80px) rotateY(0deg);
+    transform: rotate(0deg) scale(1);
   }
   30% {
-    transform: perspective(80px) rotateY(-26deg);
+    transform: rotate(-16deg) scale(1.08);
   }
   70% {
-    transform: perspective(80px) rotateY(26deg);
+    transform: rotate(16deg) scale(1.08);
   }
 }
 
@@ -2206,6 +2231,33 @@
   }
   100% {
     transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes nav-ring-toss {
+  0% {
+    transform: rotate(0deg);
+  }
+  62% {
+    transform: rotate(86deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes nav-ring-straps {
+  0% {
+    transform: rotate(0deg);
+  }
+  28% {
+    transform: rotate(14deg);
+  }
+  78% {
+    transform: rotate(68deg);
+  }
+  100% {
+    transform: rotate(0deg);
   }
 }
 
@@ -2525,6 +2577,85 @@
   }
 }
 
+/* Touch screens never hover, so the pointer glow, button sheen, and icon
+   motions would stay invisible. These rules show the same effects without a
+   mouse. Desktop hover behaviour is unchanged. */
+@media (hover: none) and (prefers-reduced-motion: no-preference) {
+  .ambient-glow {
+    --glow: 1;
+    --gx: 28%;
+    --gy: 22%;
+  }
+
+  .reveal-surface,
+  .vocab-reveal-surface {
+    --glow: 0.7;
+    --px: 30%;
+    --py: 18%;
+  }
+
+  .btn-brand {
+    box-shadow:
+      0 2px 4px rgba(9, 6, 84, 0.36),
+      0 14px 32px -8px rgba(83, 82, 145, 0.6);
+  }
+  .btn-brand::after {
+    animation: sheen 2.6s ease-in-out 0.4s infinite;
+  }
+
+  .lift:active {
+    transform: translateY(-2px);
+  }
+
+  .lesson-card .lesson-mark-orb {
+    border-color: color-mix(in srgb, var(--color-brand-300) 70%, transparent);
+    background-color: var(--color-brand-500);
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--color-brand-400) 28%, transparent),
+      0 10px 24px color-mix(in srgb, var(--color-brand-600) 35%, transparent);
+  }
+
+  .group .vocab-hub-glyph-interactive {
+    animation: vocab-hub-pop 0.74s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .group .vocab-hub-deck-1 {
+    animation: vocab-hub-deck-1 0.78s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .group .vocab-hub-deck-2 {
+    animation: vocab-hub-deck-2 0.78s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .group .vocab-hub-card {
+    animation: vocab-hub-lift 0.82s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .group .vocab-hub-blank:not(.vocab-hub-quiz-blank) {
+    animation: vocab-hub-highlight 0.72s ease-out both;
+  }
+  .group .vocab-hub-line-a {
+    animation: vocab-hub-line-in 0.65s ease-out both;
+  }
+  .group .vocab-hub-line-mid {
+    animation: vocab-hub-line-in 0.65s ease-out 0.05s both;
+  }
+  .group .vocab-hub-line-b {
+    animation: vocab-hub-line-in 0.65s ease-out 0.08s both;
+  }
+  .group .vocab-hub-line-c {
+    animation: vocab-hub-line-in 0.65s ease-out 0.12s both;
+  }
+  .group .vocab-hub-srs {
+    animation: vocab-hub-srs-spin 0.92s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .group .vocab-hub-quiz-blank {
+    animation: vocab-hub-quiz-blank 0.78s ease-out both;
+  }
+  .group .vocab-hub-quiz-ring {
+    animation: vocab-hub-quiz-ring 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .group .vocab-hub-quiz-check {
+    animation: vocab-hub-quiz-check 0.68s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2553,6 +2684,7 @@
   .nav-ico-ai,
   .nav-ico-news,
   .nav-ico-profile,
+  .nav-ico-support,
   .nav-ico-admin,
   .nav-class-a,
   .nav-class-b,
@@ -2597,7 +2729,10 @@
   .nav-star-lg,
   .nav-star-sm,
   .nav-profile-head,
-  .nav-profile-ring {
+  .nav-profile-ring,
+  .nav-ico-support,
+  .nav-ring,
+  .nav-ring-straps {
     animation: none !important;
   }
   .lift:hover,

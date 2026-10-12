@@ -164,21 +164,16 @@ function Dashboard() {
   const testsTakenCount = useMemo(() => countMockTestsTaken(mocks), [mocks]);
 
   const avg = useMemo(() => {
-    const completed = mocks.filter((m) => m.completed_at);
-    const scored = completed
+    const mockScores = mocks
+      .filter((m) => m.type === "mock" && m.completed_at)
       .map((s) => completedSessionScore(s))
       .filter((v): v is number => v != null);
-    if (scored.length === 0) return null;
-    const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
-    const mockRows = completed.filter((s) => s.type === "mock");
-    const rwVals = mockRows.map((s) => s.rw_score).filter((v): v is number => v != null);
-    const mathVals = mockRows.map((s) => s.math_score).filter((v): v is number => v != null);
+    if (mockScores.length === 0) return null;
+    const mean = mockScores.reduce((a, b) => a + b, 0) / mockScores.length;
     return {
-      total: Math.round(mean(scored)),
-      rw: rwVals.length ? Math.round(mean(rwVals)) : 0,
-      math: mathVals.length ? Math.round(mean(mathVals)) : 0,
-      best: Math.max(...scored),
-      count: scored.length,
+      total: Math.round(mean),
+      best: Math.max(...mockScores),
+      count: mockScores.length,
     };
   }, [mocks]);
 
@@ -345,8 +340,12 @@ function ProgressPanel({
             latest?.at
               ? latest.incomplete
                 ? `In progress · ${latest.progressPct ?? 0}% answered`
-                : `Latest mock · ${format(new Date(latest.at), "MMM d, yyyy")}`
-              : "No mocks yet"
+                : latest.source === "mock"
+                  ? `Latest mock · ${format(new Date(latest.at), "MMM d, yyyy")}`
+                  : latest.source === "daily"
+                    ? `Latest daily test · ${format(new Date(latest.at), "MMM d, yyyy")}`
+                    : `Latest practice · ${format(new Date(latest.at), "MMM d, yyyy")}`
+              : "No scored tests yet"
           }
           action={
             target != null ? (
@@ -403,7 +402,9 @@ function ProgressPanel({
             <>
               {completedCount === 1 ? (
                 <p className="mb-2 text-xs text-brand-100">
-                  One scored mock recorded — keep going to compare your trend.
+                  {latest?.source === "mock"
+                    ? "One scored mock recorded — keep going to compare your trend."
+                    : "One finished set so far. Analysis uses a full mock for the 400–1600 score."}
                 </p>
               ) : null}
             <ResponsiveContainer width="100%" height="100%" minHeight={188}>
@@ -441,12 +442,14 @@ function ProgressPanel({
                   dot={(props: {
                     cx?: number;
                     cy?: number;
+                    index?: number;
                     payload?: MockTrendPoint;
                   }) => {
-                    if (props.payload?.anchor) return <g />;
+                    if (props.payload?.anchor) return <g key={props.index} />;
                     const incomplete = props.payload?.incomplete;
                     return (
                       <circle
+                        key={props.index}
                         cx={props.cx}
                         cy={props.cy}
                         r={4}

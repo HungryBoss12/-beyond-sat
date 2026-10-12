@@ -37,9 +37,18 @@ export function youtubeThumb(url: string): string | null {
   return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
 }
 
-export function youtubeEmbed(url: string): string | null {
+export function youtubeEmbed(url: string, options?: { autoplay?: boolean }): string | null {
   const id = youtubeId(url);
-  return id ? `https://www.youtube-nocookie.com/embed/${id}?autoplay=1` : null;
+  if (!id) return null;
+  const params = new URLSearchParams();
+  if (options?.autoplay !== false) params.set("autoplay", "1");
+  // Without this, the player falls back to a file:// target and Firefox
+  // blocks it on the embedding page.
+  if (typeof window !== "undefined" && window.location.protocol !== "file:") {
+    params.set("origin", window.location.origin);
+  }
+  const query = params.toString();
+  return `https://www.youtube-nocookie.com/embed/${id}${query ? `?${query}` : ""}`;
 }
 
 export function formatDuration(seconds: number | null | undefined): string | null {

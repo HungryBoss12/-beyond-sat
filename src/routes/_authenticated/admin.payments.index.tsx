@@ -13,6 +13,7 @@ import {
   Percent,
   Plus,
   ReceiptText,
+  RotateCcw,
   Trash2,
   Search,
   SlidersHorizontal,
@@ -27,7 +28,13 @@ import { subjectToSlug } from "@/lib/classes/schemes";
 import { EmptyState } from "@/components/ui/panel";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { IconButton } from "@/components/ui/icon-button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Command,
   CommandEmpty,
@@ -59,6 +66,7 @@ import {
   paymentsSummary,
   setClassFee,
   setStudentDiscount,
+  resetAllPayments,
   voidEntry,
   type DiscountStudent,
   type StudentDiscount,
@@ -149,6 +157,7 @@ function PaymentsPage() {
   const [payFor, setPayFor] = useState<PaymentTarget | null>(null);
   const [feeOpen, setFeeOpen] = useState(false);
   const [voiding, setVoiding] = useState<{ id: string; label: string } | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
   const [feeClasses, setFeeClasses] = useState<{ id: string; name: string }[]>([]);
   const [query, setQuery] = useState(search.q);
   const applied = useRef(false);
@@ -434,6 +443,14 @@ function PaymentsPage() {
             }}
           />
           <IconButton icon={Download} label="Export CSV" variant="outline" onClick={exportCsv} />
+          {!teacher && (
+            <IconButton
+              icon={RotateCcw}
+              label="Reset all payments"
+              variant="outline"
+              onClick={() => setResetOpen(true)}
+            />
+          )}
         </div>
       </div>
 
@@ -712,6 +729,15 @@ function PaymentsPage() {
           await load();
         }}
       />
+      <ResetPaymentsDialog
+        open={resetOpen}
+        onClose={() => setResetOpen(false)}
+        onReset={async () => {
+          const count = await resetAllPayments();
+          toast.success(count ? `Reset ${count} ledger row(s)` : "Payments were already clear");
+          await load();
+        }}
+      />
       <FeeDialog
         open={feeOpen}
         title="Class fee"
@@ -874,6 +900,89 @@ function BalancesTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function ResetPaymentsDialog({
+  open,
+  onClose,
+  onReset,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onReset: () => Promise<void>;
+}) {
+  const [phrase, setPhrase] = useState("");
+  const [busy, setBusy] = useState(false);
+  const confirmed = phrase.trim().toUpperCase() === "RESET";
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !busy) {
+          setPhrase("");
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="border-brand-400/40 bg-brand-800 text-white sm:rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-white">Reset all payments</DialogTitle>
+          <DialogDescription className="text-white">
+            Voids every charge, payment, discount, and refund. Balances go to zero. Class fees
+            stay, and cleared months are not billed again. Type RESET to confirm.
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!confirmed || busy) return;
+            setBusy(true);
+            void onReset()
+              .then(() => {
+                setPhrase("");
+                onClose();
+              })
+              .catch((err) =>
+                toast.error(err instanceof Error ? err.message : "Could not reset payments"),
+              )
+              .finally(() => setBusy(false));
+          }}
+        >
+          <label className="block text-xs font-bold text-white">
+            Type RESET
+            <input
+              autoFocus
+              autoComplete="off"
+              className={CLASS_CONTROL + " mt-1 uppercase"}
+              value={phrase}
+              onChange={(event) => setPhrase(event.target.value)}
+            />
+          </label>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="tap px-4 py-2 text-sm font-bold"
+              disabled={busy}
+              onClick={() => {
+                setPhrase("");
+                onClose();
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={busy || !confirmed}
+              className="rounded-full bg-red-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            >
+              {busy ? "Resetting" : "Reset all payments"}
+            </button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

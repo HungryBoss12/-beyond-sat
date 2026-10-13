@@ -440,6 +440,12 @@ export async function voidEntry(id: string, reason: string): Promise<void> {
   await call("admin_void_entry", { p_id: id, p_reason: reason });
 }
 
+/** Voids every open charge, payment, discount, and refund. Returns how many rows were voided. */
+export async function resetAllPayments(): Promise<number> {
+  const count = await call<number>("admin_reset_all_payments");
+  return Number(count ?? 0);
+}
+
 /** Every ledger row across students, newest first (admin RLS). */
 export async function listAllLedger(limit = 2000): Promise<LedgerRow[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

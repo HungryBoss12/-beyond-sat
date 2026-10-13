@@ -31,6 +31,30 @@ import { periodLabel, tashkentToday } from "@/lib/billing/dates";
 import { balanceKind, formatUzs } from "@/lib/billing/money";
 import type { LedgerRow, StudentBillingRow } from "@/lib/billing/types";
 
+/** The join-month tile follows the charge that was written, not a fresh quote. */
+function withStoredJoin(rows: StudentBillingRow[], ledger: LedgerRow[]): StudentBillingRow[] {
+  return rows.map((row) => {
+    if (row.join_amount_uzs == null || !row.activated_on) return row;
+    const month = row.activated_on.slice(0, 7);
+    const hits = ledger.filter(
+      (entry) =>
+        !entry.voided_at &&
+        entry.kind === "charge" &&
+        entry.prorate_lessons != null &&
+        (entry.period ?? "").slice(0, 7) === month &&
+        (entry.class_id == null || entry.class_id === row.class_id),
+    );
+    if (hits.length !== 1) return row;
+    const hit = hits[0];
+    return {
+      ...row,
+      join_amount_uzs: hit.amount_uzs,
+      join_remaining: hit.prorate_lessons,
+      join_total: hit.prorate_total,
+    };
+  });
+}
+
 /** Admin-only money block on the student profile (§6). */
 export function StudentMoney({ userId, name }: { userId: string; name: string }) {
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
@@ -85,7 +109,8 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
     0n,
   );
   const kind = balanceKind(balance);
-  const priced = billing.filter((g) => (g.monthly_fee_uzs ?? 0n) > 0n);
+  const shownBilling = withStoredJoin(billing, live);
+  const priced = shownBilling.filter((g) => (g.monthly_fee_uzs ?? 0n) > 0n);
   const monthly = priced.reduce((sum, g) => sum + (g.monthly_fee_uzs ?? 0n), 0n);
   const joinGroups = priced.filter((g) => g.join_amount_uzs != null);
   const joinTotal = joinGroups.reduce((sum, g) => sum + (g.join_amount_uzs ?? 0n), 0n);
@@ -95,7 +120,7 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
       : joinGroups
           .map((g) => (g.join_total ? `${g.join_remaining}/${g.join_total} lessons` : "Full month"))
           .join(" · ");
-  const anyActive = billing.some((g) => g.status === "active");
+  const anyActive = shownBilling.some((g) => g.status === "active");
 
   const sum = (rows: LedgerRow[]) => rows.reduce((s, r) => s + r.amount_uzs, 0n);
 
@@ -184,7 +209,7 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
       </div>
 
       <GroupCharges
-        rows={billing.filter((row) => row.monthly_fee_uzs != null || row.activated_on)}
+        rows={shownBilling.filter((row) => row.monthly_fee_uzs != null || row.activated_on)}
         onEditFee={(row) => {
           setFeeRow(row);
           setFeeText(row.monthly_fee_uzs == null ? "" : row.monthly_fee_uzs.toString());
@@ -234,7 +259,7 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
         open={feeOpen}
         title="This student's fee"
         description="Replaces the class fee for this student. The first month is still a share of the lessons."
-        classes={classChoices(billing)}
+        classes={classChoices(shownBilling)}
         onClose={() => setFeeOpen(false)}
         onSave={async (fee, month, classId) => {
           await setStudentFee(userId, fee, month, classId);

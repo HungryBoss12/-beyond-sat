@@ -80,11 +80,6 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
     await timingFloor(startedAt);
     return jsonResponse({ error: "That username and password don't match." }, 401);
   }
-  if (profile.banned) {
-    await timingFloor(startedAt);
-    return jsonResponse({ error: "That username and password don't match." }, 401);
-  }
-
   const { data: authUser, error: userErr } = await supabaseAdmin.auth.admin.getUserById(profile.id);
   const email = authUser.user?.email;
   if (userErr || !email) {
@@ -99,6 +94,11 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
   if (error || !data.session) {
     await timingFloor(startedAt);
     return jsonResponse({ error: "That username and password don't match." }, 401);
+  }
+  if (profile.banned) {
+    await supabaseAdmin.auth.admin.signOut(data.session.access_token, "global");
+    await timingFloor(startedAt);
+    return jsonResponse({ error: "This account is suspended." }, 403);
   }
 
   return jsonResponse({

@@ -4,7 +4,6 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
-import { appUrl } from "@/lib/app-url";
 import { signInWithIdentifier } from "@/lib/auth/username-login";
 import {
   listSavedAccounts,
@@ -37,6 +36,7 @@ function friendlyError(msg: string): string {
     return "That username or email and password don't match. Please try again.";
   if (m.includes("email not confirmed"))
     return "Please verify your email before signing in. Check your inbox for the code.";
+  if (m.includes("suspended")) return "This account is suspended.";
   return msg;
 }
 
@@ -88,17 +88,28 @@ function SignIn() {
   async function handleForgot() {
     setError(null);
     setInfo(null);
-    if (!identifier.includes("@")) {
-      setError("Enter the email on the account, then click Forgot password.");
+    if (!identifier.trim()) {
+      setError("Enter your username or email, then click Forgot password.");
       return;
     }
     setResetting(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(identifier.trim(), {
-      redirectTo: appUrl("/reset-password"),
-    });
-    setResetting(false);
-    if (error) setError(error.message);
-    else setInfo("Password reset email sent. Check your inbox.");
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ identifier: identifier.trim() }),
+      });
+      const body = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(body.error ?? "Could not send the reset email.");
+        return;
+      }
+      setInfo("If that account can receive email, a reset link is on its way.");
+    } catch {
+      setError("Could not send the reset email.");
+    } finally {
+      setResetting(false);
+    }
   }
 
   async function continueAs(account: SavedAccount) {

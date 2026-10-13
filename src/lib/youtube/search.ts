@@ -1,5 +1,6 @@
 import { readEnv, readSupabaseConfig, verifySupabaseUser, readBearerToken } from "@/lib/server-env";
 import { loadUinfoSummary } from "@/lib/uinfo/summarize";
+import { userIsBanned } from "@/lib/vocab/rest";
 
 const CACHE_MS = 12 * 60 * 60 * 1000;
 const SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
@@ -425,6 +426,9 @@ export async function handleYoutubeRecs(request: Request, env: unknown): Promise
   if (!token) return json({ error: "Sign in required" }, 401);
   const user = await verifySupabaseUser(config, token);
   if (!user) return json({ error: "Your session has expired. Sign in again." }, 401);
+  const banned = await userIsBanned(config, token, user.id);
+  if (banned === "unknown") return json({ error: "Could not verify account" }, 503);
+  if (banned === "yes") return json({ error: "This account is banned." }, 403);
 
   try {
     const section = parseYoutubeSection(new URL(request.url).searchParams.get("section"));

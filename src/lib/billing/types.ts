@@ -73,6 +73,7 @@ export type LedgerRow = {
   subject: ClassSubject | null;
   prorate_lessons: number | null;
   prorate_total: number | null;
+  class_id?: string | null;
 };
 
 export type PaymentsSummary = {

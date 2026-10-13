@@ -21,6 +21,7 @@ import {
 } from "./lib/auth/student-invite-handler";
 import { handleCompleteFirstLogin } from "./lib/auth/complete-first-login-handler";
 import { handleUsernameLogin } from "./lib/auth/username-login-handler";
+import { handleForgotPassword } from "./lib/auth/forgot-password-handler";
 import { handleEnsureTelegramWebhook } from "./lib/telegram/ensure-webhook-handler";
 import { handleTelegramWebhook } from "./lib/telegram/webhook";
 import { ensureTelegramWebhook } from "./lib/telegram/webhook-setup";
@@ -238,6 +239,10 @@ export default {
 
       if (url.pathname === "/api/auth/username-login") {
         return applySecurityHeaders(await handleUsernameLogin(request, env), env);
+      }
+
+      if (url.pathname === "/api/auth/forgot-password") {
+        return applySecurityHeaders(await handleForgotPassword(request, env), env);
       }
 
       if (url.pathname === "/api/auth/complete-first-login") {

@@ -1,6 +1,7 @@
 import { callRpc, readEnv, readSupabaseConfig, type VerifiedUser } from "@/lib/server-env";
 import { DEFAULT_MODELS } from "@/lib/ai/router";
 import { rateLimit } from "@/lib/rate-limit";
+import { userIsBanned } from "@/lib/vocab/rest";
 
 const FLUSH_COUNT = 24;
 const FLUSH_AGE_MS = 12 * 60 * 60 * 1000;
@@ -51,6 +52,9 @@ export async function handleUinfoFlush(request: Request, env: unknown): Promise<
   if (!userRes.ok) return json({ error: "Your session has expired." }, 401);
   const user = (await userRes.json()) as VerifiedUser;
   if (!user.id) return json({ error: "Your session has expired." }, 401);
+  const banned = await userIsBanned(config, token, user.id);
+  if (banned === "unknown") return json({ error: "Could not verify account" }, 503);
+  if (banned === "yes") return json({ error: "This account is banned." }, 403);
 
   /* One flush per 10 minutes per user (plan H1). A flush is a billable
      OpenRouter call over the user's own activity log, so it must not be

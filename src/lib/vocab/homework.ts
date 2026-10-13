@@ -214,33 +214,10 @@ export async function recordDeckHomeworkProgress(
 }
 
 export async function recordQuizHomeworkCompletion(
-  quizId: string,
-  score: number,
-  total: number,
+  _quizId: string,
+  _score: number,
+  _total: number,
 ): Promise<void> {
-  const { data: sess } = await supabase.auth.getSession();
-  const uid = sess.session?.user?.id;
-  if (!uid || total <= 0 || score < total) return;
-
-  const assignments = (await listActiveHomeworkForUser()).filter(
-    (a) => a.target_type === "quiz" && a.quiz_id === quizId,
-  );
-
-  for (const a of assignments) {
-    const periodKey = homeworkPeriodKey(a.recurrence);
-    const payload = {
-      assignment_id: a.id,
-      user_id: uid,
-      period_key: periodKey,
-      quiz_score: score,
-      quiz_total: total,
-      status: "completed" as const,
-      completed_at: new Date().toISOString(),
-    };
-
-    const { error } = await supabase
-      .from("vocab_homework_completions")
-      .upsert(payload, { onConflict: "assignment_id,user_id,period_key" });
-    if (error) console.error("[vocab/homework] quiz completion", error.message);
-  }
+  /* Quiz homework completion is recorded server-side inside submit_vocab_quiz
+     when v_score >= v_total, so students cannot self-complete homework from the client. */
 }

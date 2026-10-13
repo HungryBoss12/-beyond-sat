@@ -57,6 +57,7 @@ function mapLedger(r: Raw): LedgerRow {
     subject: r.subject ?? null,
     prorate_lessons: r.prorate_lessons ?? null,
     prorate_total: r.prorate_total ?? null,
+    class_id: r.class_id ?? null,
   };
 }
 

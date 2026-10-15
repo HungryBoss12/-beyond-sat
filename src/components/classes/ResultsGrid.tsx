@@ -11,6 +11,14 @@ import type { GridPerson } from "./LessonGrids";
 const MIN_SLOTS = 2;
 const MAX_SLOTS = 7;
 
+/** Scores and unsaved boxes survive leaving the Results tab. */
+const keptScores = new Map<string, (number | null)[]>();
+const keptDrafts = new Map<string, string[]>();
+
+function draftKey(lessonId: string, userId: string): string {
+  return `${lessonId}:${userId}`;
+}
+
 /** True when a reload already contains every number from the local save. */
 function reloadHasSave(savedScores: (number | null)[], incoming: (number | null)[]): boolean {
   if (incoming.length < savedScores.length) return false;
@@ -30,6 +38,7 @@ export function ResultsGrid({
   selectedId,
   onSelect,
   onSlots,
+  dayWidth = 52,
 }: {
   subject: ClassSubject;
   lessons: GroupLesson[];
@@ -38,6 +47,7 @@ export function ResultsGrid({
   selectedId: string | null;
   onSelect: (id: string) => void;
   onSlots: (lessonId: string, slots: number) => void;
+  dayWidth?: number;
 }) {
   const [saved, setSaved] = useState<Map<string, ResultRow>>(new Map());
   const [drafts, setDrafts] = useState<Map<string, string[]>>(new Map());
@@ -46,9 +56,15 @@ export function ResultsGrid({
   const savedRef = useRef(saved);
   savedRef.current = saved;
   /** Scores confirmed in this visit. A slower reload must not paint over them. */
-  const confirmedRef = useRef(new Map<string, (number | null)[]>());
+  const confirmedRef = useRef(new Map(keptScores));
   /** Unsaved boxes, keyed by lesson and student so a date change cannot reuse them. */
-  const dirtyDraftsRef = useRef(new Map<string, string[]>());
+  const dirtyDraftsRef = useRef(keptDrafts);
+  const subjectRef = useRef(subject);
+  subjectRef.current = subject;
+  const timers = useRef(new Map<string, number>());
+  const persistRef = useRef<
+    (lessonId: string, userId: string, draft: string[]) => Promise<void>
+  >(async () => {});
 
   useEffect(() => {
     setSaved((current) => {
@@ -70,7 +86,10 @@ export function ResultsGrid({
           );
           continue;
         }
-        if (held) confirmedRef.current.delete(key);
+        if (held) {
+          confirmedRef.current.delete(key);
+          keptScores.delete(key);
+        }
         next.set(key, row);
       }
       for (const [key, held] of confirmedRef.current) {
@@ -142,38 +161,99 @@ export function ResultsGrid({
     });
   }, [slots]);
 
+  persistRef.current = async (lessonId, userId, draft) => {
+    const maxScore = moduleMax(subjectRef.current);
+    const parsed = draft.map((value) => parseModule(value, maxScore));
+    if (parsed.some((item) => item.kind === "error")) return;
+    const scores = parsed.map((item) => (item.kind === "ok" ? item.value : null));
+    const key = `${userId}:${lessonId}`;
+    const before = resultValues(savedRef.current.get(key) ?? { m1: null, m2: null });
+    const same =
+      scores.length === before.length &&
+      scores.every((score, index) => score === (before[index] ?? null));
+    if (same) {
+      keptDrafts.delete(draftKey(lessonId, userId));
+      return;
+    }
+    await setResult(lessonId, userId, scores);
+    keptScores.set(key, scores);
+    confirmedRef.current.set(key, scores);
+    keptDrafts.delete(draftKey(lessonId, userId));
+    setSaved((current) => {
+      const copy = new Map(current);
+      if (scores.every((score) => score == null)) copy.delete(key);
+      else {
+        copy.set(key, {
+          lesson_id: lessonId,
+          user_id: userId,
+          m1: scores[0] ?? null,
+          m2: scores[1] ?? null,
+          scores,
+        });
+      }
+      return copy;
+    });
+  };
+
+  function flushLesson(lessonId: string) {
+    for (const [key, draft] of [...keptDrafts.entries()]) {
+      if (!key.startsWith(`${lessonId}:`)) continue;
+      const timer = timers.current.get(key);
+      if (timer) window.clearTimeout(timer);
+      timers.current.delete(key);
+      const userId = key.slice(lessonId.length + 1);
+      void persistRef.current(lessonId, userId, draft).catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Could not save the result");
+      });
+    }
+  }
+
+  function scheduleSave(lessonId: string, userId: string) {
+    const key = draftKey(lessonId, userId);
+    const timer = timers.current.get(key);
+    if (timer) window.clearTimeout(timer);
+    timers.current.set(
+      key,
+      window.setTimeout(() => {
+        timers.current.delete(key);
+        const draft = keptDrafts.get(key);
+        if (!draft) return;
+        void persistRef.current(lessonId, userId, draft).catch((err) => {
+          toast.error(err instanceof Error ? err.message : "Could not save the result");
+        });
+      }, 400),
+    );
+  }
+
+  const lessonWatch = useRef<string | null>(selected?.id ?? null);
+  useEffect(() => {
+    const previous = lessonWatch.current;
+    const next = selected?.id ?? null;
+    if (previous && previous !== next) flushLesson(previous);
+    lessonWatch.current = next;
+  }, [selected?.id]);
+
+  useEffect(() => {
+    return () => {
+      const lessonId = lessonWatch.current;
+      if (lessonId) flushLesson(lessonId);
+    };
+  }, []);
+
   async function commit(person: GridPerson) {
     if (!selected) return;
-    const draft = drafts.get(person.userId) ?? Array.from({ length: slots }, () => "");
+    const key = draftKey(selected.id, person.userId);
+    const timer = timers.current.get(key);
+    if (timer) window.clearTimeout(timer);
+    timers.current.delete(key);
+    const draft = drafts.get(person.userId) ?? keptDrafts.get(key) ?? [];
     const parsed = draft.map((value) => parseModule(value, max));
     if (parsed.some((item) => item.kind === "error")) {
       toast.error(`Enter a whole number from 0 to ${max}.`);
       return;
     }
-    const scores = parsed.map((item) => (item.kind === "ok" ? item.value : null));
-    const key = `${person.userId}:${selected.id}`;
-    const before = resultValues(saved.get(key) ?? { m1: null, m2: null });
-    const same =
-      scores.length === before.length && scores.every((score, index) => score === (before[index] ?? null));
-    if (same) return;
     try {
-      await setResult(selected.id, person.userId, scores);
-      confirmedRef.current.set(key, scores);
-      dirtyDraftsRef.current.delete(key);
-      setSaved((cur) => {
-        const copy = new Map(cur);
-        if (scores.every((score) => score == null)) copy.delete(key);
-        else {
-          copy.set(key, {
-            lesson_id: selected.id,
-            user_id: person.userId,
-            m1: scores[0] ?? null,
-            m2: scores[1] ?? null,
-            scores,
-          });
-        }
-        return copy;
-      });
+      await persistRef.current(selected.id, person.userId, draft);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save the result");
     }
@@ -220,6 +300,7 @@ export function ResultsGrid({
                   <th
                     key={lesson.id}
                     colSpan={slots + 1}
+                    style={{ minWidth: dayWidth * (slots + 1) }}
                     className="rounded-t-lg bg-brand-500 px-2 py-2 text-center text-white"
                   >
                     <div className="flex flex-col items-center gap-1">
@@ -251,7 +332,11 @@ export function ResultsGrid({
                     </div>
                   </th>
                 ) : (
-                  <th key={lesson.id} className="px-2 py-2 text-center">
+                  <th
+                    key={lesson.id}
+                    style={{ minWidth: dayWidth }}
+                    className="px-2 py-2 text-center"
+                  >
                     <button
                       type="button"
                       className="tap tabular-nums"
@@ -277,7 +362,11 @@ export function ResultsGrid({
                   if (lesson.id !== selectedId) {
                     const row = saved.get(`${person.userId}:${lesson.id}`);
                     return (
-                      <td key={lesson.id} className="px-2 py-2 text-center tabular-nums text-white">
+                      <td
+                        key={lesson.id}
+                        style={{ minWidth: dayWidth }}
+                        className="px-2 py-2 text-center tabular-nums text-white"
+                      >
                         {resultLabel(resultValues(row ?? { m1: null, m2: null }), subject)}
                       </td>
                     );
@@ -299,9 +388,10 @@ export function ResultsGrid({
                         setDrafts((cur) => {
                           const next = [...(cur.get(person.userId) ?? draft)];
                           next[field] = value;
-                          dirtyDraftsRef.current.set(`${selected.id}:${person.userId}`, next);
+                          dirtyDraftsRef.current.set(draftKey(selected.id, person.userId), next);
                           return new Map(cur).set(person.userId, next);
                         });
+                        scheduleSave(selected.id, person.userId);
                       }}
                       onCommit={() => void commit(person)}
                       onEnter={(field) => moveDown(index, field)}

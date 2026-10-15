@@ -5,6 +5,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
 import { rememberCurrentSession } from "@/lib/auth/account-switcher";
+import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
 
 function safeNext(raw: string | null): "/dashboard" | "/profile" {
   if (raw === "/profile") return "/profile";
@@ -69,8 +70,10 @@ function AuthCallback() {
         await establishSession();
         await rememberCurrentSession();
         if (cancelled) return;
-        const next = safeNext(new URL(window.location.href).searchParams.get("next"));
-        navigate({ to: next, replace: true });
+        const preferred = safeNext(new URL(window.location.href).searchParams.get("next"));
+        const dest = await pathAfterSignIn();
+        if (cancelled) return;
+        navigate({ to: dest === "/dashboard" ? preferred : dest, replace: true });
       } catch (err) {
         if (!cancelled) {
           setError(friendlyAuthError((err as Error)?.message ?? null) ?? "Sign-in failed.");

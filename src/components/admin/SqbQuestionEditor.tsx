@@ -364,12 +364,12 @@ export function SqbQuestionEditor({
             </Field>
             <Field label="Source month">
               <AdminSelect
-                value={editing.source_month != null ? String(editing.source_month) : ""}
+                value={editing.source_month != null ? String(editing.source_month) : "none"}
                 onValueChange={(v) =>
-                  patch({ source_month: v ? Number(v) : null })
+                  patch({ source_month: v === "none" ? null : Number(v) })
                 }
                 options={[
-                  { value: "", label: "—" },
+                  { value: "none", label: "—" },
                   ...MONTHS.map((m, i) => ({ value: String(i + 1), label: m })),
                 ]}
               />

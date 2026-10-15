@@ -1,3 +1,5 @@
+import { staffName } from "@/lib/people-name";
+
 export type ClassSubject = "math" | "ebrw";
 
 export type ChatThreadKind = "subject_group" | "class_group" | "direct";
@@ -136,15 +138,9 @@ export const SUBJECT_LABEL: Record<ClassSubject, string> = {
 };
 
 export function displayName(
-  p: Pick<ChatProfile, "username" | "full_name" | "first_name" | "email">,
+  p: Pick<ChatProfile, "full_name" | "first_name" | "last_name">,
 ) {
-  return (
-    p.username ||
-    p.full_name ||
-    p.first_name ||
-    (p.email ? p.email.split("@")[0] : null) ||
-    "Student"
-  );
+  return staffName(p);
 }
 
 export function normalizeUsername(raw: string): string {

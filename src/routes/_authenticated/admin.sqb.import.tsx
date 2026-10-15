@@ -656,11 +656,11 @@ function AdminSqbImportWizard() {
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <Field label="Default Domain (optional)">
                 <AdminSelect
-                  value={defaultDomain}
-                  onValueChange={setDefaultDomain}
+                  value={defaultDomain || "none"}
+                  onValueChange={(v) => setDefaultDomain(v === "none" ? "" : v)}
                   placeholder="Use section default"
                   options={[
-                    { value: "", label: "Section default" },
+                    { value: "none", label: "Section default" },
                     ...domainOptions.map((s) => ({ value: s, label: s })),
                   ]}
                 />

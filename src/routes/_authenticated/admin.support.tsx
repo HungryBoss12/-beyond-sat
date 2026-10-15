@@ -6,6 +6,7 @@ import { SupportHeatmap } from "@/components/support/SupportHeatmap";
 import { SupportWhenFields } from "@/components/support/SupportWhenFields";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState, Panel } from "@/components/ui/panel";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import { CLASS_CONTROL } from "@/components/classes/control";
 import type { ClassSubject } from "@/lib/classes/types";
 import {
@@ -311,17 +312,15 @@ function SupportAdminPage() {
             Username
             <input className={CLASS_CONTROL + " mt-1"} value={studentId} onChange={(e) => setStudentId(e.target.value)} />
           </label>
-          <label className="mt-3 block text-xs font-bold">
-            Subject
-            <select
-              className={CLASS_CONTROL + " mt-1"}
-              value={assignSubject}
-              onChange={(e) => setAssignSubject(e.target.value as ClassSubject)}
-            >
-              <option value="ebrw">English</option>
-              <option value="math">Math</option>
-            </select>
-          </label>
+          <AdminSelect
+            label="Subject"
+            value={assignSubject}
+            onValueChange={(value) => setAssignSubject(value as ClassSubject)}
+            options={[
+              { value: "ebrw", label: "English" },
+              { value: "math", label: "Math" },
+            ]}
+          />
           <div className="mt-3 flex justify-end">
             <button
               type="button"
@@ -469,17 +468,15 @@ function SupportAdminPage() {
             Link
             <input className={CLASS_CONTROL + " mt-1"} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" />
           </label>
-          <label className="mt-3 block text-xs font-bold">
-            Practice test
-            <select className={CLASS_CONTROL + " mt-1"} value={testId} onChange={(e) => setTestId(e.target.value)}>
-              <option value="">None</option>
-              {tests.map((test) => (
-                <option key={test.id} value={test.id}>
-                  {test.title}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AdminSelect
+            label="Practice test"
+            value={testId || "none"}
+            onValueChange={(value) => setTestId(value === "none" ? "" : value)}
+            options={[
+              { value: "none", label: "None" },
+              ...tests.map((test) => ({ value: test.id, label: test.title })),
+            ]}
+          />
           <div className="mt-3 flex justify-end">
             <button
               type="button"

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Clock, Loader2 } from "lucide-react";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import { Panel } from "@/components/ui/panel";
 import {
   Dialog,
@@ -262,17 +263,16 @@ export function NewTestDialog({
         </label>
         {mode === "ai" ? (
           <div className="space-y-3">
-            <label className="block text-sm font-semibold text-slate-700">
-              Deck
-              <select value={deckId} onChange={(e) => setDeckId(e.target.value)} className={field + " mt-1"}>
-                {decks.map((deck) => (
-                  <option key={deck.id} value={deck.id}>
-                    {deck.title}
-                    {deck.visibility !== "published" ? " (yours)" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <AdminSelect
+              label="Deck"
+              tone="light"
+              value={deckId}
+              onValueChange={setDeckId}
+              options={decks.map((deck) => ({
+                value: deck.id,
+                label: `${deck.title}${deck.visibility !== "published" ? " (yours)" : ""}`,
+              }))}
+            />
             <div className="grid gap-3 sm:grid-cols-3">
               <label className="block text-sm font-semibold text-slate-700">
                 Questions
@@ -285,29 +285,23 @@ export function NewTestDialog({
                   className={field + " mt-1"}
                 />
               </label>
-              <label className="block text-sm font-semibold text-slate-700">
-                Difficulty
-                <select
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value)}
-                  className={field + " mt-1"}
-                >
-                  <option>Easy</option>
-                  <option>Medium</option>
-                  <option>Hard</option>
-                </select>
-              </label>
-              <label className="block text-sm font-semibold text-slate-700">
-                Prompt
-                <select
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value as "word" | "definition")}
-                  className={field + " mt-1"}
-                >
-                  <option value="word">Show the word</option>
-                  <option value="definition">Show the definition</option>
-                </select>
-              </label>
+              <AdminSelect
+                label="Difficulty"
+                tone="light"
+                value={difficulty}
+                onValueChange={setDifficulty}
+                options={["Easy", "Medium", "Hard"].map((item) => ({ value: item, label: item }))}
+              />
+              <AdminSelect
+                label="Prompt"
+                tone="light"
+                value={prompt}
+                onValueChange={(value) => setPrompt(value as "word" | "definition")}
+                options={[
+                  { value: "word", label: "Show the word" },
+                  { value: "definition", label: "Show the definition" },
+                ]}
+              />
             </div>
             <button
               type="button"

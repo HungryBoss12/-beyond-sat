@@ -63,6 +63,7 @@ import { schemeFor, subjectToSlug } from "@/lib/classes/schemes";
 import { classFees, listBalances } from "@/lib/billing/api";
 import { tashkentToday } from "@/lib/billing/dates";
 import { balanceKind, type BalanceKind } from "@/lib/billing/money";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import { cn } from "@/lib/utils";
 
 export const WORKSPACE_TABS = [
@@ -126,6 +127,11 @@ export function ClassroomWorkspace({
   const [balances, setBalances] = useState<Map<string, BalanceKind>>(new Map());
   const [fee, setFee] = useState<bigint | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const [dayWidth, setDayWidth] = useState(64);
+  useEffect(() => {
+    const saved = Number(window.localStorage.getItem("beyondsat-day-col"));
+    if ([44, 64, 96, 128].includes(saved)) setDayWidth(saved);
+  }, []);
   const [addOpen, setAddOpen] = useState(false);
   const [levelFor, setLevelFor] = useState<string | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
@@ -245,7 +251,10 @@ export function ClassroomWorkspace({
   }, [railPeople, search.q, search.status]);
 
   const gridPeople = useMemo<GridPerson[]>(
-    () => filtered.map((p) => ({ userId: p.userId, name: p.name, status: p.status })),
+    () =>
+      filtered
+        .filter((person) => person.status !== "frozen")
+        .map((person) => ({ userId: person.userId, name: person.name, status: person.status })),
     [filtered],
   );
 
@@ -311,24 +320,20 @@ export function ClassroomWorkspace({
             })}
           </div>
           {otherParents.length > 0 && (
-            <select
-              aria-label="Active group"
-              className="h-10 rounded-full border border-brand-200 bg-white px-3 text-sm font-bold text-brand-700"
+            <AdminSelect
               value={klass.id}
-              onChange={(e) =>
+              onValueChange={(classId) =>
                 void navigate({
                   to: "/admin/classes/$classId/$subject",
-                  params: { classId: e.target.value, subject: subjectToSlug(group.subject) },
+                  params: { classId, subject: subjectToSlug(group.subject) },
                   search: { ...search, lesson: "", q: "", status: "" },
                 })
               }
-            >
-              {allClasses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              tone="light"
+              size="sm"
+              className="min-w-[9rem]"
+              options={allClasses.map((row) => ({ value: row.id, label: row.name }))}
+            />
           )}
         </div>
       </div>
@@ -418,6 +423,35 @@ export function ClassroomWorkspace({
               />
             </div>
           )}
+          {["attendance", "marks", "results"].includes(search.tab) && (
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Calendar column width">
+              <span className="text-xs font-bold text-white">Calendar</span>
+              {(
+                [
+                  [44, "Compact"],
+                  [64, "Regular"],
+                  [96, "Wide"],
+                  [128, "Wider"],
+                ] as const
+              ).map(([width, label]) => (
+                <button
+                  key={width}
+                  type="button"
+                  aria-pressed={dayWidth === width}
+                  onClick={() => {
+                    setDayWidth(width);
+                    window.localStorage.setItem("beyondsat-day-col", String(width));
+                  }}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-bold transition-colors duration-200",
+                    dayWidth === width ? "bg-brand-400 text-white" : "bg-brand-800 text-white",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           {["attendance", "marks", "results"].includes(search.tab) && !loading && (
             <DateStrip
               groupId={group.id}
@@ -439,6 +473,7 @@ export function ClassroomWorkspace({
               selectedId={selectedId}
               onSelect={(lesson) => onNavigate({ lesson })}
               onChanged={load}
+              dayWidth={dayWidth}
             />
           ) : search.tab === "marks" ? (
             <MarksGrid
@@ -451,6 +486,7 @@ export function ClassroomWorkspace({
               onSelect={(lesson) => onNavigate({ lesson })}
               onOpenLevel={setLevelFor}
               onChanged={load}
+              dayWidth={dayWidth}
             />
           ) : search.tab === "level" ? (
             <LevelTab
@@ -477,6 +513,7 @@ export function ClassroomWorkspace({
                   ),
                 )
               }
+              dayWidth={dayWidth}
             />
           ) : search.tab === "homework" ? (
             <HomeworkPanel group={group} month={search.month} people={gridPeople} />

@@ -74,7 +74,13 @@ export function DateTimeField({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setCursor(startOfMonth(parseFieldValue(value, dateOnly)));
+      }}
+    >
       <PopoverTrigger asChild>
         <button
           type="button"

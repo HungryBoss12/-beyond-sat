@@ -18,6 +18,7 @@ import { HW_ITEM_LABEL, HW_ITEM_LETTER, itemsFor, type HwItem } from "@/lib/clas
 import { shortDate } from "@/lib/classes/schedule";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import { CLASS_CONTROL } from "./control";
 import type { GridPerson } from "./LessonGrids";
 
@@ -171,36 +172,30 @@ export function HomeworkPanel({
         }}
       >
         <div className="grid gap-2 sm:grid-cols-3">
-          <label className="block text-xs font-bold text-white">
-            Links to
-            <select
-              className={CLASS_CONTROL + " mt-1"}
-              value={kind}
-              onChange={(e) => setKind(e.target.value as HwItem | "")}
-            >
-              <option value="">No {group.subject === "math" ? "AFL" : "VAR"} tick</option>
-              {kinds.map((item) => (
-                <option key={item} value={item}>
-                  {HW_ITEM_LETTER[item]} · {HW_ITEM_LABEL[item]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-xs font-bold text-white">
-            Lesson
-            <select
-              className={CLASS_CONTROL + " mt-1"}
-              value={lessonId}
-              onChange={(e) => setLessonId(e.target.value)}
-            >
-              <option value="">No lesson</option>
-              {lessons.map((lesson) => (
-                <option key={lesson.id} value={lesson.id}>
-                  {shortDate(lesson.lesson_date)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AdminSelect
+            label="Links to"
+            value={kind || "none"}
+            onValueChange={(value) => setKind((value === "none" ? "" : value) as HwItem | "")}
+            options={[
+              { value: "none", label: `No ${group.subject === "math" ? "AFL" : "VAR"} tick` },
+              ...kinds.map((item) => ({
+                value: item,
+                label: `${HW_ITEM_LETTER[item]} · ${HW_ITEM_LABEL[item]}`,
+              })),
+            ]}
+          />
+          <AdminSelect
+            label="Lesson"
+            value={lessonId || "none"}
+            onValueChange={(value) => setLessonId(value === "none" ? "" : value)}
+            options={[
+              { value: "none", label: "No lesson" },
+              ...lessons.map((lesson) => ({
+                value: lesson.id,
+                label: shortDate(lesson.lesson_date),
+              })),
+            ]}
+          />
           <label className="block text-xs font-bold text-white">
             Max score
             <input
@@ -295,32 +290,29 @@ export function HomeworkPanel({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <select
-          aria-label="Filter by kind"
-          className={CLASS_CONTROL + " w-auto"}
-          value={kindFilter}
-          onChange={(e) => setKindFilter(e.target.value as HwItem | "")}
-        >
-          <option value="">All kinds</option>
-          {kinds.map((item) => (
-            <option key={item} value={item}>
-              {HW_ITEM_LABEL[item]}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Filter by lesson"
-          className={CLASS_CONTROL + " w-auto"}
-          value={lessonFilter}
-          onChange={(e) => setLessonFilter(e.target.value)}
-        >
-          <option value="">All lessons</option>
-          {lessons.map((lesson) => (
-            <option key={lesson.id} value={lesson.id}>
-              {shortDate(lesson.lesson_date)}
-            </option>
-          ))}
-        </select>
+        <AdminSelect
+          value={kindFilter || "all"}
+          onValueChange={(value) => setKindFilter((value === "all" ? "" : value) as HwItem | "")}
+          size="sm"
+          className="w-auto min-w-[8rem]"
+          options={[
+            { value: "all", label: "All kinds" },
+            ...kinds.map((item) => ({ value: item, label: HW_ITEM_LABEL[item] })),
+          ]}
+        />
+        <AdminSelect
+          value={lessonFilter || "all"}
+          onValueChange={(value) => setLessonFilter(value === "all" ? "" : value)}
+          size="sm"
+          className="w-auto min-w-[8rem]"
+          options={[
+            { value: "all", label: "All lessons" },
+            ...lessons.map((lesson) => ({
+              value: lesson.id,
+              label: shortDate(lesson.lesson_date),
+            })),
+          ]}
+        />
       </div>
 
       {shown.length === 0 ? (

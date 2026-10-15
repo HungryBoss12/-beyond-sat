@@ -560,14 +560,19 @@ function AdminStudents() {
       } else if (sortKey === "tests_total") {
         cmp = a.tests_total - b.tests_total;
       } else {
-        const aT = a.last_seen_at ? new Date(a.last_seen_at).getTime() : 0;
-        const bT = b.last_seen_at ? new Date(b.last_seen_at).getTime() : 0;
+        const aT = activityTime(a);
+        const bT = activityTime(b);
         cmp = aT - bT;
       }
       return sortAsc ? cmp : -cmp;
     });
     return list;
   }, [rows, needle, filter, classFilter, sortKey, sortAsc]);
+
+  function activityTime(row: UserRow): number {
+    const stamp = row.last_active_at ?? row.last_seen_at;
+    return stamp ? new Date(stamp).getTime() : 0;
+  }
 
   function toggleSelectAllFiltered() {
     setSelectedIds((prev) => {
@@ -622,7 +627,7 @@ function AdminStudents() {
   }
 
   function personLabel(row: { full_name: string | null; username: string | null; email: string | null }) {
-    return row.full_name || row.username || row.email || "Student";
+    return row.full_name?.trim() || "Student";
   }
 
   async function issueFreshLinks() {
@@ -639,8 +644,9 @@ function AdminStudents() {
         }
         try {
           links.push(await reissueStudentInvite(row.id));
-        } catch {
-          skipped.push(personLabel(row));
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : "could not create a link";
+          skipped.push(`${personLabel(row)} — ${detail}`);
         }
       }
       setFreshLinks(links);
@@ -966,7 +972,7 @@ function AdminStudents() {
                       className={
                         "border-b border-brand-400/30 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-200 " +
                         (insightsReady
-                          ? "hidden md:grid md:grid-cols-[auto_1fr_100px_80px_100px_120px] md:gap-3 md:items-center"
+                          ? "hidden md:grid md:grid-cols-[auto_minmax(0,1fr)_100px_80px_100px_120px_auto] md:items-center md:gap-3"
                           : "flex items-center gap-3")
                       }
                     >
@@ -998,6 +1004,7 @@ function AdminStudents() {
                             asc={sortAsc}
                             onClick={() => toggleSort("last_seen")}
                           />
+                          <span className="sr-only">Role</span>
                         </>
                       ) : (
                         <span>Student</span>
@@ -1080,12 +1087,7 @@ function AdminStudents() {
                             >
                               <div className="min-w-0">
                                 <div className="truncate text-sm font-semibold text-white">
-                                  {u.full_name || "—"}
-                                  {u.username ? (
-                                    <span className="ml-1.5 text-[11px] font-normal text-brand-200">
-                                      @{u.username}
-                                    </span>
-                                  ) : null}
+                                  {u.full_name || "Student"}
                                 </div>
                                 <div className="truncate text-xs text-white">
                                   {unclaimed.has(u.id)
@@ -1338,7 +1340,6 @@ function AdminStudents() {
                 <li key={link.url} className="rounded-lg bg-brand-800 px-3 py-2">
                   <p className="text-sm font-bold text-white">
                     {link.name}
-                    {link.username ? <span className="ml-1 font-normal text-brand-100">@{link.username}</span> : null}
                   </p>
                   <p className="truncate text-xs text-brand-100">{link.url}</p>
                 </li>
@@ -1548,7 +1549,14 @@ function UserListRow({
 
   return (
     <li className="group">
-      <div className="flex flex-wrap items-center gap-3 px-4 py-3 md:gap-4">
+      <div
+        className={
+          "flex flex-wrap items-center gap-3 px-4 py-3 " +
+          (insightsReady
+            ? "md:grid md:grid-cols-[auto_minmax(0,1fr)_100px_80px_100px_120px_auto] md:items-center md:gap-3"
+            : "md:gap-4")
+        }
+      >
         <label
           className="tap shrink-0 cursor-pointer"
           onClick={(e) => e.stopPropagation()}
@@ -1564,7 +1572,10 @@ function UserListRow({
         <Link
           to="/admin/users/$userId"
           params={{ userId: u.id }}
-          className="flex min-w-0 flex-1 items-center gap-3 tap rounded-lg hover:bg-brand-800/40 md:grid md:grid-cols-[1fr_100px_80px_100px_120px] md:items-center md:gap-3"
+          className={
+            "flex min-w-0 flex-1 items-center gap-3 tap rounded-lg hover:bg-brand-800/40 " +
+            (insightsReady ? "md:contents" : "")
+          }
         >
           <div className="flex min-w-0 items-center gap-3">
             <div className="relative shrink-0">
@@ -1582,11 +1593,8 @@ function UserListRow({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="truncate text-sm font-semibold text-white group-hover:underline">
-                  {u.full_name || "—"}
+                  {u.full_name || "Student"}
                 </span>
-                {u.username && (
-                  <span className="truncate text-[11px] text-brand-200">@{u.username}</span>
-                )}
                 {u.role !== "student" && (
                   <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 ring-1 ring-brand-400/40">
                     {u.role.replaceAll("_", " ")}

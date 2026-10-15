@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CLASS_CONTROL } from "@/components/classes/control";
+import { DateTimeField } from "@/components/ui/date-time-field";
 import { previewActivationChange, setActivationDate } from "@/lib/billing/api";
 import { periodLabel } from "@/lib/billing/dates";
 import { formatUzs } from "@/lib/billing/money";
@@ -156,12 +156,13 @@ export function ActivationDateDialog({
             {groups.map((group) => (
               <label key={group.groupId} className="block text-xs font-bold text-white">
                 {group.groupName}
-                <input
-                  type="date"
-                  className={CLASS_CONTROL + " mt-1"}
-                  value={dates[group.groupId] ?? ""}
-                  onChange={(e) => setDates((cur) => ({ ...cur, [group.groupId]: e.target.value }))}
-                />
+                <div className="mt-1">
+                  <DateTimeField
+                    dateOnly
+                    value={dates[group.groupId] ?? ""}
+                    onChange={(value) => setDates((cur) => ({ ...cur, [group.groupId]: value }))}
+                  />
+                </div>
               </label>
             ))}
             <div className="flex justify-end gap-2">

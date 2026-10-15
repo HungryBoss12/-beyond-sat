@@ -179,13 +179,28 @@ function StudentProfilePage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <h1 className="truncate text-2xl font-black tracking-tight md:text-3xl">{name}</h1>
-          {blocks.map((b) => (
-            <SubclassChip
-              key={b.group.id}
-              subject={b.group.subject}
-              name={b.group.name}
-              className="border-brand-300 text-brand-700"
-            />
+          {blocks.map((block) => (
+            <Link
+              key={block.group.id}
+              to="/admin/classes/$classId/$subject"
+              params={{ classId: block.group.class_id, subject: subjectToSlug(block.group.subject) }}
+              search={{
+                tab: "attendance",
+                month: monthKey(),
+                lesson: "",
+                q: "",
+                status: "",
+                sections: 0,
+              }}
+              aria-label={`Open ${block.group.name}`}
+              className="tap"
+            >
+              <SubclassChip
+                subject={block.group.subject}
+                name={block.group.name}
+                className="border-brand-300 text-brand-700"
+              />
+            </Link>
           ))}
         </div>
         <div className="flex gap-2">
@@ -265,7 +280,12 @@ function StudentProfilePage() {
                   {b.group.subject === "math" ? "Maths" : "Eng"}:{" "}
                   <StatusLabel status={b.member.status} />
                   {isAdmin && (
-                    <span className="tabular-nums">· Activated {b.member.activated_on ?? "—"}</span>
+                    <span className="tabular-nums">
+                      · Joined{" "}
+                      {[b.member.enrolled_on, b.member.activated_on]
+                        .filter((date): date is string => Boolean(date))
+                        .sort()[0] ?? "—"}
+                    </span>
                   )}
                 </span>
               ))}

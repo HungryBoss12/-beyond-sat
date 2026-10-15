@@ -13,12 +13,14 @@ import {
   TriangleAlert,
   Wallet,
   Banknote,
+  Pencil,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { IconButton } from "@/components/ui/icon-button";
 import { CLASS_CONTROL } from "@/components/classes/control";
 import { MoneyTile } from "@/components/billing/MoneyTile";
 import { RecordPaymentDialog, type PaymentTarget } from "@/components/billing/RecordPaymentDialog";
+import { EditPaymentDialog } from "@/components/billing/EditPaymentDialog";
 import { ActivationDateDialog } from "@/components/billing/ActivationDateDialog";
 import { TransactionsTable, type TxRow } from "@/components/billing/TransactionsTable";
 import { VoidDialog } from "@/components/billing/VoidDialog";
@@ -29,12 +31,17 @@ import { billingNote, setBillingNote, setFeeOverride, setStudentBalance, setStud
 import { listUserAttendance } from "@/lib/classes/groups";
 import { periodLabel, tashkentToday } from "@/lib/billing/dates";
 import { balanceKind, formatUzs } from "@/lib/billing/money";
+import { withSubgroupNotes } from "@/lib/billing/notes";
 import type { LedgerRow, StudentBillingRow } from "@/lib/billing/types";
 
-/** The join-month tile follows the charge that was written, not a fresh quote. */
+/** One subject follows the written charge. Two subjects keep each group's own first month. */
 function withStoredJoin(rows: StudentBillingRow[], ledger: LedgerRow[]): StudentBillingRow[] {
   return rows.map((row) => {
     if (row.join_amount_uzs == null || !row.activated_on) return row;
+    const quoted = rows.filter(
+      (other) => other.class_id === row.class_id && other.join_amount_uzs != null,
+    );
+    if (quoted.length !== 1) return row;
     const month = row.activated_on.slice(0, 7);
     const hits = ledger.filter(
       (entry) =>
@@ -61,6 +68,7 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
   const [billing, setBilling] = useState<StudentBillingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [payFor, setPayFor] = useState<PaymentTarget | null>(null);
+  const [editing, setEditing] = useState<LedgerRow | null>(null);
   const [activationOpen, setActivationOpen] = useState(false);
   const [voiding, setVoiding] = useState<TxRow | null>(null);
   const [feeOpen, setFeeOpen] = useState(false);
@@ -97,8 +105,13 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
   }, [load]);
 
   const live = ledger.filter((row) => !row.voided_at);
-  const charges = ledger.filter((row) => row.kind === "charge");
-  const payments = ledger.filter((row) => row.kind === "payment");
+  const shownLedger = withSubgroupNotes(ledger, (classId) =>
+    billing
+      .filter((group) => group.class_id === classId && group.status !== "left")
+      .map((group) => group.group_name),
+  );
+  const charges = shownLedger.filter((row) => row.kind === "charge");
+  const payments = shownLedger.filter((row) => row.kind === "payment");
   const liveCharges = live.filter((row) => row.kind === "charge");
   const livePayments = live.filter((row) => row.kind === "payment");
   const balance = live.reduce(
@@ -112,13 +125,17 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
   const shownBilling = withStoredJoin(billing, live);
   const priced = shownBilling.filter((g) => (g.monthly_fee_uzs ?? 0n) > 0n);
   const monthly = priced.reduce((sum, g) => sum + (g.monthly_fee_uzs ?? 0n), 0n);
-  const joinGroups = priced.filter((g) => g.join_amount_uzs != null);
+  const joinGroups = shownBilling.filter((g) => g.join_amount_uzs != null);
   const joinTotal = joinGroups.reduce((sum, g) => sum + (g.join_amount_uzs ?? 0n), 0n);
   const joinHint =
     joinGroups.length === 0
       ? "No class fee set"
       : joinGroups
-          .map((g) => (g.join_total ? `${g.join_remaining}/${g.join_total} lessons` : "Full month"))
+          .map((g) =>
+            g.join_total
+              ? `${g.group_name} ${g.join_remaining}/${g.join_total}`
+              : `${g.group_name} full month`,
+          )
           .join(" · ");
   const anyActive = shownBilling.some((g) => g.status === "active");
 
@@ -235,17 +252,18 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
         </div>
         <div className="min-w-0 space-y-2">
           <h3 className="text-sm font-black">Payment history</h3>
-          <PaymentTable rows={payments} />
+          <PaymentTable rows={payments} onEdit={setEditing} />
         </div>
       </div>
 
       <div className="space-y-2">
         <h3 className="text-sm font-black">Full ledger</h3>
         <TransactionsTable
-          rows={ledger}
+          rows={shownLedger}
           showStudent={false}
           showGroup
           onVoid={setVoiding}
+          onEdit={setEditing}
           emptyTitle="No transactions yet"
           emptyBody="Charges, payments and voids for this student appear here."
         />
@@ -255,6 +273,7 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
       </div>
 
       <RecordPaymentDialog target={payFor} onClose={() => setPayFor(null)} onSaved={load} />
+      <EditPaymentDialog row={editing} onClose={() => setEditing(null)} onSaved={load} />
       <FeeDialog
         open={feeOpen}
         title="This student's fee"
@@ -588,7 +607,13 @@ function CourseFeeTable({ rows }: { rows: LedgerRow[] }) {
   );
 }
 
-function PaymentTable({ rows }: { rows: LedgerRow[] }) {
+function PaymentTable({
+  rows,
+  onEdit,
+}: {
+  rows: LedgerRow[];
+  onEdit: (row: LedgerRow) => void;
+}) {
   if (rows.length === 0) {
     return <p className="rounded-2xl bg-brand-25 p-4 text-sm text-brand-700">No payments yet.</p>;
   }
@@ -601,6 +626,7 @@ function PaymentTable({ rows }: { rows: LedgerRow[] }) {
             <th className="p-3">Method</th>
             <th className="p-3 text-right">Amount</th>
             <th className="p-3">Note</th>
+            <th className="p-3" aria-label="Actions" />
           </tr>
         </thead>
         <tbody>
@@ -625,6 +651,16 @@ function PaymentTable({ rows }: { rows: LedgerRow[] }) {
               </td>
               <td className="max-w-[12rem] truncate p-3 text-white" title={row.note ?? ""}>
                 {row.note}
+              </td>
+              <td className="p-2 text-right">
+                {!row.voided_at && (
+                  <IconButton
+                    icon={Pencil}
+                    label="Edit payment"
+                    className="text-white hover:bg-brand-500"
+                    onClick={() => onEdit(row)}
+                  />
+                )}
               </td>
             </tr>
           ))}

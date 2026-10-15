@@ -30,6 +30,7 @@ import {
   type BankFormat,
 } from "@/lib/admin/question";
 import { QUESTION_SELECT_COLS } from "@/lib/sqb";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import { applyResolvedImageUrls } from "@/lib/storage-url";
 
 export const Route = createFileRoute("/_authenticated/admin/sqb/questions/")({
@@ -488,20 +489,17 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <label className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-      {Icon ? <Icon className="h-3.5 w-3.5 text-brand-600" /> : null}
-      {label}
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="rounded-lg border border-brand-400/40 bg-brand-600 px-2 py-1.5 text-xs font-semibold normal-case tracking-normal text-white [color-scheme:dark]"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <AdminSelect
+      label={label}
+      value={value || "any"}
+      onValueChange={(next) => onChange(next === "any" ? "" : next)}
+      tone="brand"
+      size="sm"
+      className="min-w-[8rem]"
+      options={options.map((option) => ({
+        value: option.value || "any",
+        label: option.label,
+      }))}
+    />
   );
 }

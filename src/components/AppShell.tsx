@@ -19,6 +19,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { getStaffRole, staffHome, type StaffRole } from "@/lib/admin";
 import { displayAccountEmail } from "@/lib/auth/login-email";
+import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
 import {
   listSavedAccounts,
   prepareAddAccount,
@@ -485,7 +486,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   async function signOut() {
     const next = await signOutCurrent();
     if (next) {
-      window.location.assign("/dashboard");
+      window.location.assign(await pathAfterSignIn());
       return;
     }
     navigate({ to: "/signin", replace: true });
@@ -496,7 +497,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setSwitching(true);
     try {
       await switchToAccount(userId);
-      window.location.assign("/dashboard");
+      window.location.assign(await pathAfterSignIn());
     } catch (err) {
       setSwitching(false);
       setAccounts(listSavedAccounts());

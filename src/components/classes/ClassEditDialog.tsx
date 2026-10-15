@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { MoneyInput } from "@/components/billing/MoneyInput";
 import { SubclassChip } from "@/components/classes/SubclassChip";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import { CLASS_CONTROL } from "@/components/classes/control";
 import { deleteClass, updateClass, type ClassRow } from "@/lib/classes";
 import { DAY_LABELS } from "@/lib/classes/classroom";
@@ -283,21 +284,18 @@ function SubClassFields({
           />
         </label>
         {isAdmin ? (
-          <label className="block text-xs font-bold text-white">
-            Teacher
-            <select
-              className={CLASS_CONTROL + " mt-1"}
-              value={draft.teacher_id}
-              onChange={(e) => onPatch({ teacher_id: e.target.value })}
-            >
-              <option value="">Not set</option>
-              {staff.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {personName(person, person.id)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AdminSelect
+            label="Teacher"
+            value={draft.teacher_id || "none"}
+            onValueChange={(value) => onPatch({ teacher_id: value === "none" ? "" : value })}
+            options={[
+              { value: "none", label: "Not set" },
+              ...staff.map((person) => ({
+                value: person.id,
+                label: personName(person, person.id),
+              })),
+            ]}
+          />
         ) : null}
         <label className="block text-xs font-bold text-white">
           Room

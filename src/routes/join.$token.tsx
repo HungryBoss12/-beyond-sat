@@ -30,6 +30,7 @@ function JoinAccount() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -42,7 +43,7 @@ function JoinAccount() {
       })
       .catch((err: unknown) => {
         if (!live) return;
-        setError(err instanceof Error ? err.message : "This link is not valid.");
+        setLinkError(err instanceof Error ? err.message : "This link is not valid.");
         setLoading(false);
       });
     return () => {
@@ -68,7 +69,13 @@ function JoinAccount() {
     setSaving(true);
     try {
       const saved = await claimInvite({ token, name: name.trim(), username, password });
-      await signInWithUsername(saved.username, password);
+      try {
+        await signInWithUsername(saved.username, password);
+      } catch {
+        setError("Account saved. Sign in with that username and password to finish setup.");
+        setSaving(false);
+        return;
+      }
       await rememberCurrentSession();
       await navigate({ to: "/onboarding", replace: true });
     } catch (err) {
@@ -95,6 +102,10 @@ function JoinAccount() {
               <div className="grid place-items-center py-10">
                 <Loader2 className="h-6 w-6 animate-spin text-white" />
               </div>
+            ) : linkError ? (
+              <p className="mt-6 rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60">
+                {linkError}
+              </p>
             ) : (
               <form onSubmit={(event) => void handleSubmit(event)} className="mt-6 space-y-4">
                 <label className="block">
@@ -156,7 +167,7 @@ function JoinAccount() {
                 )}
                 <button
                   type="submit"
-                  disabled={saving || Boolean(error && !name)}
+                  disabled={saving}
                   className="btn-brand w-full rounded-lg bg-brand-400 py-2.5 text-sm font-bold text-white disabled:opacity-40"
                 >
                   {saving ? "Saving…" : "Continue"}

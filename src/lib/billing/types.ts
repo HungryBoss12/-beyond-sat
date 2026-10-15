@@ -86,6 +86,7 @@ export type PaymentsSummary = {
   active_groups: number;
   min_fee: bigint | null;
   max_fee: bigint | null;
+  paid_this_month: bigint;
 };
 
 export type GroupFeeRow = {

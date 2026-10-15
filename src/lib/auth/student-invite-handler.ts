@@ -270,6 +270,15 @@ export async function handleClaimStudentInvite(request: Request, env: unknown): 
       return jsonResponse({ error: profErr.message }, 500);
     }
 
+    const { error: goalsErr } = await db
+      .from("student_profiles")
+      .update({ intro_completed_at: null })
+      .eq("user_id", userId);
+    if (goalsErr) {
+      await release();
+      return jsonResponse({ error: goalsErr.message }, 500);
+    }
+
     const { error: studentErr } = await db
       .from("students")
       .update({ full_name, claimed_at: now })
@@ -353,7 +362,7 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
           .maybeSingle();
         const start = activatesAt ? new Date(activatesAt) : new Date();
         const expires_at = new Date(start.getTime() + INVITE_DAYS * 24 * 60 * 60 * 1000).toISOString();
-        if (live?.id) {
+        if (live?.id && body.returnLink !== true) {
           const { error } = await db
             .from("student_invites")
             .update({ activates_at: start.toISOString(), expires_at })

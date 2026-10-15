@@ -9,6 +9,7 @@ import { SupportSessionCard } from "@/components/support/SupportSessionCard";
 import { SupportStats } from "@/components/support/SupportStats";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState, Panel } from "@/components/ui/panel";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import { CLASS_CONTROL } from "@/components/classes/control";
 import type { ClassSubject } from "@/lib/classes/types";
 import {
@@ -159,17 +160,15 @@ function SupportLessonsPage() {
               {takeFor.teacher_name} · {formatWhen(takeFor.starts_at)} – {formatWhen(takeFor.ends_at)}
             </p>
           )}
-          <label className="mt-3 block text-xs font-bold">
-            Subject
-            <select
-              className={CLASS_CONTROL + " mt-1"}
-              value={subject}
-              onChange={(event) => setSubject(event.target.value as ClassSubject)}
-            >
-              <option value="ebrw">English</option>
-              <option value="math">Math</option>
-            </select>
-          </label>
+          <AdminSelect
+            label="Subject"
+            value={subject}
+            onValueChange={(value) => setSubject(value as ClassSubject)}
+            options={[
+              { value: "ebrw", label: "English" },
+              { value: "math", label: "Math" },
+            ]}
+          />
           <div className="mt-4 flex justify-end">
             <button
               type="button"

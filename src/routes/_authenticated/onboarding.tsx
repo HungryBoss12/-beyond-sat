@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { PanelGlow, Skeleton } from "@/components/ui/panel";
 import { AmbientGlow, RevealCard } from "@/components/ui/reveal-card";
 import { AdminSelect } from "@/components/admin/AdminSelect";
+import { DateTimeField } from "@/components/ui/date-time-field";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   component: Onboarding,
@@ -69,7 +70,7 @@ function Onboarding() {
         supabase.from("profiles").select("intro_completed").eq("id", user.id).maybeSingle(),
         supabase
           .from("student_profiles")
-          .select("exam_date,target_rw,target_math,target_score,intro_completed_at")
+          .select("exam_date,target_rw,target_math,target_score")
           .eq("user_id", user.id)
           .maybeSingle(),
         supabase
@@ -80,7 +81,7 @@ function Onboarding() {
           .order("exam_date", { ascending: true }),
       ]);
 
-      if (prof?.intro_completed || sp?.intro_completed_at) {
+      if (prof?.intro_completed) {
         navigate({ to: "/dashboard", replace: true });
         return;
       }
@@ -262,13 +263,7 @@ function Onboarding() {
           </span>
           {manual ? (
             <>
-              <input
-                type="date"
-                value={examDate}
-                min={todayYmd()}
-                onChange={(e) => setExamDate(e.target.value)}
-                className={fieldClass}
-              />
+              <DateTimeField dateOnly value={examDate} onChange={setExamDate} />
               {dateOptions.length === 0 && (
                 <span className="mt-1.5 block text-[11px] text-brand-200">
                   No official dates published yet — enter the date you plan to sit the SAT. You can

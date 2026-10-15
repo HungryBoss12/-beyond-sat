@@ -45,6 +45,8 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MoneyTile } from "@/components/billing/MoneyTile";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { DateTimeField } from "@/components/ui/date-time-field";
 import { RecordPaymentDialog, type PaymentTarget } from "@/components/billing/RecordPaymentDialog";
 import { TransactionsTable, type TxRow } from "@/components/billing/TransactionsTable";
 import { BalanceLabel, StatusLabel } from "@/components/billing/labels";
@@ -72,9 +74,12 @@ import {
   type StudentDiscount,
 } from "@/lib/billing/api";
 import { downloadCsv, toCsv } from "@/lib/billing/csv";
-import { tashkentToday } from "@/lib/billing/dates";
+import { periodLabel, tashkentToday } from "@/lib/billing/dates";
 import { compactUzs, formatUzs, groupDigits, parseUzsInput } from "@/lib/billing/money";
 import type { BalanceRow, GroupFeeRow, PaymentsSummary } from "@/lib/billing/types";
+import { staffName } from "@/lib/people-name";
+import { withSubgroupNotes } from "@/lib/billing/notes";
+import { EditPaymentDialog } from "@/components/billing/EditPaymentDialog";
 import { cn } from "@/lib/utils";
 
 const CHIPS = ["all", "debt", "credit", "settled"] as const;
@@ -134,8 +139,8 @@ function groupChipLabel(group: { name: string; subject: string }): string {
   return `${parentClassLabel(group.name)} ${subject}`;
 }
 
-function studentName(row: Pick<BalanceRow, "full_name" | "username" | "user_id">): string {
-  return row.full_name || row.username || row.user_id.slice(0, 8);
+function studentName(row: Pick<BalanceRow, "full_name" | "user_id">): string {
+  return staffName(row);
 }
 
 function isActiveStudent(row: BalanceRow): boolean {
@@ -157,6 +162,7 @@ function PaymentsPage() {
   const [payFor, setPayFor] = useState<PaymentTarget | null>(null);
   const [feeOpen, setFeeOpen] = useState(false);
   const [voiding, setVoiding] = useState<{ id: string; label: string } | null>(null);
+  const [editingPay, setEditingPay] = useState<TxRow | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [feeClasses, setFeeClasses] = useState<{ id: string; name: string }[]>([]);
   const [query, setQuery] = useState(search.q);
@@ -213,13 +219,27 @@ function PaymentsPage() {
       setFees(groupRows);
       setCensus(people);
       if (search.view === "ledger") {
-        const names = new Map(people.map((r) => [r.user_id, studentName(r)]));
+        const groupNames = new Map<string, string[]>();
+        const studentNames = new Map(people.map((person) => [person.user_id, studentName(person)]));
+        for (const person of people) {
+          for (const group of person.groups) {
+            if (group.status === "left" || !group.class_id) continue;
+            const key = `${person.user_id}:${group.class_id}`;
+            const list = groupNames.get(key) ?? [];
+            if (!list.includes(group.name)) list.push(group.name);
+            groupNames.set(key, list);
+          }
+        }
         const ledgerRows = await listAllLedger();
         setLedger(
-          ledgerRows.map((r) => ({
-            ...r,
-            student: names.get(r.user_id ?? "") ?? "—",
-          })),
+          ledgerRows.map((row) => {
+            const groups = groupNames.get(`${row.user_id}:${row.class_id ?? ""}`) ?? [];
+            const [noted] = withSubgroupNotes([row], () => groups);
+            return {
+              ...noted,
+              student: studentNames.get(row.user_id ?? "") ?? "Student",
+            };
+          }),
         );
       } else {
         setRows(
@@ -464,9 +484,9 @@ function PaymentsPage() {
         />
         <MoneyTile
           icon={Wallet}
-          label="Credits / prepaid"
-          amount={summary?.credits ?? null}
-          hint={summary ? `${summary.settled} settled` : undefined}
+          label="Paid this month"
+          amount={summary?.paid_this_month ?? null}
+          hint={periodLabel(tashkentToday())}
           loading={!summary}
         />
         <MoneyTile
@@ -571,23 +591,22 @@ function PaymentsPage() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
-        <select
-          aria-label="Group filter"
-          className={CLASS_CONTROL + " w-auto max-w-[14rem]"}
-          value={search.group}
-          onChange={(e) => patch({ group: e.target.value })}
-        >
-          <option value="">All groups</option>
-          {groupsByParent.map(([parent, groups]) => (
-            <optgroup key={parent} label={parent}>
-              {groups.map((g) => (
-                <option key={g.group_id} value={g.group_id}>
-                  {g.group_name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        <AdminSelect
+          value={search.group || "all"}
+          onValueChange={(value) => patch({ group: value === "all" ? "" : value })}
+          className="w-auto min-w-[12rem] max-w-[16rem]"
+          size="sm"
+          placeholder="All groups"
+          options={[
+            { value: "all", label: "All groups" },
+            ...groupsByParent.flatMap(([, groups]) =>
+              groups.map((group) => ({
+                value: group.group_id,
+                label: groupChipLabel({ name: group.group_name, subject: group.subject }),
+              })),
+            ),
+          ]}
+        />
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Balance filter">
           {CHIPS.map((chip) => (
             <button
@@ -670,7 +689,7 @@ function PaymentsPage() {
         <DiscountBoard />
       ) : search.view === "ledger" ? (
         <>
-          <TransactionsTable rows={txRows} showGroup />
+          <TransactionsTable rows={txRows} showGroup onEdit={setEditingPay} />
           <p className="text-xs text-brand-700">
             {txRows.length} transactions · one class fee per month
           </p>
@@ -738,6 +757,7 @@ function PaymentsPage() {
           await load();
         }}
       />
+      <EditPaymentDialog row={editingPay} onClose={() => setEditingPay(null)} onSaved={load} />
       <FeeDialog
         open={feeOpen}
         title="Class fee"
@@ -1010,19 +1030,19 @@ function MoreFilters({
       >
         {search.view === "balances" ? (
           <>
-            <label className="block text-xs font-bold text-white">
-              Status
-              <select
-                className={CLASS_CONTROL + " mt-1"}
-                value={search.status}
-                onChange={(e) => onChange({ status: e.target.value as Search["status"] })}
-              >
-                <option value="">Any</option>
-                <option value="active">Active</option>
-                <option value="trial">Trial</option>
-                <option value="frozen">Frozen</option>
-              </select>
-            </label>
+            <AdminSelect
+              label="Status"
+              value={search.status || "any"}
+              onValueChange={(value) =>
+                onChange({ status: (value === "any" ? "" : value) as Search["status"] })
+              }
+              options={[
+                { value: "any", label: "Any" },
+                { value: "active", label: "Active" },
+                { value: "trial", label: "Trial" },
+                { value: "frozen", label: "Frozen" },
+              ]}
+            />
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-xs font-bold text-white">
                 Debt from
@@ -1054,63 +1074,59 @@ function MoreFilters({
                 }
               />
             </label>
-            <label className="block text-xs font-bold text-white">
-              Rank tier
-              <select
-                className={CLASS_CONTROL + " mt-1"}
-                value={search.rank}
-                onChange={(e) => onChange({ rank: e.target.value as Search["rank"] })}
-              >
-                <option value="">Any</option>
-                {(["S", "A", "B", "C", "D"] as const).map((tier) => (
-                  <option key={tier} value={tier}>
-                    {tier}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <AdminSelect
+              label="Rank tier"
+              value={search.rank || "any"}
+              onValueChange={(value) =>
+                onChange({ rank: (value === "any" ? "" : value) as Search["rank"] })
+              }
+              options={[
+                { value: "any", label: "Any" },
+                ...(["S", "A", "B", "C", "D"] as const).map((tier) => ({ value: tier, label: tier })),
+              ]}
+            />
           </>
         ) : (
           <>
-            <label className="block text-xs font-bold text-white">
-              Method
-              <select
-                className={CLASS_CONTROL + " mt-1"}
-                value={search.method}
-                onChange={(e) => onChange({ method: e.target.value as Search["method"] })}
-              >
-                <option value="">Any</option>
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="transfer">Bank transfer</option>
-              </select>
-            </label>
-            <label className="block text-xs font-bold text-white">
-              Type
-              <select
-                className={CLASS_CONTROL + " mt-1"}
-                value={search.kind}
-                onChange={(e) => onChange({ kind: e.target.value as Search["kind"] })}
-              >
-                <option value="">Any</option>
-                <option value="charge">Charge</option>
-                <option value="payment">Payment</option>
-                <option value="discount">Discount</option>
-                <option value="refund">Refund</option>
-              </select>
-            </label>
-            <label className="block text-xs font-bold text-white">
-              Source
-              <select
-                className={CLASS_CONTROL + " mt-1"}
-                value={search.source}
-                onChange={(e) => onChange({ source: e.target.value as Search["source"] })}
-              >
-                <option value="">Any</option>
-                <option value="auto">Recurring</option>
-                <option value="manual">Manual</option>
-              </select>
-            </label>
+            <AdminSelect
+              label="Method"
+              value={search.method || "any"}
+              onValueChange={(value) =>
+                onChange({ method: (value === "any" ? "" : value) as Search["method"] })
+              }
+              options={[
+                { value: "any", label: "Any" },
+                { value: "cash", label: "Cash" },
+                { value: "card", label: "Card" },
+                { value: "transfer", label: "Bank transfer" },
+              ]}
+            />
+            <AdminSelect
+              label="Type"
+              value={search.kind || "any"}
+              onValueChange={(value) =>
+                onChange({ kind: (value === "any" ? "" : value) as Search["kind"] })
+              }
+              options={[
+                { value: "any", label: "Any" },
+                { value: "charge", label: "Charge" },
+                { value: "payment", label: "Payment" },
+                { value: "discount", label: "Discount" },
+                { value: "refund", label: "Refund" },
+              ]}
+            />
+            <AdminSelect
+              label="Source"
+              value={search.source || "any"}
+              onValueChange={(value) =>
+                onChange({ source: (value === "any" ? "" : value) as Search["source"] })
+              }
+              options={[
+                { value: "any", label: "Any" },
+                { value: "auto", label: "Recurring" },
+                { value: "manual", label: "Manual" },
+              ]}
+            />
           </>
         )}
       </PopoverContent>
@@ -1262,6 +1278,7 @@ function DiscountBoard() {
   const [people, setPeople] = useState<DiscountStudent[]>([]);
   const [open, setOpen] = useState(false);
   const [studentKey, setStudentKey] = useState("");
+  const [subject, setSubject] = useState<"ebrw" | "math" | "both">("both");
   const [mode, setMode] = useState<"percent" | "amount">("percent");
   const [value, setValue] = useState("");
   const [endsOn, setEndsOn] = useState("");
@@ -1287,15 +1304,15 @@ function DiscountBoard() {
   }, [load]);
 
   async function save() {
-    const [userId, classId] = studentKey.split("|");
-    if (!userId || !classId) return toast.error("Pick a student");
+    const [userId] = studentKey.split("|");
+    if (!userId) return toast.error("Pick a student");
     const amount = mode === "percent" ? BigInt(Number(value) || 0) : parseUzsInput(value);
     if (amount == null || amount <= 0n) return toast.error("Enter a discount");
     setBusy(true);
     try {
       await setStudentDiscount({
         userId,
-        classId,
+        subject,
         mode,
         value: amount,
         endsOn: unlimited ? null : endsOn || null,
@@ -1332,7 +1349,7 @@ function DiscountBoard() {
               <div className="min-w-0 flex-1">
                 <div className="truncate font-bold">{row.full_name || "Student"}</div>
                 <div className="text-xs text-white">
-                  {row.class_name} ·{" "}
+                  {row.subject === "math" ? "Maths" : row.subject === "ebrw" ? "Eng" : "Both subjects"} ·{" "}
                   {row.mode === "percent" ? `${row.value}%` : formatUzs(row.value)} ·{" "}
                   {row.ends_on ? `until ${row.ends_on}` : "no end date"}
                 </div>
@@ -1342,7 +1359,7 @@ function DiscountBoard() {
                 aria-label={`Remove discount for ${row.full_name || "student"}`}
                 className="grid h-10 w-10 place-items-center rounded-full text-white shadow-none transition-colors duration-200 hover:bg-brand-500"
                 onClick={() =>
-                  void clearStudentDiscount(row.user_id, row.class_id)
+                  void clearStudentDiscount(row.user_id, row.subject)
                     .then(() => load())
                     .catch((err) =>
                       toast.error(err instanceof Error ? err.message : "Could not remove it"),
@@ -1368,6 +1385,28 @@ function DiscountBoard() {
               <DialogTitle className="text-lg font-black text-white">Discount</DialogTitle>
             </DialogHeader>
             <DiscountStudentPicker people={people} value={studentKey} onChange={setStudentKey} />
+            <div className="flex gap-2">
+              {(
+                [
+                  ["ebrw", "Eng"],
+                  ["math", "Maths"],
+                  ["both", "Both"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={subject === id}
+                  onClick={() => setSubject(id)}
+                  className={cn(
+                    "h-11 rounded-full px-4 text-sm font-bold shadow-none transition-colors duration-200",
+                    subject === id ? "bg-brand-400 text-white" : "bg-brand-800 text-white",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="flex gap-2">
               <ModeToggle
                 active={mode === "percent"}
@@ -1403,15 +1442,12 @@ function DiscountBoard() {
               No end date
             </label>
             {!unlimited && (
-              <label className="block animate-in fade-in-0 slide-in-from-top-2 text-xs font-bold text-white duration-200">
+              <div className="block animate-in fade-in-0 slide-in-from-top-2 text-xs font-bold text-white duration-200">
                 Active until
-                <input
-                  type="date"
-                  className={CLASS_CONTROL + " mt-1 text-white [color-scheme:dark]"}
-                  value={endsOn}
-                  onChange={(event) => setEndsOn(event.target.value)}
-                />
-              </label>
+                <div className="mt-1">
+                  <DateTimeField dateOnly value={endsOn} onChange={setEndsOn} />
+                </div>
+              </div>
             )}
             <div className="flex justify-end">
               <button

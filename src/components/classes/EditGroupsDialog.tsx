@@ -68,7 +68,7 @@ export function EditGroupsDialog({
       const removed: string[] = [];
       try {
         for (const id of toRemove) {
-          await removeGroupMember(id, userId);
+          await removeGroupMember(id, userId, false);
           removed.push(id);
         }
       } catch (removeErr) {

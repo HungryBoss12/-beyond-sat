@@ -8,9 +8,11 @@ import { AmbientGlow } from "@/components/ui/reveal-card";
 import { supabase } from "@/integrations/supabase/client";
 import { appUrl } from "@/lib/app-url";
 import { rememberCurrentSession } from "@/lib/auth/account-switcher";
+import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
 import { isSyntheticAccountEmail } from "@/lib/auth/login-email";
 import { loadRegistrationEnabled, useRegistrationEnabled } from "@/lib/registration";
 import { AdminSelect } from "@/components/admin/AdminSelect";
+import { DateTimeField } from "@/components/ui/date-time-field";
 
 export const Route = createFileRoute("/signup")({
   component: SignUp,
@@ -69,8 +71,8 @@ function SignUp() {
     void loadRegistrationEnabled().then((on) => {
       if (!on) navigate({ to: "/signin", replace: true });
     });
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard", replace: true });
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) navigate({ to: await pathAfterSignIn(), replace: true });
     });
   }, [navigate]);
 
@@ -107,7 +109,7 @@ function SignUp() {
       email: parsed.data.email,
       password: parsed.data.password,
       options: {
-        emailRedirectTo: appUrl("/dashboard"),
+        emailRedirectTo: appUrl("/auth/callback"),
         data: {
           first_name: parsed.data.first_name,
           last_name: parsed.data.last_name,
@@ -133,7 +135,7 @@ function SignUp() {
     // Email confirmation disabled in Supabase → session is issued immediately.
     if (data.session) {
       await rememberCurrentSession();
-      navigate({ to: "/dashboard", replace: true });
+      navigate({ to: await pathAfterSignIn(), replace: true });
       return;
     }
     setStep("verify");
@@ -161,7 +163,7 @@ function SignUp() {
       return;
     }
     await rememberCurrentSession();
-    navigate({ to: "/dashboard", replace: true });
+    navigate({ to: await pathAfterSignIn(), replace: true });
   }
 
   async function handleResend() {
@@ -246,11 +248,10 @@ function SignUp() {
                     />
                   </Field>
                   <Field label="Date of birth" error={errors.birth_date}>
-                    <input
-                      type="date"
-                      className={inputCls}
+                    <DateTimeField
+                      dateOnly
                       value={form.birth_date}
-                      onChange={(e) => setField("birth_date", e.target.value)}
+                      onChange={(value) => setField("birth_date", value)}
                     />
                   </Field>
                 </div>

@@ -110,6 +110,8 @@ export function GroupRail({
   onChanged: () => Promise<void>;
 }) {
   const [moving, setMoving] = useState<RailPerson | null>(null);
+  const [removing, setRemoving] = useState<RailPerson | null>(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
   const [formerOpen, setFormerOpen] = useState(false);
   const formerNeedle = query.trim().toLowerCase();
   const formerShown = former.filter(
@@ -135,14 +137,21 @@ export function GroupRail({
     }
   }
 
-  async function remove(person: RailPerson) {
-    if (!confirm(`Remove ${person.name} from ${group.name}?`)) return;
+  async function remove(person: RailPerson, charge: boolean) {
+    setRemoveBusy(true);
     try {
-      await removeGroupMember(group.id, person.userId);
-      toast.success(`${person.name} removed from ${group.name}`);
+      await removeGroupMember(group.id, person.userId, charge);
+      toast.success(
+        charge
+          ? `${person.name} removed. This month's fee stays.`
+          : `${person.name} removed without a fee.`,
+      );
+      setRemoving(null);
       await onChanged();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not remove the student");
+    } finally {
+      setRemoveBusy(false);
     }
   }
 
@@ -289,7 +298,7 @@ export function GroupRail({
                     <DropdownMenuItem onSelect={() => setMoving(person)}>
                       Move to another class…
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => void remove(person)}>
+                    <DropdownMenuItem onSelect={() => setRemoving(person)}>
                       Remove from {group.name}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -345,6 +354,49 @@ export function GroupRail({
         )}
       </Panel>
 
+      <Dialog
+        open={removing != null}
+        onOpenChange={(next) => {
+          if (!next && !removeBusy) setRemoving(null);
+        }}
+      >
+        <DialogContent className="border-brand-400/40 bg-brand-800 text-white sm:rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white">Remove {removing?.name}</DialogTitle>
+            <DialogDescription className="text-white">
+              {removing
+                ? `${removing.name} leaves ${group.name}. Choose whether this month's participation fee stays on the balance.`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              disabled={removeBusy || !removing}
+              className="rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+              onClick={() => removing && void remove(removing, true)}
+            >
+              Include the participation fee
+            </button>
+            <button
+              type="button"
+              disabled={removeBusy || !removing}
+              className="rounded-full bg-red-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+              onClick={() => removing && void remove(removing, false)}
+            >
+              No fee
+            </button>
+            <button
+              type="button"
+              className="tap px-4 py-2 text-sm font-bold"
+              disabled={removeBusy}
+              onClick={() => setRemoving(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <MoveDialog
         person={moving}
         group={group}

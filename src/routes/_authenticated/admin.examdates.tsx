@@ -5,6 +5,7 @@ import { adminWrite } from "@/lib/admin-writes";
 import { Plus, Trash2, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import { ListSkeleton } from "@/components/ui/skeletons";
+import { DateTimeField } from "@/components/ui/date-time-field";
 
 type ExamDate = {
   id: string;
@@ -84,13 +85,7 @@ function AdminExamDates() {
           <span className="block text-[11px] font-bold uppercase tracking-wider text-brand-100 mb-1">
             Exam date
           </span>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="block w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
-            required
-          />
+          <DateTimeField dateOnly value={date} onChange={setDate} />
         </label>
         <label className="block">
           <span className="block text-[11px] font-bold uppercase tracking-wider text-brand-100 mb-1">

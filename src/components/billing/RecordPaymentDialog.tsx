@@ -8,6 +8,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MoneyInput } from "@/components/billing/MoneyInput";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { DateTimeField } from "@/components/ui/date-time-field";
 import { CLASS_CONTROL } from "@/components/classes/control";
 import { billingLimits, recordPayment } from "@/lib/billing/api";
 import { tashkentToday } from "@/lib/billing/dates";
@@ -174,32 +176,21 @@ export function RecordPaymentDialog({
               hint={`${groupDigits(limits.min_payment_uzs)} – ${groupDigits(limits.max_payment_uzs)} UZS`}
             />
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-xs font-bold text-white">
-                Method
-                <select
-                  className={CLASS_CONTROL + " mt-1"}
-                  value={method}
-                  onChange={(e) => setMethod(e.target.value as PayMethod)}
-                >
-                  {(Object.keys(PAY_METHOD_LABEL) as PayMethod[]).map((item) => (
-                    <option key={item} value={item}>
-                      {PAY_METHOD_LABEL[item]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-xs font-bold text-white">
-                Date
-                <input
-                  type="date"
-                  max={today}
-                  className={CLASS_CONTROL + " mt-1"}
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-                {dateError && <span className="mt-1 block text-white">{dateError}</span>}
-              </label>
+              <AdminSelect
+                label="Method"
+                value={method}
+                onValueChange={(value) => setMethod(value as PayMethod)}
+                options={(Object.keys(PAY_METHOD_LABEL) as PayMethod[]).map((item) => ({
+                  value: item,
+                  label: PAY_METHOD_LABEL[item],
+                }))}
+              />
+              <div>
+                <div className="mb-1 text-xs font-bold text-white">Date</div>
+                <DateTimeField dateOnly value={date} onChange={setDate} />
+              </div>
             </div>
+            {dateError && <p className="text-xs font-bold text-white">{dateError}</p>}
             <label className="block text-xs font-bold text-white">
               Note (optional)
               <input

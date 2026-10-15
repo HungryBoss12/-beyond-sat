@@ -125,6 +125,7 @@ export async function paymentsSummary(): Promise<PaymentsSummary> {
     active_groups: Number(r.active_groups ?? 0),
     min_fee: uzsOrNull(r.min_fee),
     max_fee: uzsOrNull(r.max_fee),
+    paid_this_month: toUzs(r.paid_this_month),
   };
 }
 
@@ -357,12 +358,13 @@ export async function recordRefund(input: EntryInput): Promise<string> {
   });
 }
 
+export type DiscountSubject = "ebrw" | "math" | "both";
+
 export type StudentDiscount = {
   id: string;
   user_id: string;
   full_name: string | null;
-  class_id: string;
-  class_name: string;
+  subject: DiscountSubject;
   mode: "percent" | "amount";
   value: bigint;
   ends_on: string | null;
@@ -381,8 +383,7 @@ export async function listStudentDiscounts(): Promise<StudentDiscount[]> {
     id: r.id,
     user_id: r.user_id,
     full_name: r.full_name ?? null,
-    class_id: r.class_id,
-    class_name: r.class_name,
+    subject: r.subject === "math" || r.subject === "ebrw" ? r.subject : "both",
     mode: r.mode === "percent" ? "percent" : "amount",
     value: toUzs(r.value),
     ends_on: r.ends_on ?? null,
@@ -401,22 +402,38 @@ export async function listDiscountStudents(): Promise<DiscountStudent[]> {
 
 export async function setStudentDiscount(input: {
   userId: string;
-  classId: string;
+  subject: DiscountSubject;
   mode: "percent" | "amount";
   value: bigint;
   endsOn: string | null;
 }): Promise<void> {
   await call("admin_set_student_discount", {
     p_user_id: input.userId,
-    p_class_id: input.classId,
+    p_subject: input.subject,
     p_mode: input.mode,
     p_value: uzsParam(input.value),
     p_ends_on: input.endsOn,
   });
 }
 
-export async function clearStudentDiscount(userId: string, classId: string): Promise<void> {
-  await call("admin_clear_student_discount", { p_user_id: userId, p_class_id: classId });
+export async function clearStudentDiscount(userId: string, subject: DiscountSubject): Promise<void> {
+  await call("admin_clear_student_discount", { p_user_id: userId, p_subject: subject });
+}
+
+export async function editPayment(input: {
+  id: string;
+  amount: bigint;
+  method: PayMethod;
+  occurredOn: string;
+  note: string;
+}): Promise<void> {
+  await call("admin_edit_payment", {
+    p_id: input.id,
+    p_amount_uzs: uzsParam(input.amount),
+    p_method: input.method,
+    p_occurred_on: input.occurredOn,
+    p_note: input.note,
+  });
 }
 
 export async function studentBillingHome(): Promise<{

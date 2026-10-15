@@ -10,9 +10,17 @@ import {
 } from "@/components/ui/dialog";
 import { IconButton } from "@/components/ui/icon-button";
 import { MoneyInput } from "@/components/billing/MoneyInput";
-import { CLASS_CONTROL } from "@/components/classes/control";
-import { tashkentToday } from "@/lib/billing/dates";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { DateTimeField } from "@/components/ui/date-time-field";
+import { periodLabel, tashkentToday } from "@/lib/billing/dates";
 import { checkUzsInput } from "@/lib/billing/money";
+import { cn } from "@/lib/utils";
+
+function shiftMonth(month: string, delta: number): string {
+  const [year, monthIndex] = month.split("-").map(Number);
+  const next = new Date(Date.UTC(year, monthIndex - 1 + delta, 1));
+  return next.toISOString().slice(0, 7);
+}
 
 export function FeeDialog({
   open,
@@ -30,18 +38,25 @@ export function FeeDialog({
   onClose: () => void;
   onSave: (fee: bigint, month: string, classId: string | null) => Promise<void>;
 }) {
+  const todayMonth = tashkentToday().slice(0, 7);
   const [amount, setAmount] = useState("");
-  const [month, setMonth] = useState(() => tashkentToday().slice(0, 7));
+  const [month, setMonth] = useState(todayMonth);
   const [classId, setClassId] = useState("all");
   const [busy, setBusy] = useState(false);
   const check = checkUzsInput(amount, 1000n, 100_000_000n);
+  const shortcuts = [
+    { id: shiftMonth(todayMonth, -1), label: "Last month" },
+    { id: todayMonth, label: "This month" },
+    { id: shiftMonth(todayMonth, 1), label: "Next month" },
+    { id: shiftMonth(todayMonth, 2), label: "In two months" },
+  ];
 
   useEffect(() => {
     if (!open) return;
     setAmount("");
-    setMonth(tashkentToday().slice(0, 7));
+    setMonth(todayMonth);
     setClassId("all");
-  }, [open]);
+  }, [open, todayMonth]);
 
   async function save() {
     if (!check.amount) {
@@ -68,31 +83,45 @@ export function FeeDialog({
         </DialogHeader>
         <div className="space-y-3">
           <MoneyInput value={amount} onChange={setAmount} label="Monthly fee" />
-          <label className="block text-xs font-bold text-white">
-            Starts
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className={CLASS_CONTROL + " mt-1"}
-            />
-          </label>
+          <div>
+            <div className="text-xs font-bold text-white">Starts</div>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {shortcuts.map((choice) => (
+                <button
+                  key={choice.id}
+                  type="button"
+                  aria-pressed={month === choice.id}
+                  onClick={() => setMonth(choice.id)}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-xs font-bold transition-colors duration-200",
+                    month === choice.id ? "bg-brand-400 text-white" : "bg-brand-800 text-white",
+                  )}
+                >
+                  {choice.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2">
+              <DateTimeField
+                dateOnly
+                value={`${month}-01`}
+                onChange={(iso) => setMonth(iso.slice(0, 7))}
+              />
+            </div>
+            <p className="mt-1 text-xs text-brand-100">
+              {periodLabel(`${month}-01`)}. The first month is still a share of that month’s lessons.
+            </p>
+          </div>
           {classes ? (
-            <label className="block text-xs font-bold text-white">
-              Applies to
-              <select
-                value={classId}
-                onChange={(e) => setClassId(e.target.value)}
-                className={CLASS_CONTROL + " mt-1"}
-              >
-                <option value="all">Every class</option>
-                {classes.map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {row.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <AdminSelect
+              label="Applies to"
+              value={classId}
+              onValueChange={setClassId}
+              options={[
+                { value: "all", label: "Every class" },
+                ...classes.map((row) => ({ value: row.id, label: row.name })),
+              ]}
+            />
           ) : null}
           {check.error ? <p className="text-xs font-semibold text-white">{check.error}</p> : null}
           <div className="flex justify-end">

@@ -5,6 +5,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
 import { rememberCurrentSession } from "@/lib/auth/account-switcher";
+import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
 import { PanelGlow } from "@/components/ui/panel";
 import { AmbientGlow, RevealCard } from "@/components/ui/reveal-card";
 
@@ -89,7 +90,7 @@ function ResetPassword() {
       return;
     }
     await rememberCurrentSession();
-    navigate({ to: "/dashboard", replace: true });
+    navigate({ to: await pathAfterSignIn(), replace: true });
   }
 
   return (

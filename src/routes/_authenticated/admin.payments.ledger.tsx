@@ -8,6 +8,9 @@ import { TransactionsTable, type TxRow } from "@/components/billing/Transactions
 import { txMethodOrPeriod, txSign, txType } from "@/lib/billing/ledger";
 import { VoidDialog } from "@/components/billing/VoidDialog";
 import { listAllLedger, listBalances, voidEntry } from "@/lib/billing/api";
+import { withSubgroupNotes } from "@/lib/billing/notes";
+import { staffName } from "@/lib/people-name";
+import { EditPaymentDialog } from "@/components/billing/EditPaymentDialog";
 import { downloadCsv, toCsv } from "@/lib/billing/csv";
 import { tashkentToday } from "@/lib/billing/dates";
 import { formatUzs } from "@/lib/billing/money";
@@ -20,13 +23,30 @@ function LedgerPage() {
   const [rows, setRows] = useState<TxRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [voiding, setVoiding] = useState<TxRow | null>(null);
+  const [editing, setEditing] = useState<TxRow | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [ledger, people] = await Promise.all([listAllLedger(), listBalances({})]);
-      const names = new Map(people.map((p) => [p.user_id, p.full_name || p.username || "—"]));
-      setRows(ledger.map((row) => ({ ...row, student: names.get(row.user_id ?? "") ?? "—" })));
+      const names = new Map(people.map((person) => [person.user_id, staffName(person)]));
+      const groupNames = new Map<string, string[]>();
+      for (const person of people) {
+        for (const group of person.groups) {
+          if (group.status === "left" || !group.class_id) continue;
+          const key = `${person.user_id}:${group.class_id}`;
+          const list = groupNames.get(key) ?? [];
+          if (!list.includes(group.name)) list.push(group.name);
+          groupNames.set(key, list);
+        }
+      }
+      setRows(
+        ledger.map((row) => {
+          const groups = groupNames.get(`${row.user_id}:${row.class_id ?? ""}`) ?? [];
+          const [noted] = withSubgroupNotes([row], () => groups);
+          return { ...noted, student: names.get(row.user_id ?? "") ?? "Student" };
+        }),
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not load the ledger");
     } finally {
@@ -85,12 +105,14 @@ function LedgerPage() {
         <TableSkeleton />
       ) : (
         <>
-          <TransactionsTable rows={rows} showGroup onVoid={setVoiding} />
+          <TransactionsTable rows={rows} showGroup onVoid={setVoiding} onEdit={setEditing} />
           <p className="text-xs text-brand-700">
             {rows.length} transactions · one class fee per month
           </p>
         </>
       )}
+      <EditPaymentDialog row={editing} onClose={() => setEditing(null)} onSaved={load} />
+      <EditPaymentDialog row={editing} onClose={() => setEditing(null)} onSaved={load} />
       <VoidDialog
         open={voiding != null}
         title="Void entry"

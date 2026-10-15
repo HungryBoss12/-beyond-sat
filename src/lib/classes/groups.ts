@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { staffName } from "@/lib/people-name";
 import type { ClassSubject, MemberStatus } from "./types";
 import type { HwItem } from "./schemes";
 
@@ -216,10 +217,15 @@ export async function setGroupMemberStatus(
   if (error) throw error;
 }
 
-export async function removeGroupMember(groupId: string, userId: string): Promise<void> {
+export async function removeGroupMember(
+  groupId: string,
+  userId: string,
+  charge = true,
+): Promise<void> {
   const { error } = await db.rpc("staff_remove_group_member", {
     p_group_id: groupId,
     p_user_id: userId,
+    p_charge: charge,
   });
   if (error) throw error;
 }
@@ -581,10 +587,8 @@ export async function listProfiles(ids: string[]): Promise<Map<string, PersonPro
   return new Map(((data ?? []) as PersonProfile[]).map((p) => [p.id, p]));
 }
 
-export function personName(profile: PersonProfile | undefined, fallbackId: string): string {
-  if (!profile) return fallbackId.slice(0, 8);
-  const joined = [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim();
-  return profile.full_name || joined || profile.username || profile.email || fallbackId.slice(0, 8);
+export function personName(profile: PersonProfile | undefined, _fallbackId: string): string {
+  return staffName(profile);
 }
 
 /** Admins, editors, and teachers, for the teacher picker. Only admins can read roles; others get []. */

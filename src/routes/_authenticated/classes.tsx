@@ -486,7 +486,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                       label={avatarInitial(h)}
                       className="h-7 w-7 bg-brand-500 text-[10px] text-white"
                     />
-                    <span className="font-bold">@{h.username}</span>
+                    <span className="font-bold">{displayName(h)}</span>
                     <span className="truncate text-xs text-white">{h.full_name}</span>
                   </RevealButton>
                 </li>

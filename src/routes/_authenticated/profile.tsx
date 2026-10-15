@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { formatGrade } from "@/lib/utils";
 import { AdminSelect } from "@/components/admin/AdminSelect";
+import { DateTimeField } from "@/components/ui/date-time-field";
 import { HighlightShortcutsCard } from "@/components/HighlightShortcutsCard";
 import { PageHead, Panel as Surface, PanelGlow, Skeleton } from "@/components/ui/panel";
 import { HeadSkeleton, PanelGridSkeleton, ListSkeleton } from "@/components/ui/skeletons";
@@ -33,6 +34,7 @@ import {
 } from "@/lib/classes";
 import { linkGoogleAccount } from "@/lib/auth/google";
 import { signOutCurrent } from "@/lib/auth/account-switcher";
+import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
 import { displayAccountEmail } from "@/lib/auth/login-email";
 import { studentBillingHome } from "@/lib/billing/api";
 import { formatUzs } from "@/lib/billing/money";
@@ -187,7 +189,7 @@ function Profile() {
   async function signOut() {
     const next = await signOutCurrent();
     if (next) {
-      window.location.assign("/dashboard");
+      window.location.assign(await pathAfterSignIn());
       return;
     }
     navigate({ to: "/signin", replace: true });
@@ -798,13 +800,7 @@ function GoalsForm({
         </span>
         {showManual ? (
           <>
-            <input
-              type="date"
-              value={examDate}
-              min={todayYmd()}
-              onChange={(e) => setExamDate(e.target.value)}
-              className="block w-full rounded-lg border border-brand-400/60 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] focus:border-brand-200 focus:outline-none"
-            />
+            <DateTimeField dateOnly value={examDate} onChange={setExamDate} />
             {dateOptions.length === 0 && (
               <span className="mt-1 block text-[11px] text-brand-200">
                 No official dates published yet — enter the date you plan to sit the SAT.
@@ -859,14 +855,16 @@ function Input({
       <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-brand-100">
         {label}
       </span>
-      {/* `color-scheme: dark` is what makes the native date/number spinners render
-          light — without it the browser draws a dark widget on a dark field. */}
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="block w-full rounded-lg border border-brand-400/60 bg-brand-800 px-3 py-2 text-sm text-white [color-scheme:dark] placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
-      />
+      {type === "date" ? (
+        <DateTimeField dateOnly value={value} onChange={onChange} />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="block w-full rounded-lg border border-brand-400/60 bg-brand-800 px-3 py-2 text-sm text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
+        />
+      )}
     </label>
   );
 }

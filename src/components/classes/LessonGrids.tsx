@@ -26,7 +26,7 @@ import {
 } from "@/lib/classes/schemes";
 import { shortDate } from "@/lib/classes/schedule";
 import { cn } from "@/lib/utils";
-import { CLASS_CONTROL } from "./control";
+import { DateTimeField } from "@/components/ui/date-time-field";
 
 export type GridPerson = { userId: string; name: string; status: MemberStatus };
 
@@ -119,13 +119,7 @@ export function DateStrip({
               );
           }}
         >
-          <input
-            type="date"
-            aria-label="Lesson date"
-            className={CLASS_CONTROL + " w-auto"}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
+          <DateTimeField dateOnly value={date} onChange={setDate} />
           <button
             type="submit"
             className="btn-brand rounded-full bg-brand-400 px-3 py-1.5 text-xs font-bold"
@@ -178,6 +172,7 @@ export function AttendanceGrid({
   selectedId,
   onSelect,
   onChanged,
+  dayWidth = 52,
 }: {
   groupId: string;
   lessons: GroupLesson[];
@@ -186,6 +181,7 @@ export function AttendanceGrid({
   selectedId: string | null;
   onSelect: (id: string) => void;
   onChanged: () => Promise<void>;
+  dayWidth?: number;
 }) {
   const [local, setLocal] = useState<Map<string, AttendanceState>>(new Map());
   const [busy, setBusy] = useState(false);
@@ -238,7 +234,7 @@ export function AttendanceGrid({
       if (state === "absent") counts.absent += 1;
     }
   }
-  const columns = `${NAME_COL} repeat(${Math.max(lessons.length, 1)}, minmax(52px, 1fr))`;
+  const columns = `${NAME_COL} repeat(${Math.max(lessons.length, 1)}, ${dayWidth}px)`;
 
   async function markListed(state: "present" | "empty") {
     if (!selected || people.length === 0) return;
@@ -389,6 +385,7 @@ export function MarksGrid({
   onSelect,
   onOpenLevel,
   onChanged,
+  dayWidth = 52,
 }: {
   subject: Subject;
   lessons: GroupLesson[];
@@ -399,6 +396,7 @@ export function MarksGrid({
   onSelect: (id: string) => void;
   onOpenLevel: (userId: string) => void;
   onChanged: () => Promise<void>;
+  dayWidth?: number;
 }) {
   const items = itemsFor(subject);
   const [local, setLocal] = useState<Map<string, boolean>>(new Map());
@@ -471,7 +469,7 @@ export function MarksGrid({
     ? Math.round(levels.reduce((a, b) => a + b, 0) / levels.length)
     : null;
   const isAfl = subject === "math";
-  const columns = `${NAME_COL} repeat(${Math.max(lessons.length, 1)}, minmax(${items.length * 30 + 12}px, 1fr))${isAfl ? " 96px" : ""}`;
+  const columns = `${NAME_COL} repeat(${Math.max(lessons.length, 1)}, ${Math.max(items.length * 30 + 12, dayWidth)}px)${isAfl ? " 96px" : ""}`;
 
   return (
     <div className="space-y-3">

@@ -35,6 +35,7 @@ import {
 } from "@/lib/sat";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { AdminSelect } from "@/components/admin/AdminSelect";
+import { DateTimeField } from "@/components/ui/date-time-field";
 import { PageHead, Panel, Skeleton } from "@/components/ui/panel";
 import { HeadSkeleton, ListSkeleton, StatRowSkeleton } from "@/components/ui/skeletons";
 import { Badge, Delta, type Tone } from "@/components/ui/metric";
@@ -363,23 +364,11 @@ function AnalysisPage() {
             options={LETTER_DIFFICULTIES.map((d) => ({ value: d, label: d }))}
           />
         </FieldFilter>
-        {/* The date pickers need color-scheme:dark on top of the shared control
-            class so the native calendar icon shows up on the navy field. */}
         <FieldFilter label="From">
-          <input
-            type="date"
-            value={fFrom}
-            onChange={(e) => setFFrom(e.target.value)}
-            className={CONTROL_CLASS + " [color-scheme:dark]"}
-          />
+          <DateTimeField dateOnly value={fFrom} onChange={setFFrom} />
         </FieldFilter>
         <FieldFilter label="To">
-          <input
-            type="date"
-            value={fTo}
-            onChange={(e) => setFTo(e.target.value)}
-            className={CONTROL_CLASS + " [color-scheme:dark]"}
-          />
+          <DateTimeField dateOnly value={fTo} onChange={setFTo} />
         </FieldFilter>
       </Panel>
 
@@ -707,10 +696,6 @@ function FieldFilter({ label, children }: { label: string; children: React.React
     </label>
   );
 }
-
-/** Shared control styling for the filter row's selects and date inputs. */
-const CONTROL_CLASS =
-  "rounded-lg border border-brand-400/40 bg-brand-800 px-3 py-2 text-sm text-white transition-all duration-200 hover:border-brand-300 focus:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-200/25";
 
 function SessionItem({
   session,

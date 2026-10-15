@@ -14,6 +14,8 @@ import { addGroupMember, type ClassGroup } from "@/lib/classes/groups";
 import { createStudentInvite, listStudents, reissueStudentInvite, type StudentRow } from "@/lib/students/api";
 import { tashkentToday } from "@/lib/billing/dates";
 import { cn } from "@/lib/utils";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { DateTimeField } from "@/components/ui/date-time-field";
 import { CLASS_CONTROL } from "./control";
 
 type Pick = "math" | "ebrw" | "both";
@@ -345,36 +347,32 @@ export function AddStudentDialog({
 
         <div className="space-y-3 border-t border-brand-400/30 bg-brand-800 px-5 pb-5 pt-3">
           <div className="grid gap-2 sm:grid-cols-3">
-            <label className="block text-xs font-bold text-white">
-              Status
-              <select
-                className={CLASS_CONTROL + " mt-1"}
-                value={status}
-                onChange={(e) => setStatus(e.target.value as "active" | "trial")}
-              >
-                <option value="active">Active</option>
-                <option value="trial">Trial</option>
-              </select>
-            </label>
-            <label className="block text-xs font-bold text-white">
-              Enrolled on
-              <input
-                type="date"
-                className={CLASS_CONTROL + " mt-1"}
-                value={enrolledOn}
-                onChange={(e) => setEnrolledOn(e.target.value)}
-              />
-            </label>
+            <AdminSelect
+              label="Status"
+              value={status}
+              onValueChange={(value) => setStatus(value as "active" | "trial")}
+              options={[
+                { value: "active", label: "Active" },
+                { value: "trial", label: "Trial" },
+              ]}
+            />
+            <div>
+              <div className="text-xs font-bold text-white">Enrolled on</div>
+              <div className="mt-1">
+                <DateTimeField dateOnly value={enrolledOn} onChange={setEnrolledOn} />
+              </div>
+            </div>
             {isAdmin && (
-              <label className="block text-xs font-bold text-white">
-                Activated on (billing)
-                <input
-                  type="date"
-                  className={CLASS_CONTROL + " mt-1"}
-                  value={activatedOn || enrolledOn}
-                  onChange={(e) => setActivatedOn(e.target.value)}
-                />
-              </label>
+              <div>
+                <div className="text-xs font-bold text-white">Activated on (billing)</div>
+                <div className="mt-1">
+                  <DateTimeField
+                    dateOnly
+                    value={activatedOn || enrolledOn}
+                    onChange={setActivatedOn}
+                  />
+                </div>
+              </div>
             )}
           </div>
           <button

@@ -5,6 +5,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
 import { signInWithIdentifier } from "@/lib/auth/username-login";
+import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
 import {
   listSavedAccounts,
   rememberCurrentSession,
@@ -56,14 +57,14 @@ function SignIn() {
 
   useEffect(() => {
     setSaved(listSavedAccounts());
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session && !isAddAccount()) navigate({ to: "/dashboard", replace: true });
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session && !isAddAccount()) navigate({ to: await pathAfterSignIn(), replace: true });
     });
   }, [navigate]);
 
   async function finishSignIn() {
     await rememberCurrentSession();
-    navigate({ to: "/dashboard", replace: true });
+    navigate({ to: await pathAfterSignIn(), replace: true });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -117,7 +118,7 @@ function SignIn() {
     setSwitchingId(account.userId);
     try {
       await switchToAccount(account.userId);
-      window.location.assign("/dashboard");
+      window.location.assign(await pathAfterSignIn());
     } catch (err) {
       setSaved(listSavedAccounts());
       setError((err as Error).message);

@@ -19,6 +19,7 @@ export function TransactionsTable({
   showStudent = true,
   showGroup = false,
   onVoid,
+  onEdit,
   emptyTitle = "No transactions",
   emptyBody = "Payments and fee charges will appear here.",
 }: {
@@ -26,12 +27,14 @@ export function TransactionsTable({
   showStudent?: boolean;
   showGroup?: boolean;
   onVoid?: (row: TxRow) => void;
+  onEdit?: (row: TxRow) => void;
   emptyTitle?: string;
   emptyBody?: string;
 }) {
   if (rows.length === 0) {
     return <EmptyState icon={ListChecks} title={emptyTitle} body={emptyBody} />;
   }
+  const hasMenu = Boolean(onVoid || onEdit);
   return (
     <div className="min-w-0 overflow-x-auto rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-panel">
       <table className="w-full text-left text-sm">
@@ -44,7 +47,7 @@ export function TransactionsTable({
             <th className="whitespace-nowrap p-3 text-right">Amount</th>
             <th className="whitespace-nowrap p-3">Method / period</th>
             <th className="p-3">Note</th>
-            {onVoid && <th className="p-3" aria-label="Actions" />}
+            {hasMenu && <th className="p-3" aria-label="Actions" />}
           </tr>
         </thead>
         <tbody>
@@ -75,9 +78,9 @@ export function TransactionsTable({
               <td className="max-w-[18rem] whitespace-normal break-words p-3 text-white" title={row.note ?? ""}>
                 {row.voided_at ? `Voided: ${row.void_reason ?? ""}` : (row.note ?? "")}
               </td>
-              {onVoid && (
+              {hasMenu && (
                 <td className="p-2 text-right">
-                  {!row.voided_at && (
+                  {!row.voided_at && ((onEdit && row.kind === "payment") || onVoid) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <IconButton
@@ -87,7 +90,12 @@ export function TransactionsTable({
                         />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => onVoid(row)}>Void entry</DropdownMenuItem>
+                        {onEdit && row.kind === "payment" && (
+                          <DropdownMenuItem onSelect={() => onEdit(row)}>Edit payment</DropdownMenuItem>
+                        )}
+                        {onVoid && (
+                          <DropdownMenuItem onSelect={() => onVoid(row)}>Void entry</DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}

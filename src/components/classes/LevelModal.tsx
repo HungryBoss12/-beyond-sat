@@ -9,7 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { IconButton } from "@/components/ui/icon-button";
-import { CLASS_CONTROL } from "@/components/classes/control";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { DateTimeField } from "@/components/ui/date-time-field";
 import {
   saveLevelScores,
   type ClassGroup,
@@ -139,38 +140,29 @@ export function LevelModal({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2 sm:grid-cols-2">
-          <label className="block text-xs font-bold text-white">
-            Assessment date
-            <input
-              type="date"
-              max={today}
-              className={CLASS_CONTROL + " mt-1"}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
+          <div>
+            <div className="text-xs font-bold text-white">Assessment date</div>
+            <div className="mt-1">
+              <DateTimeField dateOnly value={date} onChange={setDate} />
+            </div>
             {dateError && <span className="mt-1 block text-white">{dateError}</span>}
-          </label>
-          <label className="block text-xs font-bold text-white">
-            Lesson (optional)
-            <select
-              className={CLASS_CONTROL + " mt-1"}
-              value={lessonId}
-              onChange={(e) => {
-                setLessonId(e.target.value);
-                const lesson = lessons.find((l) => l.id === e.target.value);
-                if (lesson && lesson.lesson_date <= today) setDate(lesson.lesson_date);
-              }}
-            >
-              <option value="">No lesson</option>
-              {lessons
-                .filter((l) => l.lesson_date <= today)
-                .map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {shortDate(l.lesson_date)}
-                  </option>
-                ))}
-            </select>
-          </label>
+          </div>
+          <AdminSelect
+            label="Lesson (optional)"
+            value={lessonId || "none"}
+            onValueChange={(value) => {
+              const next = value === "none" ? "" : value;
+              setLessonId(next);
+              const lesson = lessons.find((item) => item.id === next);
+              if (lesson && lesson.lesson_date <= today) setDate(lesson.lesson_date);
+            }}
+            options={[
+              { value: "none", label: "No lesson" },
+              ...lessons
+                .filter((lesson) => lesson.lesson_date <= today)
+                .map((lesson) => ({ value: lesson.id, label: shortDate(lesson.lesson_date) })),
+            ]}
+          />
         </div>
         <ul className="min-h-0 flex-1 divide-y divide-brand-400/30 overflow-y-auto pr-1">
           {sections.map((section, index) => {

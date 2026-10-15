@@ -4,6 +4,7 @@ import { Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isValidUsername, normalizeUsername } from "@/lib/classes/types";
 import { rememberCurrentSession } from "@/lib/auth/account-switcher";
+import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
 import { sessionAuthHeaders } from "@/lib/auth/session-headers";
 import { PanelGlow } from "@/components/ui/panel";
 import { AmbientGlow, RevealCard } from "@/components/ui/reveal-card";
@@ -108,7 +109,8 @@ function FirstLogin() {
     }
 
     await rememberCurrentSession();
-    navigate({ to: "/onboarding", replace: true });
+    const next = await pathAfterSignIn();
+    navigate({ to: next === "/first-login" ? "/onboarding" : next, replace: true });
   }
 
   if (loading) {

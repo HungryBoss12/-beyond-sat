@@ -85,8 +85,12 @@ async function postInvite(body: Record<string, unknown>): Promise<InviteLink> {
   };
 }
 
-export function createStudentInvite(input: { name: string; classId?: string }): Promise<InviteLink> {
-  return postInvite({ name: input.name, classId: input.classId ?? null });
+export function createStudentInvite(input: {
+  name: string;
+  classId?: string;
+  enrolledOn?: string;
+}): Promise<InviteLink> {
+  return postInvite({ name: input.name, classId: input.classId ?? null, enrolledOn: input.enrolledOn ?? null });
 }
 
 export function reissueStudentInvite(userId: string): Promise<InviteLink> {

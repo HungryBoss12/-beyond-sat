@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { jsonResponse } from "@/lib/vocab/rest";
 import { readSupabaseConfig } from "@/lib/server-env";
 import { normalizeUsername } from "@/lib/classes/types";
+import { takeRateToken } from "@/lib/shared-rate-limit";
 
 /** Coarse client key for rate limiting: IP when present, else "unknown". */
 function clientKey(request: Request): string {
@@ -31,27 +32,6 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
   const config = readSupabaseConfig(env);
   if (!config) return jsonResponse({ error: "Server is not configured" }, 500);
 
-  /* Same rule as before: 5 attempts, then one more every 3 minutes, per IP.
-     The count lives in the database so every Worker shares it. */
-  const ip = clientKey(request);
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: limitData, error: limitErr } = await (supabaseAdmin as any).rpc(
-    "bs_take_login_attempt",
-    { p_key: ip },
-  );
-  const limit = limitData as { ok?: boolean; retry_after?: number } | null;
-  if (limitErr || !limit) {
-    console.error("[username-login] rate limit failed", limitErr?.message);
-    return jsonResponse({ error: "Could not sign in. Try again." }, 503);
-  }
-  if (!limit.ok) {
-    return jsonResponse(
-      { error: "Too many sign-in attempts. Wait a few minutes and try again." },
-      { status: 429, headers: { "retry-after": String(limit.retry_after ?? 180) } },
-    );
-  }
-
   let body: { username?: unknown; password?: unknown };
   try {
     body = (await request.json()) as typeof body;
@@ -63,6 +43,29 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
   const password = typeof body.password === "string" ? body.password : "";
   if (username.length < 3 || !password) {
     return jsonResponse({ error: "Enter your username and password." }, 400);
+  }
+
+  /* A whole class signs in from one school IP, so the tight limit is per
+     account on that IP (5, then one every 3 minutes) and the IP itself only
+     gets a wide cap. Both counts live in the database so every Worker shares them. */
+  const ip = clientKey(request);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const [accountLimit, ipLimit] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabaseAdmin as any).rpc("bs_take_login_attempt", { p_key: `${ip}|${username}` }),
+    takeRateToken(env, `login-ip:${ip}`, 60, 6),
+  ]);
+  const limit = accountLimit.data as { ok?: boolean; retry_after?: number } | null;
+  if (accountLimit.error || !limit) {
+    console.error("[username-login] rate limit failed", accountLimit.error?.message);
+    return jsonResponse({ error: "Could not sign in. Try again." }, 503);
+  }
+  if (!limit.ok || (ipLimit && !ipLimit.ok)) {
+    const retry = !limit.ok ? (limit.retry_after ?? 180) : ipLimit?.retryAfter || 60;
+    return jsonResponse(
+      { error: "Too many sign-in attempts. Wait a few minutes and try again." },
+      { status: 429, headers: { "retry-after": String(retry) } },
+    );
   }
 
   const { data: rows, error: lookupErr } = await supabaseAdmin

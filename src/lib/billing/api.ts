@@ -416,6 +416,19 @@ export async function setStudentDiscount(input: {
   });
 }
 
+export async function studentMonthlyNet(userId: string): Promise<bigint> {
+  const data = await call<number | string>("bs_student_monthly_net", { p_user_id: userId });
+  return toUzs(data);
+}
+
+export async function tuitionDiscountTotals(): Promise<{ without: bigint; with: bigint }> {
+  const rows = await call<Raw[]>("admin_tuition_discount_totals");
+  const row = rows?.[0] ?? {};
+  return {
+    without: toUzs(row.without_discount),
+    with: toUzs(row.with_discount),
+  };
+}
 export async function clearStudentDiscount(userId: string, subject: DiscountSubject): Promise<void> {
   await call("admin_clear_student_discount", { p_user_id: userId, p_subject: subject });
 }

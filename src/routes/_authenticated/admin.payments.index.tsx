@@ -69,6 +69,7 @@ import {
   setClassFee,
   setStudentDiscount,
   resetAllPayments,
+  tuitionDiscountTotals,
   voidEntry,
   type DiscountStudent,
   type StudentDiscount,
@@ -156,6 +157,7 @@ function PaymentsPage() {
   const [census, setCensus] = useState<BalanceRow[]>([]);
   const [ledger, setLedger] = useState<TxRow[] | null>(null);
   const [summary, setSummary] = useState<PaymentsSummary | null>(null);
+  const [tuitionEdge, setTuitionEdge] = useState<{ without: bigint; with: bigint } | null>(null);
   const [fees, setFees] = useState<GroupFeeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -210,14 +212,16 @@ function PaymentsPage() {
       }
       const maxDebt = parseUzsInput(search.maxDebt, 10n ** 12n);
       const minDebt = parseUzsInput(search.minDebt, 10n ** 12n);
-      const [sum, groupRows, people] = await Promise.all([
+      const [sum, groupRows, people, tuition] = await Promise.all([
         paymentsSummary(),
         groupFees(),
         listBalances({}),
+        tuitionDiscountTotals().catch(() => null),
       ]);
       setSummary(sum);
       setFees(groupRows);
       setCensus(people);
+      setTuitionEdge(tuition);
       if (search.view === "ledger") {
         const groupNames = new Map<string, string[]>();
         const studentNames = new Map(people.map((person) => [person.user_id, studentName(person)]));
@@ -507,7 +511,7 @@ function PaymentsPage() {
           icon={CalendarCheck}
           label="Expected this month"
           amount={loading ? null : revenue.expected}
-          hint="Join month is a share of the lessons. Two classes count twice."
+          hint="Lessons they should attend this month, divided by that group’s lessons, times their share of the fee."
           loading={loading}
         />
         <MoneyTile
@@ -515,6 +519,7 @@ function PaymentsPage() {
           label="Monthly tuition"
           amount={loading ? null : revenue.tuition}
           hint="One full fee per student"
+          edge={tuitionEdge}
           loading={loading}
         />
       </div>

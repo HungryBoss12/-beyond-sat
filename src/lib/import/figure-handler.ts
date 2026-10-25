@@ -20,6 +20,7 @@ type FigureRequest = {
   hint?: unknown;
   questions?: unknown;
   tableMarkdown?: unknown;
+  graphMarkdown?: unknown;
 };
 
 function parseQuestions(raw: unknown): { draft_number: number; stem: string }[] | undefined {
@@ -63,6 +64,7 @@ export async function handleImportFigure(request: Request, env: unknown): Promis
   const hint = typeof payload.hint === "string" ? payload.hint : undefined;
   const questions = parseQuestions(payload.questions);
   const tableMarkdown = payload.tableMarkdown === true;
+  const graphMarkdown = payload.graphMarkdown === true;
 
   const apiKey = readEnv(env, "GEMINI_API_KEY");
   if (!apiKey) {
@@ -82,6 +84,7 @@ export async function handleImportFigure(request: Request, env: unknown): Promis
         hint,
         questions,
         tableMarkdown,
+        graphMarkdown,
       },
     );
     return json({ content }, 200);

@@ -187,6 +187,7 @@ function AdminImport() {
   const [manualCropBusy, setManualCropBusy] = useState(false);
   const [sweepFigures, setSweepFigures] = useState(true);
   const [tableMarkdown, setTableMarkdown] = useState(false);
+  const [graphMarkdown, setGraphMarkdown] = useState(false);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [asking, setAsking] = useState(false);
   const [focusDraftIndex, setFocusDraftIndex] = useState<number | null>(null);
@@ -509,6 +510,7 @@ function AdminImport() {
       const out = await attachFiguresToDrafts(file, list, targets, {
         onProgress: setFigureProgress,
         tableMarkdown,
+        graphMarkdown,
       });
       setNotes((current) => [...current, ...out.notes]);
       appendActivity(out.entries);
@@ -817,6 +819,7 @@ function AdminImport() {
         shouldStop: () => stopRef.current,
         onProgress: setFigureProgress,
         tableMarkdown,
+        graphMarkdown,
       });
       setDrafts(out.drafts);
       setNotes((current) => [...current, ...out.notes]);
@@ -2164,6 +2167,8 @@ function AdminImport() {
               setSweepFigures={setSweepFigures}
               tableMarkdown={tableMarkdown}
               setTableMarkdown={setTableMarkdown}
+              graphMarkdown={graphMarkdown}
+              setGraphMarkdown={setGraphMarkdown}
               focusDraftIndex={focusDraftIndex}
               visionRunning={Boolean(vision?.running)}
             />

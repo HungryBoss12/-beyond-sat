@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { EmptyState } from "@/components/ui/panel";
 import { ClassContext, type ClassContextValue } from "@/components/classes/ClassContext";
-import { listAllClasses, type ClassRow } from "@/lib/classes";
+import { getClass, listAllClasses, type ClassRow } from "@/lib/classes";
 import { listGroups, type ClassGroup } from "@/lib/classes/groups";
 
 export const Route = createFileRoute("/_authenticated/admin/classes/$classId")({
@@ -18,6 +18,7 @@ function ClassLayout() {
   const { staffRole, userId } = adminRoute.useRouteContext();
   const navigate = useNavigate();
   const [allClasses, setAllClasses] = useState<ClassRow[]>([]);
+  const [klass, setKlass] = useState<ClassRow | null>(null);
   const [groups, setGroups] = useState<ClassGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,10 +26,11 @@ function ClassLayout() {
 
   const reload = useCallback(async () => {
     try {
-      const [classes, groupRows, taught] = await Promise.all([
+      const [classes, groupRows, taught, current] = await Promise.all([
         listAllClasses(),
         listGroups(classId),
         isTeacher ? listGroups() : Promise.resolve(null),
+        getClass(classId),
       ]);
       const mine = isTeacher
         ? groupRows.filter((group) => group.teacher_id === userId)
@@ -37,6 +39,7 @@ function ClassLayout() {
         (taught ?? []).filter((group) => group.teacher_id === userId).map((group) => group.class_id),
       );
       setAllClasses(isTeacher ? classes.filter((row) => taughtIds.has(row.id)) : classes);
+      setKlass(isTeacher && current?.archived_at ? null : current);
       setGroups(mine);
       setError(null);
     } catch (err) {
@@ -58,7 +61,6 @@ function ClassLayout() {
     }
   }, [isTeacher, loading, error, groups, userId, navigate]);
 
-  const klass = allClasses.find((row) => row.id === classId) ?? null;
   const value = useMemo<ClassContextValue | null>(
     () =>
       klass
@@ -72,7 +74,7 @@ function ClassLayout() {
     return (
       <EmptyState
         title={error ? "Could not load the class" : "Class not found"}
-        body={error ?? "It may have been deleted."}
+        body={error ?? "It may have been archived."}
       />
     );
   }

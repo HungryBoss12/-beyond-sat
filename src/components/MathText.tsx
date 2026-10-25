@@ -20,12 +20,15 @@ export function MathText({
   children,
   className = "",
   block = false,
+  math = true,
 }: {
   children: string | null | undefined;
   className?: string;
   block?: boolean;
+  /** Reading & Writing is prose. Skip KaTeX and the ascii-math rewriter there. */
+  math?: boolean;
 }) {
-  const html = useMemo(() => renderMathText(children ?? ""), [children]);
+  const html = useMemo(() => renderMathText(children ?? "", { math }), [children, math]);
   const Tag = block ? "div" : "span";
   return (
     <Tag
@@ -152,9 +155,17 @@ function escapeProse(s: string): string {
   return out;
 }
 
-/** Exported for unit tests. */
-export function renderMathText(input: string): string {
+/** Reading & Writing: underlines and line breaks only. No KaTeX, no fraction rewriter. */
+function renderProseText(input: string): string {
   if (!input) return "";
+  const text = unescapeLiteralBreaks(normalizeUnderlineMarkup(input));
+  return escapeProse(text).replace(/\n/g, "<br/>");
+}
+
+/** Exported for unit tests. */
+export function renderMathText(input: string, options?: { math?: boolean }): string {
+  if (!input) return "";
+  if (options?.math === false) return renderProseText(input);
   const normalized = normalizeMathInput(normalizeUnderlineMarkup(input));
   let out = "";
   let last = 0;
@@ -197,15 +208,21 @@ export function renderMathText(input: string): string {
 }
 
 /** Small helper for admin editors: shows a live rendered preview of LaTeX text. */
-export function MathPreview({ value }: { value: string }) {
+export function MathPreview({ value, math = true }: { value: string; math?: boolean }) {
   /* Rendered inside brand-surfaced editors, so it inherits white/light-blue
      rather than the old slate greys. */
   if (!value?.trim()) {
     return (
       <div className="text-xs italic text-brand-100">
-        Live preview appears here. Wrap math in $…$ (inline) or $$…$$ (block).
+        {math
+          ? "Live preview appears here. Wrap math in $…$ (inline) or $$…$$ (block)."
+          : "Live preview appears here."}
       </div>
     );
   }
-  return <MathText block>{value}</MathText>;
+  return (
+    <MathText block math={math}>
+      {value}
+    </MathText>
+  );
 }

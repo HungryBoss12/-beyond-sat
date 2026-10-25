@@ -16,6 +16,7 @@ import {
 import { SQB_DIFFICULTIES } from "@/lib/sqb";
 import type { Draft } from "@/lib/import/parse";
 import { uploadQuestionImage } from "@/lib/import/upload-question-image";
+import { extractGraphText, replaceGraphText } from "@/lib/import/graph-text";
 import { resolveDisplayUrl } from "@/lib/storage-url";
 import { CONTROL_CLASS } from "./types";
 import { Field } from "./field";
@@ -313,6 +314,18 @@ export function DraftEditor({
           ) : null}
         </div>
         {uploadError && <p className="mt-1 text-xs font-semibold text-white">{uploadError}</p>}
+        <Field label="Graph text">
+          <textarea
+            value={extractGraphText(rec.prompt ?? "")}
+            disabled={disabled}
+            onChange={(e) =>
+              setField("prompt", replaceGraphText(rec.prompt ?? "", e.target.value))
+            }
+            rows={4}
+            className={CONTROL_CLASS + " min-h-[5rem] resize-y font-mono text-xs disabled:opacity-40"}
+            placeholder={"x-axis: Time, 0 to 10, ticks 0, 2, 4\ny-axis: Speed, 0 to 60\npoints: (0, 0); (2, 10)\nlines: a straight line through those points"}
+          />
+        </Field>
         {variant === "sqb" && (
           <div className="mt-2">
             <Field label="Image alt (required to publish when figure is set)">
@@ -330,20 +343,22 @@ export function DraftEditor({
 
       <Field label="Passage / figure notes (optional)">
         <textarea
-          value={rec.prompt ?? ""}
+          value={replaceGraphText(rec.prompt ?? "", "")}
           disabled={disabled}
-          onChange={(e) => setField("prompt", e.target.value)}
+          onChange={(e) =>
+            setField("prompt", replaceGraphText(e.target.value, extractGraphText(rec.prompt ?? "")))
+          }
           rows={3}
           className={CONTROL_CLASS + " min-h-[4.5rem] resize-y disabled:opacity-40"}
           placeholder="Wrap underlined words as <u>surveyed</u>"
         />
       </Field>
-      {(rec.prompt ?? "").trim() && (
+      {(replaceGraphText(rec.prompt ?? "", "").trim()) && (
         <div className="rounded-lg bg-brand-900/50 px-3 py-2 text-sm text-white">
           <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-brand-200">
             Passage preview
           </p>
-          <MathText>{rec.prompt}</MathText>
+          <MathText math={section === "math"}>{replaceGraphText(rec.prompt ?? "", "")}</MathText>
         </div>
       )}
 
@@ -361,7 +376,7 @@ export function DraftEditor({
           <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-brand-200">
             Preview
           </p>
-          <MathText>{rec.question_text}</MathText>
+          <MathText math={section === "math"}>{rec.question_text}</MathText>
         </div>
       )}
 
@@ -386,7 +401,7 @@ export function DraftEditor({
                   <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-brand-200">
                     Preview
                   </p>
-                  <MathText>{rec[`choice_${id}`]}</MathText>
+                  <MathText math={section === "math"}>{rec[`choice_${id}`]}</MathText>
                 </div>
               ) : null}
               <DraftChoiceImage

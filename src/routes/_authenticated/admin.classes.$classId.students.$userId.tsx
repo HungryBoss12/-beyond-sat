@@ -281,10 +281,7 @@ function StudentProfilePage() {
                   <StatusLabel status={b.member.status} />
                   {isAdmin && (
                     <span className="tabular-nums">
-                      · Joined{" "}
-                      {[b.member.enrolled_on, b.member.activated_on]
-                        .filter((date): date is string => Boolean(date))
-                        .sort()[0] ?? "—"}
+                      · Joined {b.member.activated_on ?? b.member.enrolled_on ?? "—"}
                     </span>
                   )}
                 </span>

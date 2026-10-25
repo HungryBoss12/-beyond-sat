@@ -124,6 +124,7 @@ export function QuestionCard({
   commitHighlightOnRelease?: boolean;
 }) {
   const choices = useMemo(() => (Array.isArray(q.choices) ? q.choices : []), [q.choices]);
+  const math = q.section === "math";
   const stemText = (q.question_text ?? "").trim();
   const passageText = (q.prompt ?? "").trim();
   const questionStem = stemText || passageText;
@@ -316,8 +317,8 @@ export function QuestionCard({
   // Render passage with highlight underlines
   const renderedPassage = useMemo(() => {
     if (!leftPassage) return null;
-    return renderMarked(leftPassage, answer.highlights, (id) => removeHighlightRef.current(id));
-  }, [leftPassage, answer.highlights]);
+    return renderMarked(leftPassage, answer.highlights, (id) => removeHighlightRef.current(id), math);
+  }, [leftPassage, answer.highlights, math]);
 
   return (
     /* Full bleed, no card. Bluebook has no panel and no page margin: the
@@ -481,7 +482,7 @@ export function QuestionCard({
                     <div className="line-clamp-2 text-sm text-test-ink">
                       {/* Same treatment as in the passage. */}
                       <mark className="rounded bg-test-tint px-0.5 text-test-ink ring-1 ring-test-edge">
-                        <MathText>{h.text}</MathText>
+                        <MathText math={math}>{h.text}</MathText>
                       </mark>
                     </div>
                     {h.note && (
@@ -561,6 +562,7 @@ function renderMarked(
   text: string,
   highlights: Highlight[],
   onRemove: (id: string) => void,
+  math: boolean,
 ): React.ReactNode {
   type R = { start: number; end: number; hid: string; note: string };
   const ranges: R[] = [];
@@ -573,18 +575,18 @@ function renderMarked(
   for (const r of ranges) {
     if (clean.length === 0 || r.start >= clean[clean.length - 1].end) clean.push(r);
   }
-  if (clean.length === 0) return <MathText block>{text}</MathText>;
-  const math = [...text.matchAll(/(\$\$[\s\S]+?\$\$)|(\\\[[\s\S]+?\\\])|(\$[^\n$]+?\$)|(\\\([\s\S]+?\\\))/g)].map(
+  if (clean.length === 0) return <MathText block math={math}>{text}</MathText>;
+  const formulaSpans = [...text.matchAll(/(\$\$[\s\S]+?\$\$)|(\\\[[\s\S]+?\\\])|(\$[^\n$]+?\$)|(\\\([\s\S]+?\\\))/g)].map(
     (match) => ({ start: match.index ?? 0, end: (match.index ?? 0) + match[0].length }),
   );
-  const safe = clean.filter((range) => !math.some((span) => range.start < span.end && range.end > span.start));
+  const safe = clean.filter((range) => !formulaSpans.some((span) => range.start < span.end && range.end > span.start));
   let source = text;
   for (const range of [...safe].sort((a, b) => b.start - a.start)) {
     source = `${source.slice(0, range.start)}<u>${source.slice(range.start, range.end)}</u>${source.slice(range.end)}`;
   }
   return (
     <div>
-      <MathText block>{source}</MathText>
+      <MathText block math={math}>{source}</MathText>
       <div className="mt-1 flex flex-wrap gap-2">
         {clean.map((range) => (
           <button
@@ -719,7 +721,7 @@ function QuestionBody({
       <div className="border-t border-test-line" />
 
       <div className="whitespace-pre-wrap pt-5 text-[18px] font-medium leading-[1.7] text-test-ink selection:bg-[#ffe566] md:text-[19px]">
-        {renderMarked(stem, highlights, onRemoveHighlight)}
+        {renderMarked(stem, highlights, onRemoveHighlight, q.section === "math")}
       </div>
 
       {q.kind === "grid_in" ? (
@@ -791,7 +793,7 @@ function QuestionBody({
                           : "text-test-ink")
                     }
                   >
-                    {c.text?.trim() ? <MathText>{c.text}</MathText> : null}
+                    {c.text?.trim() ? <MathText math={q.section === "math"}>{c.text}</MathText> : null}
                     {c.image_url ? (
                       <img
                         src={c.image_url}
@@ -856,6 +858,7 @@ function QuestionBody({
               </p>
               <MathText
                 block
+                math={q.section === "math"}
                 className="whitespace-pre-wrap text-[16px] leading-[1.65] text-test-ink"
               >
                 {(q.explanation ?? "").trim()}

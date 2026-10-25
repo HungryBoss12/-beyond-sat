@@ -1,7 +1,7 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { ArrowLeft, Ban, CircleCheck, Loader2 } from "lucide-react";
+import { ArrowLeft, Ban, CircleCheck, KeyRound, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { UserActivityFeed } from "@/components/admin/UserActivityFeed";
 import { UserStatTiles } from "@/components/admin/UserStatTiles";
@@ -22,6 +22,14 @@ import {
 import { isOnline, lastSeenLabel } from "@/lib/presence";
 import { errorMessage, formatGrade } from "@/lib/utils";
 import { AdminSelect } from "@/components/admin/AdminSelect";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { sessionAuthHeaders } from "@/lib/auth/session-headers";
 
 type Role = "student" | "editor" | "admin";
 
@@ -56,6 +64,7 @@ function AdminUserDetailPage() {
   const [err, setErr] = useState<string | null>(null);
   const [tabErr, setTabErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
 
   const loadDetail = useCallback(async () => {
     setLoading(true);
@@ -217,7 +226,13 @@ function AdminUserDetailPage() {
         </div>
       ) : (
         <>
-          <Header detail={detail} busy={busy} onRole={setRole} onBan={toggleBan} />
+          <Header
+            detail={detail}
+            busy={busy}
+            onRole={setRole}
+            onBan={toggleBan}
+            onReset={() => setResetOpen(true)}
+          />
 
           <div className="mt-4 flex flex-wrap gap-1 rounded-2xl border border-brand-400/40 bg-brand-600 p-1">
             {tabs.map(([key, label]) => (
@@ -258,6 +273,16 @@ function AdminUserDetailPage() {
               <UinfoPanel data={uinfo} />
             )}
           </div>
+          <ResetPasswordDialog
+            open={resetOpen}
+            userId={userId}
+            name={
+              (detail.profile as { full_name?: string | null; email?: string | null }).full_name ||
+              (detail.profile as { email?: string | null }).email ||
+              "this student"
+            }
+            onClose={() => setResetOpen(false)}
+          />
         </>
       )}
     </div>
@@ -269,11 +294,13 @@ function Header({
   busy,
   onRole,
   onBan,
+  onReset,
 }: {
   detail: AdminUserDetail;
   busy: boolean;
   onRole: (r: Role) => void;
   onBan: () => void;
+  onReset: () => void;
 }) {
   const profile = detail.profile as {
     full_name?: string | null;
@@ -321,6 +348,15 @@ function Header({
           options={ROLE_OPTIONS}
         />
         <button
+          type="button"
+          onClick={onReset}
+          disabled={busy}
+          className="tap inline-flex items-center gap-1.5 rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-brand-400/40 hover:bg-brand-900 disabled:opacity-60"
+        >
+          <KeyRound className="h-3.5 w-3.5" />
+          Reset password
+        </button>
+        <button
           onClick={onBan}
           disabled={busy}
           className={
@@ -341,6 +377,136 @@ function Header({
         </button>
       </div>
     </div>
+  );
+}
+
+function ResetPasswordDialog({
+  open,
+  userId,
+  name,
+  onClose,
+}: {
+  open: boolean;
+  userId: string;
+  name: string;
+  onClose: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setPassword("");
+    setConfirm("");
+    setError(null);
+    setSaved(null);
+  }, [open]);
+
+  async function save() {
+    setError(null);
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords don't match.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const headers = await sessionAuthHeaders();
+      const res = await fetch("/api/admin/reset-student-password", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ userId, password }),
+      });
+      const body = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(body.error ?? "Could not reset the password.");
+        return;
+      }
+      setSaved(password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reset the password.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="border-brand-400/40 bg-brand-600 text-white sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white">Reset password</DialogTitle>
+          <DialogDescription className="text-brand-100">
+            {name} will sign in with this temporary password, then must choose a new one. Classes,
+            scores, and goals stay as they are.
+          </DialogDescription>
+        </DialogHeader>
+        {saved ? (
+          <div className="space-y-3">
+            <p className="text-sm text-white">
+              Temporary password: <span className="font-black">{saved}</span>
+            </p>
+            <p className="text-xs text-brand-100">
+              Give this to the student. Their other sessions are signed out.
+            </p>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full bg-brand-400 px-4 py-2 text-xs font-bold text-white"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void save();
+            }}
+          >
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold text-white">Temporary password</span>
+              <input
+                type="text"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="off"
+                className="w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white outline-none focus:border-brand-200"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold text-white">Confirm</span>
+              <input
+                type="text"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                autoComplete="off"
+                className="w-full rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm text-white outline-none focus:border-brand-200"
+              />
+            </label>
+            {error ? <p className="text-xs font-semibold text-white">{error}</p> : null}
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={busy}
+                className="inline-flex items-center gap-2 rounded-full bg-brand-400 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                Save temporary password
+              </button>
+            </div>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

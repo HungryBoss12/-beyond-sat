@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { displayAccountEmail, isSyntheticAccountEmail } from "./login-email";
+import { clearKeepSignedIn } from "./session-policy";
 
 /**
  * Saved-account vault (H4).
@@ -218,6 +219,7 @@ export async function signOutCurrent(): Promise<SavedAccount | null> {
   const { data } = await supabase.auth.getUser();
   const currentId = data.user?.id;
   await supabase.auth.signOut({ scope: "global" });
+  clearKeepSignedIn();
   if (currentId) removeSavedAccount(currentId);
   const next = readVault()[0] ?? null;
   if (next) {
@@ -233,6 +235,7 @@ export async function signOutCurrent(): Promise<SavedAccount | null> {
 
 export async function signOutAll(): Promise<void> {
   await supabase.auth.signOut({ scope: "global" });
+  clearKeepSignedIn();
   writeVault([]);
   if (typeof window !== "undefined") {
     try {

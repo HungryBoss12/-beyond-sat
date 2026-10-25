@@ -55,6 +55,7 @@ export default defineConfig(({ mode, command }) => {
         ? [
             nitro({
               defaultPreset: "cloudflare-module",
+              plugins: ["./src/nitro/scheduled.ts"],
             }),
           ]
         : []),

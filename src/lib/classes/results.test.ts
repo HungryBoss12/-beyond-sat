@@ -41,7 +41,7 @@ describe("schemes", () => {
 
   it("writes the footer summary per scheme", () => {
     expect(doneSummary("ebrw", { vocab: 4, assignment: 6, article: 2 })).toBe(
-      "Done: 4 vocab · 6 assign · 2 article",
+      "Done: 4 vocab · 6 assign · 2 reading",
     );
     expect(doneSummary("math", { assignment: 5, formulas: 3 }, 640)).toBe(
       "Done: 5 assign · 3 formulas · avg L 640",

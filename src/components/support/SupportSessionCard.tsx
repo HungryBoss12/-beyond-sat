@@ -3,7 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { SupportCountdown } from "@/components/support/SupportCountdown";
 import { startTestSetSession } from "@/lib/session";
-import { formatDay, formatWhen, subjectLabel, type SupportSession } from "@/lib/support/api";
+import { formatDay, formatWhen, subjectLabel, type SupportMaterial, type SupportSession } from "@/lib/support/api";
 
 const STATUS_LABEL: Record<SupportSession["status"], string> = {
   pending: "Pending",
@@ -62,9 +62,9 @@ export function SupportSessionCard({
             </p>
           ))}
           {session.rejection_reason && <p className="mt-2 text-xs">Note: {session.rejection_reason}</p>}
-          {session.materials.length > 0 && (
+          {(session.materials ?? []).length > 0 && (
             <ul className="mt-2 space-y-1 text-xs">
-              {session.materials.map((item) => (
+              {(session.materials ?? []).map((item) => (
                 <li key={item.id}>
                   <MaterialLink item={item} />
                 </li>
@@ -96,7 +96,7 @@ export function SupportSessionCard({
   );
 }
 
-function MaterialLink({ item }: { item: SupportSession["materials"][number] }) {
+function MaterialLink({ item }: { item: SupportMaterial }) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   if (item.test_id) {

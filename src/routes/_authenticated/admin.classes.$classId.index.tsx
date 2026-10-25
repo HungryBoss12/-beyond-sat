@@ -22,6 +22,7 @@ import {
 } from "@/lib/classes/groups";
 import { scheduleLine } from "@/lib/classes/schedule";
 import { subjectToSlug } from "@/lib/classes/schemes";
+import { restoreClass } from "@/lib/classes";
 import { listBalances } from "@/lib/billing/api";
 import { reissueStudentInvite, unclaimedUserIds } from "@/lib/students/api";
 import { toast } from "sonner";
@@ -49,6 +50,7 @@ function ClassOverview() {
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -111,6 +113,32 @@ function ClassOverview() {
               <p className="mt-1 text-sm text-white">{klass.description}</p>
             )}
             {!klass.active && <p className="mt-1 text-xs font-bold text-white">Inactive</p>}
+            {klass.archived_at && (
+              <p className="mt-1 text-xs font-bold text-white">
+                Archived. It is not charged from next month.
+                {isAdmin && (
+                  <button
+                    type="button"
+                    disabled={restoring}
+                    className="ml-2 underline disabled:opacity-60"
+                    onClick={() => {
+                      setRestoring(true);
+                      void restoreClass(klass.id)
+                        .then(async () => {
+                          toast.success("Class restored");
+                          await reload();
+                        })
+                        .catch((err: unknown) =>
+                          toast.error(err instanceof Error ? err.message : "Could not restore"),
+                        )
+                        .finally(() => setRestoring(false));
+                    }}
+                  >
+                    Restore
+                  </button>
+                )}
+              </p>
+            )}
           </div>
           {!isTeacher && (
           <div className="flex gap-2">

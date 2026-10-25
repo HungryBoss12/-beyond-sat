@@ -48,10 +48,11 @@ function SessionReview() {
       const { data: att, error: aErr } = await supabase
         .from("attempts")
         .select(
-          "id,question_id,is_correct,selected_choice_id,grid_answer,marked_for_review,eliminated_choice_ids",
+          "id,question_id,is_correct,selected_choice_id,grid_answer,marked_for_review,eliminated_choice_ids,created_at",
         )
         .eq("session_id", id)
-        .eq("user_id", uid);
+        .eq("user_id", uid)
+        .order("created_at", { ascending: true });
       if (aErr) {
         setErr(aErr.message);
         setLoading(false);

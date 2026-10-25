@@ -38,6 +38,7 @@ import { Route as AuthenticatedVocabRouteImport } from './routes/_authenticated/
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminArchiveRouteImport } from './routes/_authenticated/admin.archive'
 import { Route as AuthenticatedAdminClassesRouteImport } from './routes/_authenticated/admin.classes'
 import { Route as AuthenticatedAdminDailyRouteImport } from './routes/_authenticated/admin.daily'
 import { Route as AuthenticatedAdminExamdatesRouteImport } from './routes/_authenticated/admin.examdates'
@@ -247,6 +248,12 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminArchiveRoute =
+  AuthenticatedAdminArchiveRouteImport.update({
+    id: '/archive',
+    path: '/archive',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminClassesRoute =
   AuthenticatedAdminClassesRouteImport.update({
     id: '/classes',
@@ -641,6 +648,7 @@ export interface FileRoutesByFullPath {
   '/vocab': typeof AuthenticatedVocabRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/join/$token': typeof JoinTokenRoute
+  '/admin/archive': typeof AuthenticatedAdminArchiveRoute
   '/admin/classes': typeof AuthenticatedAdminClassesRouteWithChildren
   '/admin/daily': typeof AuthenticatedAdminDailyRoute
   '/admin/examdates': typeof AuthenticatedAdminExamdatesRoute
@@ -728,6 +736,7 @@ export interface FileRoutesByTo {
   '/support-lessons': typeof AuthenticatedSupportLessonsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/join/$token': typeof JoinTokenRoute
+  '/admin/archive': typeof AuthenticatedAdminArchiveRoute
   '/admin/daily': typeof AuthenticatedAdminDailyRoute
   '/admin/examdates': typeof AuthenticatedAdminExamdatesRoute
   '/admin/homepage': typeof AuthenticatedAdminHomepageRoute
@@ -812,6 +821,7 @@ export interface FileRoutesById {
   '/_authenticated/vocab': typeof AuthenticatedVocabRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/join/$token': typeof JoinTokenRoute
+  '/_authenticated/admin/archive': typeof AuthenticatedAdminArchiveRoute
   '/_authenticated/admin/classes': typeof AuthenticatedAdminClassesRouteWithChildren
   '/_authenticated/admin/daily': typeof AuthenticatedAdminDailyRoute
   '/_authenticated/admin/examdates': typeof AuthenticatedAdminExamdatesRoute
@@ -907,6 +917,7 @@ export interface FileRouteTypes {
     | '/vocab'
     | '/auth/callback'
     | '/join/$token'
+    | '/admin/archive'
     | '/admin/classes'
     | '/admin/daily'
     | '/admin/examdates'
@@ -994,6 +1005,7 @@ export interface FileRouteTypes {
     | '/support-lessons'
     | '/auth/callback'
     | '/join/$token'
+    | '/admin/archive'
     | '/admin/daily'
     | '/admin/examdates'
     | '/admin/homepage'
@@ -1077,6 +1089,7 @@ export interface FileRouteTypes {
     | '/_authenticated/vocab'
     | '/auth/callback'
     | '/join/$token'
+    | '/_authenticated/admin/archive'
     | '/_authenticated/admin/classes'
     | '/_authenticated/admin/daily'
     | '/_authenticated/admin/examdates'
@@ -1364,6 +1377,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/archive': {
+      id: '/_authenticated/admin/archive'
+      path: '/archive'
+      fullPath: '/admin/archive'
+      preLoaderRoute: typeof AuthenticatedAdminArchiveRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/classes': {
@@ -1947,6 +1967,7 @@ const AuthenticatedAdminVocabRouteWithChildren =
   )
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminArchiveRoute: typeof AuthenticatedAdminArchiveRoute
   AuthenticatedAdminClassesRoute: typeof AuthenticatedAdminClassesRouteWithChildren
   AuthenticatedAdminDailyRoute: typeof AuthenticatedAdminDailyRoute
   AuthenticatedAdminExamdatesRoute: typeof AuthenticatedAdminExamdatesRoute
@@ -1968,6 +1989,7 @@ interface AuthenticatedAdminRouteChildren {
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminArchiveRoute: AuthenticatedAdminArchiveRoute,
   AuthenticatedAdminClassesRoute: AuthenticatedAdminClassesRouteWithChildren,
   AuthenticatedAdminDailyRoute: AuthenticatedAdminDailyRoute,
   AuthenticatedAdminExamdatesRoute: AuthenticatedAdminExamdatesRoute,

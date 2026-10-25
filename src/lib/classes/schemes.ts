@@ -20,14 +20,14 @@ export const HW_ITEM_LETTER: Record<HwItem, string> = {
 export const HW_ITEM_LABEL: Record<HwItem, string> = {
   vocab: "Vocabulary",
   assignment: "Assignment",
-  article: "Article",
+  article: "Reading",
   formulas: "Formulas",
 };
 
 const FOOTER_WORD: Record<HwItem, string> = {
   vocab: "vocab",
   assignment: "assign",
-  article: "article",
+  article: "reading",
   formulas: "formulas",
 };
 
@@ -55,7 +55,7 @@ export function slugToSubject(slug: string): Subject | null {
   return null;
 }
 
-/** "Done: 4 vocab · 6 assign · 2 article" or "Done: 5 assign · 3 formulas · avg L 640". */
+/** "Done: 4 vocab · 6 assign · 2 reading" or "Done: 5 assign · 3 formulas · avg L 640". */
 export function doneSummary(
   subject: Subject,
   counts: Partial<Record<HwItem, number>>,

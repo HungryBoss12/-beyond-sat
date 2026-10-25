@@ -56,7 +56,6 @@ export function AddStudentDialog({
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<"active" | "trial">("active");
   const [enrolledOn, setEnrolledOn] = useState(tashkentToday());
-  const [activatedOn, setActivatedOn] = useState("");
   const [busy, setBusy] = useState(false);
   const [createName, setCreateName] = useState("");
   const request = useRef(0);
@@ -69,7 +68,6 @@ export function AddStudentDialog({
     setQuery("");
     setTab("all");
     setEnrolledOn(tashkentToday());
-    setActivatedOn("");
     setInviteUrl(null);
   }, [open]);
 
@@ -115,7 +113,7 @@ export function AddStudentDialog({
   }
 
   async function confirmAdd() {
-    if (!selected.size) return;
+    if (!selected.size || !enrolledOn) return;
     setBusy(true);
     let added = 0;
     try {
@@ -134,7 +132,7 @@ export function AddStudentDialog({
             userId: person.user_id,
             status,
             enrolledOn,
-            activatedOn: isAdmin ? activatedOn || enrolledOn : null,
+            activatedOn: enrolledOn,
           });
         }
         added += 1;
@@ -155,10 +153,10 @@ export function AddStudentDialog({
   }
 
   async function createInvite() {
-    if (!createName.trim()) return;
+    if (!createName.trim() || !enrolledOn) return;
     setBusy(true);
     try {
-      const link = await createStudentInvite({ name: createName.trim(), classId: klass.id });
+      const link = await createStudentInvite({ name: createName.trim(), classId: klass.id, enrolledOn });
       setInviteUrl(link.url);
       setCreateName("");
       toast.success("Invite link created");
@@ -346,7 +344,7 @@ export function AddStudentDialog({
         </ul>
 
         <div className="space-y-3 border-t border-brand-400/30 bg-brand-800 px-5 pb-5 pt-3">
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2">
             <AdminSelect
               label="Status"
               value={status}
@@ -357,27 +355,15 @@ export function AddStudentDialog({
               ]}
             />
             <div>
-              <div className="text-xs font-bold text-white">Enrolled on</div>
+              <div className="text-xs font-bold text-white">Date added</div>
               <div className="mt-1">
                 <DateTimeField dateOnly value={enrolledOn} onChange={setEnrolledOn} />
               </div>
             </div>
-            {isAdmin && (
-              <div>
-                <div className="text-xs font-bold text-white">Activated on (billing)</div>
-                <div className="mt-1">
-                  <DateTimeField
-                    dateOnly
-                    value={activatedOn || enrolledOn}
-                    onChange={setActivatedOn}
-                  />
-                </div>
-              </div>
-            )}
           </div>
           <button
             type="button"
-            disabled={busy || selected.size === 0}
+            disabled={busy || selected.size === 0 || !enrolledOn}
             onClick={() => void confirmAdd()}
             className="btn-brand w-full rounded-full bg-brand-400 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
           >
@@ -397,13 +383,14 @@ export function AddStudentDialog({
               />
               <button
                 type="button"
-                disabled={busy || !createName.trim()}
+                disabled={busy || !createName.trim() || !enrolledOn}
                 onClick={() => void createInvite()}
                 className="tap rounded-full bg-brand-500 px-4 py-2 text-xs font-bold disabled:opacity-40"
               >
                 Create invite link
               </button>
             </div>
+            <p className="mt-1 text-xs text-white">Joins this class on the date added above.</p>
             {inviteUrl && (
               <div className="mt-2 flex items-center gap-2">
                 <input className={CLASS_CONTROL} readOnly value={inviteUrl} aria-label="Invite link" />

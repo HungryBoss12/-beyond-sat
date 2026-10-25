@@ -40,7 +40,7 @@ async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
 }
 
-const STAFF_ROLES = ["admin", "editor", "teacher"];
+const STAFF_ROLES = ["admin", "editor", "teacher", "support_teacher"];
 
 async function isStaffAccount(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -310,6 +310,7 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
     userIds?: unknown;
     activatesAt?: unknown;
     returnLink?: unknown;
+    enrolledOn?: unknown;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -325,6 +326,8 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
     ? body.userIds.filter((id): id is string => typeof id === "string" && UUID_RE.test(id))
     : [];
   const activatesAt = typeof body.activatesAt === "string" ? body.activatesAt : null;
+  const enrolledOn =
+    typeof body.enrolledOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.enrolledOn) ? body.enrolledOn : null;
   if (activatesAt && Number.isNaN(new Date(activatesAt).getTime())) {
     return jsonResponse({ error: "Pick a valid date and time." }, 400);
   }
@@ -481,7 +484,9 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
 
     if (classId) {
       await db.from("class_memberships").delete().eq("user_id", newUserId);
-      const { error: memErr } = await db.from("class_memberships").insert({ class_id: classId, user_id: newUserId });
+      const { error: memErr } = await db
+        .from("class_memberships")
+        .insert({ class_id: classId, user_id: newUserId, ...(enrolledOn ? { enrolled_on: enrolledOn } : {}) });
       if (memErr) {
         await supabaseAdmin.auth.admin.deleteUser(newUserId);
         return jsonResponse({ error: memErr.message }, 500);

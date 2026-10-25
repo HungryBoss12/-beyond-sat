@@ -1,0 +1,181 @@
+import { createFileRoute, getRouteApi, Link } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
+import { Archive, TriangleAlert } from "lucide-react";
+import { toast } from "sonner";
+import { RevealCard } from "@/components/ui/reveal-card";
+import { ListSkeleton } from "@/components/ui/skeletons";
+import { EmptyState } from "@/components/ui/panel";
+import { SubclassChip } from "@/components/classes/SubclassChip";
+import { listArchivedClasses, restoreClass, type ClassRow } from "@/lib/classes";
+import { monthKey } from "@/lib/classes/classroom";
+import {
+  listAllGroupMembers,
+  listGroups,
+  listProfiles,
+  personName,
+  type ClassGroup,
+  type GroupMember,
+  type PersonProfile,
+} from "@/lib/classes/groups";
+import { scheduleLine } from "@/lib/classes/schedule";
+import { subjectToSlug } from "@/lib/classes/schemes";
+import { listBalances } from "@/lib/billing/api";
+
+export const Route = createFileRoute("/_authenticated/admin/archive")({
+  component: AdminArchive,
+  head: () => ({ meta: [{ title: "Archive — Admin" }] }),
+});
+
+const adminRoute = getRouteApi("/_authenticated/admin");
+
+function archivedOn(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function AdminArchive() {
+  const { staffRole } = adminRoute.useRouteContext();
+  const isAdmin = staffRole === "admin";
+  const [classes, setClasses] = useState<ClassRow[]>([]);
+  const [groups, setGroups] = useState<ClassGroup[]>([]);
+  const [members, setMembers] = useState<GroupMember[]>([]);
+  const [teachers, setTeachers] = useState<Map<string, PersonProfile>>(new Map());
+  const [debtors, setDebtors] = useState<Map<string, number>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [rows, groupRows, memberRows] = await Promise.all([
+        listArchivedClasses(),
+        listGroups(),
+        listAllGroupMembers(),
+      ]);
+      setClasses(rows);
+      setGroups(groupRows);
+      setMembers(memberRows);
+      setTeachers(
+        await listProfiles(groupRows.map((g) => g.teacher_id).filter((id): id is string => Boolean(id))),
+      );
+      const money = await listBalances({ kind: "debt" }).catch(() => []);
+      const debt = new Map<string, number>();
+      for (const row of money)
+        if (row.class_id) debt.set(row.class_id, (debt.get(row.class_id) ?? 0) + 1);
+      setDebtors(debt);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <div className="space-y-6 text-brand-900">
+      <div className="rise-in">
+        <h1 className="text-2xl font-black tracking-tight md:text-3xl">Archive</h1>
+        <p className="mt-1 text-sm text-brand-700">
+          Classes taken off the list. Students and payments stay, and nothing new is charged from the next month.
+        </p>
+      </div>
+      {loading ? (
+        <ListSkeleton rows={4} />
+      ) : classes.length === 0 ? (
+        <EmptyState icon={Archive} title="Nothing archived" body="Archived classes show up here." />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 stagger">
+          {classes.map((row) => {
+            const subs = groups
+              .filter((g) => g.class_id === row.id)
+              .sort((a, b) => Number(a.subject === "math") - Number(b.subject === "math"));
+            const debt = debtors.get(row.id) ?? 0;
+            return (
+              <RevealCard
+                key={row.id}
+                className="lift rounded-2xl border border-brand-400/40 bg-brand-600 p-5 text-white"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <Link
+                    to="/admin/classes/$classId"
+                    params={{ classId: row.id }}
+                    search={{ tab: "roster" }}
+                    className="tap min-w-0"
+                  >
+                    <h2 className="truncate text-xl font-black text-white hover:underline">{row.name}</h2>
+                  </Link>
+                  <div className="flex shrink-0 items-center gap-2 text-xs font-bold text-white">
+                    {debt > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-25 px-2 py-0.5 text-brand-900">
+                        <TriangleAlert className="h-3 w-3" aria-hidden="true" />
+                        {debt} debtor{debt === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <p className="mt-1 text-xs font-bold text-white">Archived {archivedOn(row.archived_at)}</p>
+                <div className="mt-3 grid gap-2">
+                  {subs.map((group) => {
+                    const active = members.filter(
+                      (m) => m.group_id === group.id && m.status === "active",
+                    ).length;
+                    return (
+                      <Link
+                        key={group.id}
+                        to="/admin/classes/$classId/$subject"
+                        params={{ classId: row.id, subject: subjectToSlug(group.subject) }}
+                        search={{
+                          tab: "attendance",
+                          month: monthKey(),
+                          lesson: "",
+                          q: "",
+                          status: "",
+                          sections: 0,
+                        }}
+                        className="tap flex min-w-0 items-center justify-between gap-2 rounded-xl bg-brand-800/70 px-3 py-2 hover:bg-brand-500"
+                      >
+                        <span className="min-w-0">
+                          <SubclassChip subject={group.subject} name={group.name} />
+                          <span className="mt-1 block truncate text-xs text-white">
+                            {group.teacher_id
+                              ? personName(teachers.get(group.teacher_id), group.teacher_id)
+                              : "No teacher"}{" "}
+                            · {scheduleLine(group)}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-xs font-bold tabular-nums">{active} active</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    disabled={restoringId === row.id}
+                    className="btn-brand mt-3 rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+                    onClick={() => {
+                      setRestoringId(row.id);
+                      void restoreClass(row.id)
+                        .then(async () => {
+                          toast.success(`${row.name} restored`);
+                          await load();
+                        })
+                        .catch((err: unknown) =>
+                          toast.error(err instanceof Error ? err.message : "Could not restore"),
+                        )
+                        .finally(() => setRestoringId(null));
+                    }}
+                  >
+                    {restoringId === row.id ? "Restoring…" : "Restore"}
+                  </button>
+                )}
+              </RevealCard>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -11,7 +11,7 @@ import { MoneyInput } from "@/components/billing/MoneyInput";
 import { SubclassChip } from "@/components/classes/SubclassChip";
 import { AdminSelect } from "@/components/admin/AdminSelect";
 import { CLASS_CONTROL } from "@/components/classes/control";
-import { deleteClass, updateClass, type ClassRow } from "@/lib/classes";
+import { archiveClass, updateClass, type ClassRow } from "@/lib/classes";
 import { DAY_LABELS } from "@/lib/classes/classroom";
 import {
   listStaff,
@@ -209,23 +209,23 @@ export function ClassEditDialog({
               type="button"
               className="tap px-2 py-2 text-xs font-bold text-white"
               onClick={() => {
-                if (!confirm(`Delete "${klass.name}" and both sub-classes? This cannot be undone.`))
+                if (
+                  !confirm(
+                    `Archive "${klass.name}"? Students and payments stay. The class leaves the list and is not charged from next month. You can restore it from Archive.`,
+                  )
+                )
                   return;
-                void deleteClass(klass.id)
+                void archiveClass(klass.id)
                   .then(() => {
-                    toast.success("Class deleted");
+                    toast.success("Class archived");
                     onDeleted();
                   })
                   .catch((err) =>
-                    toast.error(
-                      err instanceof Error
-                        ? `${err.message}. Classes with payments cannot be deleted.`
-                        : "Could not delete",
-                    ),
+                    toast.error(err instanceof Error ? err.message : "Could not archive"),
                   );
               }}
             >
-              Delete class
+              Archive class
             </button>
             ) : (
               <span />

@@ -221,11 +221,13 @@ export async function removeGroupMember(
   groupId: string,
   userId: string,
   charge = true,
+  leftOn?: string | null,
 ): Promise<void> {
   const { error } = await db.rpc("staff_remove_group_member", {
     p_group_id: groupId,
     p_user_id: userId,
     p_charge: charge,
+    p_left_on: leftOn ?? null,
   });
   if (error) throw error;
 }

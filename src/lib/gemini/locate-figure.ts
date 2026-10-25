@@ -19,6 +19,8 @@ export type LocateFigureOptions = {
   questions?: FigureQuestionHint[];
   /** When true, ask Gemini to also return markdown for table boxes. */
   tableMarkdown?: boolean;
+  /** When true, ask Gemini to also return axes, points, and lines for graph boxes. */
+  graphMarkdown?: boolean;
 };
 
 function formatQuestionsList(questions: FigureQuestionHint[] | undefined): string {
@@ -31,7 +33,16 @@ function formatQuestionsList(questions: FigureQuestionHint[] | undefined): strin
 
 const TABLE_MARKDOWN_NOTE = `
 
-For every box with kind "table", also fill "markdown" with a faithful GitHub-flavored markdown table of the visible cells (headers + rows). Keep numbers exact. Do not invent missing cells — use empty cells if unreadable. For non-table kinds leave markdown empty.`;
+For every box with kind "table", also fill "markdown" with a faithful GitHub-flavored markdown table of the visible cells (headers + rows). Keep numbers exact. Do not invent missing cells — use empty cells if unreadable.`;
+
+const GRAPH_MARKDOWN_NOTE = `
+
+For every box with kind "graph", also fill "markdown" with exactly these four lines and nothing else:
+x-axis: label, min to max, ticks
+y-axis: label, min to max, ticks
+points: (x, y); (x, y)
+lines: each line or curve, in words
+Keep numbers exact. Leave a value blank if it is unreadable. Do not invent points or lines.`;
 
 /** Locate figures on one page with Gemini vision (single pass). */
 export async function locateFiguresOnPage(
@@ -42,7 +53,7 @@ export async function locateFiguresOnPage(
     ? `\n\nExtra figure note: ${options.hint.trim()}`
     : "";
   const questionsBlock = formatQuestionsList(options.questions);
-  const markdownNote = options.tableMarkdown ? TABLE_MARKDOWN_NOTE : "";
+  const markdownNote = `${options.tableMarkdown ? TABLE_MARKDOWN_NOTE : ""}${options.graphMarkdown ? GRAPH_MARKDOWN_NOTE : ""}`;
 
   const apiKey = options.apiKey?.trim();
   if (!apiKey) {

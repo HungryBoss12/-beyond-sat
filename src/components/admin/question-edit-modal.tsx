@@ -462,6 +462,7 @@ export function QuestionEditModal({
 
           <Field label="Passage / prompt (optional)">
             <MixedMathEditor
+              math={editing.section === "math"}
               value={editing.prompt ?? ""}
               onChange={(v) => setEditing({ ...editing, prompt: v })}
               rows={3}
@@ -470,6 +471,7 @@ export function QuestionEditModal({
           </Field>
           <Field label="Question text">
             <MixedMathEditor
+              math={editing.section === "math"}
               value={editing.question_text}
               onChange={(v) => setEditing({ ...editing, question_text: v })}
               rows={3}
@@ -493,6 +495,7 @@ export function QuestionEditModal({
                     <span className="w-6 pt-2 text-sm font-bold text-white">{c.id}</span>
                     <div className="min-w-0 flex-1 space-y-2">
                       <MixedMathEditor
+              math={editing.section === "math"}
                         value={c.text}
                         onChange={(v) => {
                           const next = [...editing.choices];
@@ -539,6 +542,7 @@ export function QuestionEditModal({
 
           <Field label="Explanation">
             <MixedMathEditor
+              math={editing.section === "math"}
               value={editing.explanation ?? ""}
               onChange={(v) => setEditing({ ...editing, explanation: v })}
               rows={3}

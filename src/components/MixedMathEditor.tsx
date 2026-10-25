@@ -44,12 +44,15 @@ export function MixedMathEditor({
   rows = 3,
   placeholder,
   singleLine = false,
+  math = true,
 }: {
   value: string;
   onChange: (v: string) => void;
   rows?: number;
   placeholder?: string;
   singleLine?: boolean;
+  /** Reading & Writing stays plain prose. Maths keeps Insert math and KaTeX. */
+  math?: boolean;
 }) {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const [picker, setPicker] = useState<null | { display: boolean }>(null);
@@ -147,34 +150,38 @@ export function MixedMathEditor({
       {(value ?? "").trim() && (
         <div className="border-t border-brand-400/30 px-3 py-2 text-white">
           <div className="mb-1 text-[10px] uppercase tracking-wide text-brand-100">Preview</div>
-          <MathPreview value={value} />
+          <MathPreview value={value} math={math} />
         </div>
       )}
 
       <div className="flex items-center justify-between border-t border-brand-400/30 bg-brand-900 px-2 py-1.5">
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              setDraft("");
-              setPicker({ display: false });
-            }}
-            className="tap inline-flex items-center gap-1.5 rounded-md border border-brand-400/50 bg-brand-700 px-2 py-1 text-[11px] font-bold text-white hover:bg-brand-400"
-            title="Insert inline math"
-          >
-            <Sigma className="h-3.5 w-3.5 text-brand-100" /> Insert math
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setDraft("");
-              setPicker({ display: true });
-            }}
-            className="tap inline-flex items-center gap-1.5 rounded-md border border-brand-400/50 bg-brand-700 px-2 py-1 text-[11px] font-bold text-white hover:bg-brand-400"
-            title="Insert display (block) math"
-          >
-            <Sigma className="h-3.5 w-3.5 text-brand-100" /> Block math
-          </button>
+          {math && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft("");
+                  setPicker({ display: false });
+                }}
+                className="tap inline-flex items-center gap-1.5 rounded-md border border-brand-400/50 bg-brand-700 px-2 py-1 text-[11px] font-bold text-white hover:bg-brand-400"
+                title="Insert inline math"
+              >
+                <Sigma className="h-3.5 w-3.5 text-brand-100" /> Insert math
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft("");
+                  setPicker({ display: true });
+                }}
+                className="tap inline-flex items-center gap-1.5 rounded-md border border-brand-400/50 bg-brand-700 px-2 py-1 text-[11px] font-bold text-white hover:bg-brand-400"
+                title="Insert display (block) math"
+              >
+                <Sigma className="h-3.5 w-3.5 text-brand-100" /> Block math
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={wrapSelectionInUnderline}
@@ -185,7 +192,9 @@ export function MixedMathEditor({
           </button>
         </div>
         <span className="text-[10px] text-brand-100">
-          Type text normally. Use Insert math for equations; Underline for source emphasis.
+          {math
+            ? "Type text normally. Use Insert math for equations; Underline for source emphasis."
+            : "Type text normally. Underline marks a word from the passage."}
         </span>
       </div>
 

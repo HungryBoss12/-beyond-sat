@@ -1,12 +1,11 @@
 import type { LucideIcon } from "lucide-react";
 import { usePointerGlow } from "@/hooks/usePointerGlow";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { compactUzs, formatUzs, type UzsLike } from "@/lib/billing/money";
+import { compactUzs, formatUzs, signedUzs, toUzs, type UzsLike } from "@/lib/billing/money";
 
 /**
- * StatTile for money and other text values. The value is compacted ("1.2 mln UZS")
- * and truncated so a 12-digit amount can never widen the card; the full amount
- * is in the tooltip and the accessible label.
+ * Stat tile for money and other text. Millions are the full amount
+ * ("1 500 000 UZS"); only billions are shortened.
  */
 export function MoneyTile({
   icon: Icon,
@@ -15,6 +14,8 @@ export function MoneyTile({
   text,
   kind,
   hint,
+  edge = null,
+  signed = false,
   loading = false,
 }: {
   icon: LucideIcon;
@@ -25,11 +26,18 @@ export function MoneyTile({
   /** Word shown next to the amount, e.g. "debt". */
   kind?: string;
   hint?: string;
+  /** With and without discount, drawn at the right edge of the tile. */
+  edge?: { without: UzsLike; with: UzsLike } | null;
+  /** Keep a leading minus when the amount is negative. */
+  signed?: boolean;
   loading?: boolean;
 }) {
   const ref = usePointerGlow<HTMLDivElement>();
-  const full = amount == null ? (text ?? "—") : formatUzs(amount);
-  const shown = amount == null ? (text ?? "—") : compactUzs(amount);
+  const negative = signed && amount != null && toUzs(amount) < 0n;
+  const full =
+    amount == null ? (text ?? "—") : negative ? signedUzs(amount) : formatUzs(amount);
+  const shown =
+    amount == null ? (text ?? "—") : negative ? `-${compactUzs(amount)}` : compactUzs(amount);
   return (
     <div
       ref={ref}
@@ -49,7 +57,7 @@ export function MoneyTile({
                 aria-label={`${label}: ${full}${kind ? ` ${kind}` : ""}`}
                 className="flex min-w-0 items-baseline gap-1.5 text-xl font-black leading-tight text-white outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
               >
-                <span className="truncate tabular-nums">{shown}</span>
+                <span className="tabular-nums">{shown}</span>
                 {kind && <span className="shrink-0 text-xs font-bold text-white">{kind}</span>}
               </div>
             </TooltipTrigger>
@@ -59,6 +67,12 @@ export function MoneyTile({
         <div className="mt-0.5 truncate text-[11px] font-medium text-white">{label}</div>
         {hint && <div className="truncate text-[10px] text-white">{hint}</div>}
       </div>
+      {edge && (
+        <div className="shrink-0 text-right text-[10px] font-bold leading-tight text-white">
+          <div>Without {formatUzs(edge.without)}</div>
+          <div>With {formatUzs(edge.with)}</div>
+        </div>
+      )}
     </div>
   );
 }

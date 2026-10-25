@@ -52,7 +52,7 @@ export function parseModule(raw: string, max = ENGLISH_MODULE_MAX): ModuleParse 
 
 export function resultScore(scores: (number | null)[]): number | null {
   if (scores.length === 0 || scores.some((score) => score == null)) return null;
-  return scores.reduce((sum, score) => sum + (score ?? 0), 0);
+  return scores.reduce<number>((sum, score) => sum + (score ?? 0), 0);
 }
 
 /** Prefer the stored list. Older rows only have M1 and M2. */

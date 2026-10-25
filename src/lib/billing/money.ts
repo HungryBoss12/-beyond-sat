@@ -33,13 +33,19 @@ export function formatUzs(value: UzsLike | null | undefined): string {
   return `${groupDigits(value ?? 0n)} UZS`;
 }
 
+/** "-884 615 UZS" when the balance is negative. Positive amounts stay unsigned. */
+export function signedUzs(value: UzsLike | null | undefined): string {
+  const n = toUzs(value);
+  const body = formatUzs(n);
+  return n < 0n ? `-${body}` : body;
+}
+
 const COMPACT_UNITS: [bigint, string][] = [
   [1_000_000_000_000n, "trln"],
   [1_000_000_000n, "mlrd"],
-  [1_000_000n, "mln"],
 ];
 
-/** "1.2 mln UZS" for tight tiles; below a million it is the full amount. */
+/** Full digits through the millions ("1 500 000 UZS"). Billions stay short. */
 export function compactUzs(value: UzsLike | null | undefined): string {
   const n = absUzs(value);
   let i = COMPACT_UNITS.findIndex(([unit]) => n >= unit);

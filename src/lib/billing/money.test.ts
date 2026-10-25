@@ -4,6 +4,7 @@ import {
   checkUzsInput,
   compactUzs,
   formatUzs,
+  signedUzs,
   maskUzsInput,
   needsPaymentConfirm,
   parseUzsInput,
@@ -15,6 +16,9 @@ describe("money", () => {
     expect(formatUzs(1200000)).toBe("1 200 000 UZS");
     expect(formatUzs(750000n)).toBe("750 000 UZS");
     expect(formatUzs(-1200000)).toBe("1 200 000 UZS");
+    expect(signedUzs(-884615n)).toBe("-884 615 UZS");
+    expect(signedUzs(500000n)).toBe("500 000 UZS");
+    expect(signedUzs(0n)).toBe("0 UZS");
     expect(formatUzs("999999999999")).toBe("999 999 999 999 UZS");
   });
 
@@ -59,8 +63,9 @@ describe("money", () => {
   });
 
   it("compacts large amounts for tiles", () => {
-    expect(compactUzs(1200000)).toBe("1.2 mln UZS");
-    expect(compactUzs(1000000)).toBe("1 mln UZS");
+    expect(compactUzs(1200000)).toBe("1 200 000 UZS");
+    expect(compactUzs(1000000)).toBe("1 000 000 UZS");
+    expect(compactUzs(1500000)).toBe("1 500 000 UZS");
     expect(compactUzs(450000)).toBe("450 000 UZS");
     expect(compactUzs("999999999999")).toBe("1 trln UZS");
     expect(compactUzs(-2550000000n)).toBe("2.6 mlrd UZS");

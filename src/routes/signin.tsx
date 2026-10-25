@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
 import { signInWithIdentifier } from "@/lib/auth/username-login";
 import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
+import { ADMIN_SESSION_HOURS, setKeepSignedIn } from "@/lib/auth/session-policy";
 import {
   listSavedAccounts,
   rememberCurrentSession,
@@ -52,10 +53,14 @@ function SignIn() {
   const [resetting, setResetting] = useState(false);
   const [saved, setSaved] = useState<SavedAccount[]>([]);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
+  const [keep, setKeep] = useState(true);
   const adding = isAddAccount();
   const registrationOn = useRegistrationEnabled();
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("expired") === "admin") {
+      setInfo(`Admin sessions end ${ADMIN_SESSION_HOURS} hours after you sign in. Sign in again to continue.`);
+    }
     setSaved(listSavedAccounts());
     supabase.auth.getSession().then(async ({ data }) => {
       if (data.session && !isAddAccount()) navigate({ to: await pathAfterSignIn(), replace: true });
@@ -77,6 +82,7 @@ function SignIn() {
     }
     setLoading(true);
     try {
+      setKeepSignedIn(keep);
       await signInWithIdentifier(identifier, password);
       await finishSignIn();
     } catch (err) {
@@ -201,6 +207,16 @@ function SignIn() {
                   {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+            </label>
+
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-white">
+              <input
+                type="checkbox"
+                checked={keep}
+                onChange={(e) => setKeep(e.target.checked)}
+                className="h-4 w-4 rounded border-brand-300 accent-brand-300"
+              />
+              Keep me signed in
             </label>
 
             {error && (

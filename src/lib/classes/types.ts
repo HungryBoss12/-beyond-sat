@@ -16,6 +16,7 @@ export type ClassRow = {
   name: string;
   description: string | null;
   active: boolean;
+  archived_at?: string | null;
   created_at: string;
   schedule_days?: number[] | null;
   start_time?: string | null;

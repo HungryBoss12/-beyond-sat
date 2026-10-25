@@ -23,6 +23,7 @@ import { format } from "date-fns";
 import { FeeDialog } from "@/components/billing/FeeDialog";
 import { IconButton } from "@/components/ui/icon-button";
 import { previewActivationChange, setActivationDate, setStudentFee } from "@/lib/billing/api";
+import { tashkentToday } from "@/lib/billing/dates";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { PanelGlow } from "@/components/ui/panel";
 import { RevealCard } from "@/components/ui/reveal-card";
@@ -70,6 +71,7 @@ type EnrollChoice = {
   className: string;
   groups: { id: string; label: string }[];
   full: boolean;
+  addedOn: string;
 };
 
 function groupChoiceLabel(group: ClassGroup): string {
@@ -93,6 +95,7 @@ function EnrollDialog({
 }) {
   const [classId, setClassId] = useState(initial?.classId ?? "");
   const [groupIds, setGroupIds] = useState<string[]>(initial?.groups.map((g) => g.id) ?? []);
+  const [addedOn, setAddedOn] = useState(initial?.addedOn ?? tashkentToday());
   const [groups, setGroups] = useState<ClassGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +104,7 @@ function EnrollDialog({
     if (!open) return;
     setClassId(initial?.classId ?? "");
     setGroupIds(initial?.groups.map((g) => g.id) ?? []);
+    setAddedOn(initial?.addedOn ?? tashkentToday());
     setError(null);
     setLoading(true);
     void listGroups()
@@ -197,12 +201,25 @@ function EnrollDialog({
             )}
           </ul>
         ) : null}
+        {classId && groupIds.length > 0 && (
+          <div>
+            <div className="text-xs font-bold text-white">Date added</div>
+            <div className="mt-1">
+              <DateTimeField dateOnly value={addedOn} onChange={setAddedOn} />
+            </div>
+          </div>
+        )}
         <div className="flex justify-end">
           <button
             type="button"
+            disabled={classId !== "" && groupIds.length > 0 && !addedOn}
             onClick={() => {
               if (!classId || groupIds.length === 0) {
                 save(null);
+                return;
+              }
+              if (!addedOn) {
+                setError("Choose the date they were added.");
                 return;
               }
               const klass = classes.find((row) => row.id === classId);
@@ -212,6 +229,7 @@ function EnrollDialog({
                 className: klass?.name ?? "Class",
                 groups: chosen.map((group) => ({ id: group.id, label: groupChoiceLabel(group) })),
                 full,
+                addedOn,
               });
             }}
             className="rounded-full bg-brand-400 px-4 py-2 text-xs font-bold text-white"
@@ -292,6 +310,7 @@ function AdminStudents() {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkClassId, setBulkClassId] = useState("");
+  const [bulkAddedOn, setBulkAddedOn] = useState(tashkentToday);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [feeOpen, setFeeOpen] = useState(false);
@@ -487,7 +506,13 @@ function AdminStudents() {
       if (chosen && chosen.groups.length > 0) {
         try {
           for (const group of chosen.groups) {
-            await addGroupMember({ groupId: group.id, userId: row.userId, status: "active" });
+            await addGroupMember({
+              groupId: group.id,
+              userId: row.userId,
+              status: "active",
+              enrolledOn: chosen.addedOn,
+              activatedOn: chosen.addedOn,
+            });
           }
         } catch (enrollErr) {
           const detail = enrollErr instanceof Error ? enrollErr.message.trim() : "";
@@ -589,6 +614,10 @@ function AdminStudents() {
       setBulkError("Pick a class group.");
       return;
     }
+    if (!bulkAddedOn) {
+      setBulkError("Choose the date they were added.");
+      return;
+    }
     if (selectedIds.size === 0) return;
     setBulkBusy(true);
     const ids = [...selectedIds];
@@ -596,7 +625,7 @@ function AdminStudents() {
     try {
       for (const userId of ids) {
         try {
-          await addClassMember(bulkClassId, userId);
+          await addClassMember(bulkClassId, userId, { enrolledOn: bulkAddedOn });
         } catch (e) {
           const label =
             rows.find((r) => r.id === userId)?.full_name ||
@@ -878,9 +907,12 @@ function AdminStudents() {
                     label: c.active ? c.name : `${c.name} (inactive)`,
                   }))}
                 />
+                <div className="min-w-[180px]">
+                  <DateTimeField dateOnly value={bulkAddedOn} onChange={setBulkAddedOn} />
+                </div>
                 <button
                   type="button"
-                  disabled={bulkBusy || !bulkClassId}
+                  disabled={bulkBusy || !bulkClassId || !bulkAddedOn}
                   onClick={() => void bulkAddToClass()}
                   className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
                 >
@@ -1190,9 +1222,11 @@ function AdminStudents() {
                     className={CONTROL + " truncate text-left"}
                   >
                     {enroll
-                      ? enroll.full
-                        ? `${enroll.className} · Full class`
-                        : enroll.groups.map((group) => group.label).join(", ")
+                      ? `${
+                          enroll.full
+                            ? `${enroll.className} · Full class`
+                            : enroll.groups.map((group) => group.label).join(", ")
+                        } · ${enroll.addedOn}`
                       : "Not in a class"}
                   </button>
                 </div>

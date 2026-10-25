@@ -481,6 +481,7 @@ export function ClassroomWorkspace({
               lessons={lessons}
               people={gridPeople}
               marks={marks}
+              attendance={attendance}
               board={board}
               selectedId={selectedId}
               onSelect={(lesson) => onNavigate({ lesson })}

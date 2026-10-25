@@ -14,6 +14,7 @@ import {
   type FigureBox,
 } from "./crop-figure";
 import { needsFigure } from "./figure-dependency";
+import { graphMarkdownBlock } from "./graph-text";
 import { FIGURE_MARKER } from "./docx";
 import { uploadQuestionImage } from "./upload-question-image";
 
@@ -36,6 +37,7 @@ export async function locateFiguresWithGemini(
     hint?: string;
     questions?: FigureQuestionHint[];
     tableMarkdown?: boolean;
+    graphMarkdown?: boolean;
   } = {},
 ): Promise<string> {
   const response = await fetch("/api/import/figure", {
@@ -47,6 +49,7 @@ export async function locateFiguresWithGemini(
       hint: opts.hint,
       questions: opts.questions,
       tableMarkdown: opts.tableMarkdown === true,
+      graphMarkdown: opts.graphMarkdown === true,
     }),
   });
 
@@ -146,6 +149,7 @@ export async function attachFiguresToDrafts(
     shouldStop?: () => boolean;
     onProgress?: (p: AttachFigureProgress) => void;
     tableMarkdown?: boolean;
+    graphMarkdown?: boolean;
   } = {},
 ): Promise<{
   drafts: Draft[];
@@ -225,6 +229,7 @@ export async function attachFiguresToDrafts(
         signal: opts.signal,
         questions,
         tableMarkdown: opts.tableMarkdown,
+        graphMarkdown: opts.graphMarkdown,
       });
     } catch (err) {
       for (const t of pageTargets) {
@@ -266,7 +271,12 @@ export async function attachFiguresToDrafts(
       }
 
       const snapshot = cloneDraft(next[t.draftIndex]);
-      const markdown = opts.tableMarkdown && box.kind === "table" ? box.markdown : undefined;
+      const rawMarkdown =
+        (opts.tableMarkdown && box.kind === "table") || (opts.graphMarkdown && box.kind === "graph")
+          ? box.markdown
+          : undefined;
+      const markdown =
+        opts.graphMarkdown && box.kind === "graph" ? graphMarkdownBlock(rawMarkdown ?? "") : rawMarkdown;
 
       try {
         const blob = await cropPageToBlob(pageUrl, box);

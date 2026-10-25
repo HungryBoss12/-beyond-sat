@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { registerPwa } from "../lib/pwa";
+import { watchAdminSession } from "../lib/auth/admin-session";
 import { OfflineGate } from "../components/OfflineScreen";
 import { NotFoundPage } from "../components/NotFoundPage";
 
@@ -134,6 +135,7 @@ function RootComponent() {
 
   useEffect(() => {
     registerPwa();
+    return watchAdminSession();
   }, []);
 
   return (

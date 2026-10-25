@@ -23,6 +23,7 @@ function FirstLogin() {
   const navigate = useNavigate();
   const [uid, setUid] = useState<string | null>(null);
   const [currentUsername, setCurrentUsername] = useState("");
+  const [introDone, setIntroDone] = useState(false);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,6 +53,7 @@ function FirstLogin() {
         return;
       }
       setUid(user.id);
+      setIntroDone(!!prof.intro_completed);
       setCurrentUsername(prof.username ?? "");
       setUsername(prof.username ?? "");
       setLoading(false);
@@ -73,12 +75,16 @@ function FirstLogin() {
       setErr("Passwords don't match.");
       return;
     }
-    const nextUsername = username.trim() ? normalizeUsername(username) : currentUsername;
-    if (username.trim() && !isValidUsername(nextUsername)) {
+    const nextUsername = introDone
+      ? currentUsername
+      : username.trim()
+        ? normalizeUsername(username)
+        : currentUsername;
+    if (!introDone && username.trim() && !isValidUsername(nextUsername)) {
       setErr("Username must start with a letter and be 3–24 letters, numbers, or underscores.");
       return;
     }
-    const nextEmail = email.trim();
+    const nextEmail = introDone ? "" : email.trim();
     if (nextEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
       setErr("Enter a valid email, or leave it blank.");
       return;
@@ -134,11 +140,12 @@ function FirstLogin() {
           <KeyRound className="h-7 w-7" />
         </div>
         <h1 className="text-2xl font-black tracking-tight text-white md:text-3xl">
-          Choose your own password
+          {introDone ? "Choose a new password" : "Choose your own password"}
         </h1>
         <p className="mt-2 text-sm text-brand-100">
-          Your teacher created this account. Set a password you will remember, then pick your SAT
-          goals. You can connect Google later from Profile.
+          {introDone
+            ? "Your teacher reset this password. Choose a new one. Your classes, scores, and goals stay as they are."
+            : "Your teacher created this account. Set a password you will remember, then pick your SAT goals. You can connect Google later from Profile."}
         </p>
         {currentUsername && (
           <p className="mt-3 text-xs text-brand-100 fade-in">
@@ -183,31 +190,35 @@ function FirstLogin() {
           />
         </label>
 
-        <label className="mt-3 block">
-          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand-100">
-            Username (optional)
-          </span>
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className={fieldClass}
-            autoComplete="username"
-          />
-        </label>
+        {!introDone && (
+          <>
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand-100">
+                Username (optional)
+              </span>
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className={fieldClass}
+                autoComplete="username"
+              />
+            </label>
 
-        <label className="mt-3 block">
-          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand-100">
-            Email (optional)
-          </span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={fieldClass}
-            autoComplete="email"
-            placeholder="For password reset later"
-          />
-        </label>
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand-100">
+                Email (optional)
+              </span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={fieldClass}
+                autoComplete="email"
+                placeholder="For password reset later"
+              />
+            </label>
+          </>
+        )}
 
         {err && (
           <div className="mt-3 rounded-lg bg-brand-900 px-3 py-2 text-sm font-semibold text-white ring-1 ring-brand-300/60 pop-in">

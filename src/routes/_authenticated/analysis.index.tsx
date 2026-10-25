@@ -113,8 +113,9 @@ function AnalysisPage() {
           .order("completed_at", { ascending: false }),
         supabase
           .from("attempts")
-          .select("id,session_id,question_id,is_correct,selected_choice_id,grid_answer")
-          .eq("user_id", uid),
+          .select("id,session_id,question_id,is_correct,selected_choice_id,grid_answer,created_at")
+          .eq("user_id", uid)
+          .order("created_at", { ascending: true }),
         supabase.from("tests").select("*", { count: "exact", head: true }),
       ]);
       setSessions((s ?? []) as SessionRow[]);
@@ -301,9 +302,18 @@ function AnalysisPage() {
                     paddingAngle={2}
                     animationDuration={900}
                     labelLine={{ stroke: "#9f9fc2" }}
-                    label={(e: PieLabelRenderProps) =>
-                      `${e.name}: ${e.value} (${Math.round(((e.value as number) / totals.total) * 100)}%)`
-                    }
+                    label={(e: PieLabelRenderProps) => (
+                      <text
+                        x={e.x}
+                        y={e.y}
+                        textAnchor={(e.textAnchor as "start" | "middle" | "end" | undefined) ?? "middle"}
+                        fill="#ffffff"
+                        fontSize={12}
+                        fontWeight={700}
+                      >
+                        {`${e.name}: ${e.value} (${Math.round(((e.value as number) / totals.total) * 100)}%)`}
+                      </text>
+                    )}
                   >
                     {pieData.map((d) => (
                       /* Stroke matches the card behind it, so the gap between
@@ -808,7 +818,7 @@ function SessionItem({
         <Link
           to="/analysis/session/$id"
           params={{ id: session.id }}
-          className="btn-ghost hidden shrink-0 rounded-lg border border-brand-300/50 bg-brand-800 px-3 py-1.5 text-xs font-bold text-white sm:inline-flex"
+          className="btn-ghost inline-flex shrink-0 rounded-lg border border-brand-300/50 bg-brand-800 px-3 py-1.5 text-xs font-bold text-white"
         >
           Review in test view
         </Link>
@@ -879,7 +889,7 @@ function SessionItem({
                           </span>
                         </div>
                         <div className="mt-1.5 text-sm text-white line-clamp-2">
-                          <MathText>{q.question_text}</MathText>
+                          <MathText math={q.section === "math"}>{q.question_text}</MathText>
                         </div>
                         <div className="mt-1 text-xs text-brand-100">
                           {q.kind === "multiple_choice" ? (

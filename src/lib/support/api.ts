@@ -31,11 +31,12 @@ export type SupportSession = {
   preferred_on: string | null;
   expires_at: string | null;
   status: SupportStatus;
+  origin?: SupportOrigin;
   notes: string | null;
   rejection_reason: string | null;
   slot_id?: string;
   passes?: SupportPass[];
-  materials: SupportMaterial[];
+  materials?: SupportMaterial[];
 };
 
 export type OpenSlot = {
@@ -158,11 +159,11 @@ export type SupportWindow = {
   closed?: boolean;
 };
 
-export async function postSupportRange(start: string, end: string): Promise<number> {
+export async function postSupportRange(start: string, end: string, teacherId?: string | null): Promise<number> {
   const { data, error } = await db.rpc("teacher_post_support_range", {
     p_start: tashkentInput(start),
     p_end: tashkentInput(end),
-    p_teacher: null,
+    p_teacher: teacherId ?? null,
   });
   raise(error);
   return Number(data ?? 0);
@@ -308,6 +309,116 @@ export async function loadOwnSlots(): Promise<SupportSlotRow[]> {
     .order("starts_at");
   raise(error);
   return (data ?? []) as SupportSlotRow[];
+}
+
+export type SupportOrigin = "request" | "assigned";
+export type SlotState = "free" | "taken" | "mine" | "break";
+export type DutyStatus = "off" | "break" | "teaching" | "duty";
+
+export type SupportTeacherOption = { id: string; name: string };
+export type TeacherSlot = { id: string; starts_at: string; ends_at: string; state: SlotState };
+export type ComingStudent = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  origin: SupportOrigin;
+  attended: boolean | null;
+  subject: ClassSubject;
+  student_name: string;
+  groups: string;
+};
+export type SupportTeacherCard = {
+  id: string;
+  name: string;
+  status: DutyStatus;
+  duty_ends_at: string | null;
+  done_count: number;
+  planned_count: number;
+};
+export type NamedSession = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  origin: SupportOrigin;
+  status?: string;
+  attended?: boolean | null;
+  student_name: string;
+  teacher_name?: string;
+};
+export type TeacherDetail = { done: NamedSession[]; planned: NamedSession[] };
+
+export const DUTY_LABEL: Record<DutyStatus, string> = {
+  off: "Not here",
+  break: "On break",
+  teaching: "Teaching",
+  duty: "On duty",
+};
+
+export const ORIGIN_LABEL: Record<SupportOrigin, string> = {
+  request: "By request",
+  assigned: "Assigned",
+};
+
+export async function loadSupportTeachers(): Promise<SupportTeacherOption[]> {
+  const { data, error } = await db.rpc("support_teacher_directory");
+  raise(error);
+  return (data ?? []) as SupportTeacherOption[];
+}
+
+export async function loadTeacherSlots(teacherId: string): Promise<TeacherSlot[]> {
+  const { data, error } = await db.rpc("support_teacher_slots", { p_teacher: teacherId });
+  raise(error);
+  return (data ?? []) as TeacherSlot[];
+}
+
+export async function confirmSupport(sessionId: string): Promise<void> {
+  const { error } = await db.rpc("teacher_confirm_support", { p_session_id: sessionId });
+  raise(error);
+}
+
+export async function setSupportAttendance(sessionId: string, present: boolean): Promise<void> {
+  const { error } = await db.rpc("teacher_set_support_attendance", {
+    p_session_id: sessionId,
+    p_present: present,
+  });
+  raise(error);
+}
+
+export async function startSupportBreak(minutes: number): Promise<void> {
+  const { error } = await db.rpc("teacher_start_support_break", { p_minutes: minutes });
+  raise(error);
+}
+
+export async function loadComingStudents(): Promise<ComingStudent[]> {
+  const { data, error } = await db.rpc("support_coming");
+  raise(error);
+  return (data ?? []) as ComingStudent[];
+}
+
+export async function loadAdminTeachers(): Promise<SupportTeacherCard[]> {
+  const { data, error } = await db.rpc("admin_support_teachers");
+  raise(error);
+  return (data ?? []) as SupportTeacherCard[];
+}
+
+export async function loadTeacherDetail(teacherId: string): Promise<TeacherDetail> {
+  const { data, error } = await db.rpc("admin_support_teacher_detail", { p_teacher: teacherId });
+  raise(error);
+  return (data ?? { done: [], planned: [] }) as TeacherDetail;
+}
+
+export async function loadSupportDay(day: string): Promise<NamedSession[]> {
+  const { data, error } = await db.rpc("admin_support_day", { p_day: day });
+  raise(error);
+  return (data ?? []) as NamedSession[];
+}
+
+export async function setSupportDuty(teacherId: string, minutes: number): Promise<void> {
+  const { error } = await db.rpc("admin_set_support_duty", {
+    p_teacher: teacherId,
+    p_minutes: minutes,
+  });
+  raise(error);
 }
 
 export async function loadPublishedTests(): Promise<{ id: string; title: string }[]> {

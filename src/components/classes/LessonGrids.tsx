@@ -380,6 +380,7 @@ export function MarksGrid({
   lessons,
   people,
   marks,
+  attendance = [],
   board,
   selectedId,
   onSelect,
@@ -391,6 +392,7 @@ export function MarksGrid({
   lessons: GroupLesson[];
   people: GridPerson[];
   marks: HwMark[];
+  attendance?: AttendanceRow[];
   board: Map<string, LevelBoardRow>;
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -409,7 +411,13 @@ export function MarksGrid({
     [marks],
   );
   const selected = lessons.find((l) => l.id === selectedId) ?? null;
-  const ids = people.map((p) => p.userId);
+  const absentOn = (userId: string, lessonDate: string) =>
+    attendance.some(
+      (row) => row.user_id === userId && row.lesson_date.slice(0, 10) === lessonDate.slice(0, 10) && !row.participated,
+    );
+  const tickIds = (lesson: GroupLesson) =>
+    people.filter((person) => !absentOn(person.userId, lesson.lesson_date)).map((person) => person.userId);
+  const ids = people.map((person) => person.userId);
 
   async function toggle(person: GridPerson, lesson: GroupLesson, item: HwItem) {
     const key = `${person.userId}:${lesson.id}:${item}`;
@@ -449,10 +457,11 @@ export function MarksGrid({
     }
   }
 
-  const everyoneDone = (item: HwItem) =>
-    selected != null &&
-    people.length > 0 &&
-    people.every((p) => local.get(`${p.userId}:${selected.id}:${item}`));
+  const everyoneDone = (item: HwItem) => {
+    if (!selected) return false;
+    const eligible = tickIds(selected);
+    return eligible.length > 0 && eligible.every((id) => local.get(`${id}:${selected.id}:${item}`));
+  };
 
   const counts: Partial<Record<HwItem, number>> = {};
   const lessonIds = new Set(lessons.map((l) => l.id));
@@ -483,8 +492,13 @@ export function MarksGrid({
             aria-pressed={everyoneDone(item)}
             aria-label={`${HW_ITEM_LABEL[item]} for every listed student`}
             onClick={() =>
-              void bulk(`${HW_ITEM_LABEL[item]} ${everyoneDone(item) ? "cleared" : "ticked"}`, () =>
-                setHwMarks(selected!.id, ids, item, !everyoneDone(item)),
+                void bulk(`${HW_ITEM_LABEL[item]} ${everyoneDone(item) ? "cleared" : "ticked"}`, () =>
+                setHwMarks(
+                  selected!.id,
+                  everyoneDone(item) ? people.map((person) => person.userId) : tickIds(selected!),
+                  item,
+                  !everyoneDone(item),
+                ),
               )
             }
             className={cn(
@@ -503,14 +517,14 @@ export function MarksGrid({
             label="Untick all"
             className="text-white hover:bg-brand-500"
             disabled={busy || !selected}
-            onClick={() => void bulk("Untick all", () => untickAll(selected!.id, ids))}
+            onClick={() => void bulk("Untick all", () => untickAll(selected!.id, people.map((person) => person.userId)))}
           />
           <IconButton
             icon={CheckCheck}
             label="Tick all complete"
             variant="brand"
             disabled={busy || !selected}
-            onClick={() => void bulk("Tick all complete", () => tickAllComplete(selected!.id, ids))}
+            onClick={() => void bulk("Tick all complete", () => tickAllComplete(selected!.id, tickIds(selected!)))}
           />
         </div>
       </div>
@@ -560,9 +574,10 @@ export function MarksGrid({
                 </button>
                 <div className="flex gap-0.5">
                   {items.map((item) => {
+                    const eligible = tickIds(lesson);
                     const on =
-                      people.length > 0 &&
-                      people.every((person) => local.get(`${person.userId}:${lesson.id}:${item}`));
+                      eligible.length > 0 &&
+                      eligible.every((id) => local.get(`${id}:${lesson.id}:${item}`));
                     return (
                       <button
                         key={item}
@@ -573,7 +588,13 @@ export function MarksGrid({
                         onClick={() =>
                           void bulk(
                             `${HW_ITEM_LABEL[item]} ${on ? "cleared" : "ticked"} · ${shortDate(lesson.lesson_date)}`,
-                            () => setHwMarks(lesson.id, ids, item, !on),
+                            () =>
+                              setHwMarks(
+                                lesson.id,
+                                on ? people.map((person) => person.userId) : tickIds(lesson),
+                                item,
+                                !on,
+                              ),
                             lesson,
                           )
                         }
@@ -611,7 +632,10 @@ export function MarksGrid({
               >
                 <div
                   role="rowheader"
-                  className="sticky left-0 z-10 truncate bg-brand-600 px-2 py-2 text-sm font-bold"
+                  className={cn(
+                    "sticky left-0 z-10 truncate bg-brand-600 px-2 py-2 text-sm font-bold",
+                    selected && absentOn(person.userId, selected.lesson_date) && "text-red-300 line-through",
+                  )}
                 >
                   {person.name}
                 </div>

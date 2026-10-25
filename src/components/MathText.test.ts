@@ -113,6 +113,21 @@ describe("MathText", () => {
     expect(html).not.toContain("sin R$");
   });
 
+  it("leaves Reading and Writing prose alone", () => {
+    const html = renderMathText(
+      "Prices like $17.31 or $28 million, about 1/2 of buyers, and f(20) stay as written. <u>surveyed</u> stays underlined.\nNext line.",
+      { math: false },
+    );
+    expect(html).not.toContain("katex");
+    expect(html).toContain("$17.31");
+    expect(html).toContain("$28 million");
+    expect(html).toContain("1/2");
+    expect(html).toContain("f(20)");
+    expect(html).toContain("<u>surveyed</u>");
+    expect(html).toContain("<br/>");
+    expect(html).not.toContain("\\frac");
+  });
+
   it("still renders a short dollar amount next to a later sentence", () => {
     const html = renderMathText(
       "The width of a rectangle is $6$ centimeters. The length is $50$ centimeters longer.",

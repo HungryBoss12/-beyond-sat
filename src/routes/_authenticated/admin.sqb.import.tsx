@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { replaceTestQuestions } from "@/lib/admin-writes";
 import { fetchAllRows } from "@/lib/supabase-pages";
@@ -21,13 +21,17 @@ import {
   CopyBox,
   DraftReviewer,
   Field,
+  FigureCropDialog,
   SQB_WIZARD_STEPS,
   WizardSteps,
+  type FigureProgress,
+  type FixProgress,
   type ImportWizardStep,
   type PreviewRow,
 } from "@/components/admin-import";
 import { AdminSelect } from "@/components/admin/AdminSelect";
-import { existingIdFromDraft, loadTestAsDrafts } from "@/lib/import/load-existing";
+import { existingIdFromDraft, loadTestAsDrafts, softSqbFixHintsForDraft } from "@/lib/import/load-existing";
+import { needsFigure } from "@/lib/import/figure-dependency";
 import { blankSqbDraft, stampSqbDrafts, validateSqbDraft, type SqbParseDefaults } from "@/lib/sqb/draft";
 import {
   applySqbAnswers,
@@ -47,7 +51,10 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  ImageIcon,
   Loader2,
+  Square,
+  Wrench,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/sqb/import")({
@@ -118,6 +125,18 @@ function AdminSqbImportWizard() {
   const [keySummary, setKeySummary] = useState<string | null>(null);
   const [jsonDragOver, setJsonDragOver] = useState(false);
   const [answersDragOver, setAnswersDragOver] = useState(false);
+  const [sourcePdf, setSourcePdf] = useState<File | null>(null);
+  const [sweepFigures, setSweepFigures] = useState(true);
+  const [tableMarkdown, setTableMarkdown] = useState(false);
+  const [graphMarkdown, setGraphMarkdown] = useState(false);
+  const [fixing, setFixing] = useState(false);
+  const [fixProgress, setFixProgress] = useState<FixProgress | null>(null);
+  const [attachingFigures, setAttachingFigures] = useState(false);
+  const [figureProgress, setFigureProgress] = useState<FigureProgress | null>(null);
+  const [cropDraftIndex, setCropDraftIndex] = useState<number | null>(null);
+  const [manualCropBusy, setManualCropBusy] = useState(false);
+  const stopRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const [existingKeys, setExistingKeys] = useState<Set<string>>(new Set());
   const [existingTestId, setExistingTestId] = useState<string | null>(null);
@@ -186,6 +205,13 @@ function AdminSqbImportWizard() {
     if (stamped.length > 0) {
       void fetchExisting();
       setStep("editor");
+      if (sourcePdf) {
+        void stampPdfPages(sourcePdf, stamped)
+          .then((withPages) => setDrafts(withPages))
+          .catch((err: unknown) =>
+            setReadError(err instanceof Error ? err.message : "Could not match the PDF pages."),
+          );
+      }
     }
   }
 
@@ -358,6 +384,181 @@ function AdminSqbImportWizard() {
         };
       });
     });
+  }
+
+  const buildFigureTargets = useCallback(
+    (list: Draft[], onlyIndex?: number) => {
+      if (onlyIndex != null) {
+        const draft = list[onlyIndex];
+        if (!draft) return [];
+        return [
+          {
+            draftIndex: onlyIndex,
+            draft,
+            reason: needsFigure(draft) ? ("required" as const) : ("sweep" as const),
+          },
+        ];
+      }
+      return list
+        .map((draft, draftIndex) => ({ draftIndex, draft }))
+        .filter((t) => {
+          if (!t.draft.sourcePage) return false;
+          if ((t.draft.rec.image_url ?? "").trim()) return false;
+          if (needsFigure(t.draft)) return true;
+          return sweepFigures;
+        })
+        .map((t) => ({
+          ...t,
+          reason: needsFigure(t.draft) ? ("required" as const) : ("sweep" as const),
+        }));
+    },
+    [sweepFigures],
+  );
+
+  const figureCount = drafts ? buildFigureTargets(drafts).length : 0;
+
+  async function stampPdfPages(file: File, list: Draft[]): Promise<Draft[]> {
+    const { readPdfText } = await import("@/lib/import/pdf");
+    const { blocksToDrafts } = await import("@/lib/import/parse");
+    const pdf = await readPdfText(file);
+    const parsed = blocksToDrafts(pdf.blocks, defaults());
+    const pageByNumber = new Map(
+      parsed.drafts
+        .filter((d) => d.sourcePage != null)
+        .map((d) => [d.number, d.sourcePage as number]),
+    );
+    return list.map((d) => ({
+      ...d,
+      sourcePage: pageByNumber.get(d.number) ?? d.sourcePage,
+    }));
+  }
+
+  async function chooseSourcePdf(file: File | null) {
+    setSourcePdf(file);
+    if (!file || !drafts) return;
+    setReadError(null);
+    try {
+      const stamped = await stampPdfPages(file, drafts);
+      const matched = stamped.filter((d) => d.sourcePage != null).length;
+      setDrafts(stamped);
+      setNotes((n) => [
+        ...n,
+        matched
+          ? `Source PDF matched ${matched} question${matched === 1 ? "" : "s"} to a page.`
+          : "Source PDF was saved, but no question numbers matched a page. Crop and attach need a matching number.",
+      ]);
+    } catch (err) {
+      setReadError((err as Error)?.message ?? "Could not read that PDF.");
+    }
+  }
+
+  async function runManualCrop(
+    index: number,
+    box: { x: number; y: number; w: number; h: number },
+  ) {
+    if (!sourcePdf || !drafts?.[index]) return;
+    setManualCropBusy(true);
+    setReadError(null);
+    try {
+      const { attachManualCropToDraft } = await import("@/lib/import/attach-figures");
+      const { draft: updated } = await attachManualCropToDraft(sourcePdf, drafts[index], box, index);
+      setDrafts((current) => (current ? current.map((d, i) => (i === index ? updated : d)) : current));
+      setCropDraftIndex(null);
+    } catch (err) {
+      setReadError((err as Error)?.message ?? "Manual crop could not be attached.");
+    } finally {
+      setManualCropBusy(false);
+    }
+  }
+
+  async function runAttachFigures(onlyIndex?: number) {
+    if (!sourcePdf || !drafts || attachingFigures || fixing) return;
+    const targets = buildFigureTargets(drafts, onlyIndex);
+    if (targets.length === 0) {
+      setReadError("No question on this PDF still needs a figure. Match a page first, or upload an image on the question.");
+      return;
+    }
+    stopRef.current = false;
+    const ac = new AbortController();
+    abortRef.current = ac;
+    setAttachingFigures(true);
+    setFigureProgress(null);
+    setReadError(null);
+    try {
+      const { attachFiguresToDrafts } = await import("@/lib/import/attach-figures");
+      const out = await attachFiguresToDrafts(sourcePdf, drafts, targets, {
+        signal: ac.signal,
+        shouldStop: () => stopRef.current,
+        onProgress: setFigureProgress,
+        tableMarkdown,
+        graphMarkdown,
+      });
+      setDrafts(out.drafts);
+      setNotes((current) => [...current, ...out.notes]);
+    } catch (err) {
+      if ((err as Error)?.name !== "AbortError") {
+        setReadError((err as Error)?.message ?? "Figures could not be attached.");
+      }
+    } finally {
+      if (abortRef.current === ac) abortRef.current = null;
+      stopRef.current = false;
+      setAttachingFigures(false);
+      setFigureProgress(null);
+    }
+  }
+
+  async function runFixBroken() {
+    if (!drafts || fixing || attachingFigures) return;
+    const targets = previewRows
+      .filter((p) => {
+        if (p.draftIndex == null) return false;
+        if (!p.row.question || p.row.errors.length > 0) return true;
+        return softSqbFixHintsForDraft(drafts[p.draftIndex]).length > 0;
+      })
+      .map((p) => {
+        const draft = drafts[p.draftIndex!];
+        const soft = softSqbFixHintsForDraft(draft);
+        return {
+          draftIndex: p.draftIndex!,
+          draft,
+          errors:
+            p.row.errors.length > 0
+              ? p.row.errors
+              : soft.length > 0
+                ? soft
+                : ["Staff requested a cleanup pass on this SQB question."],
+          warnings: p.row.warnings,
+        };
+      });
+    if (targets.length === 0) {
+      setReadError("No rows need an AI fix.");
+      return;
+    }
+    stopRef.current = false;
+    const ac = new AbortController();
+    abortRef.current = ac;
+    setFixing(true);
+    setFixProgress(null);
+    setReadError(null);
+    try {
+      const { fixBrokenDrafts } = await import("@/lib/import/fix-broken");
+      const out = await fixBrokenDrafts(drafts, targets, {
+        signal: ac.signal,
+        shouldStop: () => stopRef.current,
+        onProgress: setFixProgress,
+      });
+      setDrafts(stampSqbDrafts(out.drafts, defaults()));
+      setNotes((current) => [...current, ...out.notes]);
+    } catch (err) {
+      if ((err as Error)?.name !== "AbortError") {
+        setReadError((err as Error)?.message ?? "Broken rows could not be fixed.");
+      }
+    } finally {
+      if (abortRef.current === ac) abortRef.current = null;
+      stopRef.current = false;
+      setFixing(false);
+      setFixProgress(null);
+    }
   }
 
   async function runImport() {
@@ -724,6 +925,22 @@ function AdminSqbImportWizard() {
                 >
                   Load template
                 </button>
+                <label className="text-xs font-semibold text-brand-100">
+                  Source PDF for figures
+                  <input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    className="mt-1 block text-xs text-brand-100 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-800 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] ?? null;
+                      e.target.value = "";
+                      void chooseSourcePdf(f);
+                    }}
+                  />
+                </label>
+                {sourcePdf && (
+                  <span className="self-end text-xs text-brand-100">{sourcePdf.name}</span>
+                )}
                 <button
                   type="button"
                   onClick={runParse}
@@ -797,13 +1014,106 @@ function AdminSqbImportWizard() {
               </button>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {fixing ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopRef.current = true;
+                      abortRef.current?.abort();
+                    }}
+                    className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/60 bg-brand-900 px-3 py-1.5 text-xs font-semibold text-white"
+                  >
+                    <Square className="h-3.5 w-3.5" /> Stop fix
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={attachingFigures}
+                    onClick={() => void runFixBroken()}
+                    className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                  >
+                    <Wrench className="h-3.5 w-3.5" /> Fix with AI
+                  </button>
+                )}
+                {sourcePdf &&
+                  (attachingFigures ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        stopRef.current = true;
+                        abortRef.current?.abort();
+                      }}
+                      className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/60 bg-brand-900 px-3 py-1.5 text-xs font-semibold text-white"
+                    >
+                      <Square className="h-3.5 w-3.5" /> Stop figures
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={fixing || figureCount === 0}
+                      onClick={() => void runAttachFigures()}
+                      className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                    >
+                      <ImageIcon className="h-3.5 w-3.5" />
+                      Attach {figureCount} figure{figureCount === 1 ? "" : "s"} with AI
+                    </button>
+                  ))}
+                {sourcePdf && (
+                  <>
+                    <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-brand-100">
+                      <input
+                        type="checkbox"
+                        checked={sweepFigures}
+                        onChange={(e) => setSweepFigures(e.target.checked)}
+                        disabled={attachingFigures}
+                        className="h-3.5 w-3.5 accent-brand-200 [color-scheme:dark]"
+                      />
+                      Sweep every page
+                    </label>
+                    <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-brand-100">
+                      <input
+                        type="checkbox"
+                        checked={tableMarkdown}
+                        onChange={(e) => setTableMarkdown(e.target.checked)}
+                        disabled={attachingFigures}
+                        className="h-3.5 w-3.5 accent-brand-200 [color-scheme:dark]"
+                      />
+                      Also write tables as text
+                    </label>
+                    <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-brand-100">
+                      <input
+                        type="checkbox"
+                        checked={graphMarkdown}
+                        onChange={(e) => setGraphMarkdown(e.target.checked)}
+                        disabled={attachingFigures}
+                        className="h-3.5 w-3.5 accent-brand-200 [color-scheme:dark]"
+                      />
+                      Also write graphs as text
+                    </label>
+                  </>
+                )}
+              </div>
+              {figureProgress && (
+                <p className="text-xs text-brand-100">
+                  Figures: page {figureProgress.page}, {figureProgress.pagesDone}/{figureProgress.pagesTotal} pages,{" "}
+                  {figureProgress.attached} attached.
+                </p>
+              )}
+              {fixProgress && (
+                <p className="text-xs text-brand-100">
+                  Fixing {fixProgress.stage1Done + fixProgress.stage2Done} of {fixProgress.total}.
+                </p>
+              )}
               <DraftReviewer
                 rows={previewRows}
                 drafts={drafts}
-                sourcePdf={null}
+                sourcePdf={sourcePdf}
                 showModule={false}
                 variant="sqb"
+                disabled={fixing || importing}
+                attachingFigure={attachingFigures || manualCropBusy}
                 onChangeDraft={updateDraft}
                 onSetReviewed={(index, reviewed) =>
                   setDrafts((cur) =>
@@ -824,6 +1134,8 @@ function AdminSqbImportWizard() {
                     return cur.filter((_, i) => i !== index).map((d, i) => ({ ...d, number: i + 1 }));
                   })
                 }
+                onAttachFigure={(index) => void runAttachFigures(index)}
+                onManualCrop={(index) => setCropDraftIndex(index)}
               />
             </div>
 
@@ -1004,6 +1316,22 @@ function AdminSqbImportWizard() {
           </div>
         </div>
       )}
+      <FigureCropDialog
+        open={cropDraftIndex != null}
+        onOpenChange={(open) => {
+          if (!open) setCropDraftIndex(null);
+        }}
+        file={sourcePdf}
+        page={cropDraftIndex != null ? drafts?.[cropDraftIndex]?.sourcePage : null}
+        questionLabel={
+          cropDraftIndex != null ? `Question ${drafts?.[cropDraftIndex]?.number ?? ""}` : "Question"
+        }
+        attaching={manualCropBusy}
+        onAttach={(box) => {
+          if (cropDraftIndex == null) return;
+          return runManualCrop(cropDraftIndex, box);
+        }}
+      />
     </div>
   );
 }

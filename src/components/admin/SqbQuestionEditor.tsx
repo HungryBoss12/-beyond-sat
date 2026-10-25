@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { MixedMathEditor } from "@/components/MixedMathEditor";
+import { extractGraphText, replaceGraphText } from "@/lib/import/graph-text";
 import {
   QuestionCard,
   emptyAnswer,
@@ -437,12 +438,28 @@ export function SqbQuestionEditor({
                 <Upload className="h-3.5 w-3.5" /> Replace figure
               </button>
             )}
+            <div className="mt-2">
+              <Field label="Graph text">
+                <textarea
+                  className={CONTROL + " min-h-[5rem] resize-y font-mono text-xs"}
+                  rows={4}
+                  value={extractGraphText(editing.prompt ?? "")}
+                  onChange={(e) =>
+                    patch({ prompt: replaceGraphText(editing.prompt ?? "", e.target.value) })
+                  }
+                  placeholder={"x-axis: Time, 0 to 10\ny-axis: Speed, 0 to 60\npoints: (0, 0); (2, 10)\nlines: a straight line through those points"}
+                />
+              </Field>
+            </div>
           </div>
 
           <Field label="Prompt / stimulus (optional)">
             <MixedMathEditor
-              value={editing.prompt ?? ""}
-              onChange={(v) => patch({ prompt: v })}
+              math={editing.section === "math"}
+              value={replaceGraphText(editing.prompt ?? "", "")}
+              onChange={(v) =>
+                patch({ prompt: replaceGraphText(v, extractGraphText(editing.prompt ?? "")) })
+              }
               rows={3}
               placeholder="Passage / stimulus…"
             />
@@ -450,6 +467,7 @@ export function SqbQuestionEditor({
 
           <Field label="Stem">
             <MixedMathEditor
+              math={editing.section === "math"}
               value={editing.question_text}
               onChange={(v) => patch({ question_text: v })}
               rows={4}
@@ -479,6 +497,7 @@ export function SqbQuestionEditor({
                   </button>
                   <div className="min-w-0 flex-1">
                     <MixedMathEditor
+              math={editing.section === "math"}
                       value={c.text}
                       onChange={(v) =>
                         patch({
@@ -511,6 +530,7 @@ export function SqbQuestionEditor({
 
           <Field label="Explanation">
             <MixedMathEditor
+              math={editing.section === "math"}
               value={editing.explanation ?? ""}
               onChange={(v) => patch({ explanation: v })}
               rows={3}

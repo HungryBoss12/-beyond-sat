@@ -27,7 +27,7 @@ import { VoidDialog } from "@/components/billing/VoidDialog";
 import { KIND_META } from "@/components/billing/meta";
 import { chargeThisMonth } from "@/components/billing/charge";
 import { FeeDialog } from "@/components/billing/FeeDialog";
-import { billingNote, setBillingNote, setFeeOverride, setStudentBalance, setStudentFee, studentBilling, studentLedger, voidEntry } from "@/lib/billing/api";
+import { billingNote, setBillingNote, setFeeOverride, setStudentBalance, setStudentFee, studentBilling, studentLedger, studentMonthlyNet, voidEntry } from "@/lib/billing/api";
 import { listUserAttendance } from "@/lib/classes/groups";
 import { periodLabel, tashkentToday } from "@/lib/billing/dates";
 import { balanceKind, formatUzs } from "@/lib/billing/money";
@@ -77,19 +77,22 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
   const [feeRow, setFeeRow] = useState<StudentBillingRow | null>(null);
   const [feeText, setFeeText] = useState("");
   const [note, setNote] = useState("");
+  const [monthlyNet, setMonthlyNet] = useState<bigint | null>(null);
   const [attended, setAttended] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     try {
-      const [rows, groups, savedNote, days] = await Promise.all([
+      const [rows, groups, savedNote, days, net] = await Promise.all([
         studentLedger(userId),
         studentBilling(userId),
         billingNote(userId).catch(() => ""),
         listUserAttendance(userId).catch(() => []),
+        studentMonthlyNet(userId).catch(() => null),
       ]);
       setLedger(rows);
       setBilling(groups);
       setNote(savedNote);
+      setMonthlyNet(net);
       setAttended(
         days.filter((day) => day.participated).map((day) => day.lesson_date.slice(0, 10)),
       );
@@ -183,6 +186,7 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
           icon={Wallet}
           label="Current balance"
           amount={kind === "settled" ? 0n : balance}
+          signed
           kind={KIND_META[kind].label.toLowerCase()}
           loading={loading}
         />
@@ -218,9 +222,15 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
         <MoneyTile
           icon={Repeat}
           label="Monthly fee"
-          amount={priced.length ? monthly : null}
+          amount={monthlyNet ?? (priced.length ? monthly : null)}
           text="Not set"
-          hint={priced.length ? "Auto-charged each month" : "No class fee set"}
+          hint={
+            monthlyNet != null && priced.length && monthlyNet < monthly
+              ? "After discount, auto-charged each month"
+              : priced.length
+                ? "Auto-charged each month"
+                : "No class fee set"
+          }
           loading={loading}
         />
       </div>
@@ -229,7 +239,7 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
         rows={shownBilling.filter((row) => row.monthly_fee_uzs != null || row.activated_on)}
         onEditFee={(row) => {
           setFeeRow(row);
-          setFeeText(row.monthly_fee_uzs == null ? "" : row.monthly_fee_uzs.toString());
+          setFeeText(row.override_fee_uzs == null ? "" : row.override_fee_uzs.toString());
         }}
       />
       <div className="grid gap-4 lg:grid-cols-2">
@@ -324,11 +334,12 @@ export function StudentMoney({ userId, name }: { userId: string; name: string })
       <Dialog open={feeRow != null} onOpenChange={(next) => !next && setFeeRow(null)}>
         <DialogContent className="border-brand-400/40 bg-brand-800 text-white">
           <DialogHeader>
-            <DialogTitle className="text-white">
-              {feeRow ? `${feeRow.group_name} fee` : "Course fee"}
-            </DialogTitle>
+            <DialogTitle className="text-white">Class price for this student</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-white">This price is only for this student. Everyone else keeps the class fee.</p>
+          <p className="text-xs text-white">
+            The full monthly class price, from this month. One subject pays half of it, two subjects pay it once.
+            Everyone else keeps the class fee.
+          </p>
           <input
             className={CLASS_CONTROL + " mt-2"}
             value={feeText}
@@ -408,6 +419,9 @@ function GroupCharges({
   onEditFee: (row: StudentBillingRow) => void;
 }) {
   if (rows.length === 0) return null;
+  const pricedClasses = new Set(
+    rows.filter((row) => row.monthly_fee_uzs != null).map((row) => row.class_id),
+  );
   return (
     <div className="overflow-x-auto rounded-2xl border border-brand-400/40 bg-brand-600 text-white">
       <table className="w-full min-w-0 text-left text-sm">
@@ -432,14 +446,18 @@ function GroupCharges({
                     }`}
               </td>
               <td className="whitespace-nowrap p-3 text-right font-bold tabular-nums">
-                <button
-                  type="button"
-                  className="underline decoration-white/40 underline-offset-2"
-                  onClick={() => onEditFee(row)}
-                >
-                  {row.monthly_fee_uzs == null ? "Set fee" : formatUzs(row.monthly_fee_uzs)}
-                  {row.override_fee_uzs != null ? " · own price" : ""}
-                </button>
+                {row.monthly_fee_uzs == null && pricedClasses.has(row.class_id) ? (
+                  <span className="font-semibold text-brand-100">In class price</span>
+                ) : (
+                  <button
+                    type="button"
+                    className="underline decoration-white/40 underline-offset-2"
+                    onClick={() => onEditFee(row)}
+                  >
+                    {row.monthly_fee_uzs == null ? "Set fee" : formatUzs(row.monthly_fee_uzs)}
+                    {row.override_fee_uzs != null ? " · own price" : ""}
+                  </button>
+                )}
               </td>
             </tr>
           ))}

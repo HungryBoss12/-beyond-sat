@@ -22,13 +22,15 @@ type AnyClient = any;
 
 const db = supabase as unknown as AnyClient;
 
+const CLASS_COLS =
+  "id,name,description,active,archived_at,created_at,schedule_days,start_time,end_time,room,level,teacher_id,starts_on";
+
 export async function listActiveClasses(): Promise<ClassRow[]> {
   const { data, error } = await db
     .from("classes")
-    .select(
-      "id,name,description,active,created_at,schedule_days,start_time,end_time,room,level,teacher_id,starts_on",
-    )
+    .select(CLASS_COLS)
     .eq("active", true)
+    .is("archived_at", null)
     .order("name");
   if (error) throw error;
   return (data ?? []) as ClassRow[];
@@ -37,12 +39,37 @@ export async function listActiveClasses(): Promise<ClassRow[]> {
 export async function listAllClasses(): Promise<ClassRow[]> {
   const { data, error } = await db
     .from("classes")
-    .select(
-      "id,name,description,active,created_at,schedule_days,start_time,end_time,room,level,teacher_id,starts_on",
-    )
+    .select(CLASS_COLS)
+    .is("archived_at", null)
     .order("name");
   if (error) throw error;
   return (data ?? []) as ClassRow[];
+}
+
+export async function listArchivedClasses(): Promise<ClassRow[]> {
+  const { data, error } = await db
+    .from("classes")
+    .select(CLASS_COLS)
+    .not("archived_at", "is", null)
+    .order("archived_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ClassRow[];
+}
+
+export async function getClass(id: string): Promise<ClassRow | null> {
+  const { data, error } = await db.from("classes").select(CLASS_COLS).eq("id", id).maybeSingle();
+  if (error) throw error;
+  return (data ?? null) as ClassRow | null;
+}
+
+export async function archiveClass(id: string): Promise<void> {
+  const { error } = await db.rpc("admin_archive_class", { p_class_id: id });
+  if (error) throw error;
+}
+
+export async function restoreClass(id: string): Promise<void> {
+  const { error } = await db.rpc("admin_restore_class", { p_class_id: id });
+  if (error) throw error;
 }
 
 export async function createClass(input: {
@@ -57,9 +84,7 @@ export async function createClass(input: {
       description: input.description?.trim() || null,
       created_by: u.user?.id ?? null,
     })
-    .select(
-      "id,name,description,active,created_at,schedule_days,start_time,end_time,room,level,teacher_id,starts_on",
-    )
+    .select(CLASS_COLS)
     .single();
   if (error) throw error;
   return data as ClassRow;
@@ -97,11 +122,6 @@ export async function updateClass(
       .eq("kind", "class_group");
     if (tErr) throw tErr;
   }
-}
-
-export async function deleteClass(id: string): Promise<void> {
-  const { error } = await db.from("classes").delete().eq("id", id);
-  if (error) throw error;
 }
 
 export async function joinClass(classId: string): Promise<void> {

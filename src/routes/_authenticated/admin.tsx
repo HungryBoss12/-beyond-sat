@@ -95,6 +95,7 @@ const NAV = [
   { to: "/admin/vocab", label: "Vocab", anim: "vocab", group: "Content" },
   { to: "/admin/lessons", label: "Lessons", anim: "lessons", group: "Content" },
   { to: "/admin/classes", label: "Classes", anim: "classes", group: "Content" },
+  { to: "/admin/archive", label: "Archive", anim: "classes", group: "Content", adminOnly: true },
   { to: "/admin/support", label: "Support", anim: "lessons", group: "Manage", adminOnly: true },
   { to: "/admin/users", label: "Students", anim: "users", group: "Students", adminOnly: true },
   { to: "/admin/payments", label: "Payments", anim: "payments", group: "Students", adminOnly: true },

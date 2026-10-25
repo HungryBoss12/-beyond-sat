@@ -10,6 +10,8 @@ import {
 } from "@/lib/classes/groups";
 import type { ClassRow } from "@/lib/classes/types";
 import { studentBilling } from "@/lib/billing/api";
+import { tashkentToday } from "@/lib/billing/dates";
+import { DateTimeField } from "@/components/ui/date-time-field";
 
 function groupLabel(group: ClassGroup): string {
   if (/\b(eng|english|maths|math)\b/i.test(group.name)) return group.name;
@@ -33,6 +35,9 @@ export function EditGroupsDialog({
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [groups, setGroups] = useState<ClassGroup[]>([]);
   const [current, setCurrent] = useState<string[]>([]);
+  const [initialIds, setInitialIds] = useState<string[]>([]);
+  const [addedOn, setAddedOn] = useState(tashkentToday);
+  const [leftOn, setLeftOn] = useState(tashkentToday);
   const [classId, setClassId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,19 +46,33 @@ export function EditGroupsDialog({
     if (!open) return;
     setError(null);
     setClassId("");
+    setAddedOn(tashkentToday());
+    setLeftOn(tashkentToday());
     void Promise.all([listAllClasses(), listGroups(), studentBilling(userId)])
       .then(([classRows, groupRows, billing]) => {
+        const ids = billing.filter((row) => row.status !== "left").map((row) => row.group_id);
         setClasses(classRows);
         setGroups(groupRows);
-        setCurrent(billing.filter((row) => row.status !== "left").map((row) => row.group_id));
+        setCurrent(ids);
+        setInitialIds(ids);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load groups"));
   }, [open, userId]);
 
   const chosen = groups.filter((group) => current.includes(group.id));
   const classGroups = groups.filter((group) => group.class_id === classId && group.active);
+  const needsAdded = current.some((id) => !initialIds.includes(id));
+  const needsLeft = initialIds.some((id) => !current.includes(id));
 
   async function save() {
+    if (needsAdded && !addedOn) {
+      setError("Choose the date they were added.");
+      return;
+    }
+    if (needsLeft && !leftOn) {
+      setError("Choose the day they stopped attending.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -63,17 +82,29 @@ export function EditGroupsDialog({
       const toAdd = [...after].filter((id) => !before.has(id));
       const toRemove = [...before].filter((id) => !after.has(id));
       for (const id of toAdd) {
-        await addGroupMember({ groupId: id, userId, status: "active" });
+        await addGroupMember({
+          groupId: id,
+          userId,
+          status: "active",
+          enrolledOn: addedOn,
+          activatedOn: addedOn,
+        });
       }
       const removed: string[] = [];
       try {
         for (const id of toRemove) {
-          await removeGroupMember(id, userId, false);
+          await removeGroupMember(id, userId, false, leftOn);
           removed.push(id);
         }
       } catch (removeErr) {
         for (const id of removed) {
-          await addGroupMember({ groupId: id, userId, status: "active" }).catch(() => undefined);
+          await addGroupMember({
+            groupId: id,
+            userId,
+            status: "active",
+            enrolledOn: tashkentToday(),
+            activatedOn: tashkentToday(),
+          }).catch(() => undefined);
         }
         throw removeErr;
       }
@@ -113,7 +144,7 @@ export function EditGroupsDialog({
           {chosen.length === 0 && <li className="text-xs text-brand-100">Not in a group yet.</li>}
         </ul>
         <div className="flex flex-wrap gap-1.5">
-          {classes.filter((klass) => klass.active).map((klass) => (
+          {classes.filter((klass) => klass.active && !klass.archived_at).map((klass) => (
             <button
               key={klass.id}
               type="button"
@@ -148,10 +179,26 @@ export function EditGroupsDialog({
             ))}
           </ul>
         )}
+        {needsAdded && (
+          <div>
+            <div className="text-xs font-bold text-white">Date added</div>
+            <div className="mt-1">
+              <DateTimeField dateOnly value={addedOn} onChange={setAddedOn} />
+            </div>
+          </div>
+        )}
+        {needsLeft && (
+          <div>
+            <div className="text-xs font-bold text-white">Stopped attending</div>
+            <div className="mt-1">
+              <DateTimeField dateOnly value={leftOn} onChange={setLeftOn} />
+            </div>
+          </div>
+        )}
         <div className="flex justify-end">
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || (needsAdded && !addedOn) || (needsLeft && !leftOn)}
             onClick={() => void save()}
             className="rounded-full bg-brand-400 px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
           >

@@ -40,6 +40,8 @@ export function PreviewPanel({
   setSweepFigures,
   tableMarkdown = false,
   setTableMarkdown,
+  graphMarkdown = false,
+  setGraphMarkdown,
   focusDraftIndex = null,
   showModule,
   visionRunning,
@@ -88,6 +90,8 @@ export function PreviewPanel({
   setSweepFigures?: (v: boolean) => void;
   tableMarkdown?: boolean;
   setTableMarkdown?: (v: boolean) => void;
+  graphMarkdown?: boolean;
+  setGraphMarkdown?: (v: boolean) => void;
   focusDraftIndex?: number | null;
   showModule?: boolean;
   visionRunning?: boolean;
@@ -214,6 +218,18 @@ export function PreviewPanel({
                 className="h-3.5 w-3.5 accent-brand-200 [color-scheme:dark]"
               />
               Also write tables as text
+            </label>
+          )}
+          {setGraphMarkdown && onAttachFigures && (
+            <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-brand-100">
+              <input
+                type="checkbox"
+                checked={graphMarkdown}
+                onChange={(e) => setGraphMarkdown(e.target.checked)}
+                disabled={attachingFigures || importing}
+                className="h-3.5 w-3.5 accent-brand-200 [color-scheme:dark]"
+              />
+              Also write graphs as text
             </label>
           )}
           {onFixBroken &&
@@ -464,7 +480,7 @@ export function RowPreview({
         <div className="min-w-0 flex-1">
           {q ? (
             <>
-              <MathText className="line-clamp-2 text-sm font-semibold text-white">
+              <MathText math={q.section === "math"} className="line-clamp-2 text-sm font-semibold text-white">
                 {q.question_text}
               </MathText>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -500,7 +516,9 @@ export function RowPreview({
           ) : (
             <div className="text-sm font-semibold text-white">
               {draft?.rec.question_text ? (
-                <MathText className="line-clamp-2">{draft.rec.question_text}</MathText>
+                <MathText math={draft.rec.section === "math"} className="line-clamp-2">
+                  {draft.rec.question_text}
+                </MathText>
               ) : (
                 "Not imported"
               )}

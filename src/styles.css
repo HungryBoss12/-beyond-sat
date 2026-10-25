@@ -308,7 +308,8 @@
   h4,
   h5,
   h6 {
-    color: var(--foreground);
+    /* Color stays in Tailwind's base layer so text-white on a navy card wins.
+       Setting it here, outside a layer, left headings near-black on blue. */
     font-family: var(--font-sans);
     font-weight: 700;
     letter-spacing: -0.02em;
@@ -508,6 +509,58 @@
   select:focus-visible {
     outline: none;
   }
+}
+
+/* Outside the base layer so these beat Tailwind color utilities.
+   Dark utilities on a navy surface become white. Light chips and white
+   buttons on those surfaces keep dark text. Muted brand-100 labels stay. */
+:is(
+    .bg-brand-600,
+    .bg-brand-700,
+    .bg-brand-800,
+    .bg-brand-900,
+    .bg-grad-brand,
+    .bg-grad-brand-soft,
+    .bg-grad-surface
+  ):is(.text-brand-900, .text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600, .text-black),
+:is(
+    .bg-brand-600,
+    .bg-brand-700,
+    .bg-brand-800,
+    .bg-brand-900,
+    .bg-grad-brand,
+    .bg-grad-brand-soft,
+    .bg-grad-surface
+  )
+  :is(.text-brand-900, .text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600, .text-black) {
+  color: #fff;
+}
+
+:is(
+    .bg-brand-600,
+    .bg-brand-700,
+    .bg-brand-800,
+    .bg-brand-900,
+    .bg-grad-brand,
+    .bg-grad-brand-soft,
+    .bg-grad-surface
+  )
+  :is(.bg-white, .bg-brand-25, .bg-brand-50, .bg-brand-100, .bg-brand-200) {
+  color: var(--color-brand-900);
+}
+
+:is(
+    .bg-brand-600,
+    .bg-brand-700,
+    .bg-brand-800,
+    .bg-brand-900,
+    .bg-grad-brand,
+    .bg-grad-brand-soft,
+    .bg-grad-surface
+  )
+  :is(.bg-white, .bg-brand-25, .bg-brand-50, .bg-brand-100, .bg-brand-200)
+  :is(.text-brand-900, .text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600, .text-black) {
+  color: var(--color-brand-900);
 }
 
 /* ---------------------------------------------------------------------------

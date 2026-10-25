@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/dialog";
 import { STATUS_META } from "@/components/billing/meta";
 import { CLASS_CONTROL } from "@/components/classes/control";
+import { DateTimeField } from "@/components/ui/date-time-field";
+import { tashkentToday } from "@/lib/billing/dates";
 import type { ClassRow, MemberStatus } from "@/lib/classes/types";
 import {
   addGroupMember,
@@ -112,6 +114,7 @@ export function GroupRail({
   const [moving, setMoving] = useState<RailPerson | null>(null);
   const [removing, setRemoving] = useState<RailPerson | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
+  const [leftOn, setLeftOn] = useState(tashkentToday);
   const [formerOpen, setFormerOpen] = useState(false);
   const formerNeedle = query.trim().toLowerCase();
   const formerShown = former.filter(
@@ -121,6 +124,10 @@ export function GroupRail({
   useEffect(() => {
     setFormerOpen(false);
   }, [group.id]);
+
+  useEffect(() => {
+    if (removing) setLeftOn(tashkentToday());
+  }, [removing]);
 
   useEffect(() => {
     if (!formerNeedle) return;
@@ -138,13 +145,14 @@ export function GroupRail({
   }
 
   async function remove(person: RailPerson, charge: boolean) {
+    if (!leftOn) return;
     setRemoveBusy(true);
     try {
-      await removeGroupMember(group.id, person.userId, charge);
+      await removeGroupMember(group.id, person.userId, charge, leftOn);
       toast.success(
         charge
-          ? `${person.name} removed. This month's fee stays.`
-          : `${person.name} removed without a fee.`,
+          ? `${person.name} stopped on ${leftOn}. The fee runs through that day.`
+          : `${person.name} stopped on ${leftOn}. No fee for the open month.`,
       );
       setRemoving(null);
       await onChanged();
@@ -235,7 +243,17 @@ export function GroupRail({
                 key={person.userId}
                 className="flex items-center gap-1 rounded-lg px-1 hover:bg-brand-500/60"
               >
-                <StatusIcon className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden="true" />
+                {person.status === "frozen" ? (
+                  <span
+                    className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-white/20"
+                    title="Frozen"
+                  >
+                    <Snowflake className="h-3 w-3 text-white" aria-hidden="true" />
+                    <span className="sr-only">Frozen</span>
+                  </span>
+                ) : (
+                  <StatusIcon className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden="true" />
+                )}
                 <div className="min-w-0 flex-1 py-1.5">
                   <div className="flex min-w-0 items-center gap-1">
                     <span className="truncate text-sm font-bold">{person.name}</span>
@@ -365,14 +383,20 @@ export function GroupRail({
             <DialogTitle className="text-white">Remove {removing?.name}</DialogTitle>
             <DialogDescription className="text-white">
               {removing
-                ? `${removing.name} leaves ${group.name}. Choose whether this month's participation fee stays on the balance.`
+                ? `${removing.name} leaves ${group.name}. The fee uses the day they stopped attending.`
                 : ""}
             </DialogDescription>
           </DialogHeader>
+          <div>
+            <div className="text-xs font-bold text-white">Stopped attending</div>
+            <div className="mt-1">
+              <DateTimeField dateOnly value={leftOn} onChange={setLeftOn} />
+            </div>
+          </div>
           <div className="flex flex-col gap-2">
             <button
               type="button"
-              disabled={removeBusy || !removing}
+              disabled={removeBusy || !removing || !leftOn}
               className="rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
               onClick={() => removing && void remove(removing, true)}
             >
@@ -380,7 +404,7 @@ export function GroupRail({
             </button>
             <button
               type="button"
-              disabled={removeBusy || !removing}
+              disabled={removeBusy || !removing || !leftOn}
               className="rounded-full bg-red-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
               onClick={() => removing && void remove(removing, false)}
             >
@@ -426,14 +450,16 @@ function MoveDialog({
   const [target, setTarget] = useState("");
   const [groupIds, setGroupIds] = useState<string[]>([]);
   const [groups, setGroups] = useState<ClassGroup[]>([]);
+  const [addedOn, setAddedOn] = useState(tashkentToday);
   const [busy, setBusy] = useState(false);
-  const options = allClasses.filter((c) => c.id !== klass.id && c.active);
+  const options = allClasses.filter((c) => c.id !== klass.id && c.active && !c.archived_at);
   const classGroups = groups.filter((row) => row.class_id === target && row.active);
 
   useEffect(() => {
     if (!person) return;
     setTarget("");
     setGroupIds([]);
+    setAddedOn(tashkentToday());
     void listGroups()
       .then(setGroups)
       .catch(() => toast.error("Could not load groups"));
@@ -445,7 +471,7 @@ function MoveDialog({
   }
 
   async function move() {
-    if (!person || !target || groupIds.length === 0) return;
+    if (!person || !target || groupIds.length === 0 || !addedOn) return;
     const chosen = classGroups.filter((row) => groupIds.includes(row.id));
     if (chosen.length === 0) return;
     setBusy(true);
@@ -454,6 +480,8 @@ function MoveDialog({
         groupId: chosen[0].id,
         userId: person.userId,
         status: person.status,
+        enrolledOn: addedOn,
+        activatedOn: addedOn,
         move: true,
         fromClassId: klass.id,
       });
@@ -462,6 +490,8 @@ function MoveDialog({
           groupId: extra.id,
           userId: person.userId,
           status: person.status,
+          enrolledOn: addedOn,
+          activatedOn: addedOn,
         });
       }
       toast.success(`${person.name} moved to ${chosen.map((row) => row.name).join(", ")}`);
@@ -522,13 +552,19 @@ function MoveDialog({
             )}
           </ul>
         )}
+        <div>
+          <div className="text-xs font-bold text-white">Date added</div>
+          <div className="mt-1">
+            <DateTimeField dateOnly value={addedOn} onChange={setAddedOn} />
+          </div>
+        </div>
         <div className="flex justify-end gap-2">
           <button type="button" className="tap px-4 py-2 text-sm font-bold" onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            disabled={busy || !target || groupIds.length === 0}
+            disabled={busy || !target || groupIds.length === 0 || !addedOn}
             onClick={() => void move()}
             className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
           >

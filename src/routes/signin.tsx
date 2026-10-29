@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
 import { signInWithIdentifier } from "@/lib/auth/username-login";
 import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
-import { ADMIN_SESSION_HOURS, setKeepSignedIn } from "@/lib/auth/session-policy";
+import { ADMIN_SESSION_HOURS, isKeepSignedIn, setKeepSignedIn } from "@/lib/auth/session-policy";
 import {
   listSavedAccounts,
   rememberCurrentSession,
@@ -62,6 +62,7 @@ function SignIn() {
       setInfo(`Admin sessions end ${ADMIN_SESSION_HOURS} hours after you sign in. Sign in again to continue.`);
     }
     setSaved(listSavedAccounts());
+    setKeep(isKeepSignedIn());
     supabase.auth.getSession().then(async ({ data }) => {
       if (data.session && !isAddAccount()) navigate({ to: await pathAfterSignIn(), replace: true });
     });
@@ -123,6 +124,7 @@ function SignIn() {
     setError(null);
     setSwitchingId(account.userId);
     try {
+      setKeepSignedIn(keep);
       await switchToAccount(account.userId);
       window.location.assign(await pathAfterSignIn());
     } catch (err) {
@@ -213,7 +215,12 @@ function SignIn() {
               <input
                 type="checkbox"
                 checked={keep}
-                onChange={(e) => setKeep(e.target.checked)}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  setKeep(next);
+                  setKeepSignedIn(next);
+                  if (next) void rememberCurrentSession();
+                }}
                 className="h-4 w-4 rounded border-brand-300 accent-brand-300"
               />
               Keep me signed in

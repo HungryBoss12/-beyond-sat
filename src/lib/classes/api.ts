@@ -72,6 +72,11 @@ export async function restoreClass(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function purgeArchivedClass(id: string): Promise<void> {
+  const { error } = await db.rpc("admin_purge_archived_class", { p_class_id: id });
+  if (error) throw error;
+}
+
 export async function createClass(input: {
   name: string;
   description?: string | null;
@@ -167,7 +172,7 @@ export async function removeClassMember(classId: string, userId: string): Promis
 }
 
 const CHAT_DIRECTORY_COLS =
-  "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name";
+  "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,badge_score";
 
 function fromDirectory(rows: unknown): ChatProfile[] {
   return ((rows ?? []) as Omit<ChatProfile, "email">[]).map((p) => ({ ...p, email: null }));
@@ -183,7 +188,7 @@ export async function getChatProfile(userId?: string): Promise<ChatProfile | nul
   const { data, error } = await db
     .from("profiles")
     .select(
-      "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,email",
+      "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,email,badge_score",
     )
     .eq("id", uid)
     .maybeSingle();

@@ -1,5 +1,6 @@
 import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import { AdminDesk } from "@/components/support/AdminDesk";
+import { SupportReceivedDesk } from "@/components/support/SupportReceivedDesk";
 import { TeacherDesk } from "@/components/support/TeacherDesk";
 
 const adminRoute = getRouteApi("/_authenticated/admin");
@@ -12,5 +13,6 @@ export const Route = createFileRoute("/_authenticated/admin/support")({
 function SupportAdminPage() {
   const { staffRole } = adminRoute.useRouteContext();
   if (staffRole === "admin") return <AdminDesk />;
+  if (staffRole === "support_teacher") return <SupportReceivedDesk />;
   return <TeacherDesk />;
 }

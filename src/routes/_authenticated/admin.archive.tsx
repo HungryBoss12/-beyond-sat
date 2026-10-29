@@ -1,12 +1,12 @@
 import { createFileRoute, getRouteApi, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Archive, TriangleAlert } from "lucide-react";
+import { Archive, RotateCcw, Trash2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { RevealCard } from "@/components/ui/reveal-card";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { EmptyState } from "@/components/ui/panel";
 import { SubclassChip } from "@/components/classes/SubclassChip";
-import { listArchivedClasses, restoreClass, type ClassRow } from "@/lib/classes";
+import { listArchivedClasses, purgeArchivedClass, restoreClass, type ClassRow } from "@/lib/classes";
 import { monthKey } from "@/lib/classes/classroom";
 import {
   listAllGroupMembers,
@@ -19,6 +19,7 @@ import {
 } from "@/lib/classes/groups";
 import { scheduleLine } from "@/lib/classes/schedule";
 import { subjectToSlug } from "@/lib/classes/schemes";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { listBalances } from "@/lib/billing/api";
 
 export const Route = createFileRoute("/_authenticated/admin/archive")({
@@ -45,6 +46,7 @@ function AdminArchive() {
   const [debtors, setDebtors] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [purgingId, setPurgingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -138,11 +140,14 @@ function AdminArchive() {
                       >
                         <span className="min-w-0">
                           <SubclassChip subject={group.subject} name={group.name} />
-                          <span className="mt-1 block truncate text-xs text-white">
-                            {group.teacher_id
-                              ? personName(teachers.get(group.teacher_id), group.teacher_id)
-                              : "No teacher"}{" "}
-                            · {scheduleLine(group)}
+                          <span className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-white">
+                            <span className="truncate">
+                              {group.teacher_id
+                                ? personName(teachers.get(group.teacher_id), group.teacher_id)
+                                : "No teacher"}{" "}
+                              · {scheduleLine(group)}
+                            </span>
+                            <ScoreBadge score={group.teacher_id ? teachers.get(group.teacher_id)?.badge_score : null} />
                           </span>
                         </span>
                         <span className="shrink-0 text-xs font-bold tabular-nums">{active} active</span>
@@ -151,25 +156,49 @@ function AdminArchive() {
                   })}
                 </div>
                 {isAdmin && (
-                  <button
-                    type="button"
-                    disabled={restoringId === row.id}
-                    className="btn-brand mt-3 rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
-                    onClick={() => {
-                      setRestoringId(row.id);
-                      void restoreClass(row.id)
-                        .then(async () => {
-                          toast.success(`${row.name} restored`);
-                          await load();
-                        })
-                        .catch((err: unknown) =>
-                          toast.error(err instanceof Error ? err.message : "Could not restore"),
-                        )
-                        .finally(() => setRestoringId(null));
-                    }}
-                  >
-                    {restoringId === row.id ? "Restoring…" : "Restore"}
-                  </button>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={restoringId === row.id || purgingId === row.id}
+                      className="btn-brand inline-flex items-center gap-1 rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+                      onClick={() => {
+                        setRestoringId(row.id);
+                        void restoreClass(row.id)
+                          .then(async () => {
+                            toast.success(`${row.name} restored`);
+                            await load();
+                          })
+                          .catch((err: unknown) =>
+                            toast.error(err instanceof Error ? err.message : "Could not restore"),
+                          )
+                          .finally(() => setRestoringId(null));
+                      }}
+                    >
+                      <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                      {restoringId === row.id ? "Restoring…" : "Restore"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={restoringId === row.id || purgingId === row.id}
+                      className="inline-flex items-center gap-1 rounded-full bg-white px-4 py-2 text-sm font-bold text-brand-900 disabled:opacity-60"
+                      onClick={() => {
+                        if (!window.confirm(`Delete ${row.name} permanently? This cannot be undone.`)) return;
+                        setPurgingId(row.id);
+                        void purgeArchivedClass(row.id)
+                          .then(async () => {
+                            toast.success(`${row.name} deleted`);
+                            await load();
+                          })
+                          .catch((err: unknown) =>
+                            toast.error(err instanceof Error ? err.message : "Could not delete"),
+                          )
+                          .finally(() => setPurgingId(null));
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      {purgingId === row.id ? "Deleting…" : "Delete"}
+                    </button>
+                  </div>
                 )}
               </RevealCard>
             );

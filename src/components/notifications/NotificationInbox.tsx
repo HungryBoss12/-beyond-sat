@@ -7,7 +7,7 @@ import {
   notifyNotificationsChanged,
   type UserNotification,
 } from "@/lib/notifications/client";
-import { useNotificationAnchorOptional } from "./NotificationAnchorContext";
+import { safeMediaUrl, safeNavigationUrl } from "@/lib/safe-url";
 
 type Props = {
   open: boolean;
@@ -63,9 +63,9 @@ export function NotificationInbox({ open, items, onClose, onRefresh, inboxRef, l
                   }
                 >
                   <div className="flex items-start gap-3">
-                    {n.image_url ? (
+                    {safeMediaUrl(n.image_url) ? (
                       <img
-                        src={n.image_url}
+                        src={safeMediaUrl(n.image_url) ?? undefined}
                         alt=""
                         className="h-12 w-12 shrink-0 rounded-xl object-cover ring-1 ring-brand-400/40"
                       />
@@ -79,9 +79,9 @@ export function NotificationInbox({ open, items, onClose, onRefresh, inboxRef, l
                         {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {n.link_url ? (
+                        {safeNavigationUrl(n.link_url) ? (
                           <a
-                            href={n.link_url}
+                            href={safeNavigationUrl(n.link_url) ?? undefined}
                             onClick={() => {
                               void markNotificationRead(n.id).then(onRefresh);
                               onClose();

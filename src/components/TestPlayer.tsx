@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  ArrowLeft,
   Bookmark,
+  BookOpen,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Clock,
+  Eye,
+  EyeOff,
   Loader2,
+  LogOut,
   MoreVertical,
   NotebookPen,
   Sigma,
@@ -783,7 +790,7 @@ export function TestPlayer({
             onClick={() => (onExit ? onExit() : navigate({ to: "/practice" }))}
             className="btn-test mt-6 inline-flex items-center gap-2 rounded-full bg-test-accent px-5 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep"
           >
-            Back to practice
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to practice
           </button>
         </div>
       </div>
@@ -870,6 +877,7 @@ export function TestPlayer({
                   onClick={() => setHideTimer((v) => !v)}
                   className="tap mt-1 rounded-full border border-test-ink px-3 py-0.5 text-xs font-semibold text-test-ink hover:bg-test-well"
                 >
+                  {hideTimer ? <Eye className="mr-1 inline h-3 w-3" aria-hidden="true" /> : <EyeOff className="mr-1 inline h-3 w-3" aria-hidden="true" />}
                   {hideTimer ? "Show" : "Hide"}
                 </button>
               </>
@@ -952,7 +960,7 @@ export function TestPlayer({
                       }}
                       className="tap block w-full px-4 py-2 text-left text-sm text-test-ink hover:bg-test-well"
                     >
-                      {showDirections ? "Hide" : "Show"} directions
+                      <BookOpen className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> {showDirections ? "Hide" : "Show"} directions
                     </button>
                     )}
                     <div className="my-1 border-t border-test-line" />
@@ -963,7 +971,7 @@ export function TestPlayer({
                       }}
                       className="tap block w-full px-4 py-2 text-left text-sm text-test-ink hover:bg-test-well"
                     >
-                      Exit without submitting
+                      <LogOut className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> Exit without submitting
                     </button>
                   </div>
                 </>
@@ -1031,7 +1039,7 @@ export function TestPlayer({
                 onClick={() => setShowReference(false)}
                 className="tap rounded px-2 py-1 text-sm font-semibold hover:bg-test-well"
               >
-                Close
+                <X className="mr-1 inline h-4 w-4" aria-hidden="true" /> Close
               </button>
             </div>
             <ul className="mt-4 space-y-2 text-sm leading-6">
@@ -1230,7 +1238,7 @@ function BreakScreen({
         onClick={onEndEarly}
         className="btn-test mt-8 rounded-full bg-test-accent px-8 py-2.5 text-sm font-bold text-white hover:bg-test-accent-deep"
       >
-        End break · Start Math
+        <ChevronRight className="mr-1 inline h-4 w-4" aria-hidden="true" /> End break · Start Math
       </button>
     </div>
   );
@@ -1468,7 +1476,7 @@ function BottomBar({
           disabled={showReview}
           className="btn-test inline-flex items-center rounded-full bg-test-accent px-5 py-2 text-sm font-bold text-white hover:bg-test-accent-deep disabled:pointer-events-none disabled:opacity-40"
         >
-          Back
+          <ChevronLeft className="mr-1 h-4 w-4" aria-hidden="true" /> Back
         </button>
         )}
         {onCheckAll ? (
@@ -1750,13 +1758,13 @@ function ResultsView({
             onClick={onReview}
             className="tap rounded-xl bg-brand-400 px-6 py-3.5 text-sm font-bold text-white shadow-brand ring-1 ring-brand-200/50 hover:bg-brand-300"
           >
-            Review answers
+            <BookOpen className="mr-1 inline h-4 w-4" aria-hidden="true" /> Review answers
           </button>
           <button
             onClick={onExit}
             className="tap rounded-xl bg-brand-800 px-6 py-3.5 text-sm font-bold text-white ring-1 ring-brand-300/40 hover:bg-brand-700"
           >
-            Back to practice
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to practice
           </button>
         </div>
       </div>

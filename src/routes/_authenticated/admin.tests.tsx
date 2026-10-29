@@ -13,6 +13,8 @@ import {
   AlertCircle,
   Link2,
   ClipboardList,
+  Calendar,
+  CalendarPlus,
 } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { RevealCard } from "@/components/ui/reveal-card";
@@ -38,6 +40,7 @@ import {
   type LetterDifficulty,
 } from "@/lib/sat";
 import { paperFromGroup, compareBySourceDateAndSection, groupByPaperDate } from "@/lib/mock-exams";
+import { adoptNamelessMathDrafts, draftNeedsName } from "@/lib/import/load-existing";
 
 type Test = {
   id: string;
@@ -49,6 +52,7 @@ type Test = {
   source_year: number | null;
   published: boolean;
   bank_format: BankFormat;
+  created_at: string;
 };
 
 type QRow = {
@@ -71,9 +75,11 @@ type PaperGroup = {
   mod2: Test[];
   source_month: number | null;
   source_year: number | null;
+  created_at: string;
 };
 
 type Search = { bank?: BankFormat; edit?: string; preview?: string };
+type TestSort = "source" | "added";
 
 export const Route = createFileRoute("/_authenticated/admin/tests")({
   validateSearch: (s: Record<string, unknown>): Search => ({
@@ -99,6 +105,7 @@ const empty = (bank: BankFormat = "ordinary"): Test => ({
   source_year: new Date().getFullYear(),
   published: bank !== "sqb",
   bank_format: bank,
+  created_at: "",
 });
 
 function sortGroups(a: PaperGroup, b: PaperGroup): number {
@@ -106,6 +113,30 @@ function sortGroups(a: PaperGroup, b: PaperGroup): number {
     { source_month: a.source_month, source_year: a.source_year, section: a.section, title: a.base },
     { source_month: b.source_month, source_year: b.source_year, section: b.section, title: b.base },
   );
+}
+
+function addedDayLabel(iso: string): string {
+  const day = iso.slice(0, 10);
+  const [year, month, date] = day.split("-").map(Number);
+  if (!year || !month || !date) return "Unknown date";
+  return new Date(Date.UTC(year, month - 1, date)).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function groupByAddedDay(items: PaperGroup[]): { key: string; label: string; items: PaperGroup[] }[] {
+  const sorted = [...items].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const buckets = new Map<string, { key: string; label: string; items: PaperGroup[] }>();
+  for (const item of sorted) {
+    const key = item.created_at.slice(0, 10) || "unknown";
+    const bucket = buckets.get(key) ?? { key, label: addedDayLabel(item.created_at), items: [] };
+    bucket.items.push(item);
+    buckets.set(key, bucket);
+  }
+  return [...buckets.values()];
 }
 
 function groupTests(items: Test[]): { papers: PaperGroup[]; singles: PaperGroup[] } {
@@ -123,8 +154,11 @@ function groupTests(items: Test[]): { papers: PaperGroup[]; singles: PaperGroup[
         mod2: [],
         source_month: t.source_month,
         source_year: t.source_year,
+        created_at: t.created_at,
       };
       map.set(key, g);
+    } else if (t.created_at > g.created_at) {
+      g.created_at = t.created_at;
     }
     if (t.module === 1) g.mod1.push(t);
     else g.mod2.push(t);
@@ -163,10 +197,12 @@ function AdminTests() {
     rwKey?: string | null;
     mathKey?: string | null;
   } | null>(null);
+  const [sort, setSort] = useState<TestSort>("source");
 
   async function load() {
     setLoading(true);
-    const [{ data }, tally] = await Promise.all([
+    await adoptNamelessMathDrafts().catch(() => undefined);
+    const [row, tally] = await Promise.all([
       supabase
         .from("tests")
         .select("*")
@@ -175,10 +211,12 @@ function AdminTests() {
         .order("created_at", { ascending: false }),
       fetchTestQuestionCounts(),
     ]);
+    const data = row.data;
     const mapped = ((data ?? []) as Test[]).map((t) => ({
       ...t,
       published: t.published !== false,
       bank_format: (t.bank_format as BankFormat) || bank,
+      created_at: t.created_at ?? "",
     }));
     setItems(mapped);
     setCounts(tally);
@@ -211,14 +249,14 @@ function AdminTests() {
 
   const { papers, singles } = useMemo(() => groupTests(items), [items]);
 
-  const paperDateGroups = useMemo(
-    () => groupByPaperDate(papers.map((g) => ({ ...g, title: g.base }))),
-    [papers],
-  );
-  const singleDateGroups = useMemo(
-    () => groupByPaperDate(singles.map((g) => ({ ...g, title: g.base }))),
-    [singles],
-  );
+  const paperDateGroups = useMemo(() => {
+    if (sort === "added") return groupByAddedDay(papers);
+    return groupByPaperDate(papers.map((g) => ({ ...g, title: g.base })));
+  }, [papers, sort]);
+  const singleDateGroups = useMemo(() => {
+    if (sort === "added") return groupByAddedDay(singles);
+    return groupByPaperDate(singles.map((g) => ({ ...g, title: g.base })));
+  }, [singles, sort]);
 
   const pairCandidates = useMemo(() => {
     if (!pairing) return [];
@@ -389,6 +427,14 @@ function AdminTests() {
       return;
     }
     const wantPublished = editing.published === true;
+    if (wantPublished && draftNeedsName(editing.title)) {
+      alert("Give this draft a name before submitting.");
+      return;
+    }
+    if (wantPublished && (editing.source_month == null || editing.source_year == null)) {
+      alert("Give this draft a source date before submitting.");
+      return;
+    }
     const payload = {
       title: editing.title.trim(),
       section: editing.section,
@@ -469,7 +515,27 @@ function AdminTests() {
             .
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="flex rounded-lg bg-slate-100 p-1" role="group" aria-label="Sort tests">
+            <button
+              type="button"
+              onClick={() => setSort("source")}
+              className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-bold ${
+                sort === "source" ? "bg-brand-600 text-white" : "text-slate-600"
+              }`}
+            >
+              <Calendar className="h-3.5 w-3.5" aria-hidden="true" /> Source date
+            </button>
+            <button
+              type="button"
+              onClick={() => setSort("added")}
+              className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-bold ${
+                sort === "added" ? "bg-brand-600 text-white" : "text-slate-600"
+              }`}
+            >
+              <CalendarPlus className="h-3.5 w-3.5" aria-hidden="true" /> Date added
+            </button>
+          </div>
           {bank === "ordinary" && (
             <button
               onClick={() => setMockBuilder({})}
@@ -742,16 +808,23 @@ function AdminTests() {
               </div>
 
               <Field label="Visibility">
-                <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-brand-400/40 bg-brand-800 px-3 py-2.5">
-                  <input
-                    type="checkbox"
-                    checked={editing.published}
-                    onChange={(e) => setEditing({ ...editing, published: e.target.checked })}
-                    className="h-4 w-4 rounded border-brand-400"
-                  />
-                  <span className="text-sm text-white">
-                    {editing.published ? "Published — visible on Practice" : "Draft — hidden from Practice"}
+                <label className="block cursor-pointer rounded-lg border border-brand-400/40 bg-brand-800 px-3 py-2.5">
+                  <span className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={editing.published}
+                      onChange={(e) => setEditing({ ...editing, published: e.target.checked })}
+                      className="h-4 w-4 rounded border-brand-400"
+                    />
+                    <span className="text-sm text-white">
+                      {editing.published ? "Published — visible on Practice" : "Draft — hidden from Practice"}
+                    </span>
                   </span>
+                  {(draftNeedsName(editing.title) || editing.source_month == null || editing.source_year == null) && (
+                    <span className="mt-2 block text-xs text-amber-100">
+                      A name and a source date are required before this draft can be submitted.
+                    </span>
+                  )}
                 </label>
               </Field>
 

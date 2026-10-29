@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePointerGlow } from "@/hooks/usePointerGlow";
-import { CalendarPlus, Check, CheckCheck, Eraser, Gauge, X } from "lucide-react";
+import { CalendarDays, CalendarPlus, Check, CheckCheck, Eraser, Gauge, Plus, X } from "lucide-react";
 import { toast } from "sonner";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { IconButton } from "@/components/ui/icon-button";
 import type { MemberStatus } from "@/lib/classes/types";
 import {
@@ -28,7 +29,12 @@ import { shortDate } from "@/lib/classes/schedule";
 import { cn } from "@/lib/utils";
 import { DateTimeField } from "@/components/ui/date-time-field";
 
-export type GridPerson = { userId: string; name: string; status: MemberStatus };
+export type GridPerson = {
+  userId: string;
+  name: string;
+  status: MemberStatus;
+  badgeScore?: number | null;
+};
 
 const NAME_COL = "minmax(150px, 200px)";
 
@@ -80,11 +86,12 @@ export function DateStrip({
                 : "bg-brand-800 text-white",
             )}
           >
+            <CalendarDays className="mr-1 inline h-3 w-3" aria-hidden="true" />
             {shortDate(lesson.lesson_date)}
           </button>
         ))}
         {lessons.length === 0 && (
-          <span className="text-xs text-white">
+          <span className="fade-in text-xs text-white">
             No lessons this month. Set the days in Edit class, or add a date.
           </span>
         )}
@@ -103,7 +110,7 @@ export function DateStrip({
       </div>
       {adding && (
         <form
-          className="flex flex-wrap items-center gap-2"
+          className="widen-in flex flex-wrap items-center gap-2"
           onSubmit={(event) => {
             event.preventDefault();
             if (!date) return;
@@ -124,7 +131,7 @@ export function DateStrip({
             type="submit"
             className="btn-brand rounded-full bg-brand-400 px-3 py-1.5 text-xs font-bold"
           >
-            Add
+            <Plus className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> Add
           </button>
         </form>
       )}
@@ -307,7 +314,8 @@ export function AttendanceGrid({
                   lesson.id === selectedId && "rounded-t-lg bg-brand-500",
                 )}
               >
-                {shortDate(lesson.lesson_date)}
+                <CalendarDays className="mr-1 inline h-3 w-3" aria-hidden="true" />
+            {shortDate(lesson.lesson_date)}
               </button>
             ))}
           </div>
@@ -320,9 +328,10 @@ export function AttendanceGrid({
             >
               <div
                 role="rowheader"
-                className="sticky left-0 z-10 truncate bg-brand-600 px-2 py-2 text-sm font-bold"
+                className="sticky left-0 z-10 flex min-w-0 items-center gap-1 bg-brand-600 px-2 py-2 text-sm font-bold"
               >
-                {person.name}
+                <span className="truncate">{person.name}</span>
+                <ScoreBadge score={person.badgeScore} />
               </div>
               {lessons.map((lesson, c) => {
                 const state = local.get(`${person.userId}:${lesson.lesson_date}`) ?? "empty";
@@ -508,7 +517,7 @@ export function MarksGrid({
                 : "bg-brand-800 text-white ring-1 ring-brand-300",
             )}
           >
-            {HW_ITEM_LETTER[item]}
+            {everyoneDone(item) ? <Check className="mx-auto h-3.5 w-3.5" aria-hidden="true" /> : HW_ITEM_LETTER[item]}
           </button>
         ))}
         <div className="ml-auto flex gap-1">
@@ -570,7 +579,8 @@ export function MarksGrid({
                   onClick={() => onSelect(lesson.id)}
                   className="tap text-[11px] font-bold tabular-nums"
                 >
-                  {shortDate(lesson.lesson_date)}
+                  <CalendarDays className="mr-1 inline h-3 w-3" aria-hidden="true" />
+            {shortDate(lesson.lesson_date)}
                 </button>
                 <div className="flex gap-0.5">
                   {items.map((item) => {
@@ -605,7 +615,7 @@ export function MarksGrid({
                             : "bg-brand-800 text-white ring-1 ring-brand-300",
                         )}
                       >
-                        {HW_ITEM_LETTER[item]}
+                        {on ? <Check className="mx-auto h-3 w-3" aria-hidden="true" /> : HW_ITEM_LETTER[item]}
                       </button>
                     );
                   })}
@@ -633,11 +643,12 @@ export function MarksGrid({
                 <div
                   role="rowheader"
                   className={cn(
-                    "sticky left-0 z-10 truncate bg-brand-600 px-2 py-2 text-sm font-bold",
+                    "sticky left-0 z-10 flex min-w-0 items-center gap-1 bg-brand-600 px-2 py-2 text-sm font-bold",
                     selected && absentOn(person.userId, selected.lesson_date) && "text-red-300 line-through",
                   )}
                 >
-                  {person.name}
+                  <span className="truncate">{person.name}</span>
+                  <ScoreBadge score={person.badgeScore} />
                 </div>
                 {lessons.map((lesson) => (
                   <div
@@ -666,7 +677,7 @@ export function MarksGrid({
                               : "bg-brand-800 text-brand-200 ring-1 ring-brand-400/50",
                           )}
                         >
-                          {HW_ITEM_LETTER[item]}
+                          {on ? <Check className="mx-auto h-3.5 w-3.5" aria-hidden="true" /> : HW_ITEM_LETTER[item]}
                           {auto && on && (
                             <span
                               aria-hidden="true"

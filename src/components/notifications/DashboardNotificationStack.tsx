@@ -12,6 +12,7 @@ import {
   overlayProgress,
   type UserNotification,
 } from "@/lib/notifications/client";
+import { safeMediaUrl, safeNavigationUrl } from "@/lib/safe-url";
 import { useNotificationAnchorOptional } from "./NotificationAnchorContext";
 
 const SEEN_KEY = "beyond-sat:dashboard-notif-seen";
@@ -214,15 +215,15 @@ function NotificationCard({
       className="dashboard-notif-card rounded-3xl"
     >
       <div className="flex items-start gap-5 px-7 py-6">
-        {n.image_url ? (
-          <img src={n.image_url} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
+        {safeMediaUrl(n.image_url) ? (
+          <img src={safeMediaUrl(n.image_url) ?? undefined} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
         ) : null}
         <div className="min-w-0 flex-1">
           <div className="dashboard-notif-card__title">{n.title}</div>
           {n.body ? <p className="dashboard-notif-card__body line-clamp-4">{n.body}</p> : null}
-          {n.link_url ? (
+          {safeNavigationUrl(n.link_url) ? (
             <a
-              href={n.link_url}
+              href={safeNavigationUrl(n.link_url) ?? undefined}
               className="mt-3 inline-block text-sm font-bold text-white underline decoration-brand-200/70 underline-offset-2 hover:decoration-white"
             >
               {n.link_label ?? "View"} →

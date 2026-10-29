@@ -575,6 +575,7 @@ export type PersonProfile = {
   email: string | null;
   avatar_url: string | null;
   last_seen_at: string | null;
+  badge_score?: number | null;
 };
 
 /** Staff can read every profile; one query instead of one per student. */
@@ -583,7 +584,7 @@ export async function listProfiles(ids: string[]): Promise<Map<string, PersonPro
   if (!unique.length) return new Map();
   const { data, error } = await db
     .from("profiles")
-    .select("id,username,full_name,first_name,last_name,email,avatar_url,last_seen_at")
+    .select("id,username,full_name,first_name,last_name,email,avatar_url,last_seen_at,badge_score")
     .in("id", unique);
   if (error) throw error;
   return new Map(((data ?? []) as PersonProfile[]).map((p) => [p.id, p]));

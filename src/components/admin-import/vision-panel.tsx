@@ -95,7 +95,7 @@ export function VisionPanel({
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-brand-900">
               <div
-                className="h-full rounded-full bg-brand-200 transition-[width] duration-300"
+                className="sweep-right h-full rounded-full bg-brand-200 transition-[width] duration-700"
                 style={{ width: `${overallPct}%` }}
               />
             </div>

@@ -10,6 +10,8 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { installSmoothWheel } from "../lib/smooth-wheel";
+import { blockFileAccess, FILE_BLOCK_BOOT } from "../lib/block-file-access";
 import { registerPwa } from "../lib/pwa";
 import { watchAdminSession } from "../lib/auth/admin-session";
 import { OfflineGate } from "../components/OfflineScreen";
@@ -120,6 +122,7 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: FILE_BLOCK_BOOT }} />
         <HeadContent />
       </head>
       <body>
@@ -132,10 +135,16 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  blockFileAccess();
 
   useEffect(() => {
     registerPwa();
-    return watchAdminSession();
+    const stopWheel = installSmoothWheel();
+    const stopAdmin = watchAdminSession();
+    return () => {
+      stopWheel();
+      stopAdmin();
+    };
   }, []);
 
   return (

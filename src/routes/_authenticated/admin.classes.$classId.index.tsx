@@ -23,6 +23,7 @@ import {
 import { scheduleLine } from "@/lib/classes/schedule";
 import { subjectToSlug } from "@/lib/classes/schemes";
 import { restoreClass } from "@/lib/classes";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { listBalances } from "@/lib/billing/api";
 import { reissueStudentInvite, unclaimedUserIds } from "@/lib/students/api";
 import { toast } from "sonner";
@@ -91,6 +92,7 @@ function ClassOverview() {
     name: person.name,
     rw: scores.get(person.userId)?.rw ?? null,
     math: scores.get(person.userId)?.math ?? null,
+    badgeScore: profiles.get(person.userId)?.badge_score ?? null,
   }));
 
   return (
@@ -170,6 +172,7 @@ function ClassOverview() {
                   ? personName(profiles.get(group.teacher_id), group.teacher_id)
                   : null
               }
+              badgeScore={group.teacher_id ? profiles.get(group.teacher_id)?.badge_score : null}
               active={
                 members.filter((m) => m.group_id === group.id && m.status === "active").length
               }
@@ -321,11 +324,13 @@ function SubclassCard({
   group,
   classId,
   teacher,
+  badgeScore,
   active,
 }: {
   group: ClassGroup;
   classId: string;
   teacher: string | null;
+  badgeScore?: number | null;
   active: number;
 }) {
   return (
@@ -337,10 +342,13 @@ function SubclassCard({
     >
       <SubclassChip subject={group.subject} name={group.name} />
       <p className="mt-2 truncate text-sm font-bold text-white">{scheduleLine(group)}</p>
-      <p className="truncate text-xs text-white">
-        {teacher ? `Teacher ${teacher}` : "No teacher set"} · {active} active
-        {group.room ? ` · Room ${group.room}` : ""}
-        {group.active ? "" : " · inactive"}
+      <p className="flex min-w-0 items-center gap-1.5 truncate text-xs text-white">
+        <span className="truncate">
+          {teacher ? `Teacher ${teacher}` : "No teacher set"} · {active} active
+          {group.room ? ` · Room ${group.room}` : ""}
+          {group.active ? "" : " · inactive"}
+        </span>
+        <ScoreBadge score={badgeScore} />
       </p>
     </Link>
   );

@@ -114,6 +114,33 @@ describe("dashboard-mocks", () => {
     expect(trend.some((t) => t.incomplete)).toBe(true);
   });
 
+  it("buildMockTrend names a second test on the same day by its kind", () => {
+    const first: MockSessionRow = {
+      ...base,
+      id: "e4ef0000-0000-4000-8000-000000000001",
+      score: 900,
+      completed_at: "2026-10-12T04:00:00Z",
+      metadata: { draft_answers: null },
+    };
+    const second: MockSessionRow = {
+      ...base,
+      id: "e4ef0000-0000-4000-8000-000000000002",
+      score: 1000,
+      completed_at: "2026-10-12T08:00:00Z",
+      metadata: { draft_answers: null },
+    };
+    const third: MockSessionRow = {
+      ...base,
+      id: "e4ef0000-0000-4000-8000-000000000003",
+      score: 1100,
+      completed_at: "2026-10-12T12:00:00Z",
+      metadata: { draft_answers: null },
+    };
+    const trend = buildMockTrend([third, first, second]);
+    expect(trend.map((point) => point.label)).toEqual(["Oct 12", "Oct 12 · Mock", "Oct 12 · Mock 2"]);
+    expect(trend.some((point) => point.label.includes("e4ef"))).toBe(false);
+  });
+
   it("chartReadyTrend adds anchor for single-point charts", () => {
     const trend = buildMockTrend([
       {

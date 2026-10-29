@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { DesmosCalculator } from "@/components/DesmosCalculator";
+import { BookOpenCheck } from "lucide-react";
 import { SupportHeader } from "@/components/support/SupportHeader";
 import { SupportRecommendedVideo } from "@/components/support/SupportRecommendedVideo";
 import { AdminSelect } from "@/components/admin/AdminSelect";
@@ -12,6 +14,7 @@ import {
   loadMySessions,
   loadSupportTeachers,
   loadTeacherSlots,
+  prepareSupportWindows,
   subjectLabel,
   type SupportOrigin,
   type SupportSession,
@@ -36,6 +39,7 @@ function SessionLine({ session }: { session: SupportSession }) {
         {session.starts_at ? ` · ${formatWhen(session.starts_at)}` : ""}
         {session.status === "pending" ? " · waiting" : ""}
         {session.status === "rejected" ? " · declined" : ""}
+        {session.task ? <span className="mt-1 block text-xs">Task: {session.task}</span> : null}
       </span>
       <Tag origin={session.origin} />
     </li>
@@ -56,8 +60,8 @@ export function StudentDesk() {
   }
 
   useEffect(() => {
-    void Promise.all([loadSupportTeachers(), loadMySessions()])
-      .then(([nextTeachers, nextSessions]) => {
+    void Promise.all([prepareSupportWindows(), loadSupportTeachers(), loadMySessions()])
+      .then(([, nextTeachers, nextSessions]) => {
         setTeachers(nextTeachers);
         setSessions(nextSessions);
         setTeacherId((current) => current || nextTeachers[0]?.id || "");
@@ -91,7 +95,7 @@ export function StudentDesk() {
     setBusy(true);
     try {
       await bookSupportWindow(slot.id, subject);
-      toast.success("Request sent. You will get a notification when it is confirmed or declined.");
+      toast.success("Slot booked");
       setSlots(await loadTeacherSlots(teacherId));
       await loadSessions();
     } catch (err) {
@@ -156,7 +160,7 @@ export function StudentDesk() {
             tone="brand"
           />
         </div>
-        <p className="text-xs">Free slots can be requested. Taken slots already have a student. There is no homework here.</p>
+        <p className="text-xs">Empty slots can be booked. Taken slots already have a student.</p>
         {[...days.entries()].length === 0 ? (
           <p className="text-sm">This teacher has no open windows.</p>
         ) : (
@@ -178,7 +182,7 @@ export function StudentDesk() {
                         } disabled:cursor-default`}
                       >
                         {formatWhen(slot.starts_at).slice(-5)} ·{" "}
-                        {slot.state === "free" ? "Free" : slot.state === "mine" ? "Yours" : slot.state === "break" ? "Break" : "Taken"}
+                        {slot.state === "free" ? "Book" : slot.state === "mine" ? "Yours" : slot.state === "break" ? "Break" : "Taken"}
                       </button>
                     </li>
                   ))}
@@ -188,6 +192,15 @@ export function StudentDesk() {
           </div>
         )}
       </Panel>
+      {coming?.task && (
+        <Panel className="space-y-2 p-4 text-white">
+          <h2 className="inline-flex items-center gap-2 text-sm font-black">
+            <BookOpenCheck className="h-4 w-4" aria-hidden="true" /> Task from your teacher
+          </h2>
+          <p className="text-sm">{coming.task}</p>
+        </Panel>
+      )}
+      <DesmosCalculator />
     </div>
   );
 }

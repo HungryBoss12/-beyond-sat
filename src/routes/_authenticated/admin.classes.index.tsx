@@ -1,6 +1,6 @@
 import { createFileRoute, getRouteApi, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Plus, School, TriangleAlert } from "lucide-react";
+import { Archive, Plus, School, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { RevealCard } from "@/components/ui/reveal-card";
 import { ListSkeleton } from "@/components/ui/skeletons";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/classes/groups";
 import { scheduleLine } from "@/lib/classes/schedule";
 import { subjectToSlug } from "@/lib/classes/schemes";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { listBalances } from "@/lib/billing/api";
 
 export const Route = createFileRoute("/_authenticated/admin/classes/")({
@@ -98,6 +99,15 @@ function AdminClassesIndex() {
           </p>
         </div>
         {!isTeacher && (
+        <div className="flex flex-wrap items-end gap-2">
+        {isAdmin && (
+          <Link
+            to="/admin/archive"
+            className="btn-brand inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-400 bg-white px-4 py-2 text-sm font-bold text-brand-900"
+          >
+            <Archive className="h-4 w-4" aria-hidden="true" /> Archive
+          </Link>
+        )}
         <form
           className="flex gap-2"
           onSubmit={(event) => {
@@ -128,6 +138,7 @@ function AdminClassesIndex() {
             <Plus className="h-4 w-4" aria-hidden="true" /> Create
           </button>
         </form>
+        </div>
         )}
       </div>
       {loading ? (
@@ -196,11 +207,14 @@ function AdminClassesIndex() {
                       >
                         <span className="min-w-0">
                           <SubclassChip subject={group.subject} name={group.name} />
-                          <span className="mt-1 block truncate text-xs text-white">
-                            {group.teacher_id
-                              ? personName(teachers.get(group.teacher_id), group.teacher_id)
-                              : "No teacher"}{" "}
-                            · {scheduleLine(group)}
+                          <span className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-white">
+                            <span className="truncate">
+                              {group.teacher_id
+                                ? personName(teachers.get(group.teacher_id), group.teacher_id)
+                                : "No teacher"}{" "}
+                              · {scheduleLine(group)}
+                            </span>
+                            <ScoreBadge score={group.teacher_id ? teachers.get(group.teacher_id)?.badge_score : null} />
                           </span>
                         </span>
                         <span className="shrink-0 text-right text-xs font-bold tabular-nums">

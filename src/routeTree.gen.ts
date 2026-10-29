@@ -45,6 +45,7 @@ import { Route as AuthenticatedAdminExamdatesRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminHomepageRouteImport } from './routes/_authenticated/admin.homepage'
 import { Route as AuthenticatedAdminImportRouteImport } from './routes/_authenticated/admin.import'
 import { Route as AuthenticatedAdminLessonsRouteImport } from './routes/_authenticated/admin.lessons'
+import { Route as AuthenticatedAdminLidsRouteImport } from './routes/_authenticated/admin.lids'
 import { Route as AuthenticatedAdminMocksRouteImport } from './routes/_authenticated/admin.mocks'
 import { Route as AuthenticatedAdminNewsRouteImport } from './routes/_authenticated/admin.news'
 import { Route as AuthenticatedAdminNotificationsRouteImport } from './routes/_authenticated/admin.notifications'
@@ -289,6 +290,11 @@ const AuthenticatedAdminLessonsRoute =
     path: '/lessons',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminLidsRoute = AuthenticatedAdminLidsRouteImport.update({
+  id: '/lids',
+  path: '/lids',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminMocksRoute = AuthenticatedAdminMocksRouteImport.update({
   id: '/mocks',
   path: '/mocks',
@@ -655,6 +661,7 @@ export interface FileRoutesByFullPath {
   '/admin/homepage': typeof AuthenticatedAdminHomepageRoute
   '/admin/import': typeof AuthenticatedAdminImportRoute
   '/admin/lessons': typeof AuthenticatedAdminLessonsRoute
+  '/admin/lids': typeof AuthenticatedAdminLidsRoute
   '/admin/mocks': typeof AuthenticatedAdminMocksRoute
   '/admin/news': typeof AuthenticatedAdminNewsRoute
   '/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
@@ -742,6 +749,7 @@ export interface FileRoutesByTo {
   '/admin/homepage': typeof AuthenticatedAdminHomepageRoute
   '/admin/import': typeof AuthenticatedAdminImportRoute
   '/admin/lessons': typeof AuthenticatedAdminLessonsRoute
+  '/admin/lids': typeof AuthenticatedAdminLidsRoute
   '/admin/mocks': typeof AuthenticatedAdminMocksRoute
   '/admin/news': typeof AuthenticatedAdminNewsRoute
   '/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
@@ -828,6 +836,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/homepage': typeof AuthenticatedAdminHomepageRoute
   '/_authenticated/admin/import': typeof AuthenticatedAdminImportRoute
   '/_authenticated/admin/lessons': typeof AuthenticatedAdminLessonsRoute
+  '/_authenticated/admin/lids': typeof AuthenticatedAdminLidsRoute
   '/_authenticated/admin/mocks': typeof AuthenticatedAdminMocksRoute
   '/_authenticated/admin/news': typeof AuthenticatedAdminNewsRoute
   '/_authenticated/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
@@ -924,6 +933,7 @@ export interface FileRouteTypes {
     | '/admin/homepage'
     | '/admin/import'
     | '/admin/lessons'
+    | '/admin/lids'
     | '/admin/mocks'
     | '/admin/news'
     | '/admin/notifications'
@@ -1011,6 +1021,7 @@ export interface FileRouteTypes {
     | '/admin/homepage'
     | '/admin/import'
     | '/admin/lessons'
+    | '/admin/lids'
     | '/admin/mocks'
     | '/admin/news'
     | '/admin/notifications'
@@ -1096,6 +1107,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/homepage'
     | '/_authenticated/admin/import'
     | '/_authenticated/admin/lessons'
+    | '/_authenticated/admin/lids'
     | '/_authenticated/admin/mocks'
     | '/_authenticated/admin/news'
     | '/_authenticated/admin/notifications'
@@ -1426,6 +1438,13 @@ declare module '@tanstack/react-router' {
       path: '/lessons'
       fullPath: '/admin/lessons'
       preLoaderRoute: typeof AuthenticatedAdminLessonsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/lids': {
+      id: '/_authenticated/admin/lids'
+      path: '/lids'
+      fullPath: '/admin/lids'
+      preLoaderRoute: typeof AuthenticatedAdminLidsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/mocks': {
@@ -1974,6 +1993,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminHomepageRoute: typeof AuthenticatedAdminHomepageRoute
   AuthenticatedAdminImportRoute: typeof AuthenticatedAdminImportRoute
   AuthenticatedAdminLessonsRoute: typeof AuthenticatedAdminLessonsRoute
+  AuthenticatedAdminLidsRoute: typeof AuthenticatedAdminLidsRoute
   AuthenticatedAdminMocksRoute: typeof AuthenticatedAdminMocksRoute
   AuthenticatedAdminNewsRoute: typeof AuthenticatedAdminNewsRoute
   AuthenticatedAdminNotificationsRoute: typeof AuthenticatedAdminNotificationsRoute
@@ -1996,6 +2016,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminHomepageRoute: AuthenticatedAdminHomepageRoute,
   AuthenticatedAdminImportRoute: AuthenticatedAdminImportRoute,
   AuthenticatedAdminLessonsRoute: AuthenticatedAdminLessonsRoute,
+  AuthenticatedAdminLidsRoute: AuthenticatedAdminLidsRoute,
   AuthenticatedAdminMocksRoute: AuthenticatedAdminMocksRoute,
   AuthenticatedAdminNewsRoute: AuthenticatedAdminNewsRoute,
   AuthenticatedAdminNotificationsRoute: AuthenticatedAdminNotificationsRoute,

@@ -1,6 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import { displayAccountEmail, isSyntheticAccountEmail } from "./login-email";
-import { clearKeepSignedIn } from "./session-policy";
+import {
+  clearKeepSignedIn,
+  dropKeptRefresh,
+  isKeepSignedIn,
+  readKeptRefresh,
+  writeKeptRefresh,
+} from "./session-policy";
 
 /**
  * Saved-account vault (H4).
@@ -8,14 +14,12 @@ import { clearKeepSignedIn } from "./session-policy";
  * `localStorage` previously held every account's LONG-LIVED refresh token —
  * a weekslong credential readable by any script on the page, forever. Now:
  *
- *  - localStorage keeps display info + the LAST access token only. Access
- *    tokens are JWTs that self-expire in about an hour, so a stolen blob is
- *    worthless within the hour.
- *  - sessionStorage keeps refresh tokens, keyed per account, for the ACTIVE
- *    TAB ONLY. Closing the tab destroys them; other tabs and later sessions
- *    never see them. `continue as` therefore works while the browser session
- *    lives, and degrades to "sign in again" after a restart — the deliberate
- *    security tradeoff from the remediation plan.
+ *  - localStorage keeps display info and the last access token. A checked
+ *    "Keep me signed in" also stores that account's refresh token.
+ *  - sessionStorage keeps refresh tokens for this tab.
+ *  - When "Keep me signed in" is checked, the same refresh tokens are also
+ *    kept in localStorage so Continue as still works after the browser closes.
+ *    Unchecking the box deletes that copy. The tab copy is unchanged.
  *  - Legacy vault rows that still contain a `refreshToken` are scrubbed from
  *    localStorage the first time this module touches it.
  */
@@ -75,7 +79,7 @@ function writeVault(accounts: SavedAccount[]) {
 
 type RefreshMap = Record<string, string>;
 
-function readRefreshTokens(): RefreshMap {
+function readSessionRefresh(): RefreshMap {
   if (typeof window === "undefined") return {};
   try {
     const raw = sessionStorage.getItem(REFRESH_KEY);
@@ -92,15 +96,47 @@ function readRefreshTokens(): RefreshMap {
   }
 }
 
+/** Refresh token still stored by supabase-js for a kept session. */
+function refreshFromSupabaseStorage(): RefreshMap {
+  if (typeof window === "undefined" || !isKeepSignedIn()) return {};
+  const out: RefreshMap = {};
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (!/^sb-.+-auth-token(?:\.\d+)?$/.test(key)) continue;
+      const parsed = JSON.parse(localStorage.getItem(key) ?? "null") as {
+        refresh_token?: unknown;
+        user?: { id?: unknown };
+        currentSession?: { refresh_token?: unknown; user?: { id?: unknown } };
+      } | null;
+      const session = parsed?.currentSession ?? parsed;
+      const userId = session?.user?.id;
+      const token = session?.refresh_token;
+      if (typeof userId === "string" && typeof token === "string" && token.length > 0) {
+        out[userId] = token;
+      }
+    }
+  } catch {
+    /* ignore a corrupt auth blob */
+  }
+  return out;
+}
+
+function readRefreshTokens(): RefreshMap {
+  const session = readSessionRefresh();
+  if (!isKeepSignedIn()) return session;
+  return { ...refreshFromSupabaseStorage(), ...readKeptRefresh(), ...session };
+}
+
 function saveRefreshToken(userId: string, refreshToken: string): void {
   if (typeof window === "undefined") return;
-  const map = readRefreshTokens();
+  const map = readSessionRefresh();
   map[userId] = refreshToken;
   try {
     sessionStorage.setItem(REFRESH_KEY, JSON.stringify(map));
   } catch {
     /* quota/private mode: switching still works from the access token */
   }
+  writeKeptRefresh(userId, refreshToken);
 }
 
 function dropRefreshToken(userId: string): void {
@@ -114,6 +150,7 @@ function dropRefreshToken(userId: string): void {
       /* ignore */
     }
   }
+  dropKeptRefresh(userId);
 }
 
 /** Seconds until the access token expires (negative if already expired). */
@@ -174,8 +211,6 @@ export async function switchToAccount(userId: string): Promise<void> {
   const account = readVault().find((a) => a.userId === userId);
   if (!account) throw new Error("That account is no longer saved on this device.");
   const refreshToken = readRefreshTokens()[userId];
-
-  await supabase.auth.signOut({ scope: "local" });
 
   if (refreshToken) {
     /* Same browser session: supabase-js refreshes an expired access token
@@ -252,6 +287,7 @@ export async function prepareAddAccount(): Promise<void> {
 }
 
 export function subscribeAccountRefresh(): () => void {
+  if (isKeepSignedIn()) void rememberCurrentSession();
   const { data } = supabase.auth.onAuthStateChange((event, session) => {
     if (!session) return;
     if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {

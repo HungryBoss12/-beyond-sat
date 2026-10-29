@@ -21,7 +21,9 @@ export function FeaturedVideos({
 }) {
   const [videos, setVideos] = useState(initial);
   const [watching, setWatching] = useState<RecommendedVideo | null>(null);
-  const embed = watching ? youtubeEmbed(watching.youtube_url) : null;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const embed = mounted && watching ? youtubeEmbed(watching.youtube_url) : null;
 
   useEffect(() => {
     setVideos(initial);

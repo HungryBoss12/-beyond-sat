@@ -35,3 +35,11 @@ export function isClientAbort(error: unknown): boolean {
   if (typeof record.message === "string" && /\baborted\b|ECONNRESET/i.test(record.message)) return true;
   return isClientAbort(record.cause);
 }
+
+/** h3 prints every unhandled throw. A closed browser connection is one of those. */
+export function silenceClientAborts(log: (...args: unknown[]) => void): (...args: unknown[]) => void {
+  return (...args) => {
+    if (args.some((arg) => isClientAbort(arg))) return;
+    log(...args);
+  };
+}

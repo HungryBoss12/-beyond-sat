@@ -1,6 +1,7 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import type { Group, Mesh } from "three";
+import { quietEvents } from "@/components/landing/quiet-events";
 
 /**
  * Welcome-screen emblem — same brand icosahedron as the landing hero, without
@@ -15,21 +16,26 @@ const BRAND_200 = "#9f9fc2";
 const POINTER_YAW = 0.38;
 const POINTER_PITCH = 0.26;
 
-function Emblem() {
+function Emblem({
+  over,
+  pointer,
+}: {
+  over: { current: boolean };
+  pointer: { current: { x: number; y: number } };
+}) {
   const group = useRef<Group>(null);
   const core = useRef<Mesh>(null);
   const shell = useRef<Mesh>(null);
   const aimX = useRef(0);
   const aimY = useRef(0);
-  const hover = useRef(false);
   const swell = useRef(0);
 
   useFrame((state, delta) => {
     if (!group.current || !core.current || !shell.current) return;
     const step = Math.min(delta, 0.05);
     const ease = Math.min(1, step * 4);
-    aimX.current += (state.pointer.x - aimX.current) * ease;
-    aimY.current += (state.pointer.y - aimY.current) * ease;
+    aimX.current += (pointer.current.x - aimX.current) * ease;
+    aimY.current += (pointer.current.y - aimY.current) * ease;
 
     const t = state.clock.elapsedTime;
     group.current.rotation.y = t * 0.22 + aimX.current * POINTER_YAW;
@@ -37,7 +43,7 @@ function Emblem() {
     group.current.position.y = Math.sin(t * 0.55) * 0.06;
     group.current.position.x = aimX.current * 0.08;
 
-    swell.current += ((hover.current ? 1 : 0) - swell.current) * Math.min(1, step * 5);
+    swell.current += ((over.current ? 1 : 0) - swell.current) * Math.min(1, step * 5);
     group.current.scale.setScalar(1 + swell.current * 0.06);
 
     shell.current.rotation.y = -t * 0.34;
@@ -48,15 +54,7 @@ function Emblem() {
   const shellArgs = useMemo(() => [1.85, 1] as [number, number], []);
 
   return (
-    <group
-      ref={group}
-      onPointerOver={() => {
-        hover.current = true;
-      }}
-      onPointerOut={() => {
-        hover.current = false;
-      }}
-    >
+    <group ref={group}>
       <mesh ref={core}>
         <icosahedronGeometry args={coreArgs} />
         <meshStandardMaterial
@@ -105,6 +103,9 @@ export default function WelcomeEmblemScene({
   animate: boolean;
   highDpr: boolean;
 }) {
+  const over = useRef(false);
+  const pointer = useRef({ x: 0, y: 0 });
+
   return (
     <Canvas
       frameloop={animate ? "always" : "demand"}
@@ -113,11 +114,32 @@ export default function WelcomeEmblemScene({
       camera={{ position: [0, 0, 5], fov: 42 }}
       gl={{ antialias: highDpr, alpha: true, powerPreference: "low-power" }}
       style={{ width: "100%", height: "100%" }}
+      events={quietEvents}
+      onCreated={({ gl: renderer }) => {
+        const el = renderer.domElement;
+        const enter = () => {
+          over.current = true;
+        };
+        const leave = () => {
+          over.current = false;
+          pointer.current.x = 0;
+          pointer.current.y = 0;
+        };
+        const move = (event: PointerEvent) => {
+          const rect = el.getBoundingClientRect();
+          if (rect.width <= 0 || rect.height <= 0) return;
+          pointer.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+          pointer.current.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
+        };
+        el.addEventListener("pointerenter", enter);
+        el.addEventListener("pointerleave", leave);
+        el.addEventListener("pointermove", move);
+      }}
     >
       <ambientLight intensity={0.55} />
       <pointLight position={[4, 3, 5]} intensity={55} color="#ffffff" distance={18} />
       <pointLight position={[-4, -2, 3]} intensity={30} color={BRAND_200} distance={16} />
-      {animate ? <Emblem /> : <StaticEmblem />}
+      {animate ? <Emblem over={over} pointer={pointer} /> : <StaticEmblem />}
     </Canvas>
   );
 }

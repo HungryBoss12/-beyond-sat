@@ -32,7 +32,7 @@ export function StageBar({
       <div className="h-1.5 overflow-hidden rounded-full bg-brand-800">
         <div
           className={
-            "h-full rounded-full transition-[width] duration-300 " +
+            "sweep-right h-full rounded-full transition-[width] duration-700 " +
             (active ? "bg-brand-200" : "bg-brand-400")
           }
           style={{ width: `${pct}%` }}

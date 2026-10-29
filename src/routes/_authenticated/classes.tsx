@@ -38,6 +38,8 @@ import { levelOverall } from "@/lib/classes/level";
 import { rankFor, totalScore } from "@/lib/classes/ranking";
 import { resultLabel, resultValues } from "@/lib/classes/results";
 import { schemeFor } from "@/lib/classes/schemes";
+import { youtubeEmbed, youtubePlaylistEmbed } from "@/lib/lessons/video";
+import { safeNavigationUrl } from "@/lib/safe-url";
 import { AmbientGlow, RevealCard } from "@/components/ui/reveal-card";
 import { usePointerGlow } from "@/hooks/usePointerGlow";
 import { cn } from "@/lib/utils";
@@ -73,6 +75,7 @@ import {
   type HomeworkFile,
   type HomeworkSubmission,
 } from "@/lib/classes";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 
 export const Route = createFileRoute("/_authenticated/classes")({
   component: ClassesPage,
@@ -177,8 +180,9 @@ function ClassesPage() {
           </Link>
           <div className="min-w-0">
             <div className="truncate text-sm font-black tracking-tight">Classes</div>
-            <div className="truncate text-[10px] font-bold uppercase tracking-wider text-white">
-              {me?.username ? `@${me.username}` : "Chats & homework"}
+            <div className="flex min-w-0 items-center gap-1.5 truncate text-[10px] font-bold uppercase tracking-wider text-white">
+              <span className="truncate">{me?.username ? `@${me.username}` : "Chats & homework"}</span>
+              <ScoreBadge score={me?.badge_score} />
             </div>
           </div>
         </div>
@@ -486,7 +490,10 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                       label={avatarInitial(h)}
                       className="h-7 w-7 bg-brand-500 text-[10px] text-white"
                     />
-                    <span className="font-bold">{displayName(h)}</span>
+                    <span className="inline-flex items-center gap-1.5 font-bold">
+                      {displayName(h)}
+                      <ScoreBadge score={h.badge_score} />
+                    </span>
                     <span className="truncate text-xs text-white">{h.full_name}</span>
                   </RevealButton>
                 </li>
@@ -1057,45 +1064,33 @@ function OwnProgress() {
 
 function HomeworkVideo({ url }: { url: string }) {
   const trimmed = url.trim();
-  const list = /[?&]list=([^&]+)/.exec(trimmed)?.[1];
-  const id = /(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{6,})/.exec(trimmed)?.[1];
-  const youtube = list
-    ? `https://www.youtube-nocookie.com/embed/videoseries?list=${encodeURIComponent(list)}`
-    : id && /youtube\.com|youtu\.be/i.test(trimmed)
-      ? `https://www.youtube-nocookie.com/embed/${id}`
-      : null;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const youtube =
+    youtubePlaylistEmbed(trimmed) ??
+    (/youtube\.com|youtu\.be/i.test(trimmed) ? youtubeEmbed(trimmed, { autoplay: false }) : null);
   if (youtube) {
     return (
       <div className="mt-3 aspect-video overflow-hidden rounded-xl">
-        <iframe
-          className="h-full w-full"
-          src={youtube}
-          title="Homework video"
-          allow="picture-in-picture"
-          allowFullScreen
-        />
+        {mounted ? (
+          <iframe
+            className="h-full w-full"
+            src={youtube}
+            title="Homework video"
+            allow="picture-in-picture"
+            allowFullScreen
+          />
+        ) : null}
       </div>
     );
   }
-  if (/^https?:\/\//i.test(trimmed)) {
+  const media = safeNavigationUrl(trimmed);
+  if (media && /^https?:/i.test(media)) {
     return (
       <div className="mt-3 aspect-video overflow-hidden rounded-xl bg-black">
-        <video className="h-full w-full" src={trimmed} controls playsInline />
+        <video className="h-full w-full" src={media} controls playsInline />
       </div>
     );
   }
-  const openable = /^(https?:\/\/|\/)/i.test(trimmed);
-  return (
-    <p className="mt-3 text-sm text-white">
-      Video could not be played.
-      {openable && (
-        <>
-          {" "}
-          <a href={trimmed} className="font-bold underline" target="_blank" rel="noreferrer">
-            Open it
-          </a>
-        </>
-      )}
-    </p>
-  );
+  return <p className="mt-3 text-sm text-white">Video could not be played.</p>;
 }

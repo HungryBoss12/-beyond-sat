@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { EmptyState, PageHead } from "@/components/ui/panel";
 import { CardGridSkeleton } from "@/components/ui/skeletons";
+import { safeMediaUrl } from "@/lib/safe-url";
 
 type Article = {
   id: string;
@@ -59,10 +60,10 @@ function News() {
               params={{ slug: a.slug }}
               className="lift group overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel transition-colors hover:border-brand-200/60"
             >
-              {a.cover_image_url ? (
+              {safeMediaUrl(a.cover_image_url) ? (
                 <div className="aspect-[16/9] overflow-hidden bg-brand-800">
                   <img
-                    src={a.cover_image_url}
+                    src={safeMediaUrl(a.cover_image_url) ?? undefined}
                     alt={a.title}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />

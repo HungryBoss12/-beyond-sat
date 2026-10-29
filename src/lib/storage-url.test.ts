@@ -32,6 +32,11 @@ describe("parseStorageRef", () => {
     expect(parseStorageRef("data:image/png;base64,aaa")).toBeNull();
     expect(parseStorageRef("https://cdn.example.com/x.png")).toBeNull();
   });
+
+  it("never treats a file url or a drive path as a storage object", () => {
+    expect(parseStorageRef("file:///C:/photo.png")).toBeNull();
+    expect(parseStorageRef("C:\\Users\\javaz\\photo.png")).toBeNull();
+  });
 });
 
 describe("toPersistableImageRef", () => {

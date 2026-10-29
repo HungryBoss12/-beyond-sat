@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { useEffect, useMemo, useState } from "react";
 import {
   LogOut,
@@ -55,6 +56,7 @@ type ProfileRow = {
   first_name: string | null;
   last_name: string | null;
   full_name: string | null;
+  badge_score: number | null;
   city: string | null;
   school: string | null;
   grade: number | null;
@@ -355,7 +357,10 @@ function Profile() {
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <div className="truncate text-2xl font-black md:text-3xl">{displayName}</div>
+            <div className="flex flex-wrap items-center gap-2 truncate text-2xl font-black md:text-3xl">
+              <span className="truncate">{displayName}</span>
+              <ScoreBadge score={profile?.badge_score} />
+            </div>
             <div className="truncate text-sm text-brand-100">
               {email || (chat?.username ? `@${chat.username}` : "")}
             </div>

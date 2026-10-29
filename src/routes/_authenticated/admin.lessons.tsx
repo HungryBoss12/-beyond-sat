@@ -271,7 +271,7 @@ function AdminLessons() {
                   </span>
                 </button>
                 {open && (
-                  <div className="border-t border-brand-400/30 px-3 py-3">
+                  <div className="widen-in border-t border-brand-400/30 px-3 py-3">
                     <div className="mb-2 flex justify-end">
                       <button
                         type="button"

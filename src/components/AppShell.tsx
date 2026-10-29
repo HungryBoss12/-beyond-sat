@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { getStaffRole, staffHome, type StaffRole } from "@/lib/admin";
 import { displayAccountEmail } from "@/lib/auth/login-email";
 import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
@@ -28,7 +29,6 @@ import {
   switchToAccount,
   type SavedAccount,
 } from "@/lib/auth/account-switcher";
-import { scrollWindowToTop } from "@/lib/smooth-scroll";
 import { liveStreak } from "@/lib/streak";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { NotificationAnchorProvider } from "@/components/notifications/NotificationAnchorContext";
@@ -361,8 +361,8 @@ function BrandMark({ className }: { className?: string }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const backForwardRef = useRef(false);
   const [name, setName] = useState<string>("");
+  const [badgeScore, setBadgeScore] = useState<number | null>(null);
   const [email, setEmail] = useState<string>("");
   const [streak, setStreak] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -394,7 +394,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       setUid(u.id);
       setEmail(displayAccountEmail(u.email) ?? "");
       const [{ data: prof }, { data: sp }, role] = await Promise.all([
-        supabase.from("profiles").select("full_name,first_name,username").eq("id", u.id).maybeSingle(),
+        supabase.from("profiles").select("full_name,first_name,username,badge_score").eq("id", u.id).maybeSingle(),
         supabase
           .from("student_profiles")
           .select("current_streak,last_active_at,last_daily_completed_date")
@@ -409,6 +409,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           displayAccountEmail(u.email)?.split("@")[0] ||
           "Student",
       );
+      setBadgeScore(prof?.badge_score ?? null);
       setStreak(liveStreak(sp));
       setStaffRole(role);
       setAccounts(listSavedAccounts());
@@ -457,24 +458,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     closeDrawer();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
-
-  /* Back and forward keep the router's restored scroll position. `popstate`
-     fires before the router updates the path, so the flag is set in time. */
-  useEffect(() => {
-    const markBackForward = () => {
-      backForwardRef.current = true;
-    };
-    window.addEventListener("popstate", markBackForward);
-    return () => window.removeEventListener("popstate", markBackForward);
-  }, []);
-
-  useEffect(() => {
-    if (backForwardRef.current) {
-      backForwardRef.current = false;
-      return;
-    }
-    scrollWindowToTop();
   }, [pathname]);
 
   useEffect(() => {
@@ -687,8 +670,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-400 text-xs font-bold text-white shadow-brand">
                   {initials}
                 </span>
-                <span className="hidden max-w-[120px] truncate text-sm font-semibold text-white sm:inline">
-                  {name}
+                <span className="hidden max-w-[160px] items-center gap-1.5 truncate text-sm font-semibold text-white sm:inline-flex">
+                  <span className="truncate">{name}</span>
+                  <ScoreBadge score={badgeScore} />
                 </span>
                 <ChevronDown
                   className={
@@ -700,7 +684,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {menuOpen && (
                 <div className="pop-in absolute right-0 mt-2 w-64 overflow-hidden rounded-xl border border-brand-400/40 bg-brand-600 py-1 shadow-float">
                   <div className="border-b border-brand-400/30 px-4 py-2.5">
-                    <div className="truncate text-sm font-semibold text-white">{name}</div>
+                    <div className="flex items-center gap-1.5 truncate text-sm font-semibold text-white">
+                      <span className="truncate">{name}</span>
+                      <ScoreBadge score={badgeScore} />
+                    </div>
                     <div className="truncate text-xs text-brand-100">{email}</div>
                   </div>
                   {accounts.filter((a) => a.userId !== uid).length > 0 && (

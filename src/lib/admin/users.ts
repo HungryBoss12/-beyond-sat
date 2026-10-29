@@ -18,6 +18,7 @@ export type AdminUserSummaryRow = {
   class_name: string | null;
   accuracy_pct: number | null;
   staff_created: boolean;
+  badge_score: number | null;
 };
 
 export type AdminUserDetail = {

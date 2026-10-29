@@ -14,7 +14,10 @@ export default defineConfig(({ mode, command }) => {
   return {
     define: envDefine,
     resolve: {
-      alias: { "@": `${process.cwd()}/src` },
+      alias: {
+        "@": `${process.cwd()}/src`,
+        exceljs: `${process.cwd()}/node_modules/exceljs/dist/exceljs.min.js`,
+      },
       dedupe: [
         "react",
         "react-dom",

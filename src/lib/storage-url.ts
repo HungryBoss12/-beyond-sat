@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { safeMediaUrl } from "@/lib/safe-url";
 
 export const QUESTION_IMAGES_BUCKET = "question-images";
 export const HOMEWORK_UPLOADS_BUCKET = "homework-uploads";
@@ -28,7 +29,9 @@ export function parseStorageRef(
     };
   }
 
-  if (/^https?:\/\//i.test(value)) return null;
+    if (/^https?:\/\//i.test(value)) return null;
+
+    if (/^file:/i.test(value) || value.includes("://") || /^[a-zA-Z]:[\\/]/.test(value)) return null;
 
   const known = value.match(
     /^(question-images|homework-uploads|chat-uploads|lesson-uploads)\/(.+)$/,
@@ -79,7 +82,8 @@ export async function resolveDisplayUrls(
     }
     const parsed = parseStorageRef(value, defaultBucket);
     if (!parsed) {
-      out.set(value, value);
+      const safe = safeMediaUrl(value);
+      if (safe) out.set(value, safe);
       continue;
     }
     let paths = byBucket.get(parsed.bucket);
@@ -121,7 +125,7 @@ export async function resolveDisplayUrl(
   const value = (ref ?? "").trim();
   if (!value) return null;
   const map = await resolveDisplayUrls([value], defaultBucket);
-  return map.get(value) ?? value;
+  return map.get(value) ?? null;
 }
 
 /** Replace `image_url` on each row (and nested choice images) with signed display URLs. */

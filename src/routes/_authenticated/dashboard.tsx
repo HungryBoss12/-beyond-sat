@@ -36,6 +36,7 @@ import { RW_SKILLS, MATH_SKILLS, scoreBand } from "@/lib/sat";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { FocusNextPanel } from "@/components/ai/FocusNextPanel";
 import { AttendanceGrid } from "@/components/classes/AttendanceGrid";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { Panel, PanelGlow, PanelHead, PageHead, EmptyState, Skeleton } from "@/components/ui/panel";
 import { Badge, Delta, MeterRow, StatTile, type Tone } from "@/components/ui/metric";
 import { listAttendance, type LessonAttendance } from "@/lib/classes";
@@ -50,6 +51,14 @@ import {
   type MockTrendPoint,
 } from "@/lib/dashboard-mocks";
 import { DashboardNotificationStack } from "@/components/notifications/DashboardNotificationStack";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -66,6 +75,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 type StudentProfile = {
   target_score: number | null;
+  target_rw: number | null;
+  target_math: number | null;
   exam_date: string | null;
   level: string | null;
   fears: string[] | null;
@@ -96,6 +107,8 @@ type AttemptRow = {
 
 function Dashboard() {
   const [name, setName] = useState<string>("");
+  const [badgeScore, setBadgeScore] = useState<number | null>(null);
+  const [uid, setUid] = useState<string | null>(null);
   const [sp, setSp] = useState<StudentProfile | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);
@@ -119,11 +132,11 @@ function Dashboard() {
         lessonAtt,
         { data: dt },
       ] = await Promise.all([
-        supabase.from("profiles").select("full_name,first_name").eq("id", uid).maybeSingle(),
+        supabase.from("profiles").select("full_name,first_name,badge_score").eq("id", uid).maybeSingle(),
         supabase
           .from("student_profiles")
           .select(
-            "target_score,exam_date,level,fears,current_streak,longest_streak,last_daily_completed_date,last_active_at",
+            "target_score,target_rw,target_math,exam_date,level,fears,current_streak,longest_streak,last_daily_completed_date,last_active_at",
           )
           .eq("user_id", uid)
           .maybeSingle(),
@@ -146,6 +159,8 @@ function Dashboard() {
         supabase.from("daily_tests").select("id").eq("date", today).maybeSingle(),
       ]);
       setName(prof?.full_name || prof?.first_name || "Student");
+      setBadgeScore(prof?.badge_score ?? null);
+      setUid(uid);
       setSp((spData as StudentProfile) ?? null);
       setSessions((sess as Session[]) ?? []);
       setAttempts((att as unknown as AttemptRow[]) ?? []);
@@ -160,6 +175,33 @@ function Dashboard() {
   const dailyDoneToday = sp?.last_daily_completed_date === today;
 
   const latest = useMemo(() => latestMockSummary(mocks), [mocks]);
+  const [celebrateOpen, setCelebrateOpen] = useState(false);
+  const reached =
+    uid != null &&
+    sp?.target_score != null &&
+    latest != null &&
+    !latest.incomplete &&
+    latest.score >= sp.target_score;
+
+  useEffect(() => {
+    if (!reached || !uid || sp?.target_score == null) return;
+    try {
+      if (localStorage.getItem(`beyondsat.celebrated-target:${uid}:${sp.target_score}`) === "1") return;
+    } catch {
+      return;
+    }
+    setCelebrateOpen(true);
+  }, [reached, uid, sp?.target_score]);
+
+  function rememberTarget(target = sp?.target_score) {
+    if (!uid || target == null) return;
+    try {
+      localStorage.setItem(`beyondsat.celebrated-target:${uid}:${target}`, "1");
+    } catch {
+      /* private mode */
+    }
+    setCelebrateOpen(false);
+  }
 
   const testsTakenCount = useMemo(() => countMockTestsTaken(mocks), [mocks]);
 
@@ -236,6 +278,19 @@ function Dashboard() {
   return (
     <div className="space-y-6">
       <DashboardNotificationStack />
+      {uid && sp?.target_score != null && latest && !latest.incomplete && (
+        <TargetReachedDialog
+          open={celebrateOpen}
+          score={latest.score}
+          target={sp.target_score}
+          userId={uid}
+          onContinue={() => rememberTarget()}
+          onSaved={(next) => {
+            rememberTarget();
+            setSp((current) => (current ? { ...current, ...next } : current));
+          }}
+        />
+      )}
       <PageHead
         title={`Welcome back, ${name.split(" ")[0]}.`}
         subtitle={
@@ -244,16 +299,19 @@ function Dashboard() {
             : "Let's build your prep plan."
         }
         action={
-          staffRole ? (
-            <Link
-              to={staffHome(staffRole)}
-              className="btn-brand group inline-flex items-center gap-2 rounded-xl bg-grad-brand px-4 py-2.5 text-sm font-bold text-white"
-            >
-              <Shield className="h-4 w-4" />
-              {staffRole === "admin" ? "Admin Panel" : staffRole === "teacher" ? "Teaching" : "Editor Panel"}
-              <ArrowRight className="arrow-slide h-4 w-4" />
-            </Link>
-          ) : undefined
+          <span className="inline-flex items-center gap-2">
+            <ScoreBadge score={badgeScore} />
+            {staffRole ? (
+              <Link
+                to={staffHome(staffRole)}
+                className="btn-brand group inline-flex items-center gap-2 rounded-xl bg-grad-brand px-4 py-2.5 text-sm font-bold text-white"
+              >
+                <Shield className="h-4 w-4" />
+                {staffRole === "admin" ? "Admin Panel" : staffRole === "teacher" ? "Teaching" : "Editor Panel"}
+                <ArrowRight className="arrow-slide h-4 w-4" />
+              </Link>
+            ) : null}
+          </span>
         }
       />
 
@@ -901,4 +959,120 @@ function buildRecs(
     });
   }
   return recs.slice(0, 3);
+}
+
+function TargetReachedDialog({
+  open,
+  score,
+  target,
+  userId,
+  onContinue,
+  onSaved,
+}: {
+  open: boolean;
+  score: number;
+  target: number;
+  userId: string;
+  onContinue: () => void;
+  onSaved: (next: { target_score: number; target_rw: number; target_math: number }) => void;
+}) {
+  const [rw, setRw] = useState("");
+  const [math, setMath] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const reading = Number(rw);
+  const maths = Number(math);
+  const total = reading + maths;
+
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    if (!Number.isInteger(reading) || reading < 200 || reading > 800) {
+      setError("Reading must be a whole number from 200 to 800.");
+      return;
+    }
+    if (!Number.isInteger(maths) || maths < 200 || maths > 800) {
+      setError("Math must be a whole number from 200 to 800.");
+      return;
+    }
+    if (total <= score) {
+      setError(`The new target must be higher than ${score}.`);
+      return;
+    }
+    if (total > 1600) {
+      setError("The target cannot be higher than 1600.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const next = { target_rw: reading, target_math: maths, target_score: total };
+    const { data, error: updateError } = await supabase
+      .from("student_profiles")
+      .update(next)
+      .eq("user_id", userId)
+      .select("user_id")
+      .maybeSingle();
+    setBusy(false);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    if (!data) {
+      toast.error("Could not save the new target.");
+      return;
+    }
+    toast.success(`New target is ${total}`);
+    onSaved(next);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => !next && onContinue()}>
+      <DialogContent className="border-brand-400/40 bg-brand-800 text-white">
+        <DialogHeader>
+          <DialogTitle className="text-white">You reached {target}</DialogTitle>
+          <DialogDescription className="text-brand-100">
+            Your latest score is {score}. Keep going, or set a higher target.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={(event) => void save(event)} className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block text-xs font-bold text-white">
+              Reading 200–800
+              <input
+                className="mt-1 w-full rounded-lg border border-brand-400/40 bg-brand-900 px-3 py-2 text-sm text-white"
+                inputMode="numeric"
+                value={rw}
+                onChange={(event) => setRw(event.target.value.replace(/\D/g, "").slice(0, 3))}
+              />
+            </label>
+            <label className="block text-xs font-bold text-white">
+              Math 200–800
+              <input
+                className="mt-1 w-full rounded-lg border border-brand-400/40 bg-brand-900 px-3 py-2 text-sm text-white"
+                inputMode="numeric"
+                value={math}
+                onChange={(event) => setMath(event.target.value.replace(/\D/g, "").slice(0, 3))}
+              />
+            </label>
+          </div>
+          {error && <p className="text-sm font-semibold text-white">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="rounded-full px-4 py-2 text-sm font-bold text-white"
+              onClick={onContinue}
+            >
+              Continue
+            </button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+            >
+              {busy ? "Saving…" : "Set a new target"}
+            </button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }

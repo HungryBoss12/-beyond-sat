@@ -469,7 +469,7 @@ function StudentProfilePage() {
                   />
                 </div>
                 {expanded && (
-                  <ul className="mt-2 grid gap-x-4 gap-y-0.5 text-xs sm:grid-cols-2">
+                  <ul className="widen-in mt-2 grid gap-x-4 gap-y-0.5 text-xs sm:grid-cols-2">
                     {block.sections.map((section) => {
                       const cell = block.level?.scores[section.slug];
                       return (

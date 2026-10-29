@@ -14,13 +14,18 @@ import {
   Link2,
   Loader2,
   Plus,
+  RotateCcw,
+  School,
   Search,
   Sparkles,
+  Users,
   Wand2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { FeeDialog } from "@/components/billing/FeeDialog";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { IconButton } from "@/components/ui/icon-button";
 import { previewActivationChange, setActivationDate, setStudentFee } from "@/lib/billing/api";
 import { tashkentToday } from "@/lib/billing/dates";
@@ -149,7 +154,7 @@ function EnrollDialog({
             onClick={() => save(null)}
             className="rounded-full bg-brand-800 px-3 py-1.5 text-xs font-bold text-white"
           >
-            Not in a class
+            <School className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> Not in a class
           </button>
           <button
             type="button"
@@ -157,7 +162,7 @@ function EnrollDialog({
             onClick={() => pickClass(classId)}
             className="rounded-full bg-brand-400 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40"
           >
-            Full class
+            <Users className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> Full class
           </button>
         </div>
         <AdminSelect
@@ -355,7 +360,7 @@ function AdminStudents() {
   }, []);
 
   async function loadLegacyUsers() {
-    const FULL_COLS = "id,email,full_name,username,created_at,last_seen_at,banned";
+    const FULL_COLS = "id,email,full_name,username,created_at,last_seen_at,banned,badge_score";
     const full = await supabase
       .from("profiles")
       .select(FULL_COLS)
@@ -398,6 +403,7 @@ function AdminStudents() {
         class_name: null,
         accuracy_pct: null,
         staff_created: isSyntheticAccountEmail(p.email),
+        badge_score: (p as { badge_score?: number | null }).badge_score ?? null,
       })),
     );
   }
@@ -831,7 +837,7 @@ function AdminStudents() {
               onClick={() => void load()}
               className="btn-brand mt-4 rounded-lg bg-brand-400 px-4 py-2 text-sm font-bold text-white"
             >
-              Try again
+              <RotateCcw className="mr-1 inline h-4 w-4" aria-hidden="true" /> Try again
             </button>
           </div>
         </RevealCard>
@@ -969,7 +975,7 @@ function AdminStudents() {
                   }}
                   className="tap rounded-lg px-3 py-2 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
                 >
-                  Clear
+                  <X className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> Clear
                 </button>
                 {bulkError ? (
                   <p className="w-full text-xs font-semibold text-white ring-1 ring-brand-300/60 rounded-lg bg-brand-900 px-3 py-2">
@@ -1248,14 +1254,14 @@ function AdminStudents() {
                         onClick={() => setLinkNow(true)}
                         className={"rounded-full px-3 py-1.5 text-xs font-bold transition duration-150 " + (linkNow ? "bg-brand-400 text-white" : "bg-brand-900 text-brand-100")}
                       >
-                        Active now
+                        <CircleCheck className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> Active now
                       </button>
                       <button
                         type="button"
                         onClick={() => setLinkNow(false)}
                         className={"rounded-full px-3 py-1.5 text-xs font-bold transition duration-150 " + (!linkNow ? "bg-brand-400 text-white" : "bg-brand-900 text-brand-100")}
                       >
-                        Inactive until
+                        <Ban className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> Inactive until
                       </button>
                     </div>
                     {!linkNow && <DateTimeField value={linkAt} onChange={setLinkAt} />}
@@ -1333,7 +1339,7 @@ function AdminStudents() {
                       }
                       className="text-[11px] font-bold text-brand-100 underline-offset-2 hover:text-white hover:underline"
                     >
-                      {copied === "both" ? "Copied both" : "Copy username and password"}
+                      <Copy className="mr-1 inline h-3 w-3" aria-hidden="true" /> {copied === "both" ? "Copied both" : "Copy username and password"}
                     </button>
                     {inviteUrl && (
                       <button
@@ -1341,7 +1347,7 @@ function AdminStudents() {
                         onClick={() => void copyText("link", inviteUrl)}
                         className="text-[11px] font-bold text-white underline-offset-2 hover:underline"
                       >
-                        {copied === "link" ? "Link copied" : "Copy setup link"}
+                        <Link2 className="mr-1 inline h-3 w-3" aria-hidden="true" /> {copied === "link" ? "Link copied" : "Copy setup link"}
                       </button>
                     )}
                     <Link
@@ -1629,6 +1635,7 @@ function UserListRow({
                 <span className="truncate text-sm font-semibold text-white group-hover:underline">
                   {u.full_name || "Student"}
                 </span>
+                <ScoreBadge score={u.badge_score} />
                 {u.role !== "student" && (
                   <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 ring-1 ring-brand-400/40">
                     {u.role.replaceAll("_", " ")}

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { MathText } from "@/components/MathText";
 import { sanitizeGridInput } from "@/lib/grid-answer";
+import { safeMediaUrl } from "@/lib/safe-url";
 import { difficultyBarsFilled, difficultyWord } from "@/lib/sat";
 import {
   DEFAULT_HIGHLIGHT_BINDINGS,
@@ -344,9 +345,9 @@ export function QuestionCard({
               className="whitespace-pre-wrap px-6 py-6 text-[18px] leading-[1.7] text-test-ink selection:bg-[#ffe566] md:px-10 md:py-8 md:text-[19px]"
             >
               {renderedPassage}
-              {q.image_url ? (
+              {safeMediaUrl(q.image_url) ? (
                 <img
-                  src={q.image_url}
+                  src={safeMediaUrl(q.image_url) ?? undefined}
                   alt={q.image_alt ?? ""}
                   className="mt-5 h-auto max-h-[32rem] w-auto max-w-full rounded border border-test-line object-contain"
                 />
@@ -794,9 +795,9 @@ function QuestionBody({
                     }
                   >
                     {c.text?.trim() ? <MathText math={q.section === "math"}>{c.text}</MathText> : null}
-                    {c.image_url ? (
+                    {safeMediaUrl(c.image_url) ? (
                       <img
-                        src={c.image_url}
+                        src={safeMediaUrl(c.image_url) ?? undefined}
                         alt=""
                         className={
                           "h-auto max-h-72 w-auto max-w-full self-start rounded-md border border-test-edge object-contain " +
@@ -840,7 +841,7 @@ function QuestionBody({
       (correctChoiceId ||
         (correctGridAnswers ?? []).some(Boolean) ||
         (showRationale && (q.explanation ?? "").trim())) ? (
-        <div className="mt-8 space-y-3 border-t border-test-line pt-6">
+        <div className="widen-in mt-8 space-y-3 border-t border-test-line pt-6">
           {correctChoiceId || (correctGridAnswers ?? []).some(Boolean) ? (
             <p className="text-sm font-bold text-test-ink">
               Correct Answer:{" "}

@@ -1,7 +1,9 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { ArrowLeft, Ban, CircleCheck, KeyRound, Loader2 } from "lucide-react";
+import { ArrowLeft, Award, Ban, CircleCheck, KeyRound, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { UserActivityFeed } from "@/components/admin/UserActivityFeed";
 import { UserStatTiles } from "@/components/admin/UserStatTiles";
@@ -232,6 +234,7 @@ function AdminUserDetailPage() {
             onRole={setRole}
             onBan={toggleBan}
             onReset={() => setResetOpen(true)}
+            onBadgeSaved={() => void loadDetail()}
           />
 
           <div className="mt-4 flex flex-wrap gap-1 rounded-2xl border border-brand-400/40 bg-brand-600 p-1">
@@ -254,7 +257,7 @@ function AdminUserDetailPage() {
             ))}
           </div>
 
-          <div className="mt-4">
+          <div key={tab} className="lesson-tab-pane mt-4">
             {tabErr ? (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-600">
                 <p>{tabErr}</p>
@@ -295,28 +298,60 @@ function Header({
   onRole,
   onBan,
   onReset,
+  onBadgeSaved,
 }: {
   detail: AdminUserDetail;
   busy: boolean;
   onRole: (r: Role) => void;
   onBan: () => void;
   onReset: () => void;
+  onBadgeSaved: () => void;
 }) {
   const profile = detail.profile as {
+    id?: string;
     full_name?: string | null;
     email?: string | null;
     last_seen_at?: string | null;
     banned?: boolean;
     created_at?: string;
+    badge_score?: number | null;
   };
   const online = isOnline(profile.last_seen_at ?? null);
   const role = detail.role as Role;
+  const [badgeOpen, setBadgeOpen] = useState(false);
+  const [badgeText, setBadgeText] = useState(profile.badge_score == null ? "" : String(profile.badge_score));
+  const [badgeBusy, setBadgeBusy] = useState(false);
+
+  async function saveBadge() {
+    const trimmed = badgeText.trim();
+    const score = trimmed === "" ? null : Number(trimmed);
+    if (score != null && (!Number.isInteger(score) || score < 400 || score > 1600)) {
+      toast.error("Enter a score from 400 to 1600, or leave it empty.");
+      return;
+    }
+    const userId = profile.id;
+    if (!userId) return;
+    setBadgeBusy(true);
+    const { error } = await supabase.rpc("admin_set_badge_score", {
+      p_user_id: userId,
+      p_score: score,
+    });
+    setBadgeBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(score == null ? "Badge removed" : "Badge saved");
+    setBadgeOpen(false);
+    onBadgeSaved();
+  }
 
   return (
     <div className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-brand-400/40 bg-brand-600 p-4 shadow-panel">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-xl font-black text-white">{profile.full_name || profile.email || "User"}</h2>
+          <ScoreBadge score={profile.badge_score} />
           {role !== "student" && (
             <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 ring-1 ring-brand-400/40">
               {role}
@@ -349,6 +384,18 @@ function Header({
         />
         <button
           type="button"
+          onClick={() => {
+            setBadgeText(profile.badge_score == null ? "" : String(profile.badge_score));
+            setBadgeOpen(true);
+          }}
+          disabled={busy}
+          className="tap inline-flex items-center gap-1.5 rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-brand-400/40 hover:bg-brand-900 disabled:opacity-60"
+        >
+          <Award className="h-3.5 w-3.5" />
+          Badge
+        </button>
+        <button
+          type="button"
           onClick={onReset}
           disabled={busy}
           className="tap inline-flex items-center gap-1.5 rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-brand-400/40 hover:bg-brand-900 disabled:opacity-60"
@@ -376,6 +423,32 @@ function Header({
           {profile.banned ? "Unban" : "Ban"}
         </button>
       </div>
+      <Dialog open={badgeOpen} onOpenChange={setBadgeOpen}>
+        <DialogContent className="border-brand-400/40 bg-brand-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">Badge</DialogTitle>
+            <DialogDescription className="text-brand-100">
+              SAT total from 400 to 1600. Leave it empty to remove the badge.
+            </DialogDescription>
+          </DialogHeader>
+          <input
+            className="mt-2 w-full rounded-lg border border-brand-400/40 bg-brand-900 px-3 py-2 text-sm text-white"
+            inputMode="numeric"
+            value={badgeText}
+            onChange={(event) => setBadgeText(event.target.value.replace(/\D/g, "").slice(0, 4))}
+          />
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              disabled={badgeBusy}
+              className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+              onClick={() => void saveBadge()}
+            >
+              {badgeBusy ? "Saving…" : "Save badge"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

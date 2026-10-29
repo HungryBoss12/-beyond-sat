@@ -220,7 +220,7 @@
 
   body {
     scrollbar-width: none;
-    overscroll-behavior-y: none;
+    overscroll-behavior-y: auto;
   }
   body::-webkit-scrollbar {
     display: none;
@@ -889,6 +889,22 @@
   animation: sweep-right 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* A block that grows open from its left edge while it fades in. */
+@keyframes widen-in {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0 round 1rem);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(-100vmax);
+  }
+}
+
+@utility widen-in {
+  animation: widen-in 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @utility pulse-ring {
   animation: pulse-ring 2s ease-out infinite;
 }
@@ -1008,6 +1024,34 @@
    "loaded". Same easing as everything else, so it still feels like one product. */
 @utility slide-from-left {
   animation: slide-from-left 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes slide-out-left {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(-48px, 0, 0);
+  }
+}
+
+.slide-out-left {
+  animation: slide-out-left 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes menu-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.menu-fade-out {
+  animation: menu-fade-out 0.45s ease-out both;
 }
 
 @utility slide-from-right {
@@ -2959,5 +3003,44 @@
   background: #fff;
   border-radius: 9999px;
   transition: width 1s linear;
+}
+
+.score-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 9999px;
+  padding: 0 0.4rem;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.35rem;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--badge) 70%, transparent);
+  vertical-align: middle;
+}
+
+.score-badge-gold::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.75) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: score-badge-shine 2.4s ease-in-out infinite;
+}
+
+.score-badge-perfect {
+  animation: score-badge-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes score-badge-shine {
+  0% { transform: translateX(-120%); }
+  55%, 100% { transform: translateX(120%); }
+}
+
+@keyframes score-badge-pulse {
+  0%, 100% { box-shadow: 0 0 8px color-mix(in srgb, var(--badge) 55%, transparent); }
+  50% { box-shadow: 0 0 16px 3px color-mix(in srgb, var(--badge) 85%, transparent); }
 }
 

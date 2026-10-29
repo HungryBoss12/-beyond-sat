@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { replaceTestQuestions } from "@/lib/admin-writes";
 import { loadQuestionWithAnswers } from "@/components/admin/question-edit-modal";
 import { questionToRec, softErrorsForQuestion } from "@/lib/admin/question-ai";
 import type { AdminQuestion } from "@/lib/admin/question";
@@ -23,8 +24,63 @@ export type OrphanMathGroup = {
   label: string;
   source_month: number | null;
   source_year: number | null;
+  /** Set when the questions have no month, so they are grouped by the day they were added. */
+  addedOn: string | null;
   questionIds: string[];
 };
+
+type OrphanMathQuestion = {
+  id: string;
+  source_month: number | null;
+  source_year: number | null;
+  created_at: string;
+};
+
+/** Questions with no month are one group per day they were added, not one pile per year. */
+export function groupOrphanMathQuestions(rows: OrphanMathQuestion[]): OrphanMathGroup[] {
+  const groups = new Map<string, OrphanMathGroup>();
+  for (const q of rows) {
+    const dated = q.source_year != null && q.source_month != null;
+    const addedOn = q.created_at.slice(0, 10);
+    const key = dated ? `${q.source_year}-${q.source_month}` : `added:${addedOn || "unknown"}`;
+    const label = dated
+      ? `${MONTH_NAMES[q.source_month! - 1] ?? q.source_month} ${q.source_year}`
+      : addedOn
+        ? `Added ${formatAddedDay(addedOn)} · no name`
+        : "No source date";
+    const g = groups.get(key) ?? {
+      key,
+      label,
+      source_month: dated ? q.source_month : null,
+      source_year: dated ? q.source_year : null,
+      addedOn: dated ? null : addedOn || null,
+      questionIds: [],
+    };
+    g.questionIds.push(q.id);
+    groups.set(key, g);
+  }
+
+  return [...groups.values()].sort((a, b) => {
+    if (a.addedOn && b.addedOn && a.addedOn !== b.addedOn) return b.addedOn.localeCompare(a.addedOn);
+    if (a.addedOn && !b.addedOn) return -1;
+    if (!a.addedOn && b.addedOn) return 1;
+    const ay = a.source_year ?? 0;
+    const by = b.source_year ?? 0;
+    if (ay !== by) return by - ay;
+    return (b.source_month ?? 0) - (a.source_month ?? 0);
+  });
+}
+
+function formatAddedDay(isoDay: string): string {
+  const [year, month, day] = isoDay.split("-").map(Number);
+  if (!year || !month || !day) return isoDay;
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
 
 export type MathPracticeDiag = {
   mathQuestionCount: number;
@@ -148,60 +204,80 @@ export async function listExistingTests(
 }
 
 export async function listOrphanMathGroups(): Promise<OrphanMathGroup[]> {
-  const { data: mathQs, error } = await supabase
-    .from("questions")
-    .select("id,source_month,source_year")
-    .eq("section", "math")
-    .limit(5000);
-  if (error) throw new Error(error.message);
-
-  const all = (mathQs ?? []) as {
-    id: string;
-    source_month: number | null;
-    source_year: number | null;
-  }[];
+  const all = await fetchMathQuestionPages();
   if (all.length === 0) return [];
 
-  const { data: linked } = await supabase
-    .from("test_questions")
-    .select("question_id")
-    .in(
-      "question_id",
-      all.map((q) => q.id),
-    );
-
-  const linkedIds = new Set(
-    (linked ?? []).map((r) => (r as { question_id: string }).question_id),
-  );
-  const orphans = all.filter((q) => !linkedIds.has(q.id));
-  if (orphans.length === 0) return [];
-
-  const groups = new Map<string, OrphanMathGroup>();
-  for (const q of orphans) {
-    const key = `${q.source_year ?? "na"}-${q.source_month ?? "na"}`;
-    const label =
-      q.source_year != null && q.source_month != null
-        ? `${MONTH_NAMES[q.source_month - 1] ?? q.source_month} ${q.source_year}`
-        : q.source_year != null
-          ? `Year ${q.source_year}`
-          : "No source date";
-    const g = groups.get(key) ?? {
-      key,
-      label,
-      source_month: q.source_month,
-      source_year: q.source_year,
-      questionIds: [],
-    };
-    g.questionIds.push(q.id);
-    groups.set(key, g);
+  const linkedIds = new Set<string>();
+  for (let i = 0; i < all.length; i += 200) {
+    const ids = all.slice(i, i + 200).map((q) => q.id);
+    const { data: linked, error: linkError } = await supabase
+      .from("test_questions")
+      .select("question_id")
+      .in("question_id", ids);
+    if (linkError) throw new Error(linkError.message);
+    for (const row of linked ?? []) {
+      linkedIds.add((row as { question_id: string }).question_id);
+    }
   }
 
-  return [...groups.values()].sort((a, b) => {
-    const ay = a.source_year ?? 0;
-    const by = b.source_year ?? 0;
-    if (ay !== by) return by - ay;
-    return (b.source_month ?? 0) - (a.source_month ?? 0);
-  });
+  return groupOrphanMathQuestions(all.filter((q) => !linkedIds.has(q.id)));
+}
+
+/** A draft still using the automatic title has not been named yet. */
+export function draftNeedsName(title: string): boolean {
+  return /^untitled\b/i.test(title.trim());
+}
+
+/** Turn each nameless math pile into an unpublished test so it can be named and dated. */
+export async function adoptNamelessMathDrafts(): Promise<number> {
+  const groups = (await listOrphanMathGroups()).filter((group) => group.addedOn && group.questionIds.length > 0);
+  if (groups.length === 0) return 0;
+  const { data: userData } = await supabase.auth.getUser();
+  let made = 0;
+  for (const group of groups) {
+    const { data, error } = await supabase
+      .from("tests")
+      .insert({
+        title: `Untitled · ${formatAddedDay(group.addedOn!)}`,
+        section: "math",
+        module: 1,
+        difficulty: "C",
+        source_month: null,
+        source_year: null,
+        published: false,
+        bank_format: "ordinary",
+        created_by: userData.user?.id ?? null,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    try {
+      await replaceTestQuestions(data.id, group.questionIds);
+    } catch (linkError) {
+      await supabase.from("tests").delete().eq("id", data.id);
+      throw linkError;
+    }
+    made += 1;
+  }
+  return made;
+}
+
+async function fetchMathQuestionPages(): Promise<OrphanMathQuestion[]> {
+  const page = 1000;
+  const rows: OrphanMathQuestion[] = [];
+  for (let from = 0; ; from += page) {
+    const { data, error } = await supabase
+      .from("questions")
+      .select("id,source_month,source_year,created_at")
+      .eq("section", "math")
+      .order("created_at", { ascending: false })
+      .range(from, from + page - 1);
+    if (error) throw new Error(error.message);
+    const batch = (data ?? []) as OrphanMathQuestion[];
+    rows.push(...batch);
+    if (batch.length < page) break;
+  }
+  return rows;
 }
 
 const MONTH_NAMES = [

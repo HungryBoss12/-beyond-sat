@@ -221,6 +221,7 @@ export function ClassroomWorkspace({
           name: personName(profiles.get(row.userId), row.userId),
           effectiveOn: row.effectiveOn,
           movedTo: row.movedTo,
+          badgeScore: profiles.get(row.userId)?.badge_score ?? null,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [former, profiles],
@@ -235,6 +236,7 @@ export function ClassroomWorkspace({
           status: m.status,
           alsoIn: alsoIn.get(m.user_id) ?? [],
           balanceKind: isAdmin ? balances.get(m.user_id) : undefined,
+          badgeScore: profiles.get(m.user_id)?.badge_score ?? null,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [members, profiles, alsoIn, balances, isAdmin],
@@ -254,7 +256,12 @@ export function ClassroomWorkspace({
     () =>
       filtered
         .filter((person) => person.status !== "frozen")
-        .map((person) => ({ userId: person.userId, name: person.name, status: person.status })),
+        .map((person) => ({
+          userId: person.userId,
+          name: person.name,
+          status: person.status,
+          badgeScore: person.badgeScore,
+        })),
     [filtered],
   );
 
@@ -462,6 +469,7 @@ export function ClassroomWorkspace({
             />
           )}
 
+          <div key={search.tab} className="lesson-tab-pane">
           {loading ? (
             <ListSkeleton rows={5} />
           ) : search.tab === "attendance" ? (
@@ -521,6 +529,7 @@ export function ClassroomWorkspace({
           ) : (
             <ChatPanel classId={klass.id} subject={group.subject} />
           )}
+          </div>
         </Panel>
       </div>
 

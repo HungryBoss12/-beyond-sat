@@ -25,6 +25,7 @@ import { MathText } from "@/components/MathText";
 import { useInView, useScrollProgress } from "@/hooks/useInView";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
+import { safeMediaUrl, safeNavigationUrl } from "@/lib/safe-url";
 import { useRegistrationEnabled } from "@/lib/registration";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -129,20 +130,17 @@ function CtaLink({
     registrationOn !== true && (href === "/signup" || href.startsWith("/signup?"))
       ? "/signin"
       : href;
-  const isInternalRoute = dest.startsWith("/") && !dest.startsWith("//");
+  const safe = safeNavigationUrl(dest) ?? "/";
+  const isInternalRoute = safe.startsWith("/") && !safe.startsWith("//");
   if (!isInternalRoute) {
     return (
-      <a
-        href={dest}
-        className={className}
-        {...(/^https?:/i.test(dest) ? { target: "_blank", rel: "noreferrer noopener" } : {})}
-      >
+      <a href={safe} className={className} target="_blank" rel="noreferrer noopener">
         {children}
       </a>
     );
   }
   return (
-    <Link to={dest} className={className}>
+    <Link to={safe} className={className}>
       {children}
     </Link>
   );
@@ -619,7 +617,9 @@ function SectionRenderer({ section }: { section: Section }) {
                   </p>
                   <div className="mt-5 flex items-center gap-3 border-t border-brand-400/40 pt-4">
                     <Avatar className="h-9 w-9">
-                      {r.avatar && <AvatarImage src={String(r.avatar)} alt="" />}
+                      {safeMediaUrl(String(r.avatar ?? "")) && (
+                        <AvatarImage src={safeMediaUrl(String(r.avatar ?? "")) ?? undefined} alt="" />
+                      )}
                       <AvatarFallback className="bg-brand-400 text-[11px] font-bold text-white">
                         {initials(r.name)}
                       </AvatarFallback>

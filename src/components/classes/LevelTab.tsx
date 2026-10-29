@@ -1,5 +1,6 @@
 import { Columns3, Gauge, History, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { IconButton } from "@/components/ui/icon-button";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { LevelBoardRow, LevelSection } from "@/lib/classes/groups";
 import { levelTrend, sectionShort } from "@/lib/classes/level";
@@ -88,7 +89,7 @@ export function LevelTab({
               <th className="px-2 py-2">L</th>
               {expanded &&
                 sections.map((section) => (
-                  <th key={section.id} className="px-2 py-2 text-center">
+                  <th key={section.id} className="widen-in px-2 py-2 text-center">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <abbr
@@ -115,9 +116,10 @@ export function LevelTab({
                 <tr key={person.userId} className="border-t border-brand-400/30">
                   <th
                     scope="row"
-                    className="sticky left-0 z-10 max-w-[200px] truncate bg-brand-600 px-2 py-2 font-bold"
+                    className="sticky left-0 z-10 flex max-w-[220px] items-center gap-1 bg-brand-600 px-2 py-2 font-bold"
                   >
-                    {person.name}
+                    <span className="truncate">{person.name}</span>
+                    <ScoreBadge score={person.badgeScore} />
                   </th>
                   <td className="px-2 py-2">
                     <LevelValue row={row} />
@@ -128,7 +130,7 @@ export function LevelTab({
                       return (
                         <td
                           key={section.id}
-                          className="px-2 py-2 text-center tabular-nums"
+                          className="widen-in px-2 py-2 text-center tabular-nums"
                           title={
                             cell
                               ? `${section.name}: ${cell.score} on ${cell.assessed_on}`

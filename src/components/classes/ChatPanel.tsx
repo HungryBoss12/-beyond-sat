@@ -14,6 +14,7 @@ import {
   type ChatThread,
   type ClassSubject,
 } from "@/lib/classes";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { CLASS_CONTROL } from "./control";
 
 /** The sub-class chat (subject thread) plus the class-wide thread. */
@@ -118,8 +119,9 @@ export function ChatPanel({ classId, subject }: { classId: string; subject: Clas
                 "rounded-lg bg-brand-800 px-3 py-2 text-sm " + (deleted ? "opacity-60" : "")
               }
             >
-              <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+              <div className="mb-0.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-white">
                 {sender ? displayName(sender) : message.sender_id.slice(0, 8)}
+                <ScoreBadge score={sender?.badge_score} />
               </div>
               {deleted ? (
                 <div className="italic text-white">Message deleted</div>

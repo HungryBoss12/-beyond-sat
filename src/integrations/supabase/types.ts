@@ -1879,6 +1879,7 @@ export type Database = {
           banned: boolean;
           banned_at: string | null;
           banned_reason: string | null;
+          badge_score: number | null;
           birth_date: string | null;
           chat_setup_completed: boolean;
           city: string | null;
@@ -1906,6 +1907,7 @@ export type Database = {
           banned?: boolean;
           banned_at?: string | null;
           banned_reason?: string | null;
+          badge_score?: number | null;
           birth_date?: string | null;
           chat_setup_completed?: boolean;
           city?: string | null;
@@ -1933,6 +1935,7 @@ export type Database = {
           banned?: boolean;
           banned_at?: string | null;
           banned_reason?: string | null;
+          badge_score?: number | null;
           birth_date?: string | null;
           chat_setup_completed?: boolean;
           city?: string | null;
@@ -3997,11 +4000,16 @@ export type Database = {
           type: string;
         }[];
       };
+      admin_set_badge_score: {
+        Args: { p_user_id: string; p_score: number | null };
+        Returns: undefined;
+      };
       admin_users_summary: {
         Args: never;
         Returns: {
           accuracy_pct: number;
           banned: boolean;
+          badge_score: number;
           class_name: string;
           created_at: string;
           current_streak: number;

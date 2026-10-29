@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Medal, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { RankBadge } from "@/components/classes/RankBadge";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 import {
   clampScore,
   compareRanked,
@@ -13,7 +14,13 @@ import {
 import { saveStudentScore } from "@/lib/classes/classroom";
 import { CLASS_CONTROL } from "./control";
 
-export type RankStudent = { userId: string; name: string; rw: number | null; math: number | null };
+export type RankStudent = {
+  userId: string;
+  name: string;
+  rw: number | null;
+  math: number | null;
+  badgeScore?: number | null;
+};
 
 export function RankingTable({
   students,
@@ -102,7 +109,12 @@ export function RankingTable({
                       place
                     )}
                   </td>
-                  <td className="font-bold">{row.name}</td>
+                  <td className="font-bold">
+                    <span className="inline-flex items-center gap-1">
+                      {row.name}
+                      <ScoreBadge score={row.badgeScore} />
+                    </span>
+                  </td>
                   <ScoreCells
                     rw={row.rw}
                     math={row.math}
@@ -118,7 +130,12 @@ export function RankingTable({
             {ranked.unscored.map((row) => (
               <tr key={row.userId} className="border-t border-brand-400/30">
                 <td className="py-2 text-white">—</td>
-                <td className="font-bold">{row.name}</td>
+                <td className="font-bold">
+                  <span className="inline-flex items-center gap-1">
+                    {row.name}
+                    <ScoreBadge score={row.badgeScore} />
+                  </span>
+                </td>
                 <ScoreCells
                   rw={row.rw}
                   math={row.math}

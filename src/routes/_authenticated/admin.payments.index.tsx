@@ -6,7 +6,9 @@ import {
   CalendarCheck,
   Banknote,
   ChevronsUpDown,
+  CircleCheck,
   Download,
+  FileSpreadsheet,
   HandCoins,
   Layers,
   ListChecks,
@@ -25,6 +27,7 @@ import {
 } from "lucide-react";
 import { monthKey } from "@/lib/classes/classroom";
 import { subjectToSlug } from "@/lib/classes/schemes";
+import { CollectNotes } from "@/components/billing/CollectNotes";
 import { EmptyState } from "@/components/ui/panel";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { IconButton } from "@/components/ui/icon-button";
@@ -77,6 +80,8 @@ import {
 import { downloadCsv, toCsv } from "@/lib/billing/csv";
 import { periodLabel, tashkentToday } from "@/lib/billing/dates";
 import { compactUzs, formatUzs, groupDigits, parseUzsInput } from "@/lib/billing/money";
+import { listCollectNotes, saveCollectNote, collectNoteKey, type CollectNote } from "@/lib/billing/collect-notes";
+import { downloadDebtWorkbook } from "@/lib/billing/debt-sheet";
 import type { BalanceRow, GroupFeeRow, PaymentsSummary } from "@/lib/billing/types";
 import { staffName } from "@/lib/people-name";
 import { withSubgroupNotes } from "@/lib/billing/notes";
@@ -155,6 +160,7 @@ function PaymentsPage() {
   const navigate = Route.useNavigate();
   const [rows, setRows] = useState<BalanceRow[]>([]);
   const [census, setCensus] = useState<BalanceRow[]>([]);
+  const [notes, setNotes] = useState<CollectNote[]>([]);
   const [ledger, setLedger] = useState<TxRow[] | null>(null);
   const [summary, setSummary] = useState<PaymentsSummary | null>(null);
   const [tuitionEdge, setTuitionEdge] = useState<{ without: bigint; with: bigint } | null>(null);
@@ -212,15 +218,17 @@ function PaymentsPage() {
       }
       const maxDebt = parseUzsInput(search.maxDebt, 10n ** 12n);
       const minDebt = parseUzsInput(search.minDebt, 10n ** 12n);
-      const [sum, groupRows, people, tuition] = await Promise.all([
+      const [sum, groupRows, people, tuition, collect] = await Promise.all([
         paymentsSummary(),
         groupFees(),
         listBalances({}),
         tuitionDiscountTotals().catch(() => null),
+        listCollectNotes().catch(() => [] as CollectNote[]),
       ]);
       setSummary(sum);
       setFees(groupRows);
       setCensus(people);
+      setNotes(collect);
       setTuitionEdge(tuition);
       if (search.view === "ledger") {
         const groupNames = new Map<string, string[]>();
@@ -424,6 +432,29 @@ function PaymentsPage() {
     );
   }
 
+  async function exportExcel() {
+    try {
+      await downloadDebtWorkbook(
+        `debts-${tashkentToday()}.xlsx`,
+        census,
+        new Map(notes.map((note) => [collectNoteKey(note.user_id, note.class_id, note.subject), note])),
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not build the workbook");
+    }
+  }
+
+  async function saveNote(note: CollectNote) {
+    await saveCollectNote(note);
+    setNotes((current) => {
+      const next = current.filter(
+        (row) => !(row.user_id === note.user_id && row.class_id === note.class_id && row.subject === note.subject),
+      );
+      next.push(note);
+      return next;
+    });
+  }
+
   const feeMeta =
     summary == null
       ? undefined
@@ -467,6 +498,7 @@ function PaymentsPage() {
             }}
           />
           <IconButton icon={Download} label="Export CSV" variant="outline" onClick={exportCsv} />
+          <IconButton icon={FileSpreadsheet} label="Export Excel" variant="outline" onClick={() => void exportExcel()} />
           {!teacher && (
             <IconButton
               icon={RotateCcw}
@@ -624,6 +656,15 @@ function PaymentsPage() {
               )}
               onClick={() => patch({ chip, view: "balances" })}
             >
+              {chip === "debt" ? (
+                <TriangleAlert className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />
+              ) : chip === "credit" ? (
+                <Wallet className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />
+              ) : chip === "settled" ? (
+                <CircleCheck className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />
+              ) : (
+                <Layers className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />
+              )}
               {CHIP_LABEL[chip]}
             </button>
           ))}
@@ -646,6 +687,7 @@ function PaymentsPage() {
               )}
               onClick={() => patch({ activeSort: value, view: "balances" })}
             >
+              <ChevronsUpDown className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />
               {label}
             </button>
           ))}
@@ -672,6 +714,7 @@ function PaymentsPage() {
       <p className="text-xs text-brand-700">
         Fees recur monthly. Click a name for the full student profile.
       </p>
+      {!loading && !error && <CollectNotes rows={census} notes={notes} onSave={saveNote} />}
 
       {loading ? (
         <TableSkeleton />
@@ -686,7 +729,7 @@ function PaymentsPage() {
               className="tap text-sm font-bold underline"
               onClick={() => void load()}
             >
-              Retry
+              <RotateCcw className="mr-1 inline h-4 w-4" aria-hidden="true" /> Retry
             </button>
           }
         />
@@ -995,7 +1038,7 @@ function ResetPaymentsDialog({
                 onClose();
               }}
             >
-              Cancel
+              <X className="mr-1 inline h-4 w-4" aria-hidden="true" /> Cancel
             </button>
             <button
               type="submit"

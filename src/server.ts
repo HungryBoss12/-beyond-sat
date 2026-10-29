@@ -1,6 +1,6 @@
 import "./lib/error-capture";
 
-import { consumeLastCapturedError, isClientAbort } from "./lib/error-capture";
+import { consumeLastCapturedError, isClientAbort, silenceClientAborts } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleAiChat } from "./lib/ai/handler";
 import { handleUinfoFlush } from "./lib/uinfo/summarize";
@@ -36,6 +36,7 @@ import { applySecurityHeaders } from "./lib/security-headers";
    import("node:fs") call that would otherwise pull a Node builtin into the
    Worker. */
 if (import.meta.env.DEV) {
+  console.error = silenceClientAborts(console.error.bind(console)) as typeof console.error;
   const { loadDevEnv } = await import("./lib/dev-env");
   await loadDevEnv();
 }
@@ -58,8 +59,12 @@ async function getServerEntry(): Promise<ServerEntry> {
 
 // h3 swallows in-handler throws into a normal 500 Response with body
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
-async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
+async function normalizeCatastrophicSsrResponse(
+  response: Response,
+  request: Request,
+): Promise<Response> {
   if (response.status < 500) return response;
+  if (request.signal.aborted) return new Response(null, { status: 499 });
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) return response;
 
@@ -226,8 +231,11 @@ export default {
 
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return applySecurityHeaders(await normalizeCatastrophicSsrResponse(response), env);
+      return applySecurityHeaders(await normalizeCatastrophicSsrResponse(response, request), env);
     } catch (error) {
+      if (isClientAbort(error) || request.signal.aborted) {
+        return new Response(null, { status: 499 });
+      }
       console.error(error);
       return applySecurityHeaders(
         new Response(renderErrorPage(), {

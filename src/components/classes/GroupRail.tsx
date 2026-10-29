@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
+  ArrowRightLeft,
+  Banknote,
   CalendarClock,
+  ChevronDown,
   CircleCheck,
   EllipsisVertical,
   FlaskConical,
   Info,
+  School,
   Search,
   Snowflake,
   TriangleAlert,
   UserPlus,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { reissueStudentInvite } from "@/lib/students/api";
@@ -44,6 +49,7 @@ import {
 } from "@/lib/classes/groups";
 import { scheduleLine, shortDate } from "@/lib/classes/schedule";
 import { formatUzs, type BalanceKind } from "@/lib/billing/money";
+import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { cn } from "@/lib/utils";
 
 export type RailPerson = {
@@ -54,6 +60,7 @@ export type RailPerson = {
   alsoIn: string[];
   /** Admin only. */
   balanceKind?: BalanceKind;
+  badgeScore?: number | null;
 };
 
 export type RailFilter = "" | "active" | "trial" | "frozen" | "debt";
@@ -63,6 +70,7 @@ export type FormerPerson = {
   name: string;
   effectiveOn: string;
   movedTo: string | null;
+  badgeScore?: number | null;
 };
 
 const LEGEND: {
@@ -257,6 +265,7 @@ export function GroupRail({
                 <div className="min-w-0 flex-1 py-1.5">
                   <div className="flex min-w-0 items-center gap-1">
                     <span className="truncate text-sm font-bold">{person.name}</span>
+                    <ScoreBadge score={person.badgeScore} />
                     {isAdmin && person.balanceKind === "debt" && (
                       <TriangleAlert className="h-3 w-3 shrink-0" aria-label="Debtor" />
                     )}
@@ -325,7 +334,7 @@ export function GroupRail({
             );
           })}
           {people.length === 0 && (
-            <li className="px-2 py-4 text-sm text-white">No students match.</li>
+            <li className="fade-in px-2 py-4 text-sm text-white">No students match.</li>
           )}
         </ul>
         {former.length > 0 && (
@@ -336,17 +345,21 @@ export function GroupRail({
               onClick={() => setFormerOpen((open) => !open)}
               className="tap w-full rounded-lg px-2 py-2 text-left text-xs font-bold text-white hover:bg-brand-500/60"
             >
+              <ChevronDown className={`mr-1 inline h-3 w-3 ${formerOpen ? "rotate-180" : ""}`} aria-hidden="true" />
               {formerOpen ? "Hide left students" : `Left students · ${former.length}`}
             </button>
             {formerOpen && (
-              <ul className="space-y-0.5">
+              <ul className="widen-in space-y-0.5">
                 {formerShown.map((person) => (
                   <li
                     key={person.userId}
                     className="flex items-center gap-1 rounded-lg px-1 hover:bg-brand-500/60"
                   >
                     <div className="min-w-0 flex-1 py-1.5">
-                      <div className="truncate text-sm font-bold text-white/80">{person.name}</div>
+                      <div className="flex min-w-0 items-center gap-1">
+                        <div className="truncate text-sm font-bold text-white/80">{person.name}</div>
+                        <ScoreBadge score={person.badgeScore} />
+                      </div>
                       <div className="truncate text-[11px] text-white">
                         {person.movedTo
                           ? `Moved to ${person.movedTo}`
@@ -400,7 +413,7 @@ export function GroupRail({
               className="rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
               onClick={() => removing && void remove(removing, true)}
             >
-              Include the participation fee
+              <Banknote className="mr-1 inline h-4 w-4" aria-hidden="true" /> Include the participation fee
             </button>
             <button
               type="button"
@@ -408,7 +421,7 @@ export function GroupRail({
               className="rounded-full bg-red-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
               onClick={() => removing && void remove(removing, false)}
             >
-              No fee
+              <X className="mr-1 inline h-4 w-4" aria-hidden="true" /> No fee
             </button>
             <button
               type="button"
@@ -416,7 +429,7 @@ export function GroupRail({
               disabled={removeBusy}
               onClick={() => setRemoving(null)}
             >
-              Cancel
+              <X className="mr-1 inline h-4 w-4" aria-hidden="true" /> Cancel
             </button>
           </div>
         </DialogContent>
@@ -524,12 +537,13 @@ function MoveDialog({
                 (target === row.id ? "bg-brand-400 text-white" : "bg-brand-900 text-white hover:bg-brand-950")
               }
             >
+              <School className="mr-1 inline h-3 w-3" aria-hidden="true" />
               {row.name}
             </button>
           ))}
         </div>
         {target && (
-          <ul className="space-y-1">
+          <ul className="widen-in space-y-1">
             {classGroups.map((row) => (
               <li key={row.id}>
                 <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-brand-900">
@@ -559,16 +573,16 @@ function MoveDialog({
           </div>
         </div>
         <div className="flex justify-end gap-2">
-          <button type="button" className="tap px-4 py-2 text-sm font-bold" onClick={onClose}>
-            Cancel
+            <button type="button" className="tap inline-flex items-center gap-1 px-4 py-2 text-sm font-bold" onClick={onClose}>
+            <X className="h-4 w-4" aria-hidden="true" /> Cancel
           </button>
           <button
             type="button"
             disabled={busy || !target || groupIds.length === 0 || !addedOn}
             onClick={() => void move()}
-            className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            className="btn-brand inline-flex items-center gap-1 rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
           >
-            Move
+            <ArrowRightLeft className="h-4 w-4" aria-hidden="true" /> Move
           </button>
         </div>
       </DialogContent>

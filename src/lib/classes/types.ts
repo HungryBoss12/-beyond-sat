@@ -42,6 +42,7 @@ export type ChatProfile = {
   last_name: string | null;
   email: string | null;
   last_seen_at?: string | null;
+  badge_score?: number | null;
 };
 
 export type ChatThread = {

@@ -57,7 +57,7 @@ export function MoneyTile({
                 aria-label={`${label}: ${full}${kind ? ` ${kind}` : ""}`}
                 className="flex min-w-0 items-baseline gap-1.5 text-xl font-black leading-tight text-white outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
               >
-                <span className="tabular-nums">{shown}</span>
+                <span key={shown} className="flash-tint rounded-md tabular-nums">{shown}</span>
                 {kind && <span className="shrink-0 text-xs font-bold text-white">{kind}</span>}
               </div>
             </TooltipTrigger>

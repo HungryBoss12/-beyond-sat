@@ -37,18 +37,30 @@ export function youtubeThumb(url: string): string | null {
   return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
 }
 
+function embedOrigin(): string | null {
+  if (typeof window === "undefined" || window.location.protocol === "file:") return null;
+  return window.location.origin;
+}
+
 export function youtubeEmbed(url: string, options?: { autoplay?: boolean }): string | null {
   const id = youtubeId(url);
   if (!id) return null;
   const params = new URLSearchParams();
   if (options?.autoplay !== false) params.set("autoplay", "1");
-  // Without this, the player falls back to a file:// target and Firefox
-  // blocks it on the embedding page.
-  if (typeof window !== "undefined" && window.location.protocol !== "file:") {
-    params.set("origin", window.location.origin);
-  }
+  const origin = embedOrigin();
+  if (origin) params.set("origin", origin);
   const query = params.toString();
   return `https://www.youtube-nocookie.com/embed/${id}${query ? `?${query}` : ""}`;
+}
+
+/** A playlist embed. origin is required or Firefox tries a file:// fallback. */
+export function youtubePlaylistEmbed(url: string): string | null {
+  const list = /[?&]list=([^&]+)/.exec(url.trim())?.[1];
+  if (!list) return null;
+  const params = new URLSearchParams({ list });
+  const origin = embedOrigin();
+  if (origin) params.set("origin", origin);
+  return `https://www.youtube-nocookie.com/embed/videoseries?${params.toString()}`;
 }
 
 export function formatDuration(seconds: number | null | undefined): string | null {

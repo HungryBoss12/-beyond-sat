@@ -103,12 +103,31 @@ function resolveCompletedScore(session: MockSessionRow): number | null {
   return null;
 }
 
-function trendLabel(when: string, sessionId: string, usedLabels: Map<string, number>): string {
+const KIND_LABEL: Record<MockSessionRow["type"], string> = {
+  practice: "Practice",
+  daily: "Daily",
+  mock: "Mock",
+};
+
+type DayLabels = { counts: Map<string, number>; firstType: MockSessionRow["type"] | null };
+
+/** First test on a day is just the date. Later ones say Practice, Daily, or Mock. */
+function trendLabel(when: string, type: MockSessionRow["type"], used: Map<string, DayLabels>): string {
   const base = format(new Date(when), "MMM d");
-  const count = usedLabels.get(base) ?? 0;
-  usedLabels.set(base, count + 1);
-  if (count === 0) return base;
-  return `${base} · ${sessionId.slice(0, 4)}`;
+  const day = used.get(base) ?? { counts: new Map<string, number>(), firstType: null };
+  used.set(base, day);
+  const seen = (day.counts.get(type) ?? 0) + 1;
+  day.counts.set(type, seen);
+  const anyBefore = [...day.counts.values()].reduce((sum, n) => sum + n, 0) - 1;
+  if (anyBefore === 0) {
+    day.firstType = type;
+    return base;
+  }
+  const kind = KIND_LABEL[type];
+  if (type === day.firstType) {
+    return seen === 2 ? `${base} · ${kind}` : `${base} · ${kind} ${seen - 1}`;
+  }
+  return seen === 1 ? `${base} · ${kind}` : `${base} · ${kind} ${seen}`;
 }
 
 /** Best available display score — SAT scale for mocks, projected band for practice/daily. */
@@ -172,7 +191,7 @@ export function buildMockTrend(sessions: MockSessionRow[], limit = 8): MockTrend
       (a, b) => new Date(sessionWhen(a)).getTime() - new Date(sessionWhen(b)).getTime(),
     );
 
-  const usedLabels = new Map<string, number>();
+  const usedLabels = new Map<string, DayLabels>();
   const points: MockTrendPoint[] = [];
   for (const m of tracked) {
     const pt = mockDisplayScore(m);
@@ -180,7 +199,7 @@ export function buildMockTrend(sessions: MockSessionRow[], limit = 8): MockTrend
     const when = sessionWhen(m);
     points.push({
       ...pt,
-      label: trendLabel(when, m.id, usedLabels),
+      label: trendLabel(when, m.type, usedLabels),
     });
   }
   return points.slice(-limit);

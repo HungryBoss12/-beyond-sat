@@ -1,4 +1,5 @@
 import { Canvas, useFrame } from "@react-three/fiber";
+import { quietEvents } from "@/components/landing/quiet-events";
 import { useMemo, useRef } from "react";
 import { WebGLRenderer, type Group, type Mesh, type WebGLRendererParameters } from "three";
 
@@ -45,7 +46,7 @@ const POINTER_PITCH = 0.22;
  * group rather than the camera — moving the camera would also move the lights,
  * which are what give the facets their definition.
  */
-function Emblem({ over }: { over: { current: boolean } }) {
+function Emblem({ over, pointer }: { over: { current: boolean }; pointer: { current: { x: number; y: number } } }) {
   const group = useRef<Group>(null);
   const core = useRef<Mesh>(null);
   const shell = useRef<Mesh>(null);
@@ -74,13 +75,12 @@ function Emblem({ over }: { over: { current: boolean } }) {
     const step = Math.min(delta, 0.05);
     scroll.current += (heroProgress() - scroll.current) * Math.min(1, step * 6);
 
-    /* `state.pointer` is already normalised to -1…1 over the canvas, so no
-       listener and no getBoundingClientRect is needed. It rests at (0, 0) until
-       the pointer first enters, which is also where a touch device leaves it —
-       so a phone gets the scroll and idle terms and nothing else. */
+    /* Pointer comes from a DOM listener on the canvas, normalised to -1…1.
+       It rests at (0, 0) until the pointer enters, which is also where a touch
+       device leaves it — a phone gets the scroll and idle terms only. */
     const ease = Math.min(1, step * 4);
-    aimX.current += (state.pointer.x - aimX.current) * ease;
-    aimY.current += (state.pointer.y - aimY.current) * ease;
+    aimX.current += (pointer.current.x - aimX.current) * ease;
+    aimY.current += (pointer.current.y - aimY.current) * ease;
 
     const t = state.clock.elapsedTime;
     const s = scroll.current;
@@ -235,6 +235,7 @@ export default function BeyondCoreScene({
   const onLost = useRef(onContextLost);
   onLost.current = onContextLost;
   const over = useRef(false);
+  const pointer = useRef({ x: 0, y: 0 });
 
   return (
     <Canvas
@@ -259,6 +260,7 @@ export default function BeyondCoreScene({
         return createRenderer(canvas, highDpr, () => onLost.current());
       }}
       style={{ width: "100%", height: "100%" }}
+      events={quietEvents}
       onCreated={({ gl: renderer }) => {
         const el = renderer.domElement;
         const enter = () => {
@@ -266,9 +268,18 @@ export default function BeyondCoreScene({
         };
         const leave = () => {
           over.current = false;
+          pointer.current.x = 0;
+          pointer.current.y = 0;
+        };
+        const move = (event: PointerEvent) => {
+          const rect = el.getBoundingClientRect();
+          if (rect.width <= 0 || rect.height <= 0) return;
+          pointer.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+          pointer.current.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
         };
         el.addEventListener("pointerenter", enter);
         el.addEventListener("pointerleave", leave);
+        el.addEventListener("pointermove", move);
       }}
     >
       {/* Two point lights plus a dim ambient: the ambient stops the unlit faces
@@ -276,7 +287,7 @@ export default function BeyondCoreScene({
       <ambientLight intensity={0.55} />
       <pointLight position={[4, 3, 5]} intensity={55} color="#ffffff" distance={18} />
       <pointLight position={[-4, -2, 3]} intensity={30} color={BRAND_200} distance={16} />
-      {animate ? <Emblem over={over} /> : <StaticEmblem />}
+      {animate ? <Emblem over={over} pointer={pointer} /> : <StaticEmblem />}
     </Canvas>
   );
 }

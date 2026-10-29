@@ -15,6 +15,7 @@ export type AdminAnim =
   | "news"
   | "lessons"
   | "classes"
+  | "lids"
   | "notifications"
   | "users"
   | "payments"
@@ -59,6 +60,7 @@ export function AdminNavIcon({ anim, className, hovered: hoveredProp }: Props) {
       {anim === "news" && <NewsIcon hovered={h} />}
       {anim === "lessons" && <LessonsIcon hovered={h} />}
       {anim === "classes" && <ClassesIcon hovered={h} />}
+      {anim === "lids" && <LidsIcon hovered={h} />}
       {anim === "notifications" && <NotificationsIcon hovered={h} />}
       {anim === "users" && <UsersIcon hovered={h} />}
       {anim === "payments" && <PaymentsIcon hovered={h} />}
@@ -468,6 +470,23 @@ function LessonsIcon({ hovered }: { hovered: boolean }) {
         transition={SNAP}
         style={{ willChange: "transform", transformOrigin: "17px 8px" }}
       />
+    </svg>
+  );
+}
+
+function LidsIcon({ hovered }: { hovered: boolean }) {
+  return (
+    <svg {...svgProps}>
+      <motion.path
+        d="M8 6h13M8 12h13M8 18h13"
+        animate={{ x: hovered ? 1 : 0 }}
+        transition={SNAP}
+      />
+      <motion.g animate={{ scale: hovered ? 1.15 : 1 }} transition={SNAP} style={{ transformOrigin: "4px 12px" }}>
+        <circle cx="4" cy="6" r="1.2" fill="currentColor" stroke="none" />
+        <circle cx="4" cy="12" r="1.2" fill="currentColor" stroke="none" />
+        <circle cx="4" cy="18" r="1.2" fill="currentColor" stroke="none" />
+      </motion.g>
     </svg>
   );
 }

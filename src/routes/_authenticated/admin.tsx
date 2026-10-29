@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { AnimationEvent } from "react";
 import { LayoutGroup, motion } from "motion/react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -95,7 +96,7 @@ const NAV = [
   { to: "/admin/vocab", label: "Vocab", anim: "vocab", group: "Content" },
   { to: "/admin/lessons", label: "Lessons", anim: "lessons", group: "Content" },
   { to: "/admin/classes", label: "Classes", anim: "classes", group: "Content" },
-  { to: "/admin/archive", label: "Archive", anim: "classes", group: "Content", adminOnly: true },
+  { to: "/admin/lids", label: "Lids", anim: "lids", group: "Students", adminOnly: true },
   { to: "/admin/support", label: "Support", anim: "lessons", group: "Manage", adminOnly: true },
   { to: "/admin/users", label: "Students", anim: "users", group: "Students", adminOnly: true },
   { to: "/admin/payments", label: "Payments", anim: "payments", group: "Students", adminOnly: true },
@@ -132,6 +133,30 @@ function AdminLayout() {
   const { staffRole } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
+  const [shown, setShown] = useState(false);
+  const openRef = useRef(false);
+  openRef.current = open;
+
+  function showMenu() {
+    setShown(true);
+    setOpen(true);
+  }
+
+  function hideMenu() {
+    setOpen(false);
+  }
+
+  function onDrawerEnd(event: AnimationEvent<HTMLElement>) {
+    if (event.target !== event.currentTarget) return;
+    if (event.animationName !== "slide-out-left" || openRef.current) return;
+    setShown(false);
+  }
+
+  useEffect(() => {
+    if (open || !shown) return;
+    const timer = window.setTimeout(() => setShown(false), 500);
+    return () => window.clearTimeout(timer);
+  }, [open, shown]);
 
   const current = visibleNav(staffRole).find((n) => isActive(n, pathname));
 
@@ -144,19 +169,18 @@ function AdminLayout() {
             <SidebarBody pathname={pathname} role={staffRole} />
           </aside>
 
-          {open && (
+          {shown && (
             <div className="fixed inset-0 z-40 lg:hidden">
               <button
-                className="absolute inset-0 bg-brand-900/50 backdrop-blur-sm"
+                className={`${open ? "fade-in" : "menu-fade-out"} absolute inset-0 bg-brand-900/50 backdrop-blur-sm`}
                 aria-label="Close menu"
-                onClick={() => setOpen(false)}
+                onClick={hideMenu}
               />
-              <aside className="absolute inset-y-0 left-0 flex w-[min(100%,280px)] flex-col bg-brand-600 text-white shadow-float">
-                <SidebarBody
-                  pathname={pathname}
-                  role={staffRole}
-                  onNavigate={() => setOpen(false)}
-                />
+              <aside
+                className={`${open ? "slide-from-left" : "slide-out-left"} absolute inset-y-0 left-0 flex w-[min(100%,280px)] flex-col bg-brand-600 text-white shadow-float`}
+                onAnimationEnd={onDrawerEnd}
+              >
+                <SidebarBody pathname={pathname} role={staffRole} onNavigate={hideMenu} />
               </aside>
             </div>
           )}
@@ -164,7 +188,7 @@ function AdminLayout() {
           <div className="flex min-w-0 flex-col">
             <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 text-brand-900 backdrop-blur lg:px-8">
               <button
-                onClick={() => setOpen(true)}
+                onClick={showMenu}
                 className="tap grid h-9 w-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden"
                 aria-label="Open menu"
               >

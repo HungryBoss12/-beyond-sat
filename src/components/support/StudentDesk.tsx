@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DesmosCalculator } from "@/components/DesmosCalculator";
-import { BookOpenCheck } from "lucide-react";
+import { BookOpen, BookOpenCheck, CalendarDays, Clock, User } from "lucide-react";
 import { SupportHeader } from "@/components/support/SupportHeader";
 import { SupportRecommendedVideo } from "@/components/support/SupportRecommendedVideo";
 import { AdminSelect } from "@/components/admin/AdminSelect";
@@ -105,12 +105,22 @@ export function StudentDesk() {
     }
   }
 
-  const days = new Map<string, TeacherSlot[]>();
+  const days = new Map<string, { label: string; weekday: string; slots: TeacherSlot[] }>();
   for (const slot of slots) {
-    const key = formatWhen(slot.starts_at).replace(/\d{2}:\d{2}$/, "").trim();
-    const list = days.get(key) ?? [];
-    list.push(slot);
-    days.set(key, list);
+    const when = new Date(slot.starts_at);
+    const key = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Tashkent",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(when);
+    const entry = days.get(key) ?? {
+      label: new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Tashkent", day: "numeric", month: "short" }).format(when),
+      weekday: new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Tashkent", weekday: "long" }).format(when),
+      slots: [],
+    };
+    entry.slots.push(slot);
+    days.set(key, entry);
   }
 
   return (
@@ -136,8 +146,8 @@ export function StudentDesk() {
           <SupportRecommendedVideo />
         </Panel>
       </div>
-      <Panel className="space-y-3 p-4 text-white">
-        <div className="flex flex-wrap items-end gap-3">
+      <Panel className="space-y-4 p-4 text-white">
+        <div className="grid gap-3 sm:grid-cols-2">
           <AdminSelect
             label="Support teacher"
             value={teacherId || "none"}
@@ -160,32 +170,57 @@ export function StudentDesk() {
             tone="brand"
           />
         </div>
-        <p className="text-xs">Empty slots can be booked. Taken slots already have a student.</p>
+        <div className="flex items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-800">
+            <CalendarDays className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div>
+            <h2 className="text-lg font-black">Book a slot</h2>
+            <p className="text-xs text-brand-100">Empty slots can be booked. Taken slots already have a student.</p>
+          </div>
+        </div>
         {[...days.entries()].length === 0 ? (
           <p className="text-sm">This teacher has no open windows.</p>
         ) : (
-          <div className="space-y-3">
-            {[...days.entries()].map(([day, daySlots]) => (
-              <div key={day}>
-                <p className="text-xs font-bold">{day}</p>
-                <ul className="mt-1 flex flex-wrap gap-2">
-                  {daySlots.map((slot) => (
-                    <li key={slot.id}>
-                      <button
-                        type="button"
-                        disabled={busy || slot.state !== "free"}
-                        onClick={() => void requestSlot(slot)}
-                        className={`rounded-xl px-3 py-2 text-xs font-bold ${
-                          slot.state === "free"
-                            ? "bg-white text-brand-900"
-                            : "bg-brand-800 text-white/80"
-                        } disabled:cursor-default`}
-                      >
-                        {formatWhen(slot.starts_at).slice(-5)} ·{" "}
-                        {slot.state === "free" ? "Book" : slot.state === "mine" ? "Yours" : slot.state === "break" ? "Break" : "Taken"}
-                      </button>
-                    </li>
-                  ))}
+          <div>
+            {[...days.entries()].map(([day, entry]) => (
+              <div key={day} className="grid gap-3 border-t border-white/10 py-4 md:grid-cols-[9.5rem_1fr]">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 shrink-0 text-brand-100" aria-hidden="true" />
+                  <div>
+                    <p className="text-sm font-black">{entry.label}</p>
+                    <p className="text-xs text-brand-100">{entry.weekday}</p>
+                  </div>
+                </div>
+                <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {entry.slots.map((slot) => {
+                    const free = slot.state === "free";
+                    const label =
+                      slot.state === "free" ? "Book" : slot.state === "mine" ? "Yours" : slot.state === "break" ? "Break" : "Taken";
+                    return (
+                      <li key={slot.id}>
+                        <button
+                          type="button"
+                          disabled={busy || !free}
+                          onClick={() => void requestSlot(slot)}
+                          className={`flex w-full flex-col rounded-xl border px-3 py-2 text-left disabled:cursor-default ${
+                            free
+                              ? "border-white bg-white text-brand-900"
+                              : "border-white/10 bg-brand-800 text-white/70"
+                          }`}
+                        >
+                          <span className="inline-flex items-center gap-1 text-sm font-black">
+                            <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                            {formatWhen(slot.starts_at).slice(-5)}
+                          </span>
+                          <span className="mt-0.5 inline-flex items-center gap-1 text-xs font-bold">
+                            {free ? <BookOpen className="h-3 w-3" aria-hidden="true" /> : <User className="h-3 w-3" aria-hidden="true" />}
+                            {label}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}

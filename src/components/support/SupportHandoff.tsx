@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Send, Undo2, User, Users } from "lucide-react";
+import { Check, Plus, Search, Send, Undo2, User, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { tashkentToday } from "@/lib/billing/dates";
 import type { ClassSubject } from "@/lib/classes/types";
 import {
   assignSupportStudent,
@@ -10,6 +11,7 @@ import {
   loadDaySheet,
   loadSendBoard,
   postSupportRange,
+  setSupportTick,
   type DaySlot,
   type SendBoard,
 } from "@/lib/support/api";
@@ -37,6 +39,7 @@ export function SupportHandoff({ day, subject }: { day: string; subject: ClassSu
   }
 
   useEffect(() => {
+    setAdding(null);
     void load().catch((err: unknown) => toast.error(err instanceof Error ? err.message : "Could not load support"));
   }, [day]);
 
@@ -110,6 +113,7 @@ export function SupportHandoff({ day, subject }: { day: string; subject: ClassSu
           key={column.subject}
           label={column.label}
           subject={column.subject}
+          past={day < tashkentToday()}
           slots={slots}
           className={className}
           adding={adding === column.subject}
@@ -128,6 +132,9 @@ export function SupportHandoff({ day, subject }: { day: string; subject: ClassSu
           onStudent={setStudentId}
           onSave={() => void add(column.subject)}
           onClear={(windowId) => void run(() => clearSupportWindow(windowId), "Student taken off this day")}
+          onAttend={(sessionId, present) =>
+            void run(() => setSupportTick(sessionId, "attendance", present), present ? "Marked present" : "Marked absent")
+          }
         />
       ))}
     </div>
@@ -137,6 +144,7 @@ export function SupportHandoff({ day, subject }: { day: string; subject: ClassSu
 function SubjectBoard({
   label,
   subject,
+  past,
   slots,
   className,
   adding,
@@ -151,9 +159,11 @@ function SubjectBoard({
   onStudent,
   onSave,
   onClear,
+  onAttend,
 }: {
   label: string;
   subject: ClassSubject;
+  past: boolean;
   slots: DaySlot[];
   className: Map<string, string>;
   adding: boolean;
@@ -168,20 +178,24 @@ function SubjectBoard({
   onStudent: (id: string) => void;
   onSave: () => void;
   onClear: (windowId: string) => void;
+  onAttend: (sessionId: string, present: boolean) => void;
 }) {
   const rows = slots.filter((slot) => slot.student_id && slot.subject === subject);
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-black">{label}</h3>
-        <button
-          type="button"
-          className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-black text-brand-900"
-          onClick={onAdd}
-        >
-          <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add
-        </button>
+        {past ? null : (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-black text-brand-900"
+            onClick={onAdd}
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add
+          </button>
+        )}
       </div>
+      {past ? null : (
       <AddWindow
         open={adding}
         label={label}
@@ -203,6 +217,7 @@ function SubjectBoard({
           onSave();
         }}
       />
+      )}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm">
           <thead>
@@ -211,13 +226,14 @@ function SubjectBoard({
               <th className="px-2 py-2">Student</th>
               <th className="px-2 py-2">Class</th>
               <th className="px-2 py-2">Teacher</th>
-              <th className="px-2 py-2" />
+              <th className="px-2 py-2">Attendance</th>
+              {past ? null : <th className="px-2 py-2" />}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="fade-in px-2 py-3 text-sm">
+                <td colSpan={past ? 5 : 6} className="fade-in px-2 py-3 text-sm">
                   No one is on {label} support this day.
                 </td>
               </tr>
@@ -229,15 +245,29 @@ function SubjectBoard({
                   <td className="px-2 py-2">{className.get(row.student_id ?? "") || "—"}</td>
                   <td className="px-2 py-2">{row.teacher_name}</td>
                   <td className="px-2 py-2">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      className="inline-flex items-center gap-1 text-xs font-bold underline"
-                      onClick={() => onClear(row.id)}
-                    >
-                      <Undo2 className="h-3 w-3" aria-hidden="true" /> Take off
-                    </button>
+                    <AttendanceTick
+                      on={row.attended}
+                      label={`Attendance for ${row.student_name ?? "this student"}`}
+                      disabled={busy || !row.session_id}
+                      onClick={() => {
+                        if (!row.session_id) return;
+                        const next = row.attended !== true;
+                        onAttend(row.session_id, next);
+                      }}
+                    />
                   </td>
+                  {past ? null : (
+                    <td className="px-2 py-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="inline-flex items-center gap-1 text-xs font-bold underline"
+                        onClick={() => onClear(row.id)}
+                      >
+                        <Undo2 className="h-3 w-3" aria-hidden="true" /> Take off
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
@@ -245,6 +275,33 @@ function SubjectBoard({
         </table>
       </div>
     </div>
+  );
+}
+
+function AttendanceTick({
+  on,
+  label,
+  disabled,
+  onClick,
+}: {
+  on: boolean | null;
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={on === true}
+      disabled={disabled}
+      onClick={onClick}
+      className={`grid h-8 w-8 place-items-center rounded-full text-xs font-black disabled:opacity-40 ${
+        on === true ? "bg-white text-brand-900" : on === false ? "bg-red-500 text-white" : "bg-brand-800 text-white ring-1 ring-white/40"
+      }`}
+    >
+      {on === true ? <Check className="h-4 w-4" aria-hidden="true" /> : on === false ? "×" : ""}
+    </button>
   );
 }
 

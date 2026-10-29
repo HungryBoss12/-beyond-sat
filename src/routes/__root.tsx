@@ -14,6 +14,7 @@ import { installSmoothWheel } from "../lib/smooth-wheel";
 import { blockFileAccess, FILE_BLOCK_BOOT } from "../lib/block-file-access";
 import { registerPwa } from "../lib/pwa";
 import { watchAdminSession } from "../lib/auth/admin-session";
+import { Toaster } from "../components/ui/sonner";
 import { OfflineGate } from "../components/OfflineScreen";
 import { NotFoundPage } from "../components/NotFoundPage";
 
@@ -150,6 +151,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <OfflineGate />
+      <Toaster position="top-center" />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>

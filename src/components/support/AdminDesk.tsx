@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Panel } from "@/components/ui/panel";
 import { SupportHandoff } from "@/components/support/SupportHandoff";
-import { BookOpen, Calculator, CalendarClock, ChevronLeft, ChevronRight, Settings, Timer } from "lucide-react";
+import { BookOpen, Calculator, CalendarClock, Check, ChevronLeft, ChevronRight, Settings, User, Users } from "lucide-react";
 import type { ClassSubject } from "@/lib/classes/types";
 import {
   DUTY_LABEL,
@@ -11,7 +11,6 @@ import {
   loadAdminTeachers,
   loadTeacherDetail,
   postSupportRange,
-  setSupportDuty,
   tashkentCalendarToday,
   type DutyStatus,
   type SupportTeacherCard,
@@ -19,6 +18,7 @@ import {
 } from "@/lib/support/api";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const EVERY_TEACHER = "every";
 
 function startOfWeek(anchor: Date): Date {
   const day = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
@@ -51,6 +51,10 @@ function monthGrid(anchor: Date): Date[] {
   });
 }
 
+function weekdayIndex(date: Date): number {
+  return (date.getDay() + 6) % 7;
+}
+
 function dayKey(day: Date): string {
   const month = String(day.getMonth() + 1).padStart(2, "0");
   const date = String(day.getDate()).padStart(2, "0");
@@ -63,7 +67,6 @@ export function AdminDesk() {
   const [setupTick, setSetupTick] = useState(0);
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TeacherDetail | null>(null);
-  const [dutyMinutes, setDutyMinutes] = useState("180");
   const [week, setWeek] = useState(() => startOfWeek(tashkentCalendarToday()));
   const [pickedDays, setPickedDays] = useState<boolean[]>(() => Array(7).fill(false));
   const [fromTime, setFromTime] = useState("15:00");
@@ -72,6 +75,7 @@ export function AdminDesk() {
   const [day, setDay] = useState<string | null>(null);
   const [subject, setSubject] = useState<ClassSubject | null>(null);
   const [busy, setBusy] = useState(false);
+  const [slotNote, setSlotNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
@@ -87,7 +91,7 @@ export function AdminDesk() {
   }, [teacherId, teachers]);
 
   useEffect(() => {
-    if (!setupOpen || !teacherId) {
+    if (!setupOpen || !teacherId || teacherId === EVERY_TEACHER) {
       setDetail(null);
       return;
     }
@@ -107,48 +111,54 @@ export function AdminDesk() {
 
   const days = useMemo(() => monthGrid(month), [month]);
 
+  useEffect(() => {
+    if (!day) return;
+    const [year, monthPart, datePart] = day.split("-").map(Number);
+    const chosen = new Date(year, (monthPart ?? 1) - 1, datePart ?? 1);
+    if (!pickedDays[weekdayIndex(chosen)]) {
+      setDay(null);
+      setSubject(null);
+    }
+  }, [day, pickedDays]);
+
   async function openWeek(teacherId: string) {
     const monday = startOfWeek(week);
     const chosen = pickedDays.flatMap((on, index) => (on ? [index] : []));
     if (chosen.length === 0) {
-      toast.error("Choose at least one weekday");
+      setSlotNote("Choose at least one weekday");
       return;
     }
-    if (toTime <= fromTime) {
-      toast.error("Choose an end time later than the start");
+    const start = fromTime.slice(0, 5);
+    const end = toTime.slice(0, 5);
+    if (end <= start) {
+      setSlotNote("Choose an end time later than the start");
+      return;
+    }
+    const ids = teacherId === EVERY_TEACHER ? teachers.map((teacher) => teacher.id) : [teacherId];
+    if (ids.length === 0) {
+      setSlotNote("There are no support teachers yet");
       return;
     }
     setBusy(true);
+    setSlotNote(null);
     try {
       let added = 0;
-      for (const index of chosen) {
-        const date = new Date(monday);
-        date.setDate(monday.getDate() + index);
-        added += await postSupportRange(`${dayKey(date)}T${fromTime}`, `${dayKey(date)}T${toTime}`, teacherId);
+      for (const id of ids) {
+        for (const index of chosen) {
+          const date = new Date(monday);
+          date.setDate(monday.getDate() + index);
+          added += await postSupportRange(`${dayKey(date)}T${start}`, `${dayKey(date)}T${end}`, id);
+        }
       }
-      toast.success(added > 0 ? `${added} slots opened` : "Those slots were already open");
-      setDetail(await loadTeacherDetail(teacherId));
+      const note = added > 0 ? `${added} slots opened` : "Those slots were already open";
+      setSlotNote(note);
+      toast.success(note);
+      if (teacherId !== EVERY_TEACHER) setDetail(await loadTeacherDetail(teacherId));
       await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not open slots");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveDuty(teacherId: string) {
-    const minutes = Number(dutyMinutes);
-    if (!Number.isInteger(minutes) || minutes < 15 || minutes > 14 * 60) {
-      toast.error("Duty must be between 15 minutes and 14 hours");
-      return;
-    }
-    setBusy(true);
-    try {
-      await setSupportDuty(teacherId, minutes);
-      toast.success("Duty timer set");
-      await load();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not set the timer");
+      const note = err instanceof Error ? err.message : "Could not open slots";
+      setSlotNote(note);
+      toast.error(note);
     } finally {
       setBusy(false);
     }
@@ -173,50 +183,44 @@ export function AdminDesk() {
         <h1 className="text-2xl font-black text-brand-900">Support teachers</h1>
       </div>
       {error && <p className="text-sm font-bold text-red-700">{error}</p>}
+      {slotNote ? (
+        <p className="rounded-xl bg-white px-4 py-3 text-sm font-black text-brand-900 shadow-panel">{slotNote}</p>
+      ) : null}
       <div
         className={`grid transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           setupOpen && teacherId ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"
         }`}
       >
-        <div className="min-h-0 overflow-hidden">
+        <div className={`min-h-0 ${setupOpen ? "overflow-visible" : "overflow-hidden"}`}>
       {teacherId ? (
         <Panel key={setupTick} className="widen-in space-y-4 p-4 text-sm">
-          <label className="block text-xs font-bold">
-            Teacher
-            <select
-              value={teacherId}
-              onChange={(event) => setTeacherId(event.target.value)}
-              className="mt-1 block w-full rounded-xl bg-brand-800 px-3 py-2 text-sm"
-            >
+          <div className="space-y-2">
+            <p className="text-xs font-bold">Teacher</p>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Teacher">
+              <button
+                type="button"
+                onClick={() => setTeacherId(EVERY_TEACHER)}
+                className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-black ${
+                  teacherId === EVERY_TEACHER ? "bg-white text-brand-900" : "bg-brand-800 text-white"
+                }`}
+              >
+                <Users className="h-3.5 w-3.5" aria-hidden="true" /> Every teacher
+              </button>
               {teachers.map((teacher) => (
-                <option key={teacher.id} value={teacher.id}>
-                  {teacher.name}
-                </option>
+                <button
+                  key={teacher.id}
+                  type="button"
+                  onClick={() => setTeacherId(teacher.id)}
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-black ${
+                    teacherId === teacher.id ? "bg-white text-brand-900" : "bg-brand-800 text-white"
+                  }`}
+                >
+                  <User className="h-3.5 w-3.5" aria-hidden="true" /> {teacher.name}
+                </button>
               ))}
-            </select>
-          </label>
-          <div className="flex items-end gap-2">
-            <label className="min-w-0 flex-1 text-xs font-bold">
-              On duty for minutes
-              <input
-                type="number"
-                min={15}
-                max={840}
-                value={dutyMinutes}
-                onChange={(event) => setDutyMinutes(event.target.value)}
-                className="mt-1 block w-full rounded-xl bg-brand-800 px-3 py-2 text-sm"
-              />
-            </label>
-            <button
-              type="button"
-              disabled={busy}
-              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-4 py-2 text-sm font-black text-brand-900"
-              onClick={() => void saveDuty(teacherId)}
-            >
-              <Timer className="h-4 w-4" aria-hidden="true" /> Set timer
-            </button>
+            </div>
           </div>
-          <div className="space-y-3 border-t border-white/10 pt-3">
+          <div className="space-y-3">
             <div className="grid grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-2">
               <button
                 type="button"
@@ -242,22 +246,20 @@ export function AdminDesk() {
             </div>
             <div className="grid grid-cols-7 gap-1" role="group" aria-label="Weekdays">
               {WEEKDAYS.map((name, index) => (
-                <label
+                <button
                   key={name}
-                  className={`cursor-pointer rounded-lg py-2 text-center text-[11px] font-black whitespace-nowrap ${
+                  type="button"
+                  aria-pressed={pickedDays[index]}
+                  onClick={() =>
+                    setPickedDays((current) => current.map((on, item) => (item === index ? !on : on)))
+                  }
+                  className={`inline-flex items-center justify-center gap-0.5 rounded-lg py-2 text-[11px] font-black whitespace-nowrap ${
                     pickedDays[index] ? "bg-white text-brand-900" : "bg-brand-800 text-white"
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={pickedDays[index]}
-                    onChange={() =>
-                      setPickedDays((current) => current.map((on, item) => (item === index ? !on : on)))
-                    }
-                  />
+                  <Check className={`h-3 w-3 ${pickedDays[index] ? "" : "opacity-0"}`} aria-hidden="true" />
                   {name}
-                </label>
+                </button>
               ))}
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -286,7 +288,7 @@ export function AdminDesk() {
               className="inline-flex w-full items-center justify-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-black text-brand-900"
               onClick={() => void openWeek(teacherId)}
             >
-              <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" /> Open slots
+              <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" /> {busy ? "Opening slots…" : "Open slots"}
             </button>
           </div>
           {detail ? (
@@ -370,17 +372,24 @@ export function AdminDesk() {
           {days.map((date) => {
             const key = dayKey(date);
             const inMonth = date.getMonth() === month.getMonth();
+            const scheduled = pickedDays[weekdayIndex(date)];
             return (
               <button
                 key={key}
                 type="button"
+                disabled={!scheduled}
                 onClick={() => {
+                  if (!scheduled) return;
                   setDay(key);
                   setSubject(null);
                 }}
-                className={`rounded-lg py-2 ${day === key ? "bg-white text-brand-900" : "bg-brand-800"} ${
-                  inMonth ? "" : "opacity-40"
-                }`}
+                className={`rounded-lg py-2 ${
+                  !scheduled
+                    ? "cursor-not-allowed bg-white/10 text-white/35"
+                    : day === key
+                      ? "bg-white text-brand-900"
+                      : "bg-brand-800"
+                } ${inMonth || !scheduled ? "" : "opacity-40"}`}
               >
                 {date.getDate()}
               </button>

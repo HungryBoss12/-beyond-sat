@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Calculator, X, Minus, Maximize2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Calculator, ExternalLink, Maximize2, Minus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 let scriptPromise: Promise<void> | null = null;
@@ -69,6 +70,7 @@ export function DesmosCalculator({ chrome = "float" }: { chrome?: "float" | "hea
   const [ready, setReady] = useState(false);
   const [pos, setPos] = useState<Pos | null>(null);
   const mountRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const calcRef = useRef<DesmosCalculatorInstance | null>(null);
   const dragRef = useRef<{
     pointerId: number;
@@ -135,6 +137,25 @@ export function DesmosCalculator({ chrome = "float" }: { chrome?: "float" | "hea
     setPos((prev) => prev ?? defaultPos(false));
   }
 
+  function closePanel() {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && panelRef.current?.contains(active)) active.blur();
+    setOpen(false);
+  }
+
+  function setPanelMinimized(next: boolean) {
+    setMinimized(next);
+    setPos((p) => {
+      const base = p ?? defaultPos(!next);
+      return clampPos(
+        base.x,
+        base.y,
+        next ? 288 : Math.min(window.innerWidth * 0.92, 720),
+        next ? 48 : Math.min(window.innerHeight * 0.8, 640),
+      );
+    });
+  }
+
   function onTitlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
@@ -187,7 +208,7 @@ export function DesmosCalculator({ chrome = "float" }: { chrome?: "float" | "hea
   const panelH = minimized ? "h-12" : "h-[min(80vh,640px)]";
   const placed = pos ?? (typeof window !== "undefined" ? defaultPos(minimized) : { x: 0, y: 0 });
 
-  return (
+  const ui = (
     <>
       {!open && (
         <button
@@ -196,8 +217,9 @@ export function DesmosCalculator({ chrome = "float" }: { chrome?: "float" | "hea
           className={
             chrome === "header"
               ? "tap inline-flex flex-col items-center rounded px-2 py-1 text-[11px] font-semibold text-test-ink hover:bg-test-well"
-              : "btn-test fixed bottom-24 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-test-accent px-4 py-2.5 text-sm font-bold text-white shadow-float hover:bg-test-accent-deep"
+              : "btn-test fixed right-4 z-40 inline-flex items-center gap-2 rounded-full bg-test-accent px-4 py-2.5 text-sm font-bold text-white shadow-float hover:bg-test-accent-deep"
           }
+          style={chrome === "header" ? undefined : { top: "4.75rem" }}
           title="Open Desmos calculator"
         >
           <Calculator className={chrome === "header" ? "h-5 w-5" : "h-4 w-4"} />
@@ -207,51 +229,62 @@ export function DesmosCalculator({ chrome = "float" }: { chrome?: "float" | "hea
 
       {everOpened && (
         <div
+          ref={panelRef}
+          inert={!open}
           className={
-            "fixed z-40 flex flex-col overflow-hidden rounded-xl border border-test-line bg-white shadow-float " +
+            "fixed z-40 flex-col overflow-hidden rounded-xl border border-test-line bg-white shadow-float " +
+            (open ? "flex " : "hidden ") +
             panelW +
             " " +
-            panelH +
-            (open ? "" : " hidden")
+            panelH
           }
           style={{ left: placed.x, top: placed.y, right: "auto", bottom: "auto" }}
         >
           <div
-            className="flex h-11 shrink-0 cursor-grab items-center justify-between border-b border-test-line bg-test-chrome px-3 active:cursor-grabbing"
+            className="relative z-10 flex h-11 shrink-0 cursor-grab items-center justify-between gap-2 border-b border-test-line bg-test-chrome px-3 active:cursor-grabbing"
             onPointerDown={onTitlePointerDown}
             onPointerMove={onTitlePointerMove}
             onPointerUp={onTitlePointerUp}
             onPointerCancel={onTitlePointerUp}
           >
-            <div className="flex items-center gap-2 text-sm font-bold text-test-ink">
-              <Calculator className="h-4 w-4 text-test-accent" /> Desmos Calculator
+            <div className="flex min-w-0 items-center gap-2 text-sm font-bold text-test-ink">
+              <Calculator className="h-4 w-4 shrink-0 text-test-accent" />
+              <span className="truncate">{minimized ? "Desmos" : "Desmos Calculator"}</span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
+              {!minimized && (
+                <button
+                  type="button"
+                  onClick={() => window.open("https://www.desmos.com/calculator", "_blank", "noopener,noreferrer")}
+                  className="tap grid h-8 w-8 place-items-center rounded-md text-test-muted hover:bg-test-tint hover:text-test-accent"
+                  title="Open in a new tab"
+                  aria-label="Open Desmos in a new tab"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => {
-                  setMinimized((v) => {
-                    const next = !v;
-                    setPos((p) => {
-                      const base = p ?? defaultPos(v);
-                      return clampPos(
-                        base.x,
-                        base.y,
-                        next ? 288 : Math.min(window.innerWidth * 0.92, 720),
-                        next ? 48 : Math.min(window.innerHeight * 0.8, 640),
-                      );
-                    });
-                    return next;
-                  });
-                }}
-                className="tap grid h-8 w-8 place-items-center rounded-md text-test-muted hover:bg-test-tint hover:text-test-accent"
-                title={minimized ? "Expand" : "Minimize"}
+                onClick={() => setPanelMinimized(!minimized)}
+                className={
+                  "tap inline-flex h-8 items-center justify-center rounded-md hover:bg-test-tint hover:text-test-accent " +
+                  (minimized ? "gap-1 px-2 text-test-accent" : "w-8 text-test-muted")
+                }
+                title={minimized ? "Make big" : "Minimize"}
+                aria-label={minimized ? "Make calculator big" : "Minimize calculator"}
               >
-                {minimized ? <Maximize2 className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                {minimized ? (
+                  <>
+                    <Maximize2 className="h-4 w-4" />
+                    <span className="text-xs font-bold">Big</span>
+                  </>
+                ) : (
+                  <Minus className="h-4 w-4" />
+                )}
               </button>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={closePanel}
                 className="tap grid h-8 w-8 place-items-center rounded-md text-test-muted hover:bg-test-tint hover:text-test-accent"
                 title="Close"
               >
@@ -261,19 +294,24 @@ export function DesmosCalculator({ chrome = "float" }: { chrome?: "float" | "hea
           </div>
 
           {/*
-            Calculator stays mounted at full size; the panel clips to the title bar
-            when minimized so Desmos never unmounts or resizes to 0×0.
+            Kept mounted so expressions survive minimize. While small, the frame
+            is taken out of the bar: an iframe paints through overflow:hidden
+            and was covering the expand control.
           */}
           <div
-            className="relative w-full shrink-0"
-            style={{ height: "calc(min(80vh, 640px) - 2.75rem)" }}
+            className={
+              minimized
+                ? "pointer-events-none invisible absolute h-0 w-0 overflow-hidden"
+                : "relative w-full shrink-0"
+            }
+            style={minimized ? undefined : { height: "calc(min(80vh, 640px) - 2.75rem)" }}
             aria-hidden={minimized}
           >
             {useIframe ? (
               <iframe
                 title="Desmos graphing calculator"
                 src="https://www.desmos.com/calculator"
-                className="absolute inset-0 h-full w-full border-0"
+                className={minimized ? "h-[600px] w-[720px] border-0" : "absolute inset-0 h-full w-full border-0"}
                 allow="clipboard-write"
               />
             ) : (
@@ -283,7 +321,7 @@ export function DesmosCalculator({ chrome = "float" }: { chrome?: "float" | "hea
                     Loading calculator…
                   </div>
                 )}
-                <div ref={mountRef} className="absolute inset-0" />
+                <div ref={mountRef} className={minimized ? "h-[600px] w-[720px]" : "absolute inset-0"} />
               </>
             )}
           </div>
@@ -291,4 +329,12 @@ export function DesmosCalculator({ chrome = "float" }: { chrome?: "float" | "hea
       )}
     </>
   );
+
+  // route-enter keeps a transform after its entrance animation, which traps
+  // position:fixed inside the scrolling page. The support launcher has to live
+  // on the viewport so it stays put and a closed window cannot take the wheel.
+  if (chrome === "float" && typeof document !== "undefined") {
+    return createPortal(ui, document.body);
+  }
+  return ui;
 }

@@ -431,6 +431,24 @@ export type DaySlot = {
   closed: boolean;
 };
 
+/** Tashkent calendar days in [fromDay, toDay] that already have support slots. */
+export async function loadScheduledSupportDays(fromDay: string, toDay: string): Promise<string[]> {
+  const end = new Date(`${toDay}T12:00:00+05:00`);
+  end.setUTCDate(end.getUTCDate() + 1);
+  const endDay = TASHKENT_DAY.format(end);
+  const { data, error } = await db
+    .from("support_windows")
+    .select("starts_at")
+    .gte("starts_at", tashkentInput(`${fromDay}T00:00`))
+    .lt("starts_at", tashkentInput(`${endDay}T00:00`));
+  raise(error);
+  const days = new Set<string>();
+  for (const row of (data ?? []) as { starts_at: string }[]) {
+    days.add(TASHKENT_DAY.format(new Date(row.starts_at)));
+  }
+  return [...days];
+}
+
 export async function loadDaySheet(day: string, teacherId?: string | null): Promise<DaySlot[]> {
   const { data, error } = await db.rpc("support_day_sheet", {
     p_day: day,

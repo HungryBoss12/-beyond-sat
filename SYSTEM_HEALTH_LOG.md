@@ -26,6 +26,7 @@ Automated notes from scheduled integrity runs. Newest entries at the top.
 - Re-synced `ROUTES` with `src/server.ts` (added admin reset/invite + auth preview/claim/forgot-password)
 - Hardened 2MB payload probes (90s timeout + catch abort) so the harness completes on slow body reads
 - Prior run aborted at 20s on first route’s 2MB probe; re-run after fix expected `P1A_DONE` with no `[!]` flags
+- **2026-10-29 re-run:** `P1A_DONE`, **no `[!]` flags** (~20s)
 
 **Repo CI locally:**
 

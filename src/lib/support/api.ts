@@ -162,6 +162,22 @@ export type SupportWindow = {
   closed?: boolean;
 };
 
+const STUDENT_BOOKING_KEY = "support_student_booking";
+
+export async function loadStudentBookingOn(): Promise<boolean> {
+  const { data, error } = await db.from("app_settings").select("value").eq("key", STUDENT_BOOKING_KEY).maybeSingle();
+  raise(error);
+  return data?.value === "on";
+}
+
+export async function saveStudentBookingOn(on: boolean): Promise<void> {
+  const { error } = await db.from("app_settings").upsert(
+    { key: STUDENT_BOOKING_KEY, value: on ? "on" : "off" },
+    { onConflict: "key" },
+  );
+  raise(error);
+}
+
 export async function postSupportRange(start: string, end: string, teacherId?: string | null): Promise<number> {
   const { data, error } = await db.rpc("teacher_post_support_range", {
     p_start: tashkentInput(start),

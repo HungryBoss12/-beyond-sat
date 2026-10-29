@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DesmosCalculator } from "@/components/DesmosCalculator";
-import { BookOpen, BookOpenCheck, CalendarDays, Clock, User } from "lucide-react";
+import { BookOpen, BookOpenCheck, CalendarDays, CalendarOff, Clock, User } from "lucide-react";
 import { SupportHeader } from "@/components/support/SupportHeader";
 import { SupportRecommendedVideo } from "@/components/support/SupportRecommendedVideo";
 import { AdminSelect } from "@/components/admin/AdminSelect";
@@ -12,6 +12,7 @@ import {
   bookSupportWindow,
   formatWhen,
   loadMySessions,
+  loadStudentBookingOn,
   loadSupportTeachers,
   loadTeacherSlots,
   prepareSupportWindows,
@@ -53,6 +54,7 @@ export function StudentDesk() {
   const [sessions, setSessions] = useState<SupportSession[]>([]);
   const [subject, setSubject] = useState<ClassSubject>("ebrw");
   const [busy, setBusy] = useState(false);
+  const [bookingOn, setBookingOn] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function loadSessions() {
@@ -60,24 +62,25 @@ export function StudentDesk() {
   }
 
   useEffect(() => {
-    void Promise.all([prepareSupportWindows(), loadSupportTeachers(), loadMySessions()])
-      .then(([, nextTeachers, nextSessions]) => {
+    void Promise.all([prepareSupportWindows(), loadSupportTeachers(), loadMySessions(), loadStudentBookingOn()])
+      .then(([, nextTeachers, nextSessions, nextBooking]) => {
         setTeachers(nextTeachers);
         setSessions(nextSessions);
+        setBookingOn(nextBooking);
         setTeacherId((current) => current || nextTeachers[0]?.id || "");
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load support"));
   }, []);
 
   useEffect(() => {
-    if (!teacherId) {
+    if (!teacherId || bookingOn !== true) {
       setSlots([]);
       return;
     }
     void loadTeacherSlots(teacherId)
       .then(setSlots)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load slots"));
-  }, [teacherId]);
+  }, [teacherId, bookingOn]);
 
   const now = Date.now();
   const upcoming = sessions
@@ -91,7 +94,7 @@ export function StudentDesk() {
   const later = upcoming.slice(1);
 
   async function requestSlot(slot: TeacherSlot) {
-    if (slot.state !== "free" || busy) return;
+    if (slot.state !== "free" || busy || !bookingOn) return;
     setBusy(true);
     try {
       await bookSupportWindow(slot.id, subject);
@@ -176,10 +179,18 @@ export function StudentDesk() {
           </span>
           <div>
             <h2 className="text-lg font-black">Book a slot</h2>
-            <p className="text-xs text-brand-100">Empty slots can be booked. Taken slots already have a student.</p>
+            <p className="text-xs text-brand-100">
+              {bookingOn === false
+                ? "An admin has turned student booking off."
+                : "Empty slots can be booked. One booking per day. Taken slots already have a student."}
+            </p>
           </div>
         </div>
-        {[...days.entries()].length === 0 ? (
+        {bookingOn === false ? (
+          <p className="inline-flex items-center gap-2 text-sm">
+            <CalendarOff className="h-4 w-4" aria-hidden="true" /> Booking is turned off.
+          </p>
+        ) : bookingOn && [...days.entries()].length === 0 ? (
           <p className="text-sm">This teacher has no open windows.</p>
         ) : (
           <div>

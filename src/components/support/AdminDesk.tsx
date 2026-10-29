@@ -2,15 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Panel } from "@/components/ui/panel";
 import { SupportHandoff } from "@/components/support/SupportHandoff";
-import { BookOpen, Calculator, CalendarClock, Check, ChevronLeft, ChevronRight, Settings, User, Users } from "lucide-react";
+import { BookOpen, Calculator, CalendarClock, Check, ChevronLeft, ChevronRight, Settings, ToggleLeft, ToggleRight, User, Users } from "lucide-react";
 import type { ClassSubject } from "@/lib/classes/types";
 import {
   DUTY_LABEL,
   ORIGIN_LABEL,
   formatWhen,
   loadAdminTeachers,
+  loadStudentBookingOn,
   loadTeacherDetail,
   postSupportRange,
+  saveStudentBookingOn,
   tashkentCalendarToday,
   type DutyStatus,
   type SupportTeacherCard,
@@ -75,6 +77,7 @@ export function AdminDesk() {
   const [day, setDay] = useState<string | null>(null);
   const [subject, setSubject] = useState<ClassSubject | null>(null);
   const [busy, setBusy] = useState(false);
+  const [bookingOn, setBookingOn] = useState(false);
   const [slotNote, setSlotNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,6 +87,9 @@ export function AdminDesk() {
 
   useEffect(() => {
     void load().catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load teachers"));
+    void loadStudentBookingOn()
+      .then(setBookingOn)
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load booking"));
   }, []);
 
   useEffect(() => {
@@ -157,6 +163,24 @@ export function AdminDesk() {
       await load();
     } catch (err) {
       const note = err instanceof Error ? err.message : "Could not open slots";
+      setSlotNote(note);
+      toast.error(note);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleBooking() {
+    const next = !bookingOn;
+    setBusy(true);
+    try {
+      await saveStudentBookingOn(next);
+      setBookingOn(next);
+      const note = next ? "Student booking is on" : "Student booking is off";
+      setSlotNote(note);
+      toast.success(note);
+    } catch (err) {
+      const note = err instanceof Error ? err.message : "Could not change booking";
       setSlotNote(note);
       toast.error(note);
     } finally {
@@ -282,6 +306,22 @@ export function AdminDesk() {
                 />
               </label>
             </div>
+            <button
+              type="button"
+              disabled={busy}
+              aria-pressed={bookingOn}
+              onClick={() => void toggleBooking()}
+              className={`inline-flex w-full items-center justify-center gap-1 rounded-full px-3 py-2 text-xs font-black ${
+                bookingOn ? "bg-white text-brand-900" : "bg-brand-800 text-white"
+              }`}
+            >
+              {bookingOn ? (
+                <ToggleRight className="h-3.5 w-3.5" aria-hidden="true" />
+              ) : (
+                <ToggleLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+              Student booking {bookingOn ? "on" : "off"}
+            </button>
             <button
               type="button"
               disabled={busy}

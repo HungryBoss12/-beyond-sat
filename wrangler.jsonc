@@ -25,8 +25,9 @@
     "WORKER_PUBLIC_URL": "https://beyond-sat-v0.javazbek80.workers.dev",
     "CSP_ENFORCE": "1",
   },
-  // Re-register the Telegram webhook hourly so it stays pointed at this Worker.
+  // Hourly keeps the Telegram webhook pointed at this Worker and applies billing.
+  // Every five minutes sends the support-lesson start notice.
   "triggers": {
-    "crons": ["0 * * * *"],
+    "crons": ["0 * * * *", "*/5 * * * *"],
   },
 }

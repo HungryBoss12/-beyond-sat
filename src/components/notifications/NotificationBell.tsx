@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Bell, BellRing } from "lucide-react";
 import {
@@ -8,6 +8,7 @@ import {
   NOTIFICATION_LANDED_EVENT,
   type UserNotification,
 } from "@/lib/notifications/client";
+import { placeNotificationInbox, type InboxPlacement } from "@/lib/notifications/place-inbox";
 import { NotificationInbox } from "./NotificationInbox";
 import { useNotificationAnchorOptional } from "./NotificationAnchorContext";
 
@@ -22,9 +23,13 @@ export function NotificationBell({ onNotificationsChange }: Props) {
   const [landingPulse, setLandingPulse] = useState(false);
   const [items, setItems] = useState<UserNotification[]>([]);
   const [pulse, setPulse] = useState(false);
+  const [placement, setPlacement] = useState<InboxPlacement | null>(null);
   const prevCount = useRef(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const flashTimerRef = useRef<number | null>(null);
+  const openRef = useRef(false);
+  const pinnedRef = useRef(false);
+  openRef.current = open;
 
   const setRootRef = (el: HTMLDivElement | null) => {
     rootRef.current = el;
@@ -38,12 +43,17 @@ export function NotificationBell({ onNotificationsChange }: Props) {
       window.setTimeout(() => setPulse(false), 2400);
     });
     anchor.registerFlashInbox(() => {
+      const alreadyOpen = openRef.current;
       setOpen(true);
       setLandingPulse(true);
       if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+      if (alreadyOpen || pinnedRef.current) {
+        flashTimerRef.current = window.setTimeout(() => setLandingPulse(false), 1400);
+        return;
+      }
       flashTimerRef.current = window.setTimeout(() => {
         setLandingPulse(false);
-        setOpen(false);
+        if (!pinnedRef.current) setOpen(false);
       }, 1400);
     });
     return () => {
@@ -82,13 +92,39 @@ export function NotificationBell({ onNotificationsChange }: Props) {
     };
   }, []);
 
+  const measure = useCallback(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPlacement(
+      placeNotificationInbox(
+        { right: rect.right, bottom: rect.bottom },
+        { width: window.innerWidth, height: window.innerHeight },
+      ),
+    );
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    measure();
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+    };
+  }, [open, measure]);
+
   useEffect(() => {
     function onDoc(e: MouseEvent) {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      if (anchor?.inboxRef.current?.contains(target)) return;
+      setOpen(false);
     }
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+  }, [anchor]);
 
   const Icon = unread > 0 ? BellRing : Bell;
 
@@ -112,6 +148,7 @@ export function NotificationBell({ onNotificationsChange }: Props) {
         aria-label="Notifications"
         aria-expanded={open}
         onClick={() => {
+          pinnedRef.current = true;
           setOpen((v) => !v);
           if (!open && unread) {
             void Promise.all(
@@ -138,6 +175,7 @@ export function NotificationBell({ onNotificationsChange }: Props) {
         inboxRef={anchor ? anchor.registerInboxRef : undefined}
         onClose={() => setOpen(false)}
         onRefresh={() => void refresh()}
+        placement={placement}
       />
     </div>
   );

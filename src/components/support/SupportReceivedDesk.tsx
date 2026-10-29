@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Panel } from "@/components/ui/panel";
-import { SupportDaySheet } from "@/components/support/SupportDaySheet";
-import { loadReceivedStudents, subjectLabel, tashkentCalendarToday } from "@/lib/support/api";
+import { SupportHandoff } from "@/components/support/SupportHandoff";
+import { loadMySupportSubject, loadReceivedStudents, subjectLabel, tashkentCalendarToday } from "@/lib/support/api";
 import type { ClassSubject } from "@/lib/classes/types";
 
 type Received = {
@@ -28,6 +28,7 @@ function monthDays(anchor: Date): Date[] {
 
 export function SupportReceivedDesk() {
   const [rows, setRows] = useState<Received[]>([]);
+  const [subject, setSubject] = useState<ClassSubject | null | undefined>(undefined);
   const [month, setMonth] = useState(() => tashkentCalendarToday());
   const [day, setDay] = useState<string | null>(null);
 
@@ -35,6 +36,9 @@ export function SupportReceivedDesk() {
     void loadReceivedStudents()
       .then(setRows)
       .catch((err: unknown) => toast.error(err instanceof Error ? err.message : "Could not load students"));
+    void loadMySupportSubject()
+      .then(setSubject)
+      .catch((err: unknown) => toast.error(err instanceof Error ? err.message : "Could not load your subject"));
   }, []);
 
   return (
@@ -115,11 +119,15 @@ export function SupportReceivedDesk() {
             );
           })}
         </div>
-        {day && (
+        {day && subject ? (
           <div key={day} className="widen-in">
-            <SupportDaySheet day={day} />
+            <p className="text-xs font-bold">{subjectLabel(subject)} sessions. Choose a student for an open time.</p>
+            <SupportHandoff day={day} selfSubject={subject} />
           </div>
-        )}
+        ) : null}
+        {day && subject === null ? (
+          <p className="text-sm">An admin has not set your subject yet.</p>
+        ) : null}
       </Panel>
     </div>
   );

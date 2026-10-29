@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowUpDown, BookOpen, Calculator, CalendarClock, Check, Coffee, X } from "lucide-react";
+import { ArrowUpDown, CalendarClock, Check, Coffee, X } from "lucide-react";
 import { Panel } from "@/components/ui/panel";
 import { SupportHandoff } from "@/components/support/SupportHandoff";
 import {
@@ -18,8 +18,6 @@ import {
   type ComingStudent,
   type SupportSession,
 } from "@/lib/support/api";
-import type { ClassSubject } from "@/lib/classes/types";
-
 type SortKey = "date" | "name" | "groups";
 
 export function TeacherDesk() {
@@ -29,7 +27,6 @@ export function TeacherDesk() {
   const [direction, setDirection] = useState<1 | -1>(1);
   const [minutes, setMinutes] = useState("60");
   const [day, setDay] = useState(() => calendarDay(tashkentCalendarToday()));
-  const [subject, setSubject] = useState<ClassSubject | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,39 +94,14 @@ export function TeacherDesk() {
           <input
             type="date"
             value={day}
-            onChange={(event) => {
-              setDay(event.target.value);
-              setSubject(null);
-            }}
+            onChange={(event) => setDay(event.target.value)}
             className="mt-1 block rounded-xl bg-brand-800 px-3 py-2 text-sm"
           />
         </label>
-        <p className="text-xs">Choose English or Math after the date. The day’s list opens for that subject only.</p>
+        <p className="text-xs">English only lists English teachers. Math only lists Math teachers.</p>
         {day ? (
-          <div key={day} className="widen-in flex gap-2" role="group" aria-label="Subject">
-            <button
-              type="button"
-              onClick={() => setSubject("ebrw")}
-              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-black ${
-                subject === "ebrw" ? "bg-white text-brand-900" : "bg-brand-800 text-white"
-              }`}
-            >
-              <BookOpen className="h-3.5 w-3.5" aria-hidden="true" /> English
-            </button>
-            <button
-              type="button"
-              onClick={() => setSubject("math")}
-              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-black ${
-                subject === "math" ? "bg-white text-brand-900" : "bg-brand-800 text-white"
-              }`}
-            >
-              <Calculator className="h-3.5 w-3.5" aria-hidden="true" /> Math
-            </button>
-          </div>
-        ) : null}
-        {day && subject ? (
-          <div key={subject} className="widen-in">
-            <SupportHandoff day={day} subject={subject} />
+          <div key={day} className="widen-in">
+            <SupportHandoff day={day} />
           </div>
         ) : null}
       </Panel>

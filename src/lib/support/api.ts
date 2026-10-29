@@ -334,7 +334,7 @@ export type SupportOrigin = "request" | "assigned";
 export type SlotState = "free" | "taken" | "mine" | "break";
 export type DutyStatus = "off" | "break" | "teaching" | "duty";
 
-export type SupportTeacherOption = { id: string; name: string };
+export type SupportTeacherOption = { id: string; name: string; subject: ClassSubject | null };
 export type TeacherSlot = { id: string; starts_at: string; ends_at: string; state: SlotState };
 export type ComingStudent = {
   id: string;
@@ -350,6 +350,7 @@ export type SupportTeacherCard = {
   id: string;
   name: string;
   status: DutyStatus;
+  subject: ClassSubject | null;
   duty_ends_at: string | null;
   done_count: number;
   planned_count: number;
@@ -420,6 +421,20 @@ export async function loadAdminTeachers(): Promise<SupportTeacherCard[]> {
   return (data ?? []) as SupportTeacherCard[];
 }
 
+export async function setSupportSubject(teacherId: string, subject: ClassSubject): Promise<void> {
+  const { error } = await db.rpc("admin_set_support_subject", {
+    p_teacher: teacherId,
+    p_subject: subject,
+  });
+  raise(error);
+}
+
+export async function loadMySupportSubject(): Promise<ClassSubject | null> {
+  const { data, error } = await db.rpc("support_my_subject");
+  raise(error);
+  return (data as ClassSubject | null) ?? null;
+}
+
 export async function loadTeacherDetail(teacherId: string): Promise<TeacherDetail> {
   const { data, error } = await db.rpc("admin_support_teacher_detail", { p_teacher: teacherId });
   raise(error);
@@ -444,6 +459,7 @@ export type DaySlot = {
   attended: boolean | null;
   homework_done: boolean | null;
   task: string | null;
+  note: string | null;
   closed: boolean;
 };
 
@@ -493,7 +509,7 @@ export async function loadReceivedStudents(teacherId?: string | null): Promise<{
 }
 
 export type SendBoard = {
-  teachers: { id: string; name: string }[];
+  teachers: { id: string; name: string; subject: ClassSubject | null }[];
   students: {
     id: string;
     name: string;
@@ -559,6 +575,14 @@ export async function setSupportTask(sessionId: string, task: string): Promise<v
   const { error } = await db.rpc("support_set_task", {
     p_session_id: sessionId,
     p_task: task,
+  });
+  raise(error);
+}
+
+export async function setWindowNote(windowId: string, note: string): Promise<void> {
+  const { error } = await db.rpc("support_set_window_note", {
+    p_window_id: windowId,
+    p_note: note,
   });
   raise(error);
 }

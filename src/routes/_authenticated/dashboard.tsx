@@ -307,7 +307,13 @@ function Dashboard() {
                 className="btn-brand group inline-flex items-center gap-2 rounded-xl bg-grad-brand px-4 py-2.5 text-sm font-bold text-white"
               >
                 <Shield className="h-4 w-4" />
-                {staffRole === "admin" ? "Admin Panel" : staffRole === "teacher" ? "Teaching" : "Editor Panel"}
+                {staffRole === "admin"
+                  ? "Admin Panel"
+                  : staffRole === "teacher"
+                    ? "Teaching"
+                    : staffRole === "support_teacher"
+                      ? "Support Panel"
+                      : "Editor Panel"}
                 <ArrowRight className="arrow-slide h-4 w-4" />
               </Link>
             ) : null}

@@ -2,25 +2,23 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Panel } from "@/components/ui/panel";
 import { SupportHandoff } from "@/components/support/SupportHandoff";
-import { BookOpen, Calculator, CalendarClock, Check, ChevronLeft, ChevronRight, Settings, ToggleLeft, ToggleRight, User, Users } from "lucide-react";
+import { BookOpen, Calculator, CalendarClock, Check, ChevronLeft, ChevronRight, Settings, ToggleLeft, ToggleRight } from "lucide-react";
 import type { ClassSubject } from "@/lib/classes/types";
 import {
   DUTY_LABEL,
-  ORIGIN_LABEL,
   formatWhen,
   loadAdminTeachers,
   loadStudentBookingOn,
-  loadTeacherDetail,
   postSupportRange,
   saveStudentBookingOn,
+  setSupportSubject,
+  subjectLabel,
   tashkentCalendarToday,
   type DutyStatus,
   type SupportTeacherCard,
-  type TeacherDetail,
 } from "@/lib/support/api";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const EVERY_TEACHER = "every";
 
 function startOfWeek(anchor: Date): Date {
   const day = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
@@ -67,15 +65,14 @@ export function AdminDesk() {
   const [teachers, setTeachers] = useState<SupportTeacherCard[]>([]);
   const [setupOpen, setSetupOpen] = useState(false);
   const [setupTick, setSetupTick] = useState(0);
-  const [teacherId, setTeacherId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<TeacherDetail | null>(null);
   const [week, setWeek] = useState(() => startOfWeek(tashkentCalendarToday()));
-  const [pickedDays, setPickedDays] = useState<boolean[]>(() => Array(7).fill(false));
+  const [pickedDays, setPickedDays] = useState<boolean[]>(() => [true, true, true, true, true, true, false]);
   const [fromTime, setFromTime] = useState("15:00");
-  const [toTime, setToTime] = useState("17:00");
+  const [toTime, setToTime] = useState("19:00");
+  const [openEnglish, setOpenEnglish] = useState(true);
+  const [openMath, setOpenMath] = useState(true);
   const [month, setMonth] = useState(() => tashkentCalendarToday());
   const [day, setDay] = useState<string | null>(null);
-  const [subject, setSubject] = useState<ClassSubject | null>(null);
   const [busy, setBusy] = useState(false);
   const [bookingOn, setBookingOn] = useState(false);
   const [slotNote, setSlotNote] = useState<string | null>(null);
@@ -92,42 +89,16 @@ export function AdminDesk() {
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load booking"));
   }, []);
 
-  useEffect(() => {
-    if (!teacherId && teachers[0]) setTeacherId(teachers[0].id);
-  }, [teacherId, teachers]);
-
-  useEffect(() => {
-    if (!setupOpen || !teacherId || teacherId === EVERY_TEACHER) {
-      setDetail(null);
-      return;
-    }
-    let cancel = false;
-    setDetail(null);
-    void loadTeacherDetail(teacherId)
-      .then((next) => {
-        if (!cancel) setDetail(next);
-      })
-      .catch((err: unknown) => {
-        if (!cancel) setError(err instanceof Error ? err.message : "Could not load that teacher");
-      });
-    return () => {
-      cancel = true;
-    };
-  }, [setupOpen, teacherId]);
-
   const days = useMemo(() => monthGrid(month), [month]);
 
   useEffect(() => {
     if (!day) return;
     const [year, monthPart, datePart] = day.split("-").map(Number);
     const chosen = new Date(year, (monthPart ?? 1) - 1, datePart ?? 1);
-    if (!pickedDays[weekdayIndex(chosen)]) {
-      setDay(null);
-      setSubject(null);
-    }
+    if (!pickedDays[weekdayIndex(chosen)]) setDay(null);
   }, [day, pickedDays]);
 
-  async function openWeek(teacherId: string) {
+  async function openWeek() {
     const monday = startOfWeek(week);
     const chosen = pickedDays.flatMap((on, index) => (on ? [index] : []));
     if (chosen.length === 0) {
@@ -140,26 +111,41 @@ export function AdminDesk() {
       setSlotNote("Choose an end time later than the start");
       return;
     }
-    const ids = teacherId === EVERY_TEACHER ? teachers.map((teacher) => teacher.id) : [teacherId];
-    if (ids.length === 0) {
-      setSlotNote("There are no support teachers yet");
+    const wanted = new Set<ClassSubject>();
+    if (openEnglish) wanted.add("ebrw");
+    if (openMath) wanted.add("math");
+    if (wanted.size === 0) {
+      setSlotNote("Choose English or Math");
+      return;
+    }
+    const matched = teachers.filter((teacher) => teacher.subject && wanted.has(teacher.subject));
+    const skipped = teachers.filter((teacher) => !teacher.subject);
+    if (matched.length === 0) {
+      setSlotNote(
+        skipped.length > 0
+          ? `${skipped.map((teacher) => teacher.name).join(", ")} still need a subject`
+          : "No support teacher teaches the subject you chose",
+      );
       return;
     }
     setBusy(true);
     setSlotNote(null);
     try {
       let added = 0;
-      for (const id of ids) {
+      for (const teacher of matched) {
         for (const index of chosen) {
           const date = new Date(monday);
           date.setDate(monday.getDate() + index);
-          added += await postSupportRange(`${dayKey(date)}T${start}`, `${dayKey(date)}T${end}`, id);
+          added += await postSupportRange(`${dayKey(date)}T${start}`, `${dayKey(date)}T${end}`, teacher.id);
         }
       }
-      const note = added > 0 ? `${added} slots opened` : "Those slots were already open";
+      const opened = added > 0 ? `${added} slots opened` : "Those slots were already open";
+      const note =
+        skipped.length > 0
+          ? `${opened}. ${skipped.map((teacher) => teacher.name).join(", ")} still need a subject`
+          : opened;
       setSlotNote(note);
       toast.success(note);
-      if (teacherId !== EVERY_TEACHER) setDetail(await loadTeacherDetail(teacherId));
       await load();
     } catch (err) {
       const note = err instanceof Error ? err.message : "Could not open slots";
@@ -212,38 +198,11 @@ export function AdminDesk() {
       ) : null}
       <div
         className={`grid transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          setupOpen && teacherId ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"
+          setupOpen ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"
         }`}
       >
         <div className={`min-h-0 ${setupOpen ? "overflow-visible" : "overflow-hidden"}`}>
-      {teacherId ? (
         <Panel key={setupTick} className="widen-in space-y-4 p-4 text-sm">
-          <div className="space-y-2">
-            <p className="text-xs font-bold">Teacher</p>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Teacher">
-              <button
-                type="button"
-                onClick={() => setTeacherId(EVERY_TEACHER)}
-                className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-black ${
-                  teacherId === EVERY_TEACHER ? "bg-white text-brand-900" : "bg-brand-800 text-white"
-                }`}
-              >
-                <Users className="h-3.5 w-3.5" aria-hidden="true" /> Every teacher
-              </button>
-              {teachers.map((teacher) => (
-                <button
-                  key={teacher.id}
-                  type="button"
-                  onClick={() => setTeacherId(teacher.id)}
-                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-black ${
-                    teacherId === teacher.id ? "bg-white text-brand-900" : "bg-brand-800 text-white"
-                  }`}
-                >
-                  <User className="h-3.5 w-3.5" aria-hidden="true" /> {teacher.name}
-                </button>
-              ))}
-            </div>
-          </div>
           <div className="space-y-3">
             <div className="grid grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-2">
               <button
@@ -306,6 +265,28 @@ export function AdminDesk() {
                 />
               </label>
             </div>
+            <div className="grid grid-cols-2 gap-2" role="group" aria-label="Subjects to open">
+              <button
+                type="button"
+                aria-pressed={openEnglish}
+                onClick={() => setOpenEnglish((on) => !on)}
+                className={`inline-flex items-center justify-center gap-1 rounded-full px-3 py-2 text-xs font-black ${
+                  openEnglish ? "bg-white text-brand-900" : "bg-brand-800 text-white"
+                }`}
+              >
+                <BookOpen className="h-3.5 w-3.5" aria-hidden="true" /> English
+              </button>
+              <button
+                type="button"
+                aria-pressed={openMath}
+                onClick={() => setOpenMath((on) => !on)}
+                className={`inline-flex items-center justify-center gap-1 rounded-full px-3 py-2 text-xs font-black ${
+                  openMath ? "bg-white text-brand-900" : "bg-brand-800 text-white"
+                }`}
+              >
+                <Calculator className="h-3.5 w-3.5" aria-hidden="true" /> Math
+              </button>
+            </div>
             <button
               type="button"
               disabled={busy}
@@ -326,46 +307,12 @@ export function AdminDesk() {
               type="button"
               disabled={busy}
               className="inline-flex w-full items-center justify-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-black text-brand-900"
-              onClick={() => void openWeek(teacherId)}
+              onClick={() => void openWeek()}
             >
               <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" /> {busy ? "Opening slots…" : "Open slots"}
             </button>
           </div>
-          {detail ? (
-            <div key={teacherId} className="widen-in grid grid-cols-2 gap-3 border-t border-white/10 pt-3">
-              <div className="min-w-0">
-                <p className="text-xs font-bold">Planned</p>
-                {detail.planned.length === 0 ? (
-                  <p className="text-xs">None.</p>
-                ) : (
-                  <ul>
-                    {detail.planned.map((session) => (
-                      <li key={session.id}>
-                        {formatWhen(session.starts_at)} · {session.student_name} · {ORIGIN_LABEL[session.origin]}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold">Done</p>
-                {detail.done.length === 0 ? (
-                  <p className="text-xs">None.</p>
-                ) : (
-                  <ul>
-                    {detail.done.map((session) => (
-                      <li key={session.id}>
-                        {formatWhen(session.starts_at)} · {session.student_name}
-                        {session.attended ? " · attended" : ""}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          ) : null}
         </Panel>
-      ) : null}
         </div>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
@@ -375,7 +322,45 @@ export function AdminDesk() {
           teachers.map((teacher) => (
             <Panel key={teacher.id} className="space-y-2 p-4">
               <span className="block text-lg font-black">{teacher.name}</span>
-              <span className="text-xs font-bold">{DUTY_LABEL[teacher.status as DutyStatus] ?? teacher.status}</span>
+              <span className="text-xs font-bold">
+                {teacher.subject ? subjectLabel(teacher.subject) : "No subject"}
+                {" · "}
+                {DUTY_LABEL[teacher.status as DutyStatus] ?? teacher.status}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  aria-pressed={teacher.subject === "ebrw"}
+                  onClick={() =>
+                    void setSupportSubject(teacher.id, "ebrw")
+                      .then(load)
+                      .then(() => toast.success(`${teacher.name} teaches English`))
+                      .catch((err: unknown) => toast.error(err instanceof Error ? err.message : "Could not set the subject"))
+                  }
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${
+                    teacher.subject === "ebrw" ? "bg-white text-brand-900" : "bg-brand-800 text-white"
+                  }`}
+                >
+                  <BookOpen className="h-3.5 w-3.5" aria-hidden="true" /> English
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  aria-pressed={teacher.subject === "math"}
+                  onClick={() =>
+                    void setSupportSubject(teacher.id, "math")
+                      .then(load)
+                      .then(() => toast.success(`${teacher.name} teaches Math`))
+                      .catch((err: unknown) => toast.error(err instanceof Error ? err.message : "Could not set the subject"))
+                  }
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${
+                    teacher.subject === "math" ? "bg-white text-brand-900" : "bg-brand-800 text-white"
+                  }`}
+                >
+                  <Calculator className="h-3.5 w-3.5" aria-hidden="true" /> Math
+                </button>
+              </div>
               <span className="mt-1 block text-xs">
                 {teacher.done_count} done · {teacher.planned_count} planned
                 {teacher.duty_ends_at ? ` · on duty until ${formatWhen(teacher.duty_ends_at)}` : ""}
@@ -421,7 +406,6 @@ export function AdminDesk() {
                 onClick={() => {
                   if (!scheduled) return;
                   setDay(key);
-                  setSubject(null);
                 }}
                 className={`rounded-lg py-2 ${
                   !scheduled
@@ -444,33 +428,11 @@ export function AdminDesk() {
           <div className={`min-h-0 ${day ? "overflow-visible" : "overflow-hidden"}`}>
           <div key={day ?? "none"} className={day ? "widen-in" : undefined}>
           <h3 className="text-sm font-black">{day}</h3>
-          <div className="mt-2 flex gap-2" role="group" aria-label="Subject">
-            <button
-              type="button"
-              onClick={() => setSubject("ebrw")}
-              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-black ${
-                subject === "ebrw" ? "bg-white text-brand-900" : "bg-brand-800 text-white"
-              }`}
-            >
-              <BookOpen className="h-3.5 w-3.5" aria-hidden="true" /> English
-            </button>
-            <button
-              type="button"
-              onClick={() => setSubject("math")}
-              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-black ${
-                subject === "math" ? "bg-white text-brand-900" : "bg-brand-800 text-white"
-              }`}
-            >
-              <Calculator className="h-3.5 w-3.5" aria-hidden="true" /> Math
-            </button>
-          </div>
-          {day && subject ? (
-            <div key={subject} className="widen-in">
-              <SupportHandoff day={day} subject={subject} />
+          {day ? (
+            <div key={day} className="widen-in mt-2">
+              <SupportHandoff day={day} />
             </div>
-          ) : (
-            <p className="widen-in mt-2 text-sm">Choose English or Math.</p>
-          )}
+          ) : null}
           </div>
           </div>
         </div>

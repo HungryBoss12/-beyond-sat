@@ -67,10 +67,22 @@ export function StudentDesk() {
         setTeachers(nextTeachers);
         setSessions(nextSessions);
         setBookingOn(nextBooking);
-        setTeacherId((current) => current || nextTeachers[0]?.id || "");
+        setTeacherId((current) => {
+          const matching = nextTeachers.filter((teacher) => teacher.subject === "ebrw");
+          if (current && matching.some((teacher) => teacher.id === current)) return current;
+          return matching[0]?.id || "";
+        });
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load support"));
   }, []);
+
+  const visibleTeachers = teachers.filter((teacher) => teacher.subject === subject);
+
+  useEffect(() => {
+    const matching = teachers.filter((teacher) => teacher.subject === subject);
+    if (matching.some((teacher) => teacher.id === teacherId)) return;
+    setTeacherId(matching[0]?.id || "");
+  }, [subject, teachers, teacherId]);
 
   useEffect(() => {
     if (!teacherId || bookingOn !== true) {
@@ -156,9 +168,12 @@ export function StudentDesk() {
             value={teacherId || "none"}
             onValueChange={(value) => setTeacherId(value === "none" ? "" : value)}
             options={
-              teachers.length
-                ? teachers.map((teacher) => ({ value: teacher.id, label: teacher.name }))
-                : [{ value: "none", label: "No support teacher yet" }]
+              visibleTeachers.length
+                ? visibleTeachers.map((teacher) => ({
+                    value: teacher.id,
+                    label: `${teacher.name} · ${subjectLabel(teacher.subject ?? subject)}`,
+                  }))
+                : [{ value: "none", label: "No support teacher for this subject" }]
             }
             tone="brand"
           />

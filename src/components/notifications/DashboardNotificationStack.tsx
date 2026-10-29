@@ -12,6 +12,7 @@ import {
   overlayProgress,
   type UserNotification,
 } from "@/lib/notifications/client";
+import { placeNotificationInbox } from "@/lib/notifications/place-inbox";
 import { safeMediaUrl, safeNavigationUrl } from "@/lib/safe-url";
 import { useNotificationAnchorOptional } from "./NotificationAnchorContext";
 
@@ -67,9 +68,11 @@ function TransitionToInbox({
       return () => window.clearTimeout(t);
     }
     const bell = bellEl.getBoundingClientRect();
-    const width = Math.min(window.innerWidth * 0.92, 420);
-    const left = Math.max(8, bell.right - width);
-    setTarget(new DOMRect(left, bell.bottom + 8, width, 76));
+    const placed = placeNotificationInbox(
+      { right: bell.right, bottom: bell.bottom },
+      { width: window.innerWidth, height: window.innerHeight },
+    );
+    setTarget(new DOMRect(placed.left, placed.top, placed.width, 76));
 
     const t1 = window.setTimeout(() => setStage("title"), 280);
     const t2 = window.setTimeout(() => setStage("fly"), 520);
@@ -266,7 +269,14 @@ export function DashboardNotificationStack() {
   const flyingRef = useRef(new Set<string>());
 
   const refresh = useCallback(async () => {
-    setItems(await fetchDashboardNotifications());
+    const rows = await fetchDashboardNotifications();
+    const nowMs = Date.now();
+    const live = rows.filter((n) => !overlayExpired(n, nowMs));
+    const stale = rows.filter((n) => overlayExpired(n, nowMs));
+    setItems(live);
+    if (stale.length === 0) return;
+    await Promise.all(stale.map((n) => hideNotificationOverlay(n.id).catch(() => undefined)));
+    notifyNotificationsChanged();
   }, []);
 
   useEffect(() => {

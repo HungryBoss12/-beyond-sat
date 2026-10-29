@@ -1,12 +1,15 @@
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { formatDistanceToNow } from "date-fns";
 import { Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 import {
   deleteNotificationFromInbox,
   markNotificationRead,
   notifyNotificationsChanged,
   type UserNotification,
 } from "@/lib/notifications/client";
+import type { InboxPlacement } from "@/lib/notifications/place-inbox";
 import { safeMediaUrl, safeNavigationUrl } from "@/lib/safe-url";
 
 type Props = {
@@ -16,41 +19,63 @@ type Props = {
   onRefresh: () => void;
   inboxRef?: (el: HTMLDivElement | null) => void;
   landingPulse?: boolean;
+  placement: InboxPlacement | null;
 };
 
-export function NotificationInbox({ open, items, onClose, onRefresh, inboxRef, landingPulse }: Props) {
+export function NotificationInbox({
+  open,
+  items,
+  onClose,
+  onRefresh,
+  inboxRef,
+  landingPulse,
+  placement,
+}: Props) {
   const reduceMotion = useReducedMotion();
 
   async function handleDelete(id: string) {
-    await deleteNotificationFromInbox(id);
-    notifyNotificationsChanged();
-    onRefresh();
+    try {
+      await deleteNotificationFromInbox(id);
+      notifyNotificationsChanged();
+      onRefresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not delete notification");
+    }
   }
 
-  return (
+  if (typeof document === "undefined" || !placement) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open ? (
         <motion.div
           ref={inboxRef}
-          initial={reduceMotion ? false : { opacity: 0, y: -12, x: 24, scale: 0.96 }}
+          initial={reduceMotion ? false : { opacity: 0, y: -12, scale: 0.96 }}
           animate={{
             opacity: 1,
             y: 0,
-            x: 0,
             scale: landingPulse && !reduceMotion ? [1, 1.02, 1] : 1,
           }}
-          exit={reduceMotion ? undefined : { opacity: 0, y: -10, x: 16, scale: 0.97 }}
+          exit={reduceMotion ? undefined : { opacity: 0, y: -10, scale: 0.97 }}
           transition={{
             duration: landingPulse ? 0.5 : 0.4,
             ease: [0.16, 1, 0.3, 1],
           }}
-          className="dashboard-notif-inbox absolute right-0 top-full z-50 mt-2 w-[min(92vw,420px)] rounded-3xl"
+          style={{
+            position: "fixed",
+            top: placement.top,
+            left: placement.left,
+            width: placement.width,
+            maxHeight: placement.maxHeight,
+            zIndex: 130,
+          }}
+          className="dashboard-notif-inbox flex flex-col rounded-3xl"
         >
-          <div className="dashboard-notif-inbox__head">
+          <div className="dashboard-notif-inbox__head shrink-0">
             <div className="text-base font-black text-white">Notifications</div>
             <div className="mt-0.5 text-xs text-brand-100">Saved until you delete them</div>
           </div>
-          <div className="max-h-[min(70vh,420px)] overflow-y-auto rounded-b-2xl">
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-b-2xl">
             {items.length === 0 ? (
               <p className="px-5 py-10 text-center text-sm text-brand-100">No notifications right now.</p>
             ) : (
@@ -116,6 +141,7 @@ export function NotificationInbox({ open, items, onClose, onRefresh, inboxRef, l
           </div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

@@ -61,6 +61,11 @@ export async function setLidStatus(id: string, status: LidStatus): Promise<void>
   raise(error);
 }
 
+export async function deleteLid(id: string): Promise<void> {
+  const { error } = await db.from("lids").delete().eq("id", id);
+  raise(error);
+}
+
 export async function loadLidsFormUrl(): Promise<string> {
   const { data, error } = await db.from("app_settings").select("value").eq("key", FORM_KEY).maybeSingle();
   raise(error);

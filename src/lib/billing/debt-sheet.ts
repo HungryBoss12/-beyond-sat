@@ -1,6 +1,6 @@
 import type { ClassSubject } from "@/lib/classes/types";
 import { collectNoteKey, type CollectNote } from "./collect-notes";
-import type { BalanceRow } from "./types";
+import type { BalanceGroup, BalanceRow } from "./types";
 
 export type DebtSideRow = {
   userId: string;
@@ -24,53 +24,153 @@ export function parentClassLabel(name: string): string {
 }
 
 function sheetTitle(name: string): string {
-  const title = parentClassLabel(name).replace(/[\\/*?:\[\]]/g, " ").replace(/\s+/g, " ").trim();
+  const title = name.replace(/[\\/*?:\[\]]/g, " ").replace(/\s+/g, " ").trim();
   return (title || "Class").slice(0, 31);
 }
 
-export function debtSheets(rows: readonly BalanceRow[], notes: ReadonlyMap<string, CollectNote>): DebtSheet[] {
-  const sheets = new Map<string, DebtSheet>();
-  for (const row of rows) {
-    if (!row.class_id || !row.class_name) continue;
-    const title = sheetTitle(row.class_name);
-    const sheet = sheets.get(title) ?? { title, english: [], math: [] };
-    const debt = row.balance < 0n ? Number(-row.balance) : 0;
-    for (const subject of ["ebrw", "math"] as const) {
-      const groups = row.groups.filter((group) => group.subject === subject);
-      if (groups.length === 0) continue;
-      const note = notes.get(collectNoteKey(row.user_id, row.class_id, subject));
-      const side: DebtSideRow = {
-        userId: row.user_id,
-        classId: row.class_id,
-        subject,
-        name: row.full_name?.trim() || row.username?.trim() || "Student",
-        groups: groups.map((group) => group.name).join(", "),
-        debt,
-        expectOn: note?.expect_on ?? "",
-        reason: note?.reason ?? "",
-      };
-      if (subject === "ebrw") sheet.english.push(side);
-      else sheet.math.push(side);
+function classKey(group: BalanceGroup): string {
+  return group.class_id || `name:${parentClassLabel(group.name)}`;
+}
+
+function classTitle(groups: readonly BalanceGroup[], classNames: ReadonlyMap<string, string>): string {
+  const id = groups.find((group) => group.class_id)?.class_id;
+  const named = id ? classNames.get(id) : undefined;
+  if (named) return named;
+  const labels = groups.map((group) => parentClassLabel(group.name)).filter(Boolean).sort();
+  return labels[0] || "Class";
+}
+
+/** Whole classes by name, then single-subject groups. The same text on every sheet. */
+export function placementGroups(
+  groups: readonly BalanceGroup[],
+  classNames: ReadonlyMap<string, string> = new Map(),
+): string {
+  const byClass = new Map<string, BalanceGroup[]>();
+  for (const group of groups) {
+    const key = classKey(group);
+    byClass.set(key, [...(byClass.get(key) ?? []), group]);
+  }
+  const whole: string[] = [];
+  const partial: string[] = [];
+  for (const classGroups of byClass.values()) {
+    const subjects = new Set(classGroups.map((group) => group.subject));
+    if (subjects.has("ebrw") && subjects.has("math")) {
+      whole.push(classTitle(classGroups, classNames));
+    } else {
+      partial.push(...classGroups.map((group) => group.name));
     }
-    sheets.set(title, sheet);
   }
-  for (const sheet of sheets.values()) {
-    sheet.english.sort((a, b) => a.name.localeCompare(b.name));
-    sheet.math.sort((a, b) => a.name.localeCompare(b.name));
+  whole.sort((a, b) => a.localeCompare(b));
+  partial.sort((a, b) => a.localeCompare(b));
+  return [...whole, ...partial].join(", ");
+}
+
+function uniqueSheetTitle(name: string, used: Set<string>): string {
+  const base = sheetTitle(name);
+  if (!used.has(base.toLowerCase())) {
+    used.add(base.toLowerCase());
+    return base;
   }
-  return [...sheets.values()].sort((a, b) => a.title.localeCompare(b.title));
+  for (let n = 2; n < 100; n += 1) {
+    const suffix = ` ${n}`;
+    const next = `${base.slice(0, 31 - suffix.length)}${suffix}`;
+    if (!used.has(next.toLowerCase())) {
+      used.add(next.toLowerCase());
+      return next;
+    }
+  }
+  return base;
+}
+
+export function debtSheets(
+  rows: readonly BalanceRow[],
+  notes: ReadonlyMap<string, CollectNote>,
+  classNames: ReadonlyMap<string, string> = new Map(),
+): DebtSheet[] {
+  const buckets = new Map<string, { title: string; english: Map<string, DebtSideRow>; math: Map<string, DebtSideRow> }>();
+  for (const row of rows) {
+    if (row.groups.length === 0) continue;
+    const placement = placementGroups(row.groups, classNames);
+    const debt = row.balance < 0n ? Number(-row.balance) : 0;
+    const name = row.full_name?.trim() || row.username?.trim() || "Student";
+    const byClass = new Map<string, BalanceGroup[]>();
+    for (const group of row.groups) {
+      const key = classKey(group);
+      byClass.set(key, [...(byClass.get(key) ?? []), group]);
+    }
+    for (const [key, classGroups] of byClass) {
+      const bucket = buckets.get(key) ?? {
+        title: classTitle(classGroups, classNames),
+        english: new Map<string, DebtSideRow>(),
+        math: new Map<string, DebtSideRow>(),
+      };
+      const classId = classGroups.find((group) => group.class_id)?.class_id ?? "";
+      for (const subject of ["ebrw", "math"] as const) {
+        if (!classGroups.some((group) => group.subject === subject)) continue;
+        const sideMap = subject === "ebrw" ? bucket.english : bucket.math;
+        if (sideMap.has(row.user_id)) continue;
+        const note = classId ? notes.get(collectNoteKey(row.user_id, classId, subject)) : undefined;
+        sideMap.set(row.user_id, {
+          userId: row.user_id,
+          classId,
+          subject,
+          name,
+          groups: placement,
+          debt,
+          expectOn: note?.expect_on ?? "",
+          reason: note?.reason ?? "",
+        });
+      }
+      buckets.set(key, bucket);
+    }
+  }
+  const used = new Set<string>();
+  return [...buckets.values()]
+    .sort((a, b) => a.title.localeCompare(b.title))
+    .map((bucket) => ({
+      title: uniqueSheetTitle(bucket.title, used),
+      english: [...bucket.english.values()].sort((a, b) => a.name.localeCompare(b.name)),
+      math: [...bucket.math.values()].sort((a, b) => a.name.localeCompare(b.name)),
+    }));
 }
 
 const HEADERS = ["N", "Name", "Groups", "Debt", "Expect date", "Reason"] as const;
+
+function sideCells(side: DebtSideRow | undefined, index: number): (string | number)[] {
+  if (!side) return ["", "", "", "", "", ""];
+  return [index + 1, side.name, side.groups, side.debt, side.expectOn, side.reason];
+}
+
+/** One CSV, with each class stacked in the same English | Math columns as the workbook. */
+export function debtCsvRows(
+  rows: readonly BalanceRow[],
+  notes: ReadonlyMap<string, CollectNote>,
+  classNames: ReadonlyMap<string, string> = new Map(),
+): (string | number)[][] {
+  const sheets = debtSheets(rows, notes, classNames);
+  const out: (string | number)[][] = [];
+  for (const sheet of sheets) {
+    if (out.length) out.push([]);
+    out.push([sheet.title]);
+    out.push(["English", "", "", "", "", "", "", "Math"]);
+    out.push([...HEADERS, "", ...HEADERS]);
+    const count = Math.max(sheet.english.length, sheet.math.length);
+    for (let index = 0; index < count; index += 1) {
+      out.push([...sideCells(sheet.english[index], index), "", ...sideCells(sheet.math[index], index)]);
+    }
+  }
+  return out;
+}
 
 export async function downloadDebtWorkbook(
   filename: string,
   rows: readonly BalanceRow[],
   notes: ReadonlyMap<string, CollectNote>,
+  classNames: ReadonlyMap<string, string> = new Map(),
 ): Promise<void> {
   const ExcelJS = (await import("exceljs")).default;
   const workbook = new ExcelJS.Workbook();
-  const sheets = debtSheets(rows, notes);
+  const sheets = debtSheets(rows, notes, classNames);
   const source = sheets.length > 0 ? sheets : [{ title: "Payments", english: [], math: [] }];
   for (const sheet of source) {
     const ws = workbook.addWorksheet(sheet.title);
@@ -101,14 +201,14 @@ export async function downloadDebtWorkbook(
     ws.columns = [
       { width: 6 },
       { width: 28 },
-      { width: 22 },
+      { width: 36 },
       { width: 14 },
       { width: 16 },
       { width: 28 },
       { width: 3 },
       { width: 6 },
       { width: 28 },
-      { width: 22 },
+      { width: 36 },
       { width: 14 },
       { width: 16 },
       { width: 28 },

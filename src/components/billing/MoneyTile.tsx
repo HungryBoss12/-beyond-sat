@@ -38,6 +38,11 @@ export function MoneyTile({
     amount == null ? (text ?? "—") : negative ? signedUzs(amount) : formatUzs(amount);
   const shown =
     amount == null ? (text ?? "—") : negative ? `-${compactUzs(amount)}` : compactUzs(amount);
+  const amountClass =
+    shown.length > 18 ? "text-base" : shown.length > 14 ? "text-lg" : "text-xl";
+  const edgeLabel = edge
+    ? ` Without ${formatUzs(edge.without)}. With ${formatUzs(edge.with)}.`
+    : "";
   return (
     <div
       ref={ref}
@@ -54,25 +59,35 @@ export function MoneyTile({
             <TooltipTrigger asChild>
               <div
                 tabIndex={0}
-                aria-label={`${label}: ${full}${kind ? ` ${kind}` : ""}`}
-                className="flex min-w-0 items-baseline gap-1.5 text-xl font-black leading-tight text-white outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
+                aria-label={`${label}: ${full}${kind ? ` ${kind}` : ""}${edgeLabel}`}
+                className={`flex min-w-0 items-baseline gap-1.5 font-black leading-tight text-white outline-none focus-visible:ring-2 focus-visible:ring-brand-200 ${amountClass}`}
               >
-                <span key={shown} className="flash-tint rounded-md tabular-nums">{shown}</span>
+                <span key={shown} className="flash-tint min-w-0 truncate rounded-md tabular-nums">
+                  {shown}
+                </span>
                 {kind && <span className="shrink-0 text-xs font-bold text-white">{kind}</span>}
               </div>
             </TooltipTrigger>
-            <TooltipContent className="bg-brand-800 tabular-nums text-white">{full}</TooltipContent>
+            <TooltipContent className="bg-brand-800 tabular-nums text-white">
+              <div>{full}</div>
+              {edge && (
+                <>
+                  <div>Without {formatUzs(edge.without)}</div>
+                  <div>With {formatUzs(edge.with)}</div>
+                </>
+              )}
+            </TooltipContent>
           </Tooltip>
         )}
         <div className="mt-0.5 truncate text-[11px] font-medium text-white">{label}</div>
         {hint && <div className="truncate text-[10px] text-white">{hint}</div>}
+        {edge && !loading && (
+          <div className="mt-1 space-y-0.5 text-[10px] font-bold leading-tight text-white">
+            <div className="truncate">Without {formatUzs(edge.without)}</div>
+            <div className="truncate">With {formatUzs(edge.with)}</div>
+          </div>
+        )}
       </div>
-      {edge && (
-        <div className="shrink-0 text-right text-[10px] font-bold leading-tight text-white">
-          <div>Without {formatUzs(edge.without)}</div>
-          <div>With {formatUzs(edge.with)}</div>
-        </div>
-      )}
     </div>
   );
 }

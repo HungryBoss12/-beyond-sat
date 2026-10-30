@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { monthKey } from "@/lib/classes/classroom";
 import { subjectToSlug } from "@/lib/classes/schemes";
-import { CollectNotes } from "@/components/billing/CollectNotes";
 import { EmptyState } from "@/components/ui/panel";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { IconButton } from "@/components/ui/icon-button";
@@ -80,8 +79,8 @@ import {
 import { downloadCsv, toCsv } from "@/lib/billing/csv";
 import { periodLabel, tashkentToday } from "@/lib/billing/dates";
 import { compactUzs, formatUzs, groupDigits, parseUzsInput } from "@/lib/billing/money";
-import { listCollectNotes, saveCollectNote, collectNoteKey, type CollectNote } from "@/lib/billing/collect-notes";
-import { downloadDebtWorkbook } from "@/lib/billing/debt-sheet";
+import { listCollectNotes, collectNoteKey, type CollectNote } from "@/lib/billing/collect-notes";
+import { debtCsvRows, downloadDebtWorkbook } from "@/lib/billing/debt-sheet";
 import type { BalanceRow, GroupFeeRow, PaymentsSummary } from "@/lib/billing/types";
 import { staffName } from "@/lib/people-name";
 import { withSubgroupNotes } from "@/lib/billing/notes";
@@ -165,6 +164,13 @@ function PaymentsPage() {
   const [summary, setSummary] = useState<PaymentsSummary | null>(null);
   const [tuitionEdge, setTuitionEdge] = useState<{ without: bigint; with: bigint } | null>(null);
   const [fees, setFees] = useState<GroupFeeRow[]>([]);
+  const classNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const fee of fees) {
+      if (fee.class_id && fee.class_name) map.set(fee.class_id, fee.class_name);
+    }
+    return map;
+  }, [fees]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payFor, setPayFor] = useState<PaymentTarget | null>(null);
@@ -405,30 +411,13 @@ function PaymentsPage() {
     }
     downloadCsv(
       `balances-${today}.csv`,
-      toCsv([
-        [
-          "Student",
-          "Phone",
-          "Class",
-          "Sub-classes",
-          "Status",
-          "Balance (UZS)",
-          "Kind",
-          "Monthly fee (UZS)",
-          "Months in debt",
-        ],
-        ...rows.map((row) => [
-          studentName(row),
-          row.phone,
-          row.class_name,
-          row.groups.map((g) => g.name).join(" + "),
-          row.status,
-          row.balance,
-          KIND_META[row.balance < 0n ? "debt" : row.balance > 0n ? "credit" : "settled"].label,
-          row.monthly_fee,
-          row.months_in_debt,
-        ]),
-      ]),
+      toCsv(
+        debtCsvRows(
+          rows,
+          new Map(notes.map((note) => [collectNoteKey(note.user_id, note.class_id, note.subject), note])),
+          classNames,
+        ),
+      ),
     );
   }
 
@@ -438,21 +427,11 @@ function PaymentsPage() {
         `debts-${tashkentToday()}.xlsx`,
         census,
         new Map(notes.map((note) => [collectNoteKey(note.user_id, note.class_id, note.subject), note])),
+        classNames,
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not build the workbook");
     }
-  }
-
-  async function saveNote(note: CollectNote) {
-    await saveCollectNote(note);
-    setNotes((current) => {
-      const next = current.filter(
-        (row) => !(row.user_id === note.user_id && row.class_id === note.class_id && row.subject === note.subject),
-      );
-      next.push(note);
-      return next;
-    });
   }
 
   const feeMeta =
@@ -510,7 +489,7 @@ function PaymentsPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3 stagger">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 stagger">
         <MoneyTile
           icon={TriangleAlert}
           label="Total owed"
@@ -714,7 +693,6 @@ function PaymentsPage() {
       <p className="text-xs text-brand-700">
         Fees recur monthly. Click a name for the full student profile.
       </p>
-      {!loading && !error && <CollectNotes rows={census} notes={notes} onSave={saveNote} />}
 
       {loading ? (
         <TableSkeleton />

@@ -30,6 +30,7 @@ import {
   type SavedAccount,
 } from "@/lib/auth/account-switcher";
 import { liveStreak } from "@/lib/streak";
+import { loadNick } from "@/lib/profile-nick";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { NotificationAnchorProvider } from "@/components/notifications/NotificationAnchorContext";
 import { AmbientGlow, RevealLink } from "@/components/ui/reveal-card";
@@ -362,7 +363,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [name, setName] = useState<string>("");
+  const [nick, setNick] = useState<string>("");
   const [badgeScore, setBadgeScore] = useState<number | null>(null);
+  const [badgeLabel, setBadgeLabel] = useState<string | null>(null);
+  const [badgeColor, setBadgeColor] = useState<string | null>(null);
   const [email, setEmail] = useState<string>("");
   const [streak, setStreak] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -394,7 +398,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       setUid(u.id);
       setEmail(displayAccountEmail(u.email) ?? "");
       const [{ data: prof }, { data: sp }, role] = await Promise.all([
-        supabase.from("profiles").select("full_name,first_name,username,badge_score").eq("id", u.id).maybeSingle(),
+        supabase.from("profiles").select("full_name,first_name,username,badge_score,badge_label,badge_color").eq("id", u.id).maybeSingle(),
         supabase
           .from("student_profiles")
           .select("current_streak,last_active_at,last_daily_completed_date")
@@ -409,11 +413,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           displayAccountEmail(u.email)?.split("@")[0] ||
           "Student",
       );
+      setNick(await loadNick(u.id).catch(() => ""));
       setBadgeScore(prof?.badge_score ?? null);
+      setBadgeLabel(prof?.badge_label ?? null);
+      setBadgeColor(prof?.badge_color ?? null);
       setStreak(liveStreak(sp));
       setStaffRole(role);
       setAccounts(listSavedAccounts());
     })();
+  }, []);
+
+  useEffect(() => {
+    function onBadge(event: Event) {
+      const detail = (event as CustomEvent<{ label: string | null; color: string | null }>).detail;
+      if (!detail) return;
+      setBadgeLabel(detail.label);
+      setBadgeColor(detail.color);
+    }
+    window.addEventListener("beyondsat-badge", onBadge);
+    return () => window.removeEventListener("beyondsat-badge", onBadge);
   }, []);
 
   useEffect(() => {
@@ -670,9 +688,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-400 text-xs font-bold text-white shadow-brand">
                   {initials}
                 </span>
-                <span className="hidden max-w-[160px] items-center gap-1.5 truncate text-sm font-semibold text-white sm:inline-flex">
+                <span className="hidden max-w-[220px] items-center gap-1.5 truncate text-sm font-semibold text-white sm:inline-flex">
                   <span className="truncate">{name}</span>
-                  <ScoreBadge score={badgeScore} />
+                  {nick ? <span className="truncate text-xs font-semibold text-brand-100">{nick}</span> : null}
+                  <ScoreBadge score={badgeScore} label={badgeLabel} color={badgeColor} />
                 </span>
                 <ChevronDown
                   className={
@@ -686,7 +705,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <div className="border-b border-brand-400/30 px-4 py-2.5">
                     <div className="flex items-center gap-1.5 truncate text-sm font-semibold text-white">
                       <span className="truncate">{name}</span>
-                      <ScoreBadge score={badgeScore} />
+                      {nick ? <span className="truncate text-xs font-semibold text-brand-100">{nick}</span> : null}
+                      <ScoreBadge score={badgeScore} label={badgeLabel} color={badgeColor} />
                     </div>
                     <div className="truncate text-xs text-brand-100">{email}</div>
                   </div>

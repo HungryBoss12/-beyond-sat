@@ -214,7 +214,11 @@ function AdminClassesIndex() {
                                 : "No teacher"}{" "}
                               · {scheduleLine(group)}
                             </span>
-                            <ScoreBadge score={group.teacher_id ? teachers.get(group.teacher_id)?.badge_score : null} />
+                            <ScoreBadge
+                              score={group.teacher_id ? teachers.get(group.teacher_id)?.badge_score : null}
+                              label={group.teacher_id ? teachers.get(group.teacher_id)?.badge_label : null}
+                              color={group.teacher_id ? teachers.get(group.teacher_id)?.badge_color : null}
+                            />
                           </span>
                         </span>
                         <span className="shrink-0 text-right text-xs font-bold tabular-nums">

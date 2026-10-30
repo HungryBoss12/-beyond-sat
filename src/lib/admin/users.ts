@@ -19,6 +19,8 @@ export type AdminUserSummaryRow = {
   accuracy_pct: number | null;
   staff_created: boolean;
   badge_score: number | null;
+  badge_label: string | null;
+  badge_color: string | null;
 };
 
 export type AdminUserDetail = {

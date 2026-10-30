@@ -360,7 +360,7 @@ function AdminStudents() {
   }, []);
 
   async function loadLegacyUsers() {
-    const FULL_COLS = "id,email,full_name,username,created_at,last_seen_at,banned,badge_score";
+    const FULL_COLS = "id,email,full_name,username,created_at,last_seen_at,banned,badge_score,badge_label,badge_color";
     const full = await supabase
       .from("profiles")
       .select(FULL_COLS)
@@ -404,6 +404,8 @@ function AdminStudents() {
         accuracy_pct: null,
         staff_created: isSyntheticAccountEmail(p.email),
         badge_score: (p as { badge_score?: number | null }).badge_score ?? null,
+        badge_label: (p as { badge_label?: string | null }).badge_label ?? null,
+        badge_color: (p as { badge_color?: string | null }).badge_color ?? null,
       })),
     );
   }
@@ -1635,7 +1637,7 @@ function UserListRow({
                 <span className="truncate text-sm font-semibold text-white group-hover:underline">
                   {u.full_name || "Student"}
                 </span>
-                <ScoreBadge score={u.badge_score} />
+                <ScoreBadge score={u.badge_score} label={u.badge_label} color={u.badge_color} />
                 {u.role !== "student" && (
                   <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 ring-1 ring-brand-400/40">
                     {u.role.replaceAll("_", " ")}

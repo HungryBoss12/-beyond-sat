@@ -1879,6 +1879,8 @@ export type Database = {
           banned: boolean;
           banned_at: string | null;
           banned_reason: string | null;
+          badge_color: string | null;
+          badge_label: string | null;
           badge_score: number | null;
           birth_date: string | null;
           chat_setup_completed: boolean;
@@ -1907,6 +1909,8 @@ export type Database = {
           banned?: boolean;
           banned_at?: string | null;
           banned_reason?: string | null;
+          badge_color?: string | null;
+          badge_label?: string | null;
           badge_score?: number | null;
           birth_date?: string | null;
           chat_setup_completed?: boolean;
@@ -1935,6 +1939,8 @@ export type Database = {
           banned?: boolean;
           banned_at?: string | null;
           banned_reason?: string | null;
+          badge_color?: string | null;
+          badge_label?: string | null;
           badge_score?: number | null;
           birth_date?: string | null;
           chat_setup_completed?: boolean;
@@ -3380,6 +3386,9 @@ export type Database = {
           telegram_connected_at: string | null;
           telegram_username: string | null;
           username: string | null;
+          badge_score: number | null;
+          badge_label: string | null;
+          badge_color: string | null;
         };
         Insert: {
           avatar_url?: string | null;
@@ -3392,6 +3401,9 @@ export type Database = {
           telegram_connected_at?: string | null;
           telegram_username?: string | null;
           username?: string | null;
+          badge_score?: number | null;
+          badge_label?: string | null;
+          badge_color?: string | null;
         };
         Update: {
           avatar_url?: string | null;
@@ -3404,6 +3416,9 @@ export type Database = {
           telegram_connected_at?: string | null;
           telegram_username?: string | null;
           username?: string | null;
+          badge_score?: number | null;
+          badge_label?: string | null;
+          badge_color?: string | null;
         };
         Relationships: [
           {
@@ -4001,7 +4016,16 @@ export type Database = {
         }[];
       };
       admin_set_badge_score: {
-        Args: { p_user_id: string; p_score: number | null };
+        Args: {
+          p_user_id: string;
+          p_score: number | null;
+          p_label?: string | null;
+          p_color?: string | null;
+        };
+        Returns: undefined;
+      };
+      set_my_badge_look: {
+        Args: { p_color: string | null; p_label: string | null };
         Returns: undefined;
       };
       admin_users_summary: {
@@ -4009,7 +4033,9 @@ export type Database = {
         Returns: {
           accuracy_pct: number;
           banned: boolean;
-          badge_score: number;
+          badge_color: string | null;
+          badge_label: string | null;
+          badge_score: number | null;
           class_name: string;
           created_at: string;
           current_streak: number;

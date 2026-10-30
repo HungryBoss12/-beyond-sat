@@ -182,7 +182,7 @@ function ClassesPage() {
             <div className="truncate text-sm font-black tracking-tight">Classes</div>
             <div className="flex min-w-0 items-center gap-1.5 truncate text-[10px] font-bold uppercase tracking-wider text-white">
               <span className="truncate">{me?.username ? `@${me.username}` : "Chats & homework"}</span>
-              <ScoreBadge score={me?.badge_score} />
+              <ScoreBadge score={me?.badge_score} label={me?.badge_label} color={me?.badge_color} />
             </div>
           </div>
         </div>
@@ -492,7 +492,7 @@ function ChatsPane({ me }: { me: ChatProfile }) {
                     />
                     <span className="inline-flex items-center gap-1.5 font-bold">
                       {displayName(h)}
-                      <ScoreBadge score={h.badge_score} />
+                      <ScoreBadge score={h.badge_score} label={h.badge_label} color={h.badge_color} />
                     </span>
                     <span className="truncate text-xs text-white">{h.full_name}</span>
                   </RevealButton>

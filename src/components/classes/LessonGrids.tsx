@@ -34,6 +34,8 @@ export type GridPerson = {
   name: string;
   status: MemberStatus;
   badgeScore?: number | null;
+  badgeLabel?: string | null;
+  badgeColor?: string | null;
 };
 
 const NAME_COL = "minmax(150px, 200px)";
@@ -331,7 +333,7 @@ export function AttendanceGrid({
                 className="sticky left-0 z-10 flex min-w-0 items-center gap-1 bg-brand-600 px-2 py-2 text-sm font-bold"
               >
                 <span className="truncate">{person.name}</span>
-                <ScoreBadge score={person.badgeScore} />
+                <ScoreBadge score={person.badgeScore} label={person.badgeLabel} color={person.badgeColor} />
               </div>
               {lessons.map((lesson, c) => {
                 const state = local.get(`${person.userId}:${lesson.lesson_date}`) ?? "empty";
@@ -648,7 +650,7 @@ export function MarksGrid({
                   )}
                 >
                   <span className="truncate">{person.name}</span>
-                  <ScoreBadge score={person.badgeScore} />
+                  <ScoreBadge score={person.badgeScore} label={person.badgeLabel} color={person.badgeColor} />
                 </div>
                 {lessons.map((lesson) => (
                   <div

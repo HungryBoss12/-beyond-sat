@@ -61,6 +61,8 @@ export type RailPerson = {
   /** Admin only. */
   balanceKind?: BalanceKind;
   badgeScore?: number | null;
+  badgeLabel?: string | null;
+  badgeColor?: string | null;
 };
 
 export type RailFilter = "" | "active" | "trial" | "frozen" | "debt";
@@ -71,6 +73,8 @@ export type FormerPerson = {
   effectiveOn: string;
   movedTo: string | null;
   badgeScore?: number | null;
+  badgeLabel?: string | null;
+  badgeColor?: string | null;
 };
 
 const LEGEND: {
@@ -265,7 +269,7 @@ export function GroupRail({
                 <div className="min-w-0 flex-1 py-1.5">
                   <div className="flex min-w-0 items-center gap-1">
                     <span className="truncate text-sm font-bold">{person.name}</span>
-                    <ScoreBadge score={person.badgeScore} />
+                    <ScoreBadge score={person.badgeScore} label={person.badgeLabel} color={person.badgeColor} />
                     {isAdmin && person.balanceKind === "debt" && (
                       <TriangleAlert className="h-3 w-3 shrink-0" aria-label="Debtor" />
                     )}
@@ -358,7 +362,7 @@ export function GroupRail({
                     <div className="min-w-0 flex-1 py-1.5">
                       <div className="flex min-w-0 items-center gap-1">
                         <div className="truncate text-sm font-bold text-white/80">{person.name}</div>
-                        <ScoreBadge score={person.badgeScore} />
+                        <ScoreBadge score={person.badgeScore} label={person.badgeLabel} color={person.badgeColor} />
                       </div>
                       <div className="truncate text-[11px] text-white">
                         {person.movedTo

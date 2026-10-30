@@ -1,9 +1,10 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { ArrowLeft, Award, Ban, CircleCheck, KeyRound, Loader2 } from "lucide-react";
+import { ArrowLeft, Award, Ban, CircleCheck, KeyRound, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
+import { BADGE_COLORS } from "@/lib/people/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { UserActivityFeed } from "@/components/admin/UserActivityFeed";
 import { UserStatTiles } from "@/components/admin/UserStatTiles";
@@ -292,6 +293,13 @@ function AdminUserDetailPage() {
   );
 }
 
+function adminBadgeChip(on: boolean) {
+  return (
+    "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold text-white ring-1 " +
+    (on ? "bg-brand-400 ring-white" : "bg-brand-900 ring-brand-400/50")
+  );
+}
+
 function Header({
   detail,
   busy,
@@ -315,12 +323,23 @@ function Header({
     banned?: boolean;
     created_at?: string;
     badge_score?: number | null;
+    badge_label?: string | null;
+    badge_color?: string | null;
   };
   const online = isOnline(profile.last_seen_at ?? null);
   const role = detail.role as Role;
   const [badgeOpen, setBadgeOpen] = useState(false);
   const [badgeText, setBadgeText] = useState(profile.badge_score == null ? "" : String(profile.badge_score));
+  const [badgeWords, setBadgeWords] = useState(profile.badge_label ?? "");
+  const [badgeColor, setBadgeColor] = useState<string | null>(profile.badge_color ?? null);
   const [badgeBusy, setBadgeBusy] = useState(false);
+
+  function openBadge() {
+    setBadgeText(profile.badge_score == null ? "" : String(profile.badge_score));
+    setBadgeWords(profile.badge_label ?? "");
+    setBadgeColor(profile.badge_color ?? null);
+    setBadgeOpen(true);
+  }
 
   async function saveBadge() {
     const trimmed = badgeText.trim();
@@ -335,6 +354,8 @@ function Header({
     const { error } = await supabase.rpc("admin_set_badge_score", {
       p_user_id: userId,
       p_score: score,
+      p_label: score == null ? null : badgeWords.trim() || null,
+      p_color: score == null ? null : badgeColor,
     });
     setBadgeBusy(false);
     if (error) {
@@ -351,7 +372,7 @@ function Header({
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-xl font-black text-white">{profile.full_name || profile.email || "User"}</h2>
-          <ScoreBadge score={profile.badge_score} />
+          <ScoreBadge score={profile.badge_score} label={profile.badge_label} color={profile.badge_color} />
           {role !== "student" && (
             <span className="rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100 ring-1 ring-brand-400/40">
               {role}
@@ -384,10 +405,7 @@ function Header({
         />
         <button
           type="button"
-          onClick={() => {
-            setBadgeText(profile.badge_score == null ? "" : String(profile.badge_score));
-            setBadgeOpen(true);
-          }}
+          onClick={openBadge}
           disabled={busy}
           className="tap inline-flex items-center gap-1.5 rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-brand-400/40 hover:bg-brand-900 disabled:opacity-60"
         >
@@ -428,23 +446,71 @@ function Header({
           <DialogHeader>
             <DialogTitle className="text-white">Badge</DialogTitle>
             <DialogDescription className="text-brand-100">
-              SAT total from 400 to 1600. Leave it empty to remove the badge.
+              SAT total from 400 to 1600. Leave the score empty to remove the badge. Text replaces the
+              score on the pill. Leave the text empty to show the score.
             </DialogDescription>
           </DialogHeader>
-          <input
-            className="mt-2 w-full rounded-lg border border-brand-400/40 bg-brand-900 px-3 py-2 text-sm text-white"
-            inputMode="numeric"
-            value={badgeText}
-            onChange={(event) => setBadgeText(event.target.value.replace(/\D/g, "").slice(0, 4))}
-          />
-          <div className="mt-3 flex justify-end">
+          {Number(badgeText) >= 400 && Number(badgeText) <= 1600 ? (
+            <ScoreBadge score={Number(badgeText)} label={badgeWords} color={badgeColor} />
+          ) : null}
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-brand-100">
+              Score
+            </span>
+            <input
+              className="w-full rounded-lg border border-brand-400/40 bg-brand-900 px-3 py-2 text-sm text-white"
+              inputMode="numeric"
+              value={badgeText}
+              onChange={(event) => setBadgeText(event.target.value.replace(/\D/g, "").slice(0, 4))}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-brand-100">
+              Text
+            </span>
+            <input
+              className="w-full rounded-lg border border-brand-400/40 bg-brand-900 px-3 py-2 text-sm text-white"
+              maxLength={16}
+              value={badgeWords}
+              onChange={(event) => setBadgeWords(event.target.value.slice(0, 16))}
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              aria-pressed={badgeColor == null}
+              onClick={() => setBadgeColor(null)}
+              className={adminBadgeChip(badgeColor == null)}
+            >
+              <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden="true">
+                <circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+              </svg>
+              Automatic
+            </button>
+            {BADGE_COLORS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                aria-pressed={badgeColor === item.id}
+                onClick={() => setBadgeColor(item.id)}
+                className={adminBadgeChip(badgeColor === item.id)}
+              >
+                <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden="true">
+                  <circle cx="8" cy="8" r="6" fill={item.color} />
+                </svg>
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-1 flex justify-end">
             <button
               type="button"
               disabled={badgeBusy}
-              className="btn-brand rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+              className="btn-brand inline-flex items-center gap-2 rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
               onClick={() => void saveBadge()}
             >
-              {badgeBusy ? "Saving…" : "Save badge"}
+              {badgeBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save badge
             </button>
           </div>
         </DialogContent>

@@ -93,6 +93,8 @@ function ClassOverview() {
     rw: scores.get(person.userId)?.rw ?? null,
     math: scores.get(person.userId)?.math ?? null,
     badgeScore: profiles.get(person.userId)?.badge_score ?? null,
+    badgeLabel: profiles.get(person.userId)?.badge_label ?? null,
+    badgeColor: profiles.get(person.userId)?.badge_color ?? null,
   }));
 
   return (
@@ -173,6 +175,8 @@ function ClassOverview() {
                   : null
               }
               badgeScore={group.teacher_id ? profiles.get(group.teacher_id)?.badge_score : null}
+              badgeLabel={group.teacher_id ? profiles.get(group.teacher_id)?.badge_label : null}
+              badgeColor={group.teacher_id ? profiles.get(group.teacher_id)?.badge_color : null}
               active={
                 members.filter((m) => m.group_id === group.id && m.status === "active").length
               }
@@ -325,12 +329,16 @@ function SubclassCard({
   classId,
   teacher,
   badgeScore,
+  badgeLabel,
+  badgeColor,
   active,
 }: {
   group: ClassGroup;
   classId: string;
   teacher: string | null;
   badgeScore?: number | null;
+  badgeLabel?: string | null;
+  badgeColor?: string | null;
   active: number;
 }) {
   return (
@@ -348,7 +356,7 @@ function SubclassCard({
           {group.room ? ` · Room ${group.room}` : ""}
           {group.active ? "" : " · inactive"}
         </span>
-        <ScoreBadge score={badgeScore} />
+        <ScoreBadge score={badgeScore} label={badgeLabel} color={badgeColor} />
       </p>
     </Link>
   );

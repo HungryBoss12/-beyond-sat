@@ -172,7 +172,7 @@ export async function removeClassMember(classId: string, userId: string): Promis
 }
 
 const CHAT_DIRECTORY_COLS =
-  "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,badge_score";
+  "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,badge_score,badge_label,badge_color";
 
 function fromDirectory(rows: unknown): ChatProfile[] {
   return ((rows ?? []) as Omit<ChatProfile, "email">[]).map((p) => ({ ...p, email: null }));
@@ -188,7 +188,7 @@ export async function getChatProfile(userId?: string): Promise<ChatProfile | nul
   const { data, error } = await db
     .from("profiles")
     .select(
-      "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,email,badge_score",
+      "id,username,avatar_url,telegram_username,telegram_connected_at,chat_setup_completed,class_id,full_name,first_name,last_name,email,badge_score,badge_label,badge_color",
     )
     .eq("id", uid)
     .maybeSingle();

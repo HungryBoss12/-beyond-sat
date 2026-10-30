@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   LogOut,
   Target,
@@ -15,6 +15,7 @@ import {
   KeyRound,
   Link2,
   Wallet,
+  Award,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -39,6 +40,8 @@ import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
 import { displayAccountEmail } from "@/lib/auth/login-email";
 import { studentBillingHome } from "@/lib/billing/api";
 import { formatUzs } from "@/lib/billing/money";
+import { loadNick, saveNick } from "@/lib/profile-nick";
+import { BADGE_COLORS } from "@/lib/people/badge";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   component: Profile,
@@ -57,6 +60,8 @@ type ProfileRow = {
   last_name: string | null;
   full_name: string | null;
   badge_score: number | null;
+  badge_label: string | null;
+  badge_color: string | null;
   city: string | null;
   school: string | null;
   grade: number | null;
@@ -108,6 +113,7 @@ function Profile() {
   const [uid, setUid] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [nick, setNick] = useState("");
   const [student, setStudent] = useState<StudentRow | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [attemptsTotal, setAttemptsTotal] = useState(0);
@@ -177,6 +183,7 @@ function Profile() {
             .order("exam_date", { ascending: true }),
         ]);
       setProfile(p as ProfileRow | null);
+      setNick(await loadNick(u.id).catch(() => ""));
       setStudent(sp as StudentRow | null);
       setSessions((sess ?? []) as Session[]);
       setDateOptions((dates ?? []) as ExamDateOpt[]);
@@ -270,22 +277,36 @@ function Profile() {
      Nudge users who still need a chat username (class is assigned by admins only). */
   const needsClassSetup = !chat?.chat_setup_completed;
 
-  async function saveInfo(form: Partial<ProfileRow>) {
+  async function saveInfo(form: Partial<ProfileRow> & { nick?: string }) {
     if (!uid) return;
     setSaving(true);
-    const full_name = [form.first_name, form.last_name].filter(Boolean).join(" ").trim() || null;
+    const nextNick = form.nick ?? nick;
     const { data, error } = await supabase
       .from("profiles")
-      .update({ ...form, full_name })
+      .update({
+        city: form.city,
+        school: form.school,
+        grade: form.grade,
+        birth_date: form.birth_date,
+      })
       .eq("id", uid)
       .select("*")
       .maybeSingle();
-    setSaving(false);
     if (error) {
+      setSaving(false);
       alert(error.message);
       return;
     }
+    try {
+      await saveNick(uid, nextNick);
+    } catch (err) {
+      setSaving(false);
+      alert(err instanceof Error ? err.message : "Could not save nick");
+      return;
+    }
+    setSaving(false);
     setProfile(data as ProfileRow);
+    setNick(nextNick.trim().slice(0, 32));
     setEditingInfo(false);
   }
 
@@ -357,9 +378,10 @@ function Profile() {
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 truncate text-2xl font-black md:text-3xl">
+            <div className="flex flex-wrap items-center gap-2 text-2xl font-black md:text-3xl">
               <span className="truncate">{displayName}</span>
-              <ScoreBadge score={profile?.badge_score} />
+              {nick ? <span className="truncate text-base font-semibold text-brand-100">{nick}</span> : null}
+              <ScoreBadge score={profile?.badge_score} label={profile?.badge_label} color={profile?.badge_color} />
             </div>
             <div className="truncate text-sm text-brand-100">
               {email || (chat?.username ? `@${chat.username}` : "")}
@@ -404,6 +426,15 @@ function Profile() {
         </div>
       </Surface>
 
+      {profile?.badge_score != null && (
+        <BadgeLookCard
+          score={profile.badge_score}
+          label={profile.badge_label}
+          color={profile.badge_color}
+          onSaved={(next) => setProfile((current) => (current ? { ...current, ...next } : current))}
+        />
+      )}
+
       <Surface className="p-5">
         <AttendanceGrid rows={attendance} />
       </Surface>
@@ -419,11 +450,11 @@ function Profile() {
           onCancel={() => setEditingInfo(false)}
         >
           {editingInfo ? (
-            <InfoForm profile={profile} onSave={saveInfo} saving={saving} />
+            <InfoForm profile={profile} nick={nick} onSave={saveInfo} saving={saving} />
           ) : (
             <dl className="grid grid-cols-2 gap-4 text-sm">
-              <Field label="First name" value={profile?.first_name} />
-              <Field label="Last name" value={profile?.last_name} />
+              <Field label="Name" value={profile?.full_name} />
+              <Field label="Nick" value={nick} />
               <Field label="City" value={profile?.city} />
               <Field label="School" value={profile?.school} />
               <Field label="Grade" value={formatGrade(profile?.grade)} />
@@ -674,15 +705,16 @@ function Field({ label, value }: { label: string; value: string | null | undefin
 
 function InfoForm({
   profile,
+  nick,
   onSave,
   saving,
 }: {
   profile: ProfileRow | null;
-  onSave: (v: Partial<ProfileRow>) => void;
+  nick: string;
+  onSave: (v: Partial<ProfileRow> & { nick?: string }) => void;
   saving: boolean;
 }) {
-  const [first, setFirst] = useState(profile?.first_name ?? "");
-  const [last, setLast] = useState(profile?.last_name ?? "");
+  const [nextNick, setNextNick] = useState(nick);
   const [city, setCity] = useState(profile?.city ?? "");
   const [school, setSchool] = useState(profile?.school ?? "");
   const [grade, setGrade] = useState(profile?.grade != null ? String(profile.grade) : "");
@@ -692,8 +724,7 @@ function InfoForm({
       onSubmit={(e) => {
         e.preventDefault();
         onSave({
-          first_name: first || null,
-          last_name: last || null,
+          nick: nextNick,
           city: city || null,
           school: school || null,
           grade: grade ? Number(grade) : null,
@@ -702,8 +733,15 @@ function InfoForm({
       }}
       className="grid grid-cols-2 gap-3"
     >
-      <Input label="First name" value={first} onChange={setFirst} />
-      <Input label="Last name" value={last} onChange={setLast} />
+      <div>
+        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-brand-100">
+          Name
+        </span>
+        <p className="rounded-lg border border-white/15 bg-brand-800/40 px-3 py-2 text-sm font-semibold text-white">
+          {profile?.full_name || "—"}
+        </p>
+      </div>
+      <Input label="Nick" value={nextNick} onChange={setNextNick} maxLength={32} />
       <Input label="City" value={city} onChange={setCity} />
       <Input label="School" value={school} onChange={setSchool} />
       <label className="block">
@@ -849,11 +887,13 @@ function Input({
   value,
   onChange,
   type = "text",
+  maxLength,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   type?: string;
+  maxLength?: number;
 }) {
   return (
     <label className="block">
@@ -866,6 +906,7 @@ function Input({
         <input
           type={type}
           value={value}
+          maxLength={maxLength}
           onChange={(e) => onChange(e.target.value)}
           className="block w-full rounded-lg border border-brand-400/60 bg-brand-800 px-3 py-2 text-sm text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
         />
@@ -915,6 +956,104 @@ function MoneyCard() {
         </ul>
       </div>
     </Surface>
+  );
+}
+
+function BadgeLookCard({
+  score,
+  label,
+  color,
+  onSaved,
+}: {
+  score: number;
+  label: string | null;
+  color: string | null;
+  onSaved: (next: { badge_label: string | null; badge_color: string | null }) => void;
+}) {
+  const [text, setText] = useState(label ?? "");
+  const [picked, setPicked] = useState<string | null>(color);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setText(label ?? "");
+    setPicked(color);
+  }, [label, color]);
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    const nextLabel = text.trim() || null;
+    const { error: rpcError } = await supabase.rpc("set_my_badge_look", {
+      p_label: nextLabel,
+      p_color: picked,
+    });
+    setSaving(false);
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
+    }
+    onSaved({ badge_label: nextLabel, badge_color: picked });
+    window.dispatchEvent(
+      new CustomEvent("beyondsat-badge", { detail: { label: nextLabel, color: picked } }),
+    );
+  }
+
+  return (
+    <Surface tone="brand" className="relative overflow-hidden p-5">
+      <PanelGlow />
+      <form onSubmit={save} className="relative space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Award className="h-5 w-5" aria-hidden="true" />
+          <h2 className="text-lg font-black text-white">Badge</h2>
+          <ScoreBadge score={score} label={text} color={picked} />
+        </div>
+        <p className="text-sm text-brand-100">
+          Leave the text empty to show your SAT score. Anyone who can see the badge sees this text.
+          Automatic color follows the score.
+        </p>
+        <Input label="Text" value={text} maxLength={16} onChange={setText} />
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            aria-pressed={picked == null}
+            onClick={() => setPicked(null)}
+            className={badgeChip(picked == null)}
+          >
+            <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden="true">
+              <circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+            Automatic
+          </button>
+          {BADGE_COLORS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              aria-pressed={picked === item.id}
+              onClick={() => setPicked(item.id)}
+              className={badgeChip(picked === item.id)}
+            >
+              <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden="true">
+                <circle cx="8" cy="8" r="6" fill={item.color} />
+              </svg>
+              {item.label}
+            </button>
+          ))}
+        </div>
+        {error ? <p className="text-sm font-semibold text-white">{error}</p> : null}
+        <div className="flex justify-end">
+          <SaveButton saving={saving} />
+        </div>
+      </form>
+    </Surface>
+  );
+}
+
+function badgeChip(on: boolean) {
+  return (
+    "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold text-white ring-1 " +
+    (on ? "bg-brand-400 ring-white" : "bg-brand-800 ring-brand-300/60")
   );
 }
 

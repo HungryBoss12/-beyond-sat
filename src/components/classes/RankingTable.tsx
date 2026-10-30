@@ -20,6 +20,8 @@ export type RankStudent = {
   rw: number | null;
   math: number | null;
   badgeScore?: number | null;
+  badgeLabel?: string | null;
+  badgeColor?: string | null;
 };
 
 export function RankingTable({
@@ -112,7 +114,7 @@ export function RankingTable({
                   <td className="font-bold">
                     <span className="inline-flex items-center gap-1">
                       {row.name}
-                      <ScoreBadge score={row.badgeScore} />
+                      <ScoreBadge score={row.badgeScore} label={row.badgeLabel} color={row.badgeColor} />
                     </span>
                   </td>
                   <ScoreCells
@@ -133,7 +135,7 @@ export function RankingTable({
                 <td className="font-bold">
                   <span className="inline-flex items-center gap-1">
                     {row.name}
-                    <ScoreBadge score={row.badgeScore} />
+                    <ScoreBadge score={row.badgeScore} label={row.badgeLabel} color={row.badgeColor} />
                   </span>
                 </td>
                 <ScoreCells

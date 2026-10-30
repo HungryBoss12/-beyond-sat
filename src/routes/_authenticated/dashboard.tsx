@@ -108,6 +108,8 @@ type AttemptRow = {
 function Dashboard() {
   const [name, setName] = useState<string>("");
   const [badgeScore, setBadgeScore] = useState<number | null>(null);
+  const [badgeLabel, setBadgeLabel] = useState<string | null>(null);
+  const [badgeColor, setBadgeColor] = useState<string | null>(null);
   const [uid, setUid] = useState<string | null>(null);
   const [sp, setSp] = useState<StudentProfile | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -132,7 +134,7 @@ function Dashboard() {
         lessonAtt,
         { data: dt },
       ] = await Promise.all([
-        supabase.from("profiles").select("full_name,first_name,badge_score").eq("id", uid).maybeSingle(),
+        supabase.from("profiles").select("full_name,first_name,badge_score,badge_label,badge_color").eq("id", uid).maybeSingle(),
         supabase
           .from("student_profiles")
           .select(
@@ -160,6 +162,8 @@ function Dashboard() {
       ]);
       setName(prof?.full_name || prof?.first_name || "Student");
       setBadgeScore(prof?.badge_score ?? null);
+      setBadgeLabel(prof?.badge_label ?? null);
+      setBadgeColor(prof?.badge_color ?? null);
       setUid(uid);
       setSp((spData as StudentProfile) ?? null);
       setSessions((sess as Session[]) ?? []);
@@ -300,7 +304,7 @@ function Dashboard() {
         }
         action={
           <span className="inline-flex items-center gap-2">
-            <ScoreBadge score={badgeScore} />
+            <ScoreBadge score={badgeScore} label={badgeLabel} color={badgeColor} />
             {staffRole ? (
               <Link
                 to={staffHome(staffRole)}

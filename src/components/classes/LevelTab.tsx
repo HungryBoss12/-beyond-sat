@@ -119,7 +119,7 @@ export function LevelTab({
                     className="sticky left-0 z-10 flex max-w-[220px] items-center gap-1 bg-brand-600 px-2 py-2 font-bold"
                   >
                     <span className="truncate">{person.name}</span>
-                    <ScoreBadge score={person.badgeScore} />
+                    <ScoreBadge score={person.badgeScore} label={person.badgeLabel} color={person.badgeColor} />
                   </th>
                   <td className="px-2 py-2">
                     <LevelValue row={row} />

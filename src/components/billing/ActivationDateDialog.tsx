@@ -81,7 +81,7 @@ export function ActivationDateDialog({
         voided += await setActivationDate(userId, row.group.groupId, row.date);
       toast.success(
         voided
-          ? `Activation saved · ${voided} charge(s) voided and re-applied`
+          ? `Activation saved · ${voided} billing change(s)`
           : "Activation saved",
       );
       onClose();
@@ -110,12 +110,12 @@ export function ActivationDateDialog({
                   {row.group.groupName}: {row.group.activatedOn ?? "not set"} → {row.date}
                 </p>
                 {row.voids.length === 0 ? (
-                  <p className="mt-1 text-xs text-white">No charges will be voided.</p>
+                  <p className="mt-1 text-xs text-white">No charges will change.</p>
                 ) : (
                   <ul className="mt-1 space-y-0.5 text-xs text-white">
                     {row.voids.map((v) => (
                       <li key={v.id} className="flex justify-between gap-2 tabular-nums">
-                        <span className="truncate">Void {periodLabel(v.period)}</span>
+                        <span className="truncate">{v.note || `Reprice ${periodLabel(v.period)}`}</span>
                         <span className="shrink-0">{formatUzs(v.amount_uzs)}</span>
                       </li>
                     ))}
@@ -123,7 +123,9 @@ export function ActivationDateDialog({
                 )}
               </div>
             ))}
-            <p className="text-xs text-white">Manual charges and payments are never touched.</p>
+            <p className="text-xs text-white">
+              Closed months keep their charge; only the difference is added or credited.
+            </p>
             <div className="flex justify-end gap-2">
               <button
                 type="button"

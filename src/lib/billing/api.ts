@@ -275,7 +275,7 @@ export async function previewActivationChange(
   }));
 }
 
-/** Returns how many auto charges were voided before re-applying. */
+/** Returns how many billing rows changed: closed-month adjustments plus the repriced open month. */
 export async function setActivationDate(
   userId: string,
   groupId: string,

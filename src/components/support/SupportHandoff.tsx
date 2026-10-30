@@ -59,6 +59,7 @@ function rowsFor(
   picked: Record<string, string>,
   allowed: Set<string> | null,
   own: boolean,
+  defaultTeacherId: string | null,
 ): SlotRow[] {
   const open = slots.filter((slot) => !slot.closed);
   if (own) {
@@ -91,9 +92,16 @@ function rowsFor(
       note: window.task || window.note || "",
     })),
     ...[...freeStarts.values()].map((slot) => {
-      const teacherId = picked[`${subject}:${slot.starts_at}`];
-      const sameTime = open.filter((item) => item.starts_at === slot.starts_at && !item.student_id);
-      const window = sameTime.find((item) => item.teacher_id === teacherId) ?? null;
+      const teacherId = picked[`${subject}:${slot.starts_at}`] || defaultTeacherId || "";
+      const sameTime = open.filter(
+        (item) =>
+          item.starts_at === slot.starts_at &&
+          !item.student_id &&
+          (!allowed || allowed.has(item.teacher_id)),
+      );
+      const window =
+        sameTime.find((item) => item.teacher_id === teacherId) ??
+        (sameTime.length === 1 ? sameTime[0] : null);
       const noted = window?.note || sameTime.find((item) => item.note)?.note || "";
       return {
         id: window?.id ?? `free:${slot.starts_at}`,
@@ -274,16 +282,25 @@ export function SupportHandoff({ day, selfSubject }: { day: string; selfSubject?
   return (
     <div className="space-y-4">
       {boards.map((column) => {
-        const allowed = new Set(
-          board.teachers.filter((teacher) => teacher.subject === column.subject).map((teacher) => teacher.id),
-        );
+        const subjectTeachers = board.teachers.filter((teacher) => teacher.subject === column.subject);
+        const allowed = new Set(subjectTeachers.map((teacher) => teacher.id));
+        const marked = subjectTeachers.find((teacher) => teacher.is_default);
+        const defaultTeacherId = marked?.id ?? (subjectTeachers.length === 1 ? subjectTeachers[0].id : null);
         return (
         <SubjectBoard
           key={column.subject}
           label={column.label}
           past={past}
           lockTeacher={own}
-          rows={rowsFor(column.subject, slots, past, pickedTeacher, own ? null : allowed, own)}
+          rows={rowsFor(
+            column.subject,
+            slots,
+            past,
+            pickedTeacher,
+            own ? null : allowed,
+            own,
+            defaultTeacherId,
+          )}
           busy={busy}
           onTeacher={(row) =>
             setPicker({

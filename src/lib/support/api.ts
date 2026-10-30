@@ -509,7 +509,7 @@ export async function loadReceivedStudents(teacherId?: string | null): Promise<{
 }
 
 export type SendBoard = {
-  teachers: { id: string; name: string; subject: ClassSubject | null }[];
+  teachers: { id: string; name: string; subject: ClassSubject | null; is_default: boolean }[];
   students: {
     id: string;
     name: string;

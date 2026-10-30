@@ -15,6 +15,9 @@ import {
   ClipboardList,
   Calendar,
   CalendarPlus,
+  Check,
+  CheckSquare,
+  Circle,
 } from "lucide-react";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { RevealCard } from "@/components/ui/reveal-card";
@@ -198,6 +201,8 @@ function AdminTests() {
     mathKey?: string | null;
   } | null>(null);
   const [sort, setSort] = useState<TestSort>("source");
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   async function load() {
     setLoading(true);
@@ -482,6 +487,59 @@ function AdminTests() {
     load();
   }
 
+  function groupModuleIds(group: PaperGroup): string[] {
+    return [...group.mod1, ...group.mod2].map((test) => test.id);
+  }
+
+  function toggleSelected(key: string) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  async function removeIds(ids: string[]): Promise<boolean> {
+    const unique = [...new Set(ids)];
+    for (let index = 0; index < unique.length; index += 50) {
+      const slice = unique.slice(index, index + 50);
+      const ok = await adminWrite("Could not delete the tests", () =>
+        supabase.from("tests").delete().in("id", slice),
+      );
+      if (!ok) return false;
+    }
+    return true;
+  }
+
+  async function removeSelected() {
+    const chosen = [...papers, ...singles].filter((group) => selected.has(group.key));
+    const ids = chosen.flatMap(groupModuleIds);
+    if (ids.length === 0) return;
+    const count = chosen.length;
+    if (
+      !confirm(
+        `Delete ${count} selected test${count === 1 ? "" : "s"}? The questions stay in the bank.`,
+      )
+    ) {
+      return;
+    }
+    if (!(await removeIds(ids))) return;
+    setSelected(new Set());
+    setSelecting(false);
+    void load();
+  }
+
+  async function removeAll() {
+    if (items.length === 0) return;
+    const count = papers.length + singles.length;
+    if (!confirm(`Delete all ${count} tests? The questions stay in the bank.`)) return;
+    if (!(await removeIds(items.map((test) => test.id)))) return;
+    setSelected(new Set());
+    setSelecting(false);
+    void load();
+  }
+
   function toggleQ(qid: string) {
     if (!editingQs) return;
     setEditingQs(
@@ -545,6 +603,28 @@ function AdminTests() {
             </button>
           )}
           <button
+            type="button"
+            onClick={() => {
+              setSelecting((on) => !on);
+              setSelected(new Set());
+            }}
+            className={`tap inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-semibold ${
+              selecting
+                ? "border-brand-400 bg-brand-600 text-white"
+                : "border-brand-400/50 bg-white text-brand-900"
+            }`}
+          >
+            <CheckSquare className="h-4 w-4" /> {selecting ? "Cancel" : "Select"}
+          </button>
+          <button
+            type="button"
+            disabled={items.length === 0}
+            onClick={() => void removeAll()}
+            className="tap inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-40"
+          >
+            <Trash2 className="h-4 w-4" /> Delete all
+          </button>
+          <button
             onClick={() => openEditor()}
             className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white"
           >
@@ -582,6 +662,9 @@ function AdminTests() {
                         key={g.key}
                         group={g}
                         counts={counts}
+                        selecting={selecting}
+                        selected={selected.has(g.key)}
+                        onToggle={() => toggleSelected(g.key)}
                         onEdit={openEditor}
                         onView={openPreviewForTest}
                         onRemove={remove}
@@ -619,6 +702,9 @@ function AdminTests() {
                         key={g.key}
                         group={g}
                         counts={counts}
+                        selecting={selecting}
+                        selected={selected.has(g.key)}
+                        onToggle={() => toggleSelected(g.key)}
                         onEdit={openEditor}
                         onView={openPreviewForTest}
                         onRemove={remove}
@@ -631,6 +717,37 @@ function AdminTests() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {selecting && (
+        <div className="fixed inset-x-0 bottom-20 z-40 mx-auto flex w-[min(100%-2rem,40rem)] items-center justify-between gap-3 rounded-2xl border border-brand-400/40 bg-brand-900 px-4 py-3 text-white shadow-float">
+          <span className="text-sm font-bold">{selected.size} selected</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const keys = [...papers, ...singles].map((group) => group.key);
+                const allOn = keys.length > 0 && keys.every((key) => selected.has(key));
+                setSelected(allOn ? new Set() : new Set(keys));
+              }}
+              className="tap inline-flex items-center gap-1.5 rounded-lg border border-white/30 px-3 py-2 text-xs font-bold"
+            >
+              <CheckSquare className="h-3.5 w-3.5" />
+              {papers.length + singles.length > 0 &&
+              [...papers, ...singles].every((group) => selected.has(group.key))
+                ? "Clear"
+                : "Select all"}
+            </button>
+            <button
+              type="button"
+              disabled={selected.size === 0}
+              onClick={() => void removeSelected()}
+              className="tap inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </button>
+          </div>
         </div>
       )}
 
@@ -993,6 +1110,9 @@ function AdminTests() {
 function PaperCard({
   group,
   counts,
+  selecting,
+  selected,
+  onToggle,
   onEdit,
   onView,
   onRemove,
@@ -1002,6 +1122,9 @@ function PaperCard({
 }: {
   group: PaperGroup;
   counts: Map<string, number>;
+  selecting?: boolean;
+  selected?: boolean;
+  onToggle?: () => void;
   onEdit: (t: Test) => void;
   onView: (t: Test) => void;
   onRemove: (id: string) => void;
@@ -1022,7 +1145,26 @@ function PaperCard({
   const paperStatus = allPublished ? "Published" : allDraft ? "Draft" : anyDraft ? "Part draft" : "—";
 
   return (
-    <RevealCard className="rise-in flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 shadow-panel lift">
+    <RevealCard
+      onClick={selecting ? onToggle : undefined}
+      onKeyDown={
+        selecting
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onToggle?.();
+              }
+            }
+          : undefined
+      }
+      role={selecting ? "button" : undefined}
+      tabIndex={selecting ? 0 : undefined}
+      aria-pressed={selecting ? selected : undefined}
+      className={
+        "rise-in flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border bg-brand-600 shadow-panel lift " +
+        (selected ? "border-white ring-2 ring-white" : "border-brand-400/40")
+      }
+    >
       <div className="flex shrink-0 items-start justify-between gap-2 px-3.5 pt-3.5 pb-1.5">
         <div className="min-w-0">
           <div className="line-clamp-2 text-sm font-black uppercase leading-tight tracking-wide text-white">
@@ -1053,9 +1195,28 @@ function PaperCard({
             </span>
           </div>
         </div>
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-brand-400/40 bg-brand-800/60 text-xs font-bold text-white">
-          {isComplete ? "✓" : "…"}
-        </div>
+        {selecting ? (
+          <button
+            type="button"
+            aria-label={selected ? `Deselect ${group.base}` : `Select ${group.base}`}
+            aria-pressed={selected}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggle?.();
+            }}
+            className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 ${
+              selected
+                ? "border-white bg-white text-brand-900"
+                : "border-white/50 bg-brand-800/60 text-white"
+            }`}
+          >
+            {selected ? <Check className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
+          </button>
+        ) : (
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-brand-400/40 bg-brand-800/60 text-xs font-bold text-white">
+            {isComplete ? "✓" : "…"}
+          </div>
+        )}
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-2 px-3.5 pt-1">
         {([1, 2] as const).map((mod) => {
@@ -1095,7 +1256,7 @@ function PaperCard({
                       {!t.published ? " · Draft" : ""}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className={`flex shrink-0 items-center gap-1 ${selecting ? "pointer-events-none opacity-40" : ""}`}>
                     <button
                       onClick={() => onView(t)}
                       className="tap grid h-8 w-8 place-items-center rounded-lg text-white hover:bg-brand-700"

@@ -13,12 +13,17 @@ describe("resolveModel", () => {
     ).toBe(DEFAULT_MODELS.reasoning);
   });
 
-  it("keeps a real OpenRouter chat id", () => {
+  it("drops the withdrawn free Super model and keeps a live free chat id", () => {
     expect(
       resolveModel("chat", {
         openrouter_model_chat: "nvidia/nemotron-3-super-120b-a12b:free",
       }),
-    ).toBe("nvidia/nemotron-3-super-120b-a12b:free");
+    ).toBe("nvidia/nemotron-3.5-super-vl:free");
+    expect(
+      resolveModel("chat", {
+        openrouter_model_chat: "nvidia/nemotron-3.5-super-vl:free",
+      }),
+    ).toBe("nvidia/nemotron-3.5-super-vl:free");
   });
 });
 

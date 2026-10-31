@@ -24,7 +24,9 @@ export type AiTask = "chat" | "quick" | "reasoning" | "vision";
  * Vision uses the Gemini API directly (`gemini-3-flash-preview`), not OpenRouter.
  */
 export const DEFAULT_MODELS: Record<AiTask, string> = {
-  chat: "nvidia/nemotron-3-super-120b-a12b:free",
+  // Super 120B `:free` now 404s ("unavailable for free"). Super VL is the free
+  // 120B-class replacement and answered a live completion check.
+  chat: "nvidia/nemotron-3.5-super-vl:free",
   // Nano `:free` was withdrawn on OpenRouter (404 → paid-only). Use the free
   // auto-router until another stable free nano-class ID exists.
   quick: "openrouter/free",
@@ -45,6 +47,7 @@ const WITHDRAWN_OPENROUTER_MODELS = new Set([
   "google/gemini-2.0-flash-exp:free",
   "google/gemini-2.0-flash-001",
   "nvidia/nemotron-3-nano-30b-a3b:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
 ]);
 
 /** The `app_settings` key holding the override for each task. */

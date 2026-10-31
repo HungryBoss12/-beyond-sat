@@ -59,7 +59,7 @@ const EMPTY: Settings = {
  * bundle, and importing it here would be the only reason to.
  */
 const MODEL_DEFAULTS = {
-  openrouter_model_chat: "nvidia/nemotron-3-super-120b-a12b:free",
+  openrouter_model_chat: "nvidia/nemotron-3.5-super-vl:free",
   openrouter_model_quick: "openrouter/free",
   openrouter_model_reasoning: "nvidia/nemotron-3-ultra-550b-a55b:free",
   openrouter_model_vision: "gemini-3-flash-preview",

@@ -1,4 +1,5 @@
 import type { AdminQuestion } from "@/lib/admin/question";
+import { replaceGraphText, studentSeesGraph } from "@/lib/import/graph-text";
 import type { Difficulty, Section } from "@/lib/sat";
 
 /** SQB letter scale: hardest → easiest. */
@@ -144,7 +145,8 @@ export function validateSqbPublish(q: AdminQuestion): PublishIssue[] {
     issues.push({ level: "error", field: "question_text", message: msg });
   }
 
-  if (!q.image_url && FIGURE_HINT.test(stem + " " + prompt)) {
+  const visiblePrompt = replaceGraphText(prompt, "");
+  if (!q.image_url && !studentSeesGraph(prompt) && FIGURE_HINT.test(stem + " " + visiblePrompt)) {
     issues.push({
       level: "warning",
       field: "image_url",

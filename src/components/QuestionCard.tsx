@@ -8,6 +8,8 @@ import {
   X as XIcon,
 } from "lucide-react";
 import { MathText } from "@/components/MathText";
+import { QuestionGraph } from "@/components/questions/QuestionGraph";
+import { replaceGraphText, studentSeesGraph } from "@/lib/import/graph-text";
 import { sanitizeGridInput } from "@/lib/grid-answer";
 import { safeMediaUrl } from "@/lib/safe-url";
 import { difficultyBarsFilled, difficultyWord } from "@/lib/sat";
@@ -127,10 +129,12 @@ export function QuestionCard({
   const choices = useMemo(() => (Array.isArray(q.choices) ? q.choices : []), [q.choices]);
   const math = q.section === "math";
   const stemText = (q.question_text ?? "").trim();
-  const passageText = (q.prompt ?? "").trim();
+  const rawPrompt = (q.prompt ?? "").trim();
+  const passageText = replaceGraphText(rawPrompt, "");
+  const shownGraph = studentSeesGraph(rawPrompt);
   const questionStem = stemText || passageText;
   const leftPassage = stemText ? passageText : "";
-  const hasPassage = !!(leftPassage || q.image_url);
+  const hasPassage = !!(leftPassage || q.image_url || shownGraph);
 
   /* Bluebook hides the cross-out controls until the student turns them on, and
      the setting then persists for the rest of the sitting. This component
@@ -345,7 +349,11 @@ export function QuestionCard({
               className="whitespace-pre-wrap px-6 py-6 text-[18px] leading-[1.7] text-test-ink selection:bg-[#ffe566] md:px-10 md:py-8 md:text-[19px]"
             >
               {renderedPassage}
-              {safeMediaUrl(q.image_url) ? (
+              {shownGraph ? (
+                <div className="mt-5 max-w-xl">
+                  <QuestionGraph graph={shownGraph} math={math} />
+                </div>
+              ) : safeMediaUrl(q.image_url) ? (
                 <img
                   src={safeMediaUrl(q.image_url) ?? undefined}
                   alt={q.image_alt ?? ""}

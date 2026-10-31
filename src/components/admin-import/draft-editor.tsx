@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ImageIcon, Loader2, Trash2, Upload } from "lucide-react";
+import { ImageIcon, LineChart, Loader2, Trash2, Upload } from "lucide-react";
+import { GraphEditorDialog } from "@/components/admin/GraphEditorDialog";
 import { MathText } from "@/components/MathText";
 import {
   QuestionCard,
@@ -67,6 +68,7 @@ export function DraftEditor({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [imageSrc, setImageSrc] = useState(imageUrl);
+  const [graphOpen, setGraphOpen] = useState(false);
 
   const studentPreview = useMemo((): QuestionRow | null => {
     if (variant !== "sqb") return null;
@@ -314,18 +316,34 @@ export function DraftEditor({
           ) : null}
         </div>
         {uploadError && <p className="mt-1 text-xs font-semibold text-white">{uploadError}</p>}
-        <Field label="Graph text">
-          <textarea
-            value={extractGraphText(rec.prompt ?? "")}
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
             disabled={disabled}
-            onChange={(e) =>
-              setField("prompt", replaceGraphText(rec.prompt ?? "", e.target.value))
-            }
-            rows={4}
-            className={CONTROL_CLASS + " min-h-[5rem] resize-y font-mono text-xs disabled:opacity-40"}
-            placeholder={"x-axis: Time, 0 to 10, ticks 0, 2, 4\ny-axis: Speed, 0 to 60\npoints: (0, 0); (2, 10)\nlines: a straight line through those points"}
-          />
-        </Field>
+            onClick={() => setGraphOpen(true)}
+            className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+          >
+            <LineChart className="h-3.5 w-3.5" />
+            {extractGraphText(rec.prompt ?? "") ? "Edit graph" : "Add graph"}
+          </button>
+          {extractGraphText(rec.prompt ?? "") ? (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => setField("prompt", replaceGraphText(rec.prompt ?? "", ""))}
+              className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Remove graph
+            </button>
+          ) : null}
+        </div>
+        <GraphEditorDialog
+          open={graphOpen}
+          graphText={extractGraphText(rec.prompt ?? "")}
+          math={section === "math"}
+          onOpenChange={setGraphOpen}
+          onDone={(graph) => setField("prompt", replaceGraphText(rec.prompt ?? "", graph))}
+        />
         {variant === "sqb" && (
           <div className="mt-2">
             <Field label="Image alt (required to publish when figure is set)">

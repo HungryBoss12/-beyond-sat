@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ImageIcon,
+  LineChart,
   Loader2,
   Sparkles,
+  Trash2,
   Undo2,
   Upload,
   Wand2,
   X,
 } from "lucide-react";
+import { GraphEditorDialog } from "@/components/admin/GraphEditorDialog";
 import { MixedMathEditor } from "@/components/MixedMathEditor";
+import { extractGraphText, replaceGraphText } from "@/lib/import/graph-text";
 import {
   cloneAdminQuestion,
   emptyAdminQuestion,
@@ -87,6 +91,7 @@ export function QuestionEditModal({
   const skills = editing.section === "reading_writing" ? RW_SKILLS : MATH_SKILLS;
   const busy = saving || uploading || aiBusy != null;
   const [imageSrc, setImageSrc] = useState<string | null>(editing.image_url);
+  const [graphOpen, setGraphOpen] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -459,12 +464,49 @@ export function QuestionEditModal({
               <p className="mt-1.5 text-[11px] font-semibold text-amber-100">{aiError}</p>
             )}
           </Field>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setGraphOpen(true)}
+                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+              >
+                <LineChart className="h-3.5 w-3.5" />
+                {extractGraphText(editing.prompt ?? "") ? "Edit graph" : "Add graph"}
+              </button>
+              {extractGraphText(editing.prompt ?? "") ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    setEditing({ ...editing, prompt: replaceGraphText(editing.prompt ?? "", "") })
+                  }
+                  className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Remove graph
+                </button>
+              ) : null}
+            </div>
+            <GraphEditorDialog
+              open={graphOpen}
+              graphText={extractGraphText(editing.prompt ?? "")}
+              math={editing.section === "math"}
+              onOpenChange={setGraphOpen}
+              onDone={(graph) =>
+                setEditing({ ...editing, prompt: replaceGraphText(editing.prompt ?? "", graph) })
+              }
+            />
 
           <Field label="Passage / prompt (optional)">
             <MixedMathEditor
               math={editing.section === "math"}
-              value={editing.prompt ?? ""}
-              onChange={(v) => setEditing({ ...editing, prompt: v })}
+              value={replaceGraphText(editing.prompt ?? "", "")}
+              onChange={(v) =>
+                setEditing({
+                  ...editing,
+                  prompt: replaceGraphText(v, extractGraphText(editing.prompt ?? "")),
+                })
+              }
               rows={3}
               placeholder="Type prose here. Click 'Insert math' to add a live equation…"
             />

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyAdminQuestion } from "@/lib/admin/question";
+import { blankGraph, replaceGraphText, serializeGraph } from "@/lib/import/graph-text";
 import { dryRunImport, forceBankFormat, parseJson } from "@/lib/question-import";
 import {
   findKatexIssues,
@@ -98,6 +99,13 @@ describe("SQB publish gates", () => {
         (i) => i.level === "warning" && /figure|graph/i.test(i.message),
       ),
     ).toBe(true);
+  });
+
+  it("treats a graph students can see as the figure", () => {
+    const q = completeMcq();
+    q.image_url = null;
+    q.prompt = replaceGraphText("", serializeGraph(blankGraph()));
+    expect(validateSqbPublish(q).some((issue) => issue.field === "image_url")).toBe(false);
   });
 
   it("soft-only: missing explanation is a warning", () => {

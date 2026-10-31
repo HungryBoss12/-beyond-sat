@@ -3,10 +3,13 @@ import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ImageIcon,
+  LineChart,
   Loader2,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
+import { GraphEditorDialog } from "@/components/admin/GraphEditorDialog";
 import { MixedMathEditor } from "@/components/MixedMathEditor";
 import { extractGraphText, replaceGraphText } from "@/lib/import/graph-text";
 import {
@@ -66,6 +69,7 @@ export function SqbQuestionEditor({
   const [previewAnswer, setPreviewAnswer] = useState<AnswerState>(() => emptyAnswer());
   const fileRef = useRef<HTMLInputElement>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [graphOpen, setGraphOpen] = useState(false);
 
   useEffect(() => {
     setEditing(cloneAdminQuestion(initial));
@@ -438,19 +442,32 @@ export function SqbQuestionEditor({
                 <Upload className="h-3.5 w-3.5" /> Replace figure
               </button>
             )}
-            <div className="mt-2">
-              <Field label="Graph text">
-                <textarea
-                  className={CONTROL + " min-h-[5rem] resize-y font-mono text-xs"}
-                  rows={4}
-                  value={extractGraphText(editing.prompt ?? "")}
-                  onChange={(e) =>
-                    patch({ prompt: replaceGraphText(editing.prompt ?? "", e.target.value) })
-                  }
-                  placeholder={"x-axis: Time, 0 to 10\ny-axis: Speed, 0 to 60\npoints: (0, 0); (2, 10)\nlines: a straight line through those points"}
-                />
-              </Field>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setGraphOpen(true)}
+                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white"
+              >
+                <LineChart className="h-3.5 w-3.5" />
+                {extractGraphText(editing.prompt ?? "") ? "Edit graph" : "Add graph"}
+              </button>
+              {extractGraphText(editing.prompt ?? "") ? (
+                <button
+                  type="button"
+                  onClick={() => patch({ prompt: replaceGraphText(editing.prompt ?? "", "") })}
+                  className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Remove graph
+                </button>
+              ) : null}
             </div>
+            <GraphEditorDialog
+              open={graphOpen}
+              graphText={extractGraphText(editing.prompt ?? "")}
+              math={editing.section === "math"}
+              onOpenChange={setGraphOpen}
+              onDone={(graph) => patch({ prompt: replaceGraphText(editing.prompt ?? "", graph) })}
+            />
           </div>
 
           <Field label="Prompt / stimulus (optional)">

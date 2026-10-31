@@ -29,7 +29,7 @@ export type OrphanMathGroup = {
   questionIds: string[];
 };
 
-type OrphanMathQuestion = {
+export type OrphanMathQuestion = {
   id: string;
   source_month: number | null;
   source_year: number | null;

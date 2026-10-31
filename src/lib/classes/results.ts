@@ -65,6 +65,33 @@ export function resultValues(row: {
   return [row.m1 ?? null, row.m2 ?? null];
 }
 
+/** True when a reload already contains every number from the local save. */
+export function reloadHasSave(savedScores: (number | null)[], incoming: (number | null)[]): boolean {
+  if (incoming.length < savedScores.length) return false;
+  return savedScores.every((score, index) => (incoming[index] ?? null) === score);
+}
+
+/**
+ * Boxes to show after a reload. A dirty box is left as typed. A confirmed score
+ * the reload does not contain yet stays on screen.
+ */
+export function boxesAfterReload(
+  slots: number,
+  incoming: (number | null)[],
+  confirmed: (number | null)[] | null,
+  dirty: string[] | null,
+): string[] {
+  if (dirty) {
+    const padded = dirty.slice(0, slots);
+    while (padded.length < slots) padded.push("");
+    return padded;
+  }
+  const scores = confirmed && !reloadHasSave(confirmed, incoming) ? confirmed : incoming;
+  return Array.from({ length: slots }, (_, index) =>
+    scores[index] == null ? "" : String(scores[index]),
+  );
+}
+
 /** "—" until every passage is in. Math uses the class table. English uses the Reading & Writing curve. */
 export function resultLabel(scores: (number | null)[], subject: ClassSubject = "math"): string {
   const max = moduleMax(subject);

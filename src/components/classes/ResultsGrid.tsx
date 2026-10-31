@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Minus, Plus } from "lucide-react";
 import { setResult, setResultSlots, type GroupLesson, type ResultRow } from "@/lib/classes/groups";
-import { moduleMax, parseModule, resultLabel, resultValues } from "@/lib/classes/results";
+import { boxesAfterReload, moduleMax, parseModule, reloadHasSave, resultLabel, resultValues } from "@/lib/classes/results";
 import type { ClassSubject } from "@/lib/classes/types";
 import { shortDate } from "@/lib/classes/schedule";
 import { cn } from "@/lib/utils";
@@ -17,12 +17,6 @@ const keptDrafts = new Map<string, string[]>();
 
 function draftKey(lessonId: string, userId: string): string {
   return `${lessonId}:${userId}`;
-}
-
-/** True when a reload already contains every number from the local save. */
-function reloadHasSave(savedScores: (number | null)[], incoming: (number | null)[]): boolean {
-  if (incoming.length < savedScores.length) return false;
-  return savedScores.every((score, index) => (incoming[index] ?? null) === score);
 }
 
 /**
@@ -61,7 +55,8 @@ export function ResultsGrid({
   const dirtyDraftsRef = useRef(keptDrafts);
   const subjectRef = useRef(subject);
   subjectRef.current = subject;
-  const timers = useRef(new Map<string, number>());
+  const saving = useRef(new Map<string, Promise<void>>());
+  const pending = useRef(new Map<string, string[]>());
   const persistRef = useRef<
     (lessonId: string, userId: string, draft: string[]) => Promise<void>
   >(async () => {});
@@ -126,22 +121,13 @@ export function ResultsGrid({
     const next = new Map<string, string[]>();
     for (const userId of roster.split(",").filter(Boolean)) {
       const dirtyKey = `${selected.id}:${userId}`;
-      const kept = dirtyDraftsRef.current.get(dirtyKey);
-      if (kept) {
-        const padded = kept.slice(0, count);
-        while (padded.length < count) padded.push("");
-        dirtyDraftsRef.current.set(dirtyKey, padded);
-        next.set(userId, padded);
-        continue;
-      }
+      const kept = dirtyDraftsRef.current.get(dirtyKey) ?? null;
       const row = source.get(`${userId}:${selected.id}`);
       const values = resultValues(row ?? { m1: null, m2: null });
-      next.set(
-        userId,
-        Array.from({ length: count }, (_, index) =>
-          values[index] == null ? "" : String(values[index]),
-        ),
-      );
+      const confirmed = confirmedRef.current.get(`${userId}:${selected.id}`) ?? null;
+      const boxes = boxesAfterReload(count, values, confirmed, kept);
+      if (kept) dirtyDraftsRef.current.set(dirtyKey, boxes);
+      next.set(userId, boxes);
     }
     setDrafts(next);
   }, [selected?.id, roster, results]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -178,7 +164,10 @@ export function ResultsGrid({
     await setResult(lessonId, userId, scores);
     keptScores.set(key, scores);
     confirmedRef.current.set(key, scores);
-    keptDrafts.delete(draftKey(lessonId, userId));
+    const stored = keptDrafts.get(draftKey(lessonId, userId));
+    if (stored && stored.join("\0") === draft.join("\0")) {
+      keptDrafts.delete(draftKey(lessonId, userId));
+    }
     setSaved((current) => {
       const copy = new Map(current);
       if (scores.every((score) => score == null)) copy.delete(key);
@@ -195,34 +184,36 @@ export function ResultsGrid({
     });
   };
 
+  function enqueue(lessonId: string, userId: string, draft: string[]) {
+    const key = draftKey(lessonId, userId);
+    pending.current.set(key, draft);
+    keptDrafts.set(key, draft);
+    if (saving.current.has(key)) return;
+    const job = (async () => {
+      while (pending.current.has(key)) {
+        const next = pending.current.get(key);
+        pending.current.delete(key);
+        if (!next) continue;
+        await persistRef.current(lessonId, userId, next);
+      }
+    })()
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Could not save the result");
+      })
+      .finally(() => {
+        saving.current.delete(key);
+        const left = pending.current.get(key);
+        if (left) enqueue(lessonId, userId, left);
+      });
+    saving.current.set(key, job);
+  }
+
   function flushLesson(lessonId: string) {
     for (const [key, draft] of [...keptDrafts.entries()]) {
       if (!key.startsWith(`${lessonId}:`)) continue;
-      const timer = timers.current.get(key);
-      if (timer) window.clearTimeout(timer);
-      timers.current.delete(key);
       const userId = key.slice(lessonId.length + 1);
-      void persistRef.current(lessonId, userId, draft).catch((err) => {
-        toast.error(err instanceof Error ? err.message : "Could not save the result");
-      });
+      enqueue(lessonId, userId, draft);
     }
-  }
-
-  function scheduleSave(lessonId: string, userId: string) {
-    const key = draftKey(lessonId, userId);
-    const timer = timers.current.get(key);
-    if (timer) window.clearTimeout(timer);
-    timers.current.set(
-      key,
-      window.setTimeout(() => {
-        timers.current.delete(key);
-        const draft = keptDrafts.get(key);
-        if (!draft) return;
-        void persistRef.current(lessonId, userId, draft).catch((err) => {
-          toast.error(err instanceof Error ? err.message : "Could not save the result");
-        });
-      }, 400),
-    );
   }
 
   const lessonWatch = useRef<string | null>(selected?.id ?? null);
@@ -243,20 +234,13 @@ export function ResultsGrid({
   async function commit(person: GridPerson) {
     if (!selected) return;
     const key = draftKey(selected.id, person.userId);
-    const timer = timers.current.get(key);
-    if (timer) window.clearTimeout(timer);
-    timers.current.delete(key);
     const draft = drafts.get(person.userId) ?? keptDrafts.get(key) ?? [];
     const parsed = draft.map((value) => parseModule(value, max));
     if (parsed.some((item) => item.kind === "error")) {
       toast.error(`Enter a whole number from 0 to ${max}.`);
       return;
     }
-    try {
-      await persistRef.current(selected.id, person.userId, draft);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save the result");
-    }
+    enqueue(selected.id, person.userId, draft);
   }
 
   function moveDown(index: number, field: number) {
@@ -389,9 +373,9 @@ export function ResultsGrid({
                           const next = [...(cur.get(person.userId) ?? draft)];
                           next[field] = value;
                           dirtyDraftsRef.current.set(draftKey(selected.id, person.userId), next);
+                          enqueue(selected.id, person.userId, next);
                           return new Map(cur).set(person.userId, next);
                         });
-                        scheduleSave(selected.id, person.userId);
                       }}
                       onCommit={() => void commit(person)}
                       onEnter={(field) => moveDown(index, field)}

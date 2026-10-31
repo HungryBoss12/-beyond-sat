@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { doneSummary, itemsFor, schemeFor, slugToSubject } from "./schemes";
-import { moduleMax, parseModule, resultLabel } from "./results";
+import { moduleMax, parseModule, resultLabel, boxesAfterReload } from "./results";
 import { rwRawToScaled } from "@/lib/sat";
 
 describe("results", () => {
@@ -27,6 +27,12 @@ describe("results", () => {
     expect(resultLabel([10, 10, null], "ebrw")).toBe("—");
     expect(resultLabel([10, 10, 5], "ebrw")).toBe(String(rwRawToScaled(25)));
     expect(resultLabel([27, 27, 27], "ebrw")).toBe("N.A.");
+  });
+
+  it("keeps a confirmed score when a reload is missing it, and leaves a dirty box untouched", () => {
+    expect(boxesAfterReload(2, [null, null], [12, 8], null)).toEqual(["12", "8"]);
+    expect(boxesAfterReload(2, [12, 8], [12, 8], null)).toEqual(["12", "8"]);
+    expect(boxesAfterReload(2, [1, 1], [12, 8], ["9", ""])).toEqual(["9", ""]);
   });
 });
 

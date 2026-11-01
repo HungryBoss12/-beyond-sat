@@ -1,7 +1,15 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { quietEvents } from "@/components/landing/quiet-events";
-import { useMemo, useRef } from "react";
-import { WebGLRenderer, type Group, type Mesh, type WebGLRendererParameters } from "three";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Color,
+  WebGLRenderer,
+  type Group,
+  type Mesh,
+  type MeshBasicMaterial,
+  type MeshStandardMaterial,
+  type WebGLRendererParameters,
+} from "three";
 
 /**
  * The WebGL half of the hero emblem (master_plan.md §1).
@@ -12,7 +20,7 @@ import { WebGLRenderer, type Group, type Mesh, type WebGLRendererParameters } fr
  * ~400KB into the initial landing bundle and defeat the whole arrangement.
  *
  * Deliberately built from core three primitives only — no `drei`. The emblem
- * needs an icosahedron, a standard material and two point lights, all of which
+ * needs a polyhedron, a standard material and two point lights, all of which
  * R3F exposes directly; drei would have added three packages for nothing.
  *
  * Brand hexes are repeated here because three takes colours as values, not
@@ -20,9 +28,46 @@ import { WebGLRenderer, type Group, type Mesh, type WebGLRendererParameters } fr
  * 500 #100e66, 600 #0b0761.
  */
 
-const BRAND_400 = "#535291";
-const BRAND_600 = "#0b0761";
 const BRAND_200 = "#9f9fc2";
+
+/**
+ * The looks the emblem can take. Index 0 is the hero's brand emblem. The Hall of Fame steps through
+ * the rest as its stories change, so each result gets its own shape and colour.
+ */
+type Look = {
+  shape: "ico" | "dodeca" | "octa";
+  detail: number;
+  radius: number;
+  core: string;
+  emissive: string;
+  shell: string;
+};
+
+const LOOKS: Look[] = [
+  { shape: "ico", detail: 1, radius: 1.35, core: "#535291", emissive: "#0b0761", shell: "#9f9fc2" },
+  {
+    shape: "dodeca",
+    detail: 0,
+    radius: 1.3,
+    core: "#2f6fd6",
+    emissive: "#0a2a8a",
+    shell: "#9fc4f2",
+  },
+  { shape: "octa", detail: 0, radius: 1.5, core: "#7a4fc4", emissive: "#2a0b6b", shell: "#c6a6ee" },
+  { shape: "ico", detail: 0, radius: 1.4, core: "#1f8c9e", emissive: "#06404f", shell: "#9fdce3" },
+  {
+    shape: "dodeca",
+    detail: 1,
+    radius: 1.3,
+    core: "#c0517f",
+    emissive: "#5e0b33",
+    shell: "#efa6c4",
+  },
+];
+
+function lookFor(variant: number): Look {
+  return LOOKS[((Math.trunc(variant) % LOOKS.length) + LOOKS.length) % LOOKS.length];
+}
 
 /** Scroll progress through the hero, 0 → 1, clamped. */
 function heroProgress() {
@@ -37,19 +82,54 @@ function heroProgress() {
 const POINTER_YAW = 0.32;
 const POINTER_PITCH = 0.22;
 
+/* Drag physics. Radians of spin per pixel dragged, how fast a released spin dies out, how hard the
+   pitch is pulled back to level, and the spin an automatic story change adds. */
+const DRAG_GAIN = 0.011;
+const SPIN_FRICTION = 1.6;
+const SPIN_LIMIT = 14;
+const PITCH_STIFFNESS = 14;
+const PITCH_DAMPING = 5;
+const PITCH_LIMIT = 1.1;
+const KICK_SPIN = 7;
+
+type DragState = { active: boolean; dx: number; dy: number };
+type Phase = "idle" | "out" | "in";
+
+function Shape({ look }: { look: Look }) {
+  const args = useMemo(() => [look.radius, look.detail] as [number, number], [look]);
+  if (look.shape === "dodeca") return <dodecahedronGeometry args={args} />;
+  if (look.shape === "octa") return <octahedronGeometry args={args} />;
+  return <icosahedronGeometry args={args} />;
+}
+
 /**
  * The emblem: a faceted core inside a slowly counter-rotating wireframe shell.
  *
- * Three inputs are summed onto the group's transform: time (a slow idle spin, so
- * the object is alive before the visitor touches anything), scroll (rotation and
- * depth), and the pointer (a small lean toward the cursor). All three go on the
- * group rather than the camera — moving the camera would also move the lights,
- * which are what give the facets their definition.
+ * Inputs summed onto the group's transform: time (a slow idle spin, so the object is alive before
+ * the visitor touches anything), scroll (rotation and depth), the pointer (a small lean toward the
+ * cursor), and, when interactive, a drag with real inertia. All of them go on the group rather than
+ * the camera — moving the camera would also move the lights, which are what give the facets their
+ * definition.
+ *
+ * Changing `variant` plays a kick: the emblem shrinks on a spring, swaps shape at the bottom, springs
+ * back with an overshoot, takes a burst of spin, and eases its colours to the new look.
  */
-function Emblem({ over, pointer }: { over: { current: boolean }; pointer: { current: { x: number; y: number } } }) {
+function Emblem({
+  over,
+  pointer,
+  drag,
+  variant,
+}: {
+  over: { current: boolean };
+  pointer: { current: { x: number; y: number } };
+  drag: { current: DragState };
+  variant: number;
+}) {
   const group = useRef<Group>(null);
   const core = useRef<Mesh>(null);
   const shell = useRef<Mesh>(null);
+  const coreMat = useRef<MeshStandardMaterial>(null);
+  const shellMat = useRef<MeshBasicMaterial>(null);
 
   /* Smoothed scroll value. Reading window.scrollY straight into the transform
      makes the mesh jitter on trackpads, which emit many small deltas per frame;
@@ -67,6 +147,31 @@ function Emblem({ over, pointer }: { over: { current: boolean }; pointer: { curr
      frame loop so a pointer enter does not re-render the scene. */
   const swell = useRef(0);
 
+  // Spin angle and velocity from dragging and kicks, plus the pitch that springs back to level.
+  const phys = useRef({ ay: 0, vy: 0, ax: 0, vx: 0 });
+  // Scale spring used by the kick and the press-in while dragging.
+  const squash = useRef({ x: 1, v: 0 });
+  const phase = useRef<Phase>("idle");
+
+  const [shownVariant, setShownVariant] = useState(variant);
+  const wanted = useRef(variant);
+  const announced = useRef(variant);
+  useEffect(() => {
+    wanted.current = variant;
+  }, [variant]);
+
+  const look = lookFor(shownVariant);
+  const [initialLook] = useState(() => lookFor(variant));
+  const palette = useMemo(
+    () =>
+      LOOKS.map((l) => ({
+        core: new Color(l.core),
+        emissive: new Color(l.emissive),
+        shell: new Color(l.shell),
+      })),
+    [],
+  );
+
   useFrame((state, delta) => {
     if (!group.current || !core.current || !shell.current) return;
 
@@ -82,11 +187,39 @@ function Emblem({ over, pointer }: { over: { current: boolean }; pointer: { curr
     aimX.current += (pointer.current.x - aimX.current) * ease;
     aimY.current += (pointer.current.y - aimY.current) * ease;
 
+    // A new variant starts the kick: shrink, swap at the bottom, spring back, and spin.
+    const p = phys.current;
+    if (wanted.current !== announced.current) {
+      announced.current = wanted.current;
+      phase.current = "out";
+      p.vy += KICK_SPIN;
+    }
+
+    const dragging = drag.current.active;
+    if (dragging) {
+      const ry = drag.current.dx * DRAG_GAIN;
+      const rx = drag.current.dy * DRAG_GAIN;
+      drag.current.dx = 0;
+      drag.current.dy = 0;
+      p.ay += ry;
+      p.ax = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, p.ax + rx));
+      // Low-passed velocity, so letting go carries the speed of the last few frames.
+      p.vy += (ry / step - p.vy) * 0.5;
+      p.vx = 0;
+    } else {
+      p.ay += p.vy * step;
+      p.vy *= Math.exp(-SPIN_FRICTION * step);
+      p.vy = Math.max(-SPIN_LIMIT, Math.min(SPIN_LIMIT, p.vy));
+      p.vx += (-PITCH_STIFFNESS * p.ax - PITCH_DAMPING * p.vx) * step;
+      p.ax += p.vx * step;
+    }
+
     const t = state.clock.elapsedTime;
     const s = scroll.current;
 
-    group.current.rotation.y = t * 0.18 + s * Math.PI * 1.2 + aimX.current * POINTER_YAW;
-    group.current.rotation.x = Math.sin(t * 0.25) * 0.12 + s * 0.5 - aimY.current * POINTER_PITCH;
+    group.current.rotation.y = t * 0.18 + s * Math.PI * 1.2 + aimX.current * POINTER_YAW + p.ay;
+    group.current.rotation.x =
+      Math.sin(t * 0.25) * 0.12 + s * 0.5 - aimY.current * POINTER_PITCH + p.ax;
 
     // Recedes and shrinks as the page scrolls past — the parallax cue that ties
     // the object to the scroll position without moving the camera.
@@ -104,31 +237,54 @@ function Emblem({ over, pointer }: { over: { current: boolean }; pointer: { curr
        glides back instead of snapping — and eased through a ref rather than React
        state, which would re-render the scene on every enter and leave. */
     swell.current += ((over.current ? 1 : 0) - swell.current) * Math.min(1, step * 5);
-    group.current.scale.setScalar(1 + swell.current * 0.05);
+
+    // Scale spring: stiff on the way down, loose on the way back so it overshoots.
+    const out = phase.current === "out";
+    const goal = out ? 0.2 : dragging ? 0.94 : 1;
+    const sq = squash.current;
+    const stiffness = out ? 220 : 110;
+    const damping = out ? 26 : 9;
+    sq.v += ((goal - sq.x) * stiffness - sq.v * damping) * step;
+    sq.x += sq.v * step;
+    if (out && sq.x < 0.3) {
+      phase.current = "in";
+      setShownVariant(wanted.current);
+    } else if (phase.current === "in" && Math.abs(sq.x - 1) < 0.01 && Math.abs(sq.v) < 0.05) {
+      phase.current = "idle";
+    }
+    group.current.scale.setScalar(sq.x * (1 + swell.current * 0.05));
 
     // The shell counter-rotates so the two layers shear against each other;
-    // rotating together would read as one solid object.
-    shell.current.rotation.y = -t * 0.32;
+    // rotating together would read as one solid object. A drag drags it the other way too.
+    shell.current.rotation.y = -t * 0.32 - p.ay * 0.6;
     shell.current.rotation.z = t * 0.1;
+
+    // Colours chase the wanted look rather than snapping to it.
+    const target =
+      palette[((Math.trunc(wanted.current) % palette.length) + palette.length) % palette.length];
+    const k = Math.min(1, step * 3.5);
+    coreMat.current?.color.lerp(target.core, k);
+    coreMat.current?.emissive.lerp(target.emissive, k);
+    shellMat.current?.color.lerp(target.shell, k);
   });
 
-  /* Geometry args are memoised: a fresh array literal in JSX makes R3F dispose
+  /* Shell geometry args are memoised: a fresh array literal in JSX makes R3F dispose
      and rebuild the geometry on every render. */
-  const coreArgs = useMemo(() => [1.35, 1] as [number, number], []);
   const shellArgs = useMemo(() => [1.85, 1] as [number, number], []);
 
   return (
     /* No R3F pointer handlers. Fiber copies every enumerable field of the native
        event, and Firefox logs mozPressure / mozInputSource plus a file:// security
-       error for that copy. Hover is a DOM listener on the canvas instead. */
+       error for that copy. Hover and drag are DOM listeners on the canvas instead. */
     <group ref={group}>
       <mesh ref={core}>
-        <icosahedronGeometry args={coreArgs} />
-        {/* flatShading is what makes the facets legible — with smooth normals an
-            icosahedron reads as a slightly lumpy sphere. */}
+        <Shape key={`${look.shape}-${look.detail}`} look={look} />
+        {/* flatShading is what makes the facets legible — with smooth normals a
+            polyhedron reads as a slightly lumpy sphere. */}
         <meshStandardMaterial
-          color={BRAND_400}
-          emissive={BRAND_600}
+          ref={coreMat}
+          color={initialLook.core}
+          emissive={initialLook.emissive}
           emissiveIntensity={0.45}
           roughness={0.28}
           metalness={0.55}
@@ -138,7 +294,13 @@ function Emblem({ over, pointer }: { over: { current: boolean }; pointer: { curr
 
       <mesh ref={shell}>
         <icosahedronGeometry args={shellArgs} />
-        <meshBasicMaterial color={BRAND_200} wireframe transparent opacity={0.35} />
+        <meshBasicMaterial
+          ref={shellMat}
+          color={initialLook.shell}
+          wireframe
+          transparent
+          opacity={0.35}
+        />
       </mesh>
     </group>
   );
@@ -147,19 +309,20 @@ function Emblem({ over, pointer }: { over: { current: boolean }; pointer: { curr
 /**
  * Static variant for `prefers-reduced-motion`. Same geometry and lighting, no
  * `useFrame` — the render loop never starts, so there is no motion to freeze
- * mid-frame and no per-frame cost.
+ * mid-frame and no per-frame cost. A new variant simply swaps the look.
  *
  * A scroll-driven 3D scene is exactly the content that triggers vestibular
  * symptoms, so this is a hard requirement rather than a nicety.
  */
-function StaticEmblem() {
+function StaticEmblem({ variant }: { variant: number }) {
+  const look = lookFor(variant);
   return (
     <group rotation={[0.35, 0.6, 0]}>
       <mesh>
-        <icosahedronGeometry args={[1.35, 1]} />
+        <Shape look={look} />
         <meshStandardMaterial
-          color={BRAND_400}
-          emissive={BRAND_600}
+          color={look.core}
+          emissive={look.emissive}
           emissiveIntensity={0.45}
           roughness={0.28}
           metalness={0.55}
@@ -168,7 +331,7 @@ function StaticEmblem() {
       </mesh>
       <mesh>
         <icosahedronGeometry args={[1.85, 1]} />
-        <meshBasicMaterial color={BRAND_200} wireframe transparent opacity={0.35} />
+        <meshBasicMaterial color={look.shell} wireframe transparent opacity={0.35} />
       </mesh>
     </group>
   );
@@ -224,6 +387,8 @@ export default function BeyondCoreScene({
   animate,
   highDpr,
   onContextLost,
+  interactive,
+  variant,
 }: {
   /** false under `prefers-reduced-motion` — renders one frame and stops. */
   animate: boolean;
@@ -231,11 +396,19 @@ export default function BeyondCoreScene({
   highDpr: boolean;
   /** The GPU dropped the live context. The parent swaps in the 2D mockup. */
   onContextLost: () => void;
+  /** Drag to spin with inertia. */
+  interactive: boolean;
+  /** Which look to show; a change plays the kick. */
+  variant: number;
 }) {
   const onLost = useRef(onContextLost);
   onLost.current = onContextLost;
   const over = useRef(false);
   const pointer = useRef({ x: 0, y: 0 });
+  const drag = useRef<DragState>({ active: false, dx: 0, dy: 0 });
+  // Detaches the canvas listeners. Set once the canvas exists, called when the scene unmounts.
+  const detach = useRef<() => void>(() => undefined);
+  useEffect(() => () => detach.current(), []);
 
   return (
     <Canvas
@@ -280,6 +453,46 @@ export default function BeyondCoreScene({
         el.addEventListener("pointerenter", enter);
         el.addEventListener("pointerleave", leave);
         el.addEventListener("pointermove", move);
+
+        /* Drag to spin. The frame loop reads and clears the accumulated delta, so the handlers only
+           add to it. `pan-y` keeps vertical page scrolling working on touch while a sideways drag
+           turns the emblem. Pointer capture keeps the drag alive when the cursor leaves the canvas. */
+        let last = { x: 0, y: 0 };
+        const down = (event: PointerEvent) => {
+          drag.current.active = true;
+          last = { x: event.clientX, y: event.clientY };
+          el.setPointerCapture(event.pointerId);
+          el.style.cursor = "grabbing";
+        };
+        const drive = (event: PointerEvent) => {
+          if (!drag.current.active) return;
+          drag.current.dx += event.clientX - last.x;
+          drag.current.dy += event.clientY - last.y;
+          last = { x: event.clientX, y: event.clientY };
+        };
+        const up = (event: PointerEvent) => {
+          drag.current.active = false;
+          if (el.hasPointerCapture(event.pointerId)) el.releasePointerCapture(event.pointerId);
+          el.style.cursor = "grab";
+        };
+        if (interactive) {
+          el.style.cursor = "grab";
+          el.style.touchAction = "pan-y";
+          el.addEventListener("pointerdown", down);
+          el.addEventListener("pointermove", drive);
+          el.addEventListener("pointerup", up);
+          el.addEventListener("pointercancel", up);
+        }
+
+        detach.current = () => {
+          el.removeEventListener("pointerenter", enter);
+          el.removeEventListener("pointerleave", leave);
+          el.removeEventListener("pointermove", move);
+          el.removeEventListener("pointerdown", down);
+          el.removeEventListener("pointermove", drive);
+          el.removeEventListener("pointerup", up);
+          el.removeEventListener("pointercancel", up);
+        };
       }}
     >
       {/* Two point lights plus a dim ambient: the ambient stops the unlit faces
@@ -287,7 +500,11 @@ export default function BeyondCoreScene({
       <ambientLight intensity={0.55} />
       <pointLight position={[4, 3, 5]} intensity={55} color="#ffffff" distance={18} />
       <pointLight position={[-4, -2, 3]} intensity={30} color={BRAND_200} distance={16} />
-      {animate ? <Emblem over={over} pointer={pointer} /> : <StaticEmblem />}
+      {animate ? (
+        <Emblem over={over} pointer={pointer} drag={drag} variant={variant} />
+      ) : (
+        <StaticEmblem variant={variant} />
+      )}
     </Canvas>
   );
 }

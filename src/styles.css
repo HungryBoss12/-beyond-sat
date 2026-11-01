@@ -3044,3 +3044,126 @@
   50% { box-shadow: 0 0 16px 3px color-mix(in srgb, var(--badge) 85%, transparent); }
 }
 
+
+/* ---------------------------------------------------------------------------
+   Hall of Fame story deck. The incoming card is revealed by a clip-path wipe
+   over the outgoing one, which drifts and dims as it is covered. The longest
+   animation (0.1s delay + 0.7s) must end before WIPE_MS (900) in useStoryDeck.ts. Under prefers-reduced-motion the blanket rule
+   above collapses all of this to an instant swap, and autoplay is off.
+   --------------------------------------------------------------------------- */
+
+@keyframes story-wipe-next {
+  from {
+    clip-path: inset(0 100% 0 0 round 1rem);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 1rem);
+  }
+}
+
+@keyframes story-wipe-prev {
+  from {
+    clip-path: inset(0 0 0 100% round 1rem);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 1rem);
+  }
+}
+
+@keyframes story-content-next {
+  from {
+    opacity: 0;
+    transform: translate3d(36px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes story-content-prev {
+  from {
+    opacity: 0;
+    transform: translate3d(-36px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes story-leave-next {
+  to {
+    opacity: 0.4;
+    transform: translate3d(-22px, 0, 0) scale(0.985);
+  }
+}
+
+@keyframes story-leave-prev {
+  to {
+    opacity: 0.4;
+    transform: translate3d(22px, 0, 0) scale(0.985);
+  }
+}
+
+@keyframes story-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.story-wipe-next,
+.story-wipe-prev {
+  z-index: 1;
+  animation-duration: 0.7s;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  animation-fill-mode: both;
+}
+
+.story-wipe-next {
+  animation-name: story-wipe-next;
+}
+
+.story-wipe-prev {
+  animation-name: story-wipe-prev;
+}
+
+.story-content-next,
+.story-content-prev {
+  animation-duration: 0.7s;
+  animation-delay: 0.1s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+
+.story-content-next {
+  animation-name: story-content-next;
+}
+
+.story-content-prev {
+  animation-name: story-content-prev;
+}
+
+.story-leave-next,
+.story-leave-prev {
+  animation-duration: 0.7s;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  animation-fill-mode: both;
+}
+
+.story-leave-next {
+  animation-name: story-leave-next;
+}
+
+.story-leave-prev {
+  animation-name: story-leave-prev;
+}
+
+.story-progress {
+  animation-name: story-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}

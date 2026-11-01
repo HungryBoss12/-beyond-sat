@@ -129,16 +129,30 @@ SELECT 'programs', 35, true, '{
 WHERE NOT EXISTS (SELECT 1 FROM public.homepage_sections WHERE kind = 'programs');
 
 
--- Reviews. Replace these with real testimonials before launch — invented
--- score claims on a test-prep site are a problem, not just filler.
+-- Hall of Fame (the "reviews" kind). EVERYTHING below is placeholder data:
+-- replace the names, scores, quote and report with real students at
+-- /admin/homepage before launch — invented score claims on a test-prep site
+-- are a problem, not just filler. Hide the section until then if needed.
+-- Old rows that only have "items" (stars/quote/name/detail/avatar) still
+-- render: each item becomes a story, and a leading score in "detail" a tile.
 INSERT INTO public.homepage_sections (kind, position, visible, data)
 SELECT 'reviews', 45, true, '{
-  "title": "Students who got there",
+  "title": "Hall of Fame",
   "subtitle": "",
+  "cta_label": "Create a free account",
+  "cta_href": "/signup",
+  "top": {"name": "Student name", "score": 1500, "caption": "Sample data", "photo": ""},
+  "tiles": [
+    {"name": "Student name", "score": 1520, "photo": ""},
+    {"name": "Student name", "score": 1480, "photo": ""},
+    {"name": "Student name", "score": 1450, "photo": ""},
+    {"name": "Student name", "score": 1430, "photo": ""}
+  ],
+  "quote": {"text": "The practice interface is identical to the real thing. Walking into the test centre felt like another practice session.", "name": "Student name", "detail": "Sample data"},
+  "report": {"name": "Student name", "date": "", "locator": "", "reading_writing": 0, "math": 0},
   "items": [
-    {"stars": 5, "quote": "The practice interface is identical to the real thing. Walking into the test centre felt like another practice session.", "name": "Student name", "detail": "1520 · +180 points", "avatar": ""},
-    {"stars": 5, "quote": "Being able to ask why an answer was wrong, at midnight, is the reason I stopped repeating the same mistakes.", "name": "Student name", "detail": "1480 · +150 points", "avatar": ""},
-    {"stars": 5, "quote": "The analysis page told me my problem was one specific topic. Two weeks on it and my Math score jumped.", "name": "Student name", "detail": "1550 · +120 points", "avatar": ""}
+    {"name": "Student name", "detail": "Sample data", "quote": "Being able to ask why an answer was wrong, at midnight, is the reason I stopped repeating the same mistakes.", "country": "", "avatar": ""},
+    {"name": "Student name", "detail": "Sample data", "quote": "The analysis page told me my problem was one specific topic. Two weeks on it and my Math score jumped.", "country": "", "avatar": ""}
   ]
 }'::jsonb
 WHERE NOT EXISTS (SELECT 1 FROM public.homepage_sections WHERE kind = 'reviews');

@@ -11,7 +11,6 @@ import {
   Users,
   ShieldCheck,
   Check,
-  Star,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
@@ -19,13 +18,14 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { CountUp } from "@/components/CountUp";
 import { DashboardMockup } from "@/components/landing/DashboardMockup";
 import { BeyondCore } from "@/components/landing/BeyondCore";
+import { HallOfFame } from "@/components/landing/hall-of-fame/HallOfFame";
 import { SectionSkeleton } from "@/components/ui/skeletons";
 import { RevealCard, AmbientGlow } from "@/components/ui/reveal-card";
 import { MathText } from "@/components/MathText";
 import { useInView, useScrollProgress } from "@/hooks/useInView";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
-import { safeMediaUrl, safeNavigationUrl } from "@/lib/safe-url";
+import { safeNavigationUrl } from "@/lib/safe-url";
 import { useRegistrationEnabled } from "@/lib/registration";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -590,53 +590,8 @@ function SectionRenderer({ section }: { section: Section }) {
     case "reviews":
       return (
         <Reveal as="section" from="scale" id="reviews" className="py-16 md:py-24">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <div className="parallax-rise mb-12 text-center">
-              {jsonText(d.title) && (
-                <h2 className="text-3xl text-slate-900 md:text-4xl">{jsonText(d.title)}</h2>
-              )}
-              {jsonText(d.subtitle) && (
-                <p className="mt-3 text-slate-500">{jsonText(d.subtitle)}</p>
-              )}
-            </div>
-            <StaggerGrid className="grid gap-6 md:grid-cols-3">
-              {dataItems(d).map((r, i) => (
-                <RevealCard
-                  key={i}
-                  className="lift flex flex-col rounded-2xl border border-brand-400/40 bg-brand-600 p-7 shadow-panel"
-                >
-                  {/* Stars are clamped to 0-5 so a bad admin value can't render
-                      forty icons and blow out the card. */}
-                  <div className="mb-4 flex gap-0.5" aria-label={`${clampStars(r.stars)} out of 5`}>
-                    {Array.from({ length: clampStars(r.stars) }).map((_, s) => (
-                      <Star key={s} className="h-4 w-4 fill-white text-white" />
-                    ))}
-                  </div>
-                  <p className="flex-1 text-sm leading-relaxed text-white">
-                    “{String(r.quote ?? "")}”
-                  </p>
-                  <div className="mt-5 flex items-center gap-3 border-t border-brand-400/40 pt-4">
-                    <Avatar className="h-9 w-9">
-                      {safeMediaUrl(String(r.avatar ?? "")) && (
-                        <AvatarImage src={safeMediaUrl(String(r.avatar ?? "")) ?? undefined} alt="" />
-                      )}
-                      <AvatarFallback className="bg-brand-400 text-[11px] font-bold text-white">
-                        {initials(r.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-bold text-white">
-                        {String(r.name ?? "")}
-                      </div>
-                      {r.detail && (
-                        <div className="truncate text-xs text-brand-100">{String(r.detail)}</div>
-                      )}
-                    </div>
-                  </div>
-                </RevealCard>
-              ))}
-            </StaggerGrid>
-          </div>
+          {/* The look lives in HallOfFame; this row's JSON is parsed there. */}
+          <HallOfFame data={d} Cta={CtaLink} />
         </Reveal>
       );
 
@@ -704,23 +659,6 @@ function SectionRenderer({ section }: { section: Section }) {
     default:
       return null;
   }
-}
-
-/** Star counts come from admin input, so they're clamped to a sane range. */
-function clampStars(n: unknown): number {
-  const parsed = Math.round(Number(n));
-  if (!Number.isFinite(parsed)) return 5;
-  return Math.min(5, Math.max(0, parsed));
-}
-
-/** Two-letter fallback for a review avatar that fails to load. */
-function initials(name: unknown): string {
-  return String(name ?? "")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
 }
 
 /**

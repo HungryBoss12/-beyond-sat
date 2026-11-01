@@ -37,6 +37,10 @@ type SceneProps = {
   animate: boolean;
   highDpr: boolean;
   onContextLost: () => void;
+  /** Drag to spin, with inertia. Off for the hero, where the pointer only leans the emblem. */
+  interactive: boolean;
+  /** Which look to show. Changing it makes the emblem kick, morph and recolour. */
+  variant: number;
 };
 
 /**
@@ -96,7 +100,13 @@ class SceneBoundary extends Component<
 
 type Support = "pending" | "narrow" | "webgl" | "fallback";
 
-export function BeyondCore() {
+export function BeyondCore({
+  interactive = false,
+  variant = 0,
+}: {
+  interactive?: boolean;
+  variant?: number;
+}) {
   /* Starts as "pending" rather than assuming support, because this runs during
      SSR too — document doesn't exist there, and guessing wrong would mean
      server-rendering a canvas the client then throws away. */
@@ -129,7 +139,9 @@ export function BeyondCore() {
         setSupport((current) => (current === "fallback" ? current : "narrow"));
         return;
       }
-      setSupport((current) => (current === "fallback" || current === "webgl" ? current : "pending"));
+      setSupport((current) =>
+        current === "fallback" || current === "webgl" ? current : "pending",
+      );
       const start = () => {
         if (stopped || mine !== ticket) return;
         setSupport((current) => (current === "fallback" ? current : "webgl"));
@@ -205,6 +217,8 @@ export function BeyondCore() {
                 animate={animate}
                 highDpr={highDpr}
                 onContextLost={() => setSupport("fallback")}
+                interactive={interactive}
+                variant={variant}
               />
             </Suspense>
           </SceneBoundary>

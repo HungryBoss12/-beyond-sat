@@ -164,18 +164,24 @@ const KIND_META: Record<
     },
   },
   reviews: {
-    label: "Student reviews",
+    label: "Hall of Fame",
     icon: Star,
-    description: "Testimonial cards with a star rating and a name.",
+    description: "Top score, score tiles, a quote, a score report and student stories.",
     template: {
-      title: "What students say",
+      title: "Hall of Fame",
       subtitle: "",
+      cta_label: "",
+      cta_href: "/signup",
+      top: { name: "", score: 1500, caption: "", photo: "" },
+      tiles: [{ name: "Student name", score: 1500, photo: "" }],
+      quote: { text: "", name: "", detail: "" },
+      report: { name: "", date: "", locator: "", reading_writing: 0, math: 0 },
       items: [
         {
-          stars: 5,
-          quote: "Write the testimonial here.",
           name: "Student name",
-          detail: "1520 · +180 points",
+          detail: "",
+          quote: "Write the story here.",
+          country: "",
           avatar: "",
         },
       ],
@@ -1056,70 +1062,7 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
   }
 
   if (kind === "reviews") {
-    return (
-      <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Section title">
-            <TextInput value={value.title} onChange={set("title")} />
-          </Field>
-          <Field label="Section subtitle">
-            <TextInput value={value.subtitle} onChange={set("subtitle")} />
-          </Field>
-        </div>
-        <div className="space-y-3">
-          {items.map((it, i) => (
-            <ItemRow
-              key={i}
-              index={i}
-              count={items.length}
-              onMove={(dir) => moveItem(i, dir)}
-              onRemove={() => removeItem(i)}
-            >
-              <div className="grid gap-3 md:grid-cols-3">
-                <Field label="Student name">
-                  <TextInput value={it.name} onChange={(v) => updateItem(i, { name: v })} />
-                </Field>
-                <Field label="Detail" hint="Score, school, anything short.">
-                  <TextInput
-                    value={it.detail}
-                    onChange={(v) => updateItem(i, { detail: v })}
-                    placeholder="1520 · +180 points"
-                  />
-                </Field>
-                <Field label="Stars" hint="0 to 5.">
-                  <NumberInput
-                    value={it.stars}
-                    onChange={(v) => updateItem(i, { stars: v })}
-                    placeholder="5"
-                  />
-                </Field>
-                <div className="md:col-span-3">
-                  <Field label="Quote" hint="Quotation marks are added automatically.">
-                    <TextArea
-                      value={it.quote}
-                      onChange={(v) => updateItem(i, { quote: v })}
-                      rows={3}
-                    />
-                  </Field>
-                </div>
-                <div className="md:col-span-3">
-                  <Field
-                    label="Photo URL (optional)"
-                    hint="Leave blank to show their initials instead."
-                  >
-                    <TextInput value={it.avatar} onChange={(v) => updateItem(i, { avatar: v })} />
-                  </Field>
-                </div>
-              </div>
-            </ItemRow>
-          ))}
-          <AddItemButton
-            label="Add a review"
-            onClick={() => addItem({ stars: 5, quote: "", name: "", detail: "", avatar: "" })}
-          />
-        </div>
-      </div>
-    );
+    return <HallOfFameEditor value={value} onChange={onChange} />;
   }
 
   if (kind === "free") {
@@ -1195,6 +1138,232 @@ function SectionEditor({ kind, value, onChange }: EditorProps) {
   return (
     <div className="rounded-lg border border-dashed border-brand-300/50 p-4 text-sm text-brand-100">
       This section type doesn't have a friendly editor yet.
+    </div>
+  );
+}
+
+type ListKey = "items" | "tiles";
+
+/** Update, add, remove and reorder helpers for one named list inside a section's JSON. */
+function listEditor(onChange: EditorProps["onChange"], key: ListKey) {
+  const edit = (fn: (list: SectionData[]) => SectionData[] | null) =>
+    onChange((prev) => {
+      const next = fn([...sectionItems(prev, key)]);
+      return next ? { ...prev, [key]: next } : prev;
+    });
+  return {
+    update: (i: number, patch: SectionData) =>
+      edit((list) => {
+        list[i] = { ...list[i], ...patch };
+        return list;
+      }),
+    add: (tpl: SectionData) => edit((list) => [...list, tpl]),
+    remove: (i: number) =>
+      edit((list) => {
+        list.splice(i, 1);
+        return list;
+      }),
+    move: (i: number, dir: -1 | 1) =>
+      edit((list) => {
+        const j = i + dir;
+        if (j < 0 || j >= list.length) return null;
+        [list[i], list[j]] = [list[j], list[i]];
+        return list;
+      }),
+  };
+}
+
+/** Sets one field inside a nested object such as `top`, `quote` or `report`. */
+function nestedSetter(onChange: EditorProps["onChange"], key: string) {
+  return (field: string) => (v: Json | undefined) =>
+    onChange((prev) => ({ ...prev, [key]: { ...asSectionData(prev[key] as Json), [field]: v } }));
+}
+
+/**
+ * The "reviews" section is the landing Hall of Fame. This only edits data; the layout is fixed in
+ * code, and the landing page clamps scores and text so a bad value cannot break it.
+ */
+function HallOfFameEditor({ value, onChange }: Pick<EditorProps, "value" | "onChange">) {
+  const set = (key: string) => (v: Json | undefined) => onChange((prev) => ({ ...prev, [key]: v }));
+  const top = asSectionData(value.top as Json);
+  const quote = asSectionData(value.quote as Json);
+  const report = asSectionData(value.report as Json);
+  const setTop = nestedSetter(onChange, "top");
+  const setQuote = nestedSetter(onChange, "quote");
+  const setReport = nestedSetter(onChange, "report");
+  const tiles = sectionItems(value, "tiles");
+  const stories = sectionItems(value);
+  const tileList = listEditor(onChange, "tiles");
+  const storyList = listEditor(onChange, "items");
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Section title">
+          <TextInput value={value.title} onChange={set("title")} />
+        </Field>
+        <Field label="Section subtitle">
+          <TextInput value={value.subtitle} onChange={set("subtitle")} />
+        </Field>
+        <Field label="Button label" hint="Leave blank to hide the button under the scores.">
+          <TextInput
+            value={value.cta_label}
+            onChange={set("cta_label")}
+            placeholder="Unlock other scores"
+          />
+        </Field>
+        <Field label="Button link">
+          <TextInput value={value.cta_href} onChange={set("cta_href")} placeholder="/signup" />
+        </Field>
+      </div>
+
+      <SubHeading label="Top score" />
+      <div className="grid gap-3 md:grid-cols-4">
+        <Field label="Student name">
+          <TextInput value={top.name} onChange={setTop("name")} />
+        </Field>
+        <Field label="Score" hint="400 to 1600. Blank uses the best tile.">
+          <NumberInput value={top.score} onChange={setTop("score")} placeholder="1590" />
+        </Field>
+        <Field label="Caption">
+          <TextInput
+            value={top.caption}
+            onChange={setTop("caption")}
+            placeholder="10,000+ students with us"
+          />
+        </Field>
+        <Field label="Photo URL (optional)">
+          <TextInput value={top.photo} onChange={setTop("photo")} />
+        </Field>
+      </div>
+
+      <SubHeading label="Score tiles" />
+      <div className="space-y-3">
+        {tiles.map((t, i) => (
+          <ItemRow
+            key={i}
+            index={i}
+            count={tiles.length}
+            onMove={(dir) => tileList.move(i, dir)}
+            onRemove={() => tileList.remove(i)}
+          >
+            <div className="grid gap-3 md:grid-cols-3">
+              <Field label="Student name">
+                <TextInput value={t.name} onChange={(v) => tileList.update(i, { name: v })} />
+              </Field>
+              <Field label="Score" hint="400 to 1600.">
+                <NumberInput value={t.score} onChange={(v) => tileList.update(i, { score: v })} />
+              </Field>
+              <Field label="Photo URL (optional)">
+                <TextInput value={t.photo} onChange={(v) => tileList.update(i, { photo: v })} />
+              </Field>
+            </div>
+          </ItemRow>
+        ))}
+        <AddItemButton
+          label="Add a score"
+          onClick={() => tileList.add({ name: "", score: 1500, photo: "" })}
+        />
+      </div>
+
+      <SubHeading label="Quote card" />
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="md:col-span-2">
+          <Field label="Quote" hint="Quotation marks are not added here.">
+            <TextArea value={quote.text} onChange={setQuote("text")} rows={3} />
+          </Field>
+        </div>
+        <Field label="Name">
+          <TextInput value={quote.name} onChange={setQuote("name")} />
+        </Field>
+        <Field label="Detail">
+          <TextInput value={quote.detail} onChange={setQuote("detail")} />
+        </Field>
+      </div>
+
+      <SubHeading label="Score report" />
+      <div className="grid gap-3 md:grid-cols-5">
+        <Field label="Student name">
+          <TextInput value={report.name} onChange={setReport("name")} />
+        </Field>
+        <Field label="Reading & Writing" hint="Shown only when both are set.">
+          <NumberInput
+            value={report.reading_writing}
+            onChange={setReport("reading_writing")}
+            placeholder="790"
+          />
+        </Field>
+        <Field label="Math">
+          <NumberInput value={report.math} onChange={setReport("math")} placeholder="800" />
+        </Field>
+        <Field label="Date">
+          <TextInput value={report.date} onChange={setReport("date")} />
+        </Field>
+        <Field label="Locator (optional)">
+          <TextInput value={report.locator} onChange={setReport("locator")} />
+        </Field>
+      </div>
+
+      <SubHeading label="Student stories" />
+      <div className="space-y-3">
+        {stories.map((it, i) => (
+          <ItemRow
+            key={i}
+            index={i}
+            count={stories.length}
+            onMove={(dir) => storyList.move(i, dir)}
+            onRemove={() => storyList.remove(i)}
+          >
+            <div className="grid gap-3 md:grid-cols-4">
+              <Field label="Student name">
+                <TextInput value={it.name} onChange={(v) => storyList.update(i, { name: v })} />
+              </Field>
+              <Field label="Detail" hint="Class year, school, outcome.">
+                <TextInput
+                  value={it.detail}
+                  onChange={(v) => storyList.update(i, { detail: v })}
+                  placeholder="Class of 2030 · Full ride"
+                />
+              </Field>
+              <Field label="Score" hint="400 to 1600.">
+                <NumberInput value={it.score} onChange={(v) => storyList.update(i, { score: v })} />
+              </Field>
+              <Field label="Country" hint="Two or more countries add filter chips.">
+                <TextInput
+                  value={it.country}
+                  onChange={(v) => storyList.update(i, { country: v })}
+                />
+              </Field>
+              <div className="md:col-span-4">
+                <Field label="Quote" hint="Quotation marks are added automatically.">
+                  <TextArea
+                    value={it.quote}
+                    onChange={(v) => storyList.update(i, { quote: v })}
+                    rows={3}
+                  />
+                </Field>
+              </div>
+              <div className="md:col-span-4">
+                <Field
+                  label="Photo URL (optional)"
+                  hint="Leave blank to show their initials instead."
+                >
+                  <TextInput
+                    value={it.avatar}
+                    onChange={(v) => storyList.update(i, { avatar: v })}
+                  />
+                </Field>
+              </div>
+            </div>
+          </ItemRow>
+        ))}
+        <AddItemButton
+          label="Add a story"
+          onClick={() =>
+            storyList.add({ name: "", detail: "", quote: "", country: "", avatar: "" })
+          }
+        />
+      </div>
     </div>
   );
 }

@@ -40,6 +40,11 @@ export default defineConfig(({ mode, command }) => {
     server: {
       host: "::",
       port: 8080,
+      // Windows throws EBUSY if a watched file is locked. Agent skill files
+      // are not app source, and a lock there was killing `npm run dev`.
+      watch: {
+        ignored: ["**/.agents/**", "**/.cursor/**"],
+      },
     },
     plugins: [
       tailwindcss(),

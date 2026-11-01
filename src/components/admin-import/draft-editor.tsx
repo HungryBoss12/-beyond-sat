@@ -1,12 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ImageIcon, LineChart, Loader2, Trash2, Upload } from "lucide-react";
 import { GraphEditorDialog } from "@/components/admin/GraphEditorDialog";
 import { MathText } from "@/components/MathText";
-import {
-  QuestionCard,
-  emptyAnswer,
-  type QuestionRow,
-} from "@/components/QuestionCard";
+import { MixedMathEditor } from "@/components/MixedMathEditor";
 import {
   LETTER_DIFFICULTIES,
   SECTION_LABEL,
@@ -14,7 +10,7 @@ import {
   type LetterDifficulty,
   type Section,
 } from "@/lib/sat";
-import { SQB_DIFFICULTIES } from "@/lib/sqb";
+import { SQB_DIFFICULTIES, SQB_DIFFICULTY_HINT } from "@/lib/sqb";
 import type { Draft } from "@/lib/import/parse";
 import { uploadQuestionImage } from "@/lib/import/upload-question-image";
 import { extractGraphText, replaceGraphText } from "@/lib/import/graph-text";
@@ -70,36 +66,6 @@ export function DraftEditor({
   const [imageSrc, setImageSrc] = useState(imageUrl);
   const [graphOpen, setGraphOpen] = useState(false);
 
-  const studentPreview = useMemo((): QuestionRow | null => {
-    if (variant !== "sqb") return null;
-    const stem = (rec.question_text ?? "").trim();
-    const prompt = (rec.prompt ?? "").trim();
-    if (!stem && !prompt) return null;
-    return {
-      id: "draft-preview",
-      section,
-      skill: rec.skill || skills[0] || "",
-      difficulty: rec.difficulty || "C",
-      kind,
-      prompt: prompt || null,
-      question_text: stem || prompt,
-      choices:
-        kind === "multiple_choice"
-          ? CHOICE_IDS.map((id) => ({
-              id,
-              text: rec[`choice_${id}`] ?? "",
-              image_url: rec[`choice_${id}_image`] || null,
-            }))
-          : null,
-      image_url: imageUrl || null,
-      bank_format: "sqb",
-      external_id: rec.external_id || null,
-      domain: rec.domain || rec.skill || null,
-      subskill: rec.subskill || null,
-      image_alt: rec.image_alt || null,
-    };
-  }, [variant, section, skills, kind, rec, imageUrl]);
-
   useEffect(() => {
     let live = true;
     if (!imageUrl) {
@@ -136,6 +102,256 @@ export function DraftEditor({
     const n = Number.parseInt(raw, 10);
     if (!Number.isFinite(n) || n < 1) return;
     onChange({ number: n });
+  }
+
+  if (variant === "sqb") {
+    const difficulty = SQB_DIFFICULTIES.includes(rec.difficulty as (typeof SQB_DIFFICULTIES)[number])
+      ? rec.difficulty
+      : "C";
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Question ID">
+            <input
+              value={rec.external_id ?? ""}
+              disabled={disabled}
+              onChange={(e) => setField("external_id", e.target.value)}
+              className={CONTROL_CLASS + " font-mono disabled:opacity-40"}
+              placeholder="e.g. 84b5125b"
+            />
+          </Field>
+          <Field label="Question number">
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={draft.number > 0 ? draft.number : ""}
+              disabled={disabled}
+              onChange={(e) => setNumber(e.target.value)}
+              className={CONTROL_CLASS + " disabled:opacity-40"}
+            />
+            {numberCollision && (
+              <p className="mt-1 text-xs font-semibold text-brand-200">
+                Another question already uses number {draft.number}.
+              </p>
+            )}
+          </Field>
+          <Field label="Section">
+            <AdminSelect
+              value={section}
+              disabled={disabled}
+              onValueChange={(v) => setSection(v as Section)}
+              options={[
+                { value: "math", label: "Math" },
+                { value: "reading_writing", label: "Reading & Writing" },
+              ]}
+            />
+          </Field>
+          <Field label="Difficulty">
+            <AdminSelect
+              value={difficulty}
+              disabled={disabled}
+              onValueChange={(v) => setField("difficulty", v)}
+              options={SQB_DIFFICULTIES.map((d) => ({
+                value: d,
+                label: SQB_DIFFICULTY_HINT[d] ? `${d} (${SQB_DIFFICULTY_HINT[d]})` : d,
+              }))}
+            />
+          </Field>
+          <Field label="Domain (skill family)">
+            <AdminSelect
+              value={skills.includes(rec.skill) ? rec.skill : skills[0]}
+              disabled={disabled}
+              onValueChange={(v) => onChange({ rec: patchRec(rec, { skill: v, domain: v }) })}
+              options={skills.map((s) => ({ value: s, label: s }))}
+            />
+          </Field>
+          <Field label="Skill (subskill)">
+            <input
+              value={rec.subskill ?? ""}
+              disabled={disabled}
+              onChange={(e) => setField("subskill", e.target.value)}
+              className={CONTROL_CLASS + " disabled:opacity-40"}
+              placeholder="e.g. Circles"
+            />
+          </Field>
+          <Field label="Kind">
+            <AdminSelect
+              value={kind}
+              disabled={disabled}
+              onValueChange={(v) => setKind(v as "multiple_choice" | "grid_in")}
+              options={[
+                { value: "multiple_choice", label: "Multiple choice" },
+                { value: "grid_in", label: "Grid-in" },
+              ]}
+            />
+          </Field>
+        </div>
+
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-brand-100">Figure</p>
+          {imageUrl ? (
+            <div className="mb-2 overflow-hidden rounded-lg border border-brand-400/40 bg-white">
+              <img src={imageSrc || imageUrl} alt="" className="max-h-48 w-full object-contain" />
+            </div>
+          ) : (
+            <div className="mb-2 flex items-center gap-2 rounded-lg border border-dashed border-brand-400/50 bg-brand-900/40 px-3 py-2 text-xs text-brand-100">
+              <ImageIcon className="h-4 w-4 shrink-0 text-brand-200" />
+              No figure yet.
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                setUploadError(null);
+                setUploading(true);
+                void uploadQuestionImage(file)
+                  .then((url) => setField("image_url", url))
+                  .catch((err) =>
+                    setUploadError((err as Error)?.message ?? "That image could not be uploaded."),
+                  )
+                  .finally(() => setUploading(false));
+              }}
+            />
+            <button
+              type="button"
+              disabled={disabled || uploading}
+              onClick={() => fileRef.current?.click()}
+              className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+            >
+              {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              {imageUrl ? "Replace image" : "Upload image"}
+            </button>
+            {imageUrl ? (
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => setField("image_url", "")}
+                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Remove
+              </button>
+            ) : null}
+          </div>
+          {uploadError && <p className="mt-1 text-xs font-semibold text-white">{uploadError}</p>}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => setGraphOpen(true)}
+              className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+            >
+              <LineChart className="h-3.5 w-3.5" />
+              {extractGraphText(rec.prompt ?? "") ? "Edit graph" : "Add graph"}
+            </button>
+            {extractGraphText(rec.prompt ?? "") ? (
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => setField("prompt", replaceGraphText(rec.prompt ?? "", ""))}
+                className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Remove graph
+              </button>
+            ) : null}
+          </div>
+          <GraphEditorDialog
+            open={graphOpen}
+            graphText={extractGraphText(rec.prompt ?? "")}
+            math={section === "math"}
+            onOpenChange={setGraphOpen}
+            onDone={(graph) => setField("prompt", replaceGraphText(rec.prompt ?? "", graph))}
+          />
+          <div className="mt-2">
+            <Field label="Figure alt text">
+              <input
+                value={rec.image_alt ?? ""}
+                disabled={disabled}
+                onChange={(e) => setField("image_alt", e.target.value)}
+                className={CONTROL_CLASS + " disabled:opacity-40"}
+                placeholder="Describe the figure"
+              />
+            </Field>
+          </div>
+        </div>
+
+        <Field label="Prompt / stimulus (optional)">
+          <MixedMathEditor
+            math={section === "math"}
+            value={replaceGraphText(rec.prompt ?? "", "")}
+            onChange={(v) => setField("prompt", replaceGraphText(v, extractGraphText(rec.prompt ?? "")))}
+            rows={3}
+            placeholder="Passage / stimulus…"
+          />
+        </Field>
+        <Field label="Stem">
+          <MixedMathEditor
+            math={section === "math"}
+            value={rec.question_text ?? ""}
+            onChange={(v) => setField("question_text", v)}
+            rows={4}
+            placeholder="Question stem. Use Insert math for equations."
+          />
+        </Field>
+
+        {kind === "multiple_choice" ? (
+          <Field label="Choices (mark the correct one)">
+            <div className="space-y-3">
+              {CHOICE_IDS.map((id) => (
+                <div key={id} className="flex items-start gap-2">
+                  <input
+                    type="radio"
+                    name={`sqb-correct-${draft.number}-${rec.external_id ?? ""}`}
+                    checked={answer.toUpperCase() === id}
+                    disabled={disabled}
+                    onChange={() => setField("correct", id)}
+                    className="mt-3 h-4 w-4 accent-brand-200 [color-scheme:dark]"
+                  />
+                  <span className="w-6 pt-2 text-sm font-bold text-white">{id}</span>
+                  <div className="min-w-0 flex-1">
+                    <MixedMathEditor
+                      math={section === "math"}
+                      singleLine
+                      rows={1}
+                      value={rec[`choice_${id}`] ?? ""}
+                      onChange={(v) => setField(`choice_${id}`, v)}
+                      placeholder={`Choice ${id}`}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Field>
+        ) : (
+          <Field label="Accepted answers (comma-separated)">
+            <input
+              value={answer}
+              disabled={disabled}
+              onChange={(e) => setField("correct", e.target.value)}
+              placeholder="3/4, 0.75"
+              className={CONTROL_CLASS + " disabled:opacity-40"}
+            />
+          </Field>
+        )}
+
+        <Field label="Explanation">
+          <MixedMathEditor
+            math={section === "math"}
+            value={rec.explanation ?? ""}
+            onChange={(v) => setField("explanation", v)}
+            rows={3}
+            placeholder="Explain the answer. Insert math where helpful."
+          />
+        </Field>
+      </div>
+    );
   }
 
   return (
@@ -477,23 +693,6 @@ export function DraftEditor({
         />
       </Field>
 
-      {variant === "sqb" && studentPreview ? (
-        <div className="overflow-hidden rounded-xl border border-test-line bg-test-canvas">
-          <p className="border-b border-test-line bg-test-chrome px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-test-muted">
-            Student preview
-          </p>
-          <QuestionCard
-            q={studentPreview}
-            index={Math.max(0, draft.number - 1)}
-            answer={emptyAnswer()}
-            onChange={() => {}}
-            reveal={Boolean(answer)}
-            correctChoiceId={
-              kind === "multiple_choice" && /^[A-D]$/i.test(answer) ? answer.toUpperCase() : null
-            }
-          />
-        </div>
-      ) : null}
     </div>
   );
 }

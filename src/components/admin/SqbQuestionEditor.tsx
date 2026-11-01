@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  ArrowLeft,
   ImageIcon,
   LineChart,
   Loader2,
@@ -12,11 +11,6 @@ import {
 import { GraphEditorDialog } from "@/components/admin/GraphEditorDialog";
 import { MixedMathEditor } from "@/components/MixedMathEditor";
 import { extractGraphText, replaceGraphText } from "@/lib/import/graph-text";
-import {
-  QuestionCard,
-  emptyAnswer,
-  type AnswerState,
-} from "@/components/QuestionCard";
 import { AdminSelect } from "@/components/admin/AdminSelect";
 import {
   cloneAdminQuestion,
@@ -29,7 +23,6 @@ import {
   MATH_SKILLS,
   MONTHS,
   RW_SKILLS,
-  SECTION_LABEL,
   type Section,
 } from "@/lib/sat";
 import {
@@ -65,15 +58,12 @@ export function SqbQuestionEditor({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
-  const [previewAnswer, setPreviewAnswer] = useState<AnswerState>(() => emptyAnswer());
   const fileRef = useRef<HTMLInputElement>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [graphOpen, setGraphOpen] = useState(false);
 
   useEffect(() => {
     setEditing(cloneAdminQuestion(initial));
-    setPreviewAnswer(emptyAnswer());
     setError(null);
   }, [initial]);
 
@@ -101,26 +91,6 @@ export function SqbQuestionEditor({
   const errors = issues.filter((i) => i.level === "error");
   const warnings = issues.filter((i) => i.level === "warning");
   const busy = saving || uploading;
-
-  const previewQ = useMemo(
-    () => ({
-      id: editing.id || "preview",
-      section: editing.section,
-      skill: editing.skill,
-      difficulty: editing.difficulty as "easy" | "medium" | "hard",
-      kind: editing.kind,
-      prompt: editing.prompt,
-      question_text: editing.question_text,
-      choices: editing.choices,
-      image_url: imageSrc,
-      bank_format: "sqb" as const,
-      external_id: editing.external_id,
-      domain: resolveDomain(editing),
-      subskill: editing.subskill,
-      image_alt: editing.image_alt,
-    }),
-    [editing, imageSrc],
-  );
 
   async function uploadImage(file: File) {
     setUploading(true);
@@ -217,89 +187,39 @@ export function SqbQuestionEditor({
   }
 
   return (
-    <div className="-mx-4 -mt-2 flex min-h-[calc(100vh-5rem)] flex-col lg:-mx-8">
-      <div className="sticky top-14 z-10 flex flex-wrap items-center gap-3 border-b border-brand-400/30 bg-brand-600 px-4 py-3 text-white lg:px-8">
-        <Link
-          to="/admin/sqb"
-          className="tap inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-brand-100 hover:bg-brand-500 hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" /> SQB
-        </Link>
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-bold">SQB question editor</div>
-          <div className="truncate font-mono text-[11px] text-brand-100">
-            {editing.external_id || editing.id || "new draft"}
-            {editing.published ? " · published" : " · draft"}
+    <div className="mx-auto my-8 w-full max-w-2xl">
+      <div className="rounded-2xl border border-brand-400/40 bg-brand-600 text-white shadow-float">
+        <div className="flex items-center justify-between border-b border-brand-400/30 px-6 py-4">
+          <h3 className="text-lg font-bold text-white">
+            {editing.id ? "Edit question" : "New question"}
+          </h3>
+          <Link
+            to="/admin/sqb"
+            className="tap grid h-8 w-8 place-items-center rounded-lg text-brand-100 hover:bg-brand-800 hover:text-white"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {(errors.length > 0 || warnings.length > 0 || error) && (
+          <div className="space-y-1 border-b border-brand-400/30 bg-brand-800 px-6 py-2">
+            {error && <p className="text-sm font-semibold text-red-300">{error}</p>}
+            {errors.map((issue, idx) => (
+              <p key={`e-${idx}`} className="text-xs text-red-200">
+                {issue.message}
+              </p>
+            ))}
+            {warnings.map((issue, idx) => (
+              <p key={`w-${idx}`} className="text-xs text-amber-200">
+                {issue.message}
+              </p>
+            ))}
           </div>
-        </div>
-        <div className="flex gap-1 rounded-full bg-brand-800/60 p-1 lg:hidden">
-          {(["edit", "preview"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setMobileTab(t)}
-              className={
-                "tap rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider " +
-                (mobileTab === t ? "bg-brand-400 text-white" : "text-brand-100")
-              }
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void persist({ publish: false })}
-          className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-400/50 bg-brand-800 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Save draft
-        </button>
-        <button
-          type="button"
-          disabled={busy || sqbPublishBlocked(editing)}
-          onClick={() => void persist({ publish: true })}
-          className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          Publish
-        </button>
-      </div>
+        )}
 
-      {(errors.length > 0 || warnings.length > 0 || error) && (
-        <div className="space-y-1 border-b border-brand-400/30 bg-brand-800 px-4 py-2 lg:px-8">
-          {error && <p className="text-sm font-semibold text-red-300">{error}</p>}
-          {errors.map((i, idx) => (
-            <p key={`e-${idx}`} className="text-xs text-red-200">
-              {i.message}
-            </p>
-          ))}
-          {warnings.map((i, idx) => (
-            <p key={`w-${idx}`} className="text-xs text-amber-200">
-              {i.message}
-            </p>
-          ))}
-        </div>
-      )}
-
-      <div className="grid min-h-0 flex-1 lg:grid-cols-2">
-        <div
-          className={
-            "space-y-4 overflow-y-auto bg-brand-600 p-4 text-white lg:border-r lg:border-brand-400/30 lg:p-6 " +
-            (mobileTab === "preview" ? "hidden lg:block" : "")
-          }
-        >
-          <div className="flex flex-wrap gap-2 rounded-xl border border-brand-400/40 bg-brand-800/40 p-3 text-[11px] font-semibold uppercase tracking-wider text-brand-100">
-            <span>{SECTION_LABEL[editing.section]}</span>
-            <span>·</span>
-            <span>{resolveDomain(editing) || "Domain"}</span>
-            <span>·</span>
-            <span>{editing.subskill || "Skill"}</span>
-            <span>·</span>
-            <span>{editing.difficulty}</span>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-4 p-6">
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Question ID">
               <input
                 className={CONTROL + " font-mono"}
@@ -350,7 +270,7 @@ export function SqbQuestionEditor({
                   patch({ kind: v as AdminQuestion["kind"] })
                 }
                 options={[
-                  { value: "multiple_choice", label: "MCQ" },
+                  { value: "multiple_choice", label: "Multiple choice" },
                   { value: "grid_in", label: "Grid-in" },
                 ]}
               />
@@ -493,41 +413,38 @@ export function SqbQuestionEditor({
           </Field>
 
           {editing.kind === "multiple_choice" ? (
-            <div className="space-y-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-brand-100">
-                Choices
-              </span>
-              {editing.choices.map((c) => (
-                <div key={c.id} className="flex items-start gap-2">
-                  <button
-                    type="button"
-                    onClick={() => patch({ correct_choice_id: c.id })}
-                    className={
-                      "tap mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-bold " +
-                      (editing.correct_choice_id === c.id
-                        ? "bg-brand-400 text-white"
-                        : "bg-brand-800 text-brand-100")
-                    }
-                    title="Mark correct"
-                  >
-                    {c.id}
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <MixedMathEditor
-              math={editing.section === "math"}
-                      value={c.text}
-                      onChange={(v) =>
-                        patch({
-                          choices: editing.choices.map((x) =>
-                            x.id === c.id ? { ...x, text: v } : x,
-                          ),
-                        })
-                      }
+            <Field label="Choices (mark the correct one)">
+              <div className="space-y-3">
+                {editing.choices.map((c) => (
+                  <div key={c.id} className="flex items-start gap-2">
+                    <input
+                      type="radio"
+                      name="sqb-correct"
+                      checked={editing.correct_choice_id === c.id}
+                      onChange={() => patch({ correct_choice_id: c.id })}
+                      className="mt-3 h-4 w-4 accent-brand-200 [color-scheme:dark]"
                     />
+                    <span className="w-6 pt-2 text-sm font-bold text-white">{c.id}</span>
+                    <div className="min-w-0 flex-1">
+                      <MixedMathEditor
+                        math={editing.section === "math"}
+                        value={c.text}
+                        onChange={(v) =>
+                          patch({
+                            choices: editing.choices.map((x) =>
+                              x.id === c.id ? { ...x, text: v } : x,
+                            ),
+                          })
+                        }
+                        rows={1}
+                        singleLine
+                        placeholder={`Choice ${c.id}`}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </Field>
           ) : (
             <Field label="Acceptable grid-in answers (comma-separated)">
               <input
@@ -551,27 +468,36 @@ export function SqbQuestionEditor({
               value={editing.explanation ?? ""}
               onChange={(v) => patch({ explanation: v })}
               rows={3}
-              placeholder="Explain the answer…"
+              placeholder="Explain the answer. Insert math where helpful."
             />
           </Field>
         </div>
 
-        <div
-          className={
-            "min-h-0 overflow-hidden bg-test-canvas " +
-            (mobileTab === "edit" ? "hidden lg:block" : "")
-          }
-        >
-          <div className="border-b border-test-line bg-test-chrome px-4 py-2 text-xs font-bold uppercase tracking-wider text-test-muted">
-            Live student chrome
-          </div>
-          <div className="flex h-[min(70vh,720px)] flex-col">
-            <QuestionCard
-              q={previewQ}
-              index={0}
-              answer={previewAnswer}
-              onChange={setPreviewAnswer}
-            />
+        <div className="flex items-center justify-between border-t border-brand-400/30 px-6 py-4">
+          <Link
+            to="/admin/sqb"
+            className="tap rounded-lg px-4 py-2 text-sm font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
+          >
+            Cancel
+          </Link>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void persist({ publish: false })}
+              className="tap inline-flex items-center gap-1.5 rounded-lg border border-brand-300/60 bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900 disabled:opacity-40"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Save draft
+            </button>
+            <button
+              type="button"
+              disabled={busy || sqbPublishBlocked(editing)}
+              onClick={() => void persist({ publish: true })}
+              className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Publish
+            </button>
           </div>
         </div>
       </div>

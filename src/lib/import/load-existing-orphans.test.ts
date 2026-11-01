@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { groupOrphanMathQuestions } from "./load-existing";
 
+type OrphanRow = Parameters<typeof groupOrphanMathQuestions>[0][number];
+
 describe("groupOrphanMathQuestions", () => {
   it("keeps a nameless math import together by the day it was added", () => {
-    const rows = Array.from({ length: 3 }, (_, index) => ({
+    const rows: OrphanRow[] = Array.from({ length: 3 }, (_, index) => ({
       id: `q${index}`,
       source_month: null,
       source_year: 2026,

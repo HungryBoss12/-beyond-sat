@@ -356,37 +356,6 @@ export function DraftEditor({
 
   return (
     <div className="space-y-3">
-      {variant === "sqb" && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Question ID">
-            <input
-              value={rec.external_id ?? ""}
-              disabled={disabled}
-              onChange={(e) => setField("external_id", e.target.value)}
-              className={CONTROL_CLASS + " disabled:opacity-40 font-mono"}
-              placeholder="e.g. 858fd1cf"
-            />
-          </Field>
-          <Field label="Domain (skill)">
-            <AdminSelect
-              value={skills.includes(rec.skill) ? rec.skill : skills[0]}
-              disabled={disabled}
-              onValueChange={(v) => onChange({ rec: patchRec(rec, { skill: v, domain: v }) })}
-              options={skills.map((s) => ({ value: s, label: s }))}
-            />
-          </Field>
-          <Field label="Skill (subskill)">
-            <input
-              value={rec.subskill ?? ""}
-              disabled={disabled}
-              onChange={(e) => setField("subskill", e.target.value)}
-              className={CONTROL_CLASS + " disabled:opacity-40"}
-              placeholder="e.g. Circles"
-            />
-          </Field>
-        </div>
-      )}
-
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Question number">
           <input
@@ -400,13 +369,11 @@ export function DraftEditor({
           />
           {numberCollision && (
             <p className="mt-1 text-xs font-semibold text-brand-200">
-              {variant === "sqb"
-                ? `Another question already uses number ${draft.number}.`
-                : `Another question already uses Module ${draftModuleOf(rec)} · ${draft.number}.`}
+              {`Another question already uses Module ${draftModuleOf(rec)} · ${draft.number}.`}
             </p>
           )}
         </Field>
-        {showModule && variant !== "sqb" && (
+        {showModule && (
           <Field label="Module">
             <AdminSelect
               value={rec.module === "2" ? "2" : "1"}
@@ -430,16 +397,14 @@ export function DraftEditor({
             ]}
           />
         </Field>
-        {variant !== "sqb" && (
-          <Field label="Skill">
-            <AdminSelect
-              value={skills.includes(rec.skill) ? rec.skill : skills[0]}
-              disabled={disabled}
-              onValueChange={(v) => setField("skill", v)}
-              options={skills.map((s) => ({ value: s, label: s }))}
-            />
-          </Field>
-        )}
+        <Field label="Skill">
+          <AdminSelect
+            value={skills.includes(rec.skill) ? rec.skill : skills[0]}
+            disabled={disabled}
+            onValueChange={(v) => setField("skill", v)}
+            options={skills.map((s) => ({ value: s, label: s }))}
+          />
+        </Field>
         <Field label="Type">
           <AdminSelect
             value={kind}
@@ -454,22 +419,13 @@ export function DraftEditor({
         <Field label="Difficulty">
           <AdminSelect
             value={
-              variant === "sqb"
-                ? SQB_DIFFICULTIES.includes(rec.difficulty as (typeof SQB_DIFFICULTIES)[number])
-                  ? rec.difficulty
-                  : "C"
-                : LETTER_DIFFICULTIES.includes(rec.difficulty as LetterDifficulty)
-                  ? rec.difficulty
-                  : "C"
+              LETTER_DIFFICULTIES.includes(rec.difficulty as LetterDifficulty) ? rec.difficulty : "C"
             }
             disabled={disabled}
             onValueChange={(v) => setField("difficulty", v)}
-            options={(variant === "sqb" ? [...SQB_DIFFICULTIES] : LETTER_DIFFICULTIES).map((d) => ({
+            options={LETTER_DIFFICULTIES.map((d) => ({
               value: d,
-              label:
-                variant === "sqb"
-                  ? `${d}${d === "A" ? " (hardest)" : d === "B" ? " (medium)" : d === "C" ? " (easiest)" : ""}`
-                  : `${d}${d === "A" ? " (hardest)" : d === "C" ? " (easiest)" : ""}`,
+              label: `${d}${d === "A" ? " (hardest)" : d === "C" ? " (easiest)" : ""}`,
             }))}
           />
         </Field>
@@ -560,19 +516,6 @@ export function DraftEditor({
           onOpenChange={setGraphOpen}
           onDone={(graph) => setField("prompt", replaceGraphText(rec.prompt ?? "", graph))}
         />
-        {variant === "sqb" && (
-          <div className="mt-2">
-            <Field label="Image alt (required to publish when figure is set)">
-              <input
-                value={rec.image_alt ?? ""}
-                disabled={disabled}
-                onChange={(e) => setField("image_alt", e.target.value)}
-                className={CONTROL_CLASS + " disabled:opacity-40"}
-                placeholder="Describe the figure for accessibility"
-              />
-            </Field>
-          </div>
-        )}
       </div>
 
       <Field label="Passage / figure notes (optional)">

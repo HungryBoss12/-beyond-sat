@@ -236,6 +236,8 @@ export function ClassroomWorkspace({
           userId: m.user_id,
           name: personName(profiles.get(m.user_id), m.user_id),
           status: m.status,
+          frozenOn: m.frozen_on,
+          resumesOn: m.resumes_on,
           alsoIn: alsoIn.get(m.user_id) ?? [],
           balanceKind: isAdmin ? balances.get(m.user_id) : undefined,
           badgeScore: profiles.get(m.user_id)?.badge_score ?? null,

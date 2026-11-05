@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { HallOfFameSlot } from "./HallOfFameSlot";
 import { QuoteCard } from "./QuoteCard";
 import { ScoreReportCard } from "./ScoreReportCard";
-import { ScoreTile } from "./ScoreTile";
+import { ScoreRibbon } from "./ScoreTile";
 import { TopScoreCard } from "./TopScoreCard";
 import { parseHallOfFame, type HallOfFameModel } from "./schema";
 
@@ -26,15 +26,9 @@ function renderHeading(m: HallOfFameModel) {
 function renderScores(m: HallOfFameModel, Cta: CtaLinkComponent) {
   if (!m.top && m.tiles.length === 0) return null;
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {m.top && <TopScoreCard top={m.top} />}
-      {m.tiles.length > 0 && (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {m.tiles.map((t, i) => (
-            <ScoreTile key={`${t.name}-${i}`} tile={t} />
-          ))}
-        </ul>
-      )}
+      {m.tiles.length > 0 && <ScoreRibbon tiles={m.tiles} />}
       {m.ctaLabel && (
         <Cta
           href={m.ctaHref}

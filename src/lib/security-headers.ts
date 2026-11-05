@@ -27,7 +27,9 @@
  *    when an admin sets a key.
  *
  * Enforced when CSP_ENFORCE=1 (set in wrangler.jsonc vars); otherwise sent as
- * `Content-Security-Policy-Report-Only`.
+ * `Content-Security-Policy-Report-Only`. Dev sends neither: the policy is not
+ * enforced there (HMR), and a report-only policy with no report-uri makes
+ * Firefox log a warning on every document.
  *
  * HTML also gets `Cache-Control: no-transform`. Cloudflare's proxy injects the
  * Web Analytics beacon by rewriting the document, and it skips that rewrite
@@ -82,10 +84,11 @@ export function securityHeaders(env: unknown): Record<string, string> {
     "x-frame-options": "DENY",
     "strict-transport-security": "max-age=31536000; includeSubDomains",
   };
-  if (cspEnforced(env)) {
-    headers["content-security-policy"] = CSP_POLICY;
-  } else {
-    headers["content-security-policy-report-only"] = CSP_POLICY;
+  if (!import.meta.env.DEV) {
+    const name = cspEnforced(env)
+      ? "content-security-policy"
+      : "content-security-policy-report-only";
+    headers[name] = CSP_POLICY;
   }
   return headers;
 }
@@ -104,7 +107,8 @@ export function applySecurityHeaders(response: Response, env: unknown): Response
   try {
     for (const [name, value] of Object.entries(headers)) {
       // cache-control may already exist; it still has to gain no-transform.
-      if (name === "cache-control" || !response.headers.has(name)) response.headers.set(name, value);
+      if (name === "cache-control" || !response.headers.has(name))
+        response.headers.set(name, value);
     }
     return response;
   } catch {

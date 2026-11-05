@@ -43,7 +43,7 @@ export default defineConfig(({ mode, command }) => {
       // Windows throws EBUSY if a watched file is locked. Agent skill files
       // are not app source, and a lock there was killing `npm run dev`.
       watch: {
-        ignored: ["**/.agents/**", "**/.cursor/**"],
+        ignored: ["**/.agents/**", "**/.cursor/**", "**/.output/**"],
       },
     },
     plugins: [

@@ -2,7 +2,6 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   BookOpen,
-  GraduationCap,
   User,
   Flame,
   LogOut,
@@ -309,10 +308,26 @@ function NavGlyph({
 
   if (kind === "lessons") {
     return (
-      <GraduationCap
-        aria-hidden
-        className={`${cls} transition-transform duration-200 group-hover:scale-110`}
-      />
+      <svg viewBox="0 0 24 24" className={cls} aria-hidden="true" fill="none">
+        <g className="nav-cap">
+          <path
+            className="nav-cap-board"
+            d="M12 3.2 21.2 7.6 12 12 2.8 7.6 12 3.2Z"
+            fill="currentColor"
+          />
+          <path
+            d="M6.2 10.2v4.1c0 2.4 2.6 4.2 5.8 4.2s5.8-1.8 5.8-4.2v-4.1"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <g className="nav-cap-tassel" stroke="currentColor" strokeLinecap="round">
+            <path d="M12 7.6v5.4" strokeWidth="1.35" />
+            <circle cx="12" cy="14.35" r="1.05" fill="currentColor" stroke="none" />
+          </g>
+        </g>
+      </svg>
     );
   }
 

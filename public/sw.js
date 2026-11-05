@@ -1,5 +1,5 @@
 /* BeyondSAT PWA service worker — network-first for pages, cache for static assets. */
-const CACHE = "beyondsat-static-v5";
+const CACHE = "beyondsat-static-v6";
 const PRECACHE = [
   "/offline.html",
   "/manifest.webmanifest",
@@ -26,7 +26,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then((keys) =>
+        Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))),
+      )
       .then(() => self.clients.claim()),
   );
 });
@@ -42,6 +44,15 @@ function isBypass(url) {
 }
 
 function isStaticAsset(url) {
+  /* Vite serves the app from these paths during `npm run dev`. Caching them
+     keeps the previous landing stylesheet after the source has changed. */
+  if (
+    url.pathname.startsWith("/src/") ||
+    url.pathname.startsWith("/@") ||
+    url.pathname.startsWith("/node_modules/")
+  ) {
+    return false;
+  }
   if (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/_build/")) return true;
   return /\.(?:js|css|woff2?|svg|png|ico|webp|webmanifest)$/i.test(url.pathname);
 }

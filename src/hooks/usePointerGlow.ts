@@ -20,11 +20,6 @@ import { useEffect, useState, type RefCallback } from "react";
  * still binds. An empty-deps `useRef` + `useEffect` would see `null` on the
  * first pass and never attach.
  */
-/** A mouse can hover. A phone or a fresh touch session cannot, so glow stays at 0. */
-function coarsePointer() {
-  return window.matchMedia("(hover: none), (pointer: coarse)").matches;
-}
-
 export function usePointerGlow<T extends HTMLElement = HTMLDivElement>(): RefCallback<T> {
   const [el, setEl] = useState<T | null>(null);
 
@@ -33,12 +28,9 @@ export function usePointerGlow<T extends HTMLElement = HTMLDivElement>(): RefCal
     if (typeof window === "undefined" || !window.matchMedia) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const coarse = coarsePointer();
     let frame = 0;
     let pendingX = 0;
     let pendingY = 0;
-
-    if (coarse) el.style.setProperty("--glow", "0.7");
 
     const flush = () => {
       frame = 0;
@@ -63,12 +55,18 @@ export function usePointerGlow<T extends HTMLElement = HTMLDivElement>(): RefCal
     const onLeave = () => {
       if (frame) cancelAnimationFrame(frame);
       frame = 0;
-      el.style.setProperty("--glow", coarse ? "0.7" : "0");
+      el.style.setProperty("--glow", "0");
+    };
+
+    const onUp = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") return;
+      onLeave();
     };
 
     el.addEventListener("pointerenter", onEnter);
     el.addEventListener("pointerdown", onEnter);
     el.addEventListener("pointermove", onMove, { passive: true });
+    el.addEventListener("pointerup", onUp);
     el.addEventListener("pointerleave", onLeave);
     el.addEventListener("pointercancel", onLeave);
 
@@ -77,6 +75,7 @@ export function usePointerGlow<T extends HTMLElement = HTMLDivElement>(): RefCal
       el.removeEventListener("pointerenter", onEnter);
       el.removeEventListener("pointerdown", onEnter);
       el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerup", onUp);
       el.removeEventListener("pointerleave", onLeave);
       el.removeEventListener("pointercancel", onLeave);
     };
@@ -103,12 +102,9 @@ export function useAmbientGlow<T extends HTMLElement = HTMLDivElement>(): RefCal
     if (typeof window === "undefined" || !window.matchMedia) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const coarse = coarsePointer();
     let frame = 0;
-    let driftFrame = 0;
     let pendingX = 0;
     let pendingY = 0;
-    let touching = false;
 
     const paint = () => {
       el.style.setProperty("--gx", `${pendingX}px`);
@@ -121,8 +117,13 @@ export function useAmbientGlow<T extends HTMLElement = HTMLDivElement>(): RefCal
       paint();
     };
 
+    const hide = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+      el.style.setProperty("--glow", "0");
+    };
+
     const onMove = (e: PointerEvent) => {
-      touching = e.pointerType !== "mouse";
       pendingX = e.clientX;
       pendingY = e.clientY;
       if (!frame) frame = requestAnimationFrame(flush);
@@ -130,39 +131,23 @@ export function useAmbientGlow<T extends HTMLElement = HTMLDivElement>(): RefCal
 
     const onLeaveWindow = (e: PointerEvent) => {
       if (e.relatedTarget != null) return;
-      touching = false;
-      if (coarse) return;
-      if (frame) cancelAnimationFrame(frame);
-      frame = 0;
-      el.style.setProperty("--glow", "0");
+      hide();
     };
 
-    const drift = (now: number) => {
-      if (!touching) {
-        const t = now / 1000;
-        pendingX = window.innerWidth * (0.5 + 0.32 * Math.sin(t * 0.45));
-        pendingY = window.innerHeight * (0.34 + 0.18 * Math.cos(t * 0.33));
-        paint();
-      }
-      driftFrame = requestAnimationFrame(drift);
+    const onUp = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") return;
+      hide();
     };
-
-    const onUp = () => {
-      touching = false;
-    };
-
-    if (coarse) driftFrame = requestAnimationFrame(drift);
 
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
+    window.addEventListener("pointercancel", hide);
     document.documentElement.addEventListener("pointerleave", onLeaveWindow);
     return () => {
       if (frame) cancelAnimationFrame(frame);
-      if (driftFrame) cancelAnimationFrame(driftFrame);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
+      window.removeEventListener("pointercancel", hide);
       document.documentElement.removeEventListener("pointerleave", onLeaveWindow);
     };
   }, [el]);

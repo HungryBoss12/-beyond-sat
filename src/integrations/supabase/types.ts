@@ -459,8 +459,11 @@ export type Database = {
           activated_on: string | null;
           class_id: string;
           enrolled_on: string;
+          frozen_on: string | null;
           group_id: string;
           joined_at: string;
+          resume_status: Database["public"]["Enums"]["class_member_status"] | null;
+          resumes_on: string | null;
           status: Database["public"]["Enums"]["class_member_status"];
           subject: Database["public"]["Enums"]["class_subject"];
           user_id: string;
@@ -469,8 +472,11 @@ export type Database = {
           activated_on?: string | null;
           class_id: string;
           enrolled_on?: string;
+          frozen_on?: string | null;
           group_id: string;
           joined_at?: string;
+          resume_status?: Database["public"]["Enums"]["class_member_status"] | null;
+          resumes_on?: string | null;
           status?: Database["public"]["Enums"]["class_member_status"];
           subject: Database["public"]["Enums"]["class_subject"];
           user_id: string;
@@ -479,8 +485,11 @@ export type Database = {
           activated_on?: string | null;
           class_id?: string;
           enrolled_on?: string;
+          frozen_on?: string | null;
           group_id?: string;
           joined_at?: string;
+          resume_status?: Database["public"]["Enums"]["class_member_status"] | null;
+          resumes_on?: string | null;
           status?: Database["public"]["Enums"]["class_member_status"];
           subject?: Database["public"]["Enums"]["class_subject"];
           user_id?: string;
@@ -4448,6 +4457,23 @@ export type Database = {
         Args: {
           p_group_id: string;
           p_status: Database["public"]["Enums"]["class_member_status"];
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
+      staff_freeze_group_member: {
+        Args: {
+          p_frozen_on: string;
+          p_group_id: string;
+          p_resumes_on?: string | null;
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
+      staff_activate_group_member: {
+        Args: {
+          p_group_id: string;
+          p_status?: Database["public"]["Enums"]["class_member_status"];
           p_user_id: string;
         };
         Returns: undefined;

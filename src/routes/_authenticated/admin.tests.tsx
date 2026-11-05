@@ -44,6 +44,7 @@ import {
 } from "@/lib/sat";
 import { paperFromGroup, compareBySourceDateAndSection, groupByPaperDate } from "@/lib/mock-exams";
 import { adoptNamelessMathDrafts, draftNeedsName } from "@/lib/import/load-existing";
+import { mergeLinkedQuestions } from "@/lib/test-question-pool";
 
 type Test = {
   id: string;
@@ -277,12 +278,17 @@ function AdminTests() {
     const poolSelect =
       "id,question_text,section,difficulty,skill,published,bank_format,external_id,subskill";
     if (target.id) {
-      const [{ data: tq }, { data: p }] = await Promise.all([
-        supabase
-          .from("test_questions")
-          .select("question_id, position")
-          .eq("test_id", target.id)
-          .order("position"),
+      const { data: tq, error: linkError } = await supabase
+        .from("test_questions")
+        .select("question_id, position")
+        .eq("test_id", target.id)
+        .order("position");
+      if (linkError) {
+        alert(linkError.message);
+        return;
+      }
+      const ids = (tq ?? []).map((r) => r.question_id as string);
+      const [{ data: p }, { data: linked }] = await Promise.all([
         supabase
           .from("questions")
           .select(poolSelect)
@@ -290,9 +296,12 @@ function AdminTests() {
           .eq("bank_format", bank)
           .order("created_at", { ascending: false })
           .limit(400),
+        ids.length === 0
+          ? Promise.resolve({ data: [] as QRow[] })
+          : supabase.from("questions").select(poolSelect).in("id", ids),
       ]);
-      setPool((p ?? []) as QRow[]);
-      setEditingQs((tq ?? []).map((r) => r.question_id as string));
+      setPool(mergeLinkedQuestions((p ?? []) as QRow[], (linked ?? []) as QRow[]));
+      setEditingQs(ids);
     } else {
       const { data: p } = await supabase
         .from("questions")

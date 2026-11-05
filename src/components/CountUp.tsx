@@ -4,10 +4,13 @@ export function CountUp({
   end,
   suffix = "",
   duration = 1500,
+  grouped = true,
 }: {
   end: number;
   suffix?: string;
   duration?: number;
+  /** False keeps "1550". True renders "1,550", which the stat row wants. */
+  grouped?: boolean;
 }) {
   const [val, setVal] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
@@ -40,7 +43,7 @@ export function CountUp({
 
   return (
     <span ref={ref}>
-      {val.toLocaleString()}
+      {grouped ? val.toLocaleString() : String(val)}
       {suffix}
     </span>
   );

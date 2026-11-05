@@ -41,6 +41,8 @@ type SceneProps = {
   interactive: boolean;
   /** Which look to show. Changing it makes the emblem kick, morph and recolour. */
   variant: number;
+  /** Cheap path for a small second emblem. */
+  lite: boolean;
 };
 
 /**
@@ -103,9 +105,15 @@ type Support = "pending" | "narrow" | "webgl" | "fallback";
 export function BeyondCore({
   interactive = false,
   variant = 0,
+  allowNarrow = false,
+  lite = false,
 }: {
   interactive?: boolean;
   variant?: number;
+  /** The hero hides the canvas under 768px. A small slot, like sign-in, opts in so it gets the emblem instead of the dashboard mockup. */
+  allowNarrow?: boolean;
+  /** Cheap path for a small second emblem. */
+  lite?: boolean;
 }) {
   /* Starts as "pending" rather than assuming support, because this runs during
      SSR too — document doesn't exist there, and guessing wrong would mean
@@ -169,11 +177,11 @@ export function BeyondCore({
     const onMotion = () => setAnimate(!motion.matches);
     const onWide = () => {
       setHighDpr(wide.matches);
-      arm(wide.matches);
+      arm(wide.matches || allowNarrow);
     };
     setAnimate(!motion.matches);
     setHighDpr(wide.matches);
-    arm(wide.matches);
+    arm(wide.matches || allowNarrow);
 
     /* Listening rather than reading once: a visitor can change the OS setting
        mid-session, and rotating a tablet crosses the md breakpoint. */
@@ -185,7 +193,7 @@ export function BeyondCore({
       motion.removeEventListener("change", onMotion);
       wide.removeEventListener("change", onWide);
     };
-  }, []);
+  }, [allowNarrow]);
 
   if (support === "fallback" || support === "narrow") return <DashboardMockup />;
 
@@ -215,10 +223,11 @@ export function BeyondCore({
             <Suspense fallback={null}>
               <BeyondCoreScene
                 animate={animate}
-                highDpr={highDpr}
+                highDpr={lite ? false : highDpr}
                 onContextLost={() => setSupport("fallback")}
                 interactive={interactive}
                 variant={variant}
+                lite={lite}
               />
             </Suspense>
           </SceneBoundary>

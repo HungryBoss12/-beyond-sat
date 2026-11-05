@@ -12,16 +12,27 @@ import { callRpc, readBearerToken, readSupabaseConfig, verifySupabaseUser } from
 export type MaintenanceState = { enabled: boolean; message: string };
 
 const CACHE_TTL_MS = 30_000;
+/* A dead route to Supabase must not pin every document request for undici's
+   10s connect timeout. The check fails open either way. */
+const RPC_TIMEOUT_MS = 4_000;
 
 /* Module-scope cache. A Worker isolate is reused across requests, so this turns
    a per-request DB round trip into one every 30 seconds. The cost is that
    toggling maintenance takes up to 30s to propagate, which the admin UI says
    out loud. */
 let cached: { state: MaintenanceState; at: number } | null = null;
+/* Page loads fan out. Without this, each in-flight request opens its own RPC
+   and each one logs the same timeout. */
+let inflight: Promise<MaintenanceState> | null = null;
+/* Bumped on clear so an in-flight read cannot repopulate a cache the admin
+   just invalidated, and cannot clear a newer in-flight read. */
+let generation = 0;
 
 /** Test seam and an escape hatch for the admin toggle to force a re-read. */
 export function clearMaintenanceCache(): void {
   cached = null;
+  inflight = null;
+  generation += 1;
 }
 
 async function loadState(config: { url: string; anonKey: string }): Promise<MaintenanceState> {
@@ -29,6 +40,8 @@ async function loadState(config: { url: string; anonKey: string }): Promise<Main
     config,
     "get_maintenance_state",
     null,
+    {},
+    RPC_TIMEOUT_MS,
   );
   const row = Array.isArray(rows)
     ? rows[0]
@@ -44,9 +57,19 @@ export async function getMaintenanceState(
   now: number,
 ): Promise<MaintenanceState> {
   if (cached && now - cached.at < CACHE_TTL_MS) return cached.state;
-  const state = await loadState(config);
-  cached = { state, at: now };
-  return state;
+  if (!inflight) {
+    const gen = generation;
+    const promise = loadState(config)
+      .then((state) => {
+        if (gen === generation) cached = { state, at: Date.now() };
+        return state;
+      })
+      .finally(() => {
+        if (inflight === promise) inflight = null;
+      });
+    inflight = promise;
+  }
+  return inflight;
 }
 
 /**

@@ -30,6 +30,8 @@ export type GroupMember = {
   enrolled_on: string;
   activated_on: string | null;
   joined_at: string;
+  frozen_on: string | null;
+  resumes_on: string | null;
 };
 
 export type GroupLesson = {
@@ -97,7 +99,8 @@ export type ResultRow = {
 
 const GROUP_COLS =
   "id,class_id,subject,name,teacher_id,schedule_days,start_time,end_time,room,level,active";
-const MEMBER_COLS = "group_id,user_id,class_id,subject,status,enrolled_on,activated_on,joined_at";
+const MEMBER_COLS =
+  "group_id,user_id,class_id,subject,status,enrolled_on,activated_on,joined_at,frozen_on,resumes_on";
 const LESSON_COLS = "id,group_id,class_id,subject,lesson_date,topic,result_slots";
 
 function monthRange(month: string): { start: string; end: string } {
@@ -213,6 +216,36 @@ export async function setGroupMemberStatus(
     p_group_id: groupId,
     p_user_id: userId,
     p_status: status,
+  });
+  if (error) throw error;
+}
+
+/** Freeze one sub-class from `frozenOn`. `resumesOn` empty means it stays frozen until Activate. */
+export async function freezeGroupMember(
+  groupId: string,
+  userId: string,
+  frozenOn: string,
+  resumesOn?: string | null,
+): Promise<void> {
+  const { error } = await db.rpc("staff_freeze_group_member", {
+    p_group_id: groupId,
+    p_user_id: userId,
+    p_frozen_on: frozenOn,
+    p_resumes_on: resumesOn || null,
+  });
+  if (error) throw error;
+}
+
+/** Thaw now. Omit `status` to restore the status from before the freeze. */
+export async function activateGroupMember(
+  groupId: string,
+  userId: string,
+  status?: "active" | "trial",
+): Promise<void> {
+  const { error } = await db.rpc("staff_activate_group_member", {
+    p_group_id: groupId,
+    p_user_id: userId,
+    p_status: status ?? null,
   });
   if (error) throw error;
 }

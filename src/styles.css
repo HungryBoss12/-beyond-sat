@@ -1976,6 +1976,19 @@
   animation: nav-book 0.7s ease-in-out;
 }
 
+.group:hover .nav-cap,
+.group:focus-visible .nav-cap,
+.group:active .nav-cap,
+.group[data-nav-play] .nav-cap {
+  animation: nav-cap-toss 0.72s ease-in-out;
+}
+.group:hover .nav-cap-tassel,
+.group:focus-visible .nav-cap-tassel,
+.group:active .nav-cap-tassel,
+.group[data-nav-play] .nav-cap-tassel {
+  animation: nav-cap-tassel 0.78s ease-in-out;
+}
+
 .group:hover .nav-bar,
 .group:focus-visible .nav-bar,
 .group:active .nav-bar,
@@ -2224,6 +2237,42 @@
   70% {
     transform: rotate(16deg) scale(1.08);
   }
+}
+
+@keyframes nav-cap-toss {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  36% {
+    transform: translateY(-1.6px) rotate(-10deg);
+  }
+  68% {
+    transform: translateY(0.4px) rotate(7deg);
+  }
+}
+@keyframes nav-cap-tassel {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  28% {
+    transform: rotate(28deg);
+  }
+  58% {
+    transform: rotate(-20deg);
+  }
+  82% {
+    transform: rotate(6deg);
+  }
+}
+.nav-cap {
+  transform-box: fill-box;
+  transform-origin: center 28%;
+}
+.nav-cap-tassel {
+  transform-box: fill-box;
+  transform-origin: center top;
 }
 
 @keyframes nav-bar-rand {
@@ -2674,23 +2723,11 @@
   }
 }
 
-/* Touch screens never hover, so the pointer glow, button sheen, and icon
-   motions would stay invisible. These rules show the same effects without a
-   mouse. Desktop hover behaviour is unchanged. */
+/* Touch screens never hover, so the button sheen and icon motions would stay
+   invisible. The pointer glow stays off until a finger is actually down —
+   a resting spotlight on every row read as a bug on phones and touch laptops.
+   Desktop hover behaviour is unchanged. */
 @media (hover: none) and (prefers-reduced-motion: no-preference) {
-  .ambient-glow {
-    --glow: 1;
-    --gx: 28%;
-    --gy: 22%;
-  }
-
-  .reveal-surface,
-  .vocab-reveal-surface {
-    --glow: 0.7;
-    --px: 30%;
-    --py: 18%;
-  }
-
   .btn-brand {
     box-shadow:
       0 2px 4px rgba(9, 6, 84, 0.36),
@@ -2777,6 +2814,8 @@
   .nav-ico-practice,
   .nav-ico-vocab,
   .nav-ico-lessons,
+  .nav-cap,
+  .nav-cap-tassel,
   .nav-ico-analysis,
   .nav-ico-ai,
   .nav-ico-news,
@@ -3166,4 +3205,212 @@
   animation-name: story-progress;
   animation-timing-function: linear;
   animation-fill-mode: both;
+}
+
+/* A result card circling the Hall of Fame orb. left/top glide when the active
+   story changes; the keyframes only bob it, and they include the centering
+   translate so the bob does not throw the card off its point. */
+@keyframes story-orbit-float {
+  0%,
+  100% {
+    transform: translate(-50%, -50%);
+  }
+  50% {
+    transform: translate(-50%, calc(-50% - 14px));
+  }
+}
+
+.story-orbit {
+  transform: translate(-50%, -50%);
+  transition:
+    left 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+    top 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: story-orbit-float 7s ease-in-out infinite;
+}
+
+/* Hall of Fame score strip. Magic UI's marquee: two equal halves, a -50% loop,
+   faded edges, paused while hovered. The dim-on-hover is xAI's reverse hover. */
+@keyframes score-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.score-marquee {
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+
+.score-marquee-track {
+  animation: score-marquee 36s linear infinite;
+}
+
+.score-marquee:hover .score-marquee-track {
+  animation-play-state: paused;
+}
+
+.score-mark {
+  transition: opacity 0.2s ease;
+}
+
+.score-marquee:hover .score-mark {
+  opacity: 0.4;
+}
+
+.score-marquee:hover .score-mark:hover {
+  opacity: 1;
+}
+
+/* Top score. Digits roll once on arrival. The rule and the name follow. */
+@keyframes score-digit-roll {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(var(--digit, 0) * -1em));
+  }
+}
+
+.score-digit-roll {
+  --digit: 0;
+  animation: score-digit-roll 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes score-rule {
+  from {
+    width: 0;
+  }
+  to {
+    width: 4rem;
+  }
+}
+
+.score-rule {
+  width: 0;
+  animation: score-rule 0.7s 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes score-name {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.score-name {
+  animation: score-name 0.55s 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ---- Marketing redesign: Geist scope and shared landing primitives ---- */
+.marketing {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
+}
+.marketing :is(h1, h2, h3, h4) {
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  /* optimizeLegibility punches holes through large Geist glyphs when a masked
+     grid sits in the same panel. */
+  text-rendering: geometricPrecision;
+}
+.marketing .font-black {
+  font-weight: 700;
+}
+.marketing .font-bold {
+  font-weight: 600;
+}
+
+/* Sign-in fields: each new letter rises in, the same quiet cascade as a
+   letter-by-letter reveal, kept short so typing still feels immediate. */
+.sign-glyph-row {
+  white-space: pre;
+}
+.sign-glyph-in {
+  display: inline-block;
+  animation: sign-glyph-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes sign-glyph-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.45em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sign-glyph-in {
+    animation: none;
+  }
+}
+
+.grid-fade {
+  background-image:
+    linear-gradient(to right, rgb(11 7 97 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(11 7 97 / 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 75%);
+}
+
+.grid-fade-dark {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.07) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, #000 20%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, #000 20%, transparent 80%);
+}
+
+.text-shine {
+  background: linear-gradient(100deg, #0b0761 20%, #535291 45%, #9f9fc2 55%, #535291 65%, #0b0761 85%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shine 6s linear infinite;
+}
+@keyframes text-shine {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.marquee {
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-x 32s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+@keyframes marquee-x {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.step-line {
+  background: linear-gradient(to right, #9f9fc2 0 50%, transparent 50% 100%);
+  background-size: 10px 2px;
+  background-repeat: repeat-x;
+}
+
+.ghost-num {
+  -webkit-text-stroke: 1.5px rgb(159 159 194 / 0.55);
+  color: transparent;
 }

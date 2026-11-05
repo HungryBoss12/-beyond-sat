@@ -1,4 +1,5 @@
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { lookFor, LOOKS, type OrbLook } from "@/components/landing/beyond-core-looks";
 import { quietEvents } from "@/components/landing/quiet-events";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -30,45 +31,6 @@ import {
 
 const BRAND_200 = "#9f9fc2";
 
-/**
- * The looks the emblem can take. Index 0 is the hero's brand emblem. The Hall of Fame steps through
- * the rest as its stories change, so each result gets its own shape and colour.
- */
-type Look = {
-  shape: "ico" | "dodeca" | "octa";
-  detail: number;
-  radius: number;
-  core: string;
-  emissive: string;
-  shell: string;
-};
-
-const LOOKS: Look[] = [
-  { shape: "ico", detail: 1, radius: 1.35, core: "#535291", emissive: "#0b0761", shell: "#9f9fc2" },
-  {
-    shape: "dodeca",
-    detail: 0,
-    radius: 1.3,
-    core: "#2f6fd6",
-    emissive: "#0a2a8a",
-    shell: "#9fc4f2",
-  },
-  { shape: "octa", detail: 0, radius: 1.5, core: "#7a4fc4", emissive: "#2a0b6b", shell: "#c6a6ee" },
-  { shape: "ico", detail: 0, radius: 1.4, core: "#1f8c9e", emissive: "#06404f", shell: "#9fdce3" },
-  {
-    shape: "dodeca",
-    detail: 1,
-    radius: 1.3,
-    core: "#c0517f",
-    emissive: "#5e0b33",
-    shell: "#efa6c4",
-  },
-];
-
-function lookFor(variant: number): Look {
-  return LOOKS[((Math.trunc(variant) % LOOKS.length) + LOOKS.length) % LOOKS.length];
-}
-
 /** Scroll progress through the hero, 0 → 1, clamped. */
 function heroProgress() {
   if (typeof window === "undefined") return 0;
@@ -95,10 +57,11 @@ const KICK_SPIN = 7;
 type DragState = { active: boolean; dx: number; dy: number };
 type Phase = "idle" | "out" | "in";
 
-function Shape({ look }: { look: Look }) {
+function Shape({ look }: { look: OrbLook }) {
   const args = useMemo(() => [look.radius, look.detail] as [number, number], [look]);
   if (look.shape === "dodeca") return <dodecahedronGeometry args={args} />;
   if (look.shape === "octa") return <octahedronGeometry args={args} />;
+  if (look.shape === "tetra") return <tetrahedronGeometry args={args} />;
   return <icosahedronGeometry args={args} />;
 }
 
@@ -119,11 +82,14 @@ function Emblem({
   pointer,
   drag,
   variant,
+  lite,
 }: {
   over: { current: boolean };
   pointer: { current: { x: number; y: number } };
   drag: { current: DragState };
   variant: number;
+  /** Coarser wire shell. The sign-in slot is small, and the dense shell is what Firefox struggles to redraw. */
+  lite: boolean;
 }) {
   const group = useRef<Group>(null);
   const core = useRef<Mesh>(null);
@@ -270,7 +236,7 @@ function Emblem({
 
   /* Shell geometry args are memoised: a fresh array literal in JSX makes R3F dispose
      and rebuild the geometry on every render. */
-  const shellArgs = useMemo(() => [1.85, 1] as [number, number], []);
+  const shellArgs = useMemo(() => [1.85, lite ? 0 : 1] as [number, number], [lite]);
 
   return (
     /* No R3F pointer handlers. Fiber copies every enumerable field of the native
@@ -285,9 +251,9 @@ function Emblem({
           ref={coreMat}
           color={initialLook.core}
           emissive={initialLook.emissive}
-          emissiveIntensity={0.45}
-          roughness={0.28}
-          metalness={0.55}
+          emissiveIntensity={lite ? 0.7 : 0.45}
+          roughness={lite ? 0.35 : 0.28}
+          metalness={lite ? 0.2 : 0.55}
           flatShading
         />
       </mesh>
@@ -342,12 +308,17 @@ function StaticEmblem({ variant }: { variant: number }) {
  * `forceContextLoss` on unmount, which makes Firefox print the same loss again.
  * A real GPU drop still reaches `onLost` while the canvas is on the page.
  */
-function createRenderer(canvas: HTMLCanvasElement, antialias: boolean, onLost: () => void) {
+function createRenderer(
+  canvas: HTMLCanvasElement,
+  antialias: boolean,
+  onLost: () => void,
+  lowPower = true,
+) {
   const params: WebGLRendererParameters = {
     canvas,
     alpha: true,
     antialias,
-    powerPreference: "low-power",
+    powerPreference: lowPower ? "low-power" : "default",
   };
 
   const nativeAdd = canvas.addEventListener.bind(canvas);
@@ -377,10 +348,60 @@ function createRenderer(canvas: HTMLCanvasElement, antialias: boolean, onLost: (
     const renderer = new WebGLRenderer(params);
     held.renderer = renderer;
     renderer.forceContextLoss = () => {};
+    // Firefox warns when the GL viewport is even a fraction larger than the
+    // drawing buffer. Flooring to whole device pixels makes them equal, and
+    // leaving the CSS size alone lets the 100% style own the box.
+    const nativeSetSize = renderer.setSize.bind(renderer);
+    renderer.setSize = (width: number, height: number) => {
+      const ratio = renderer.getPixelRatio() || 1;
+      const w = Math.max(1, Math.floor(width * ratio)) / ratio;
+      const h = Math.max(1, Math.floor(height * ratio)) / ratio;
+      nativeSetSize(w, h, false);
+    };
     return renderer;
   } finally {
     canvas.addEventListener = nativeAdd;
   }
+}
+
+/** Draws the lite emblem at 30fps, and not at all while the tab or the canvas is hidden. */
+function Pace() {
+  const gl = useThree((s) => s.gl);
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    const canvas = gl.domElement;
+    let onScreen = true;
+    const observer = new IntersectionObserver(([entry]) => {
+      onScreen = entry.isIntersecting;
+    });
+    observer.observe(canvas);
+    let raf = 0;
+    let last = 0;
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick);
+      if (document.hidden || !onScreen) return;
+      if (now - last < 1000 / 30) return;
+      last = now;
+      invalidate();
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
+  }, [gl, invalidate]);
+  return null;
+}
+
+function pixelRatio(lite: boolean, highDpr: boolean): [number, number] {
+  if (lite) return [1, 1];
+  if (highDpr) return [1, 2];
+  return [1, 1.5];
+}
+
+function frameLoop(animate: boolean, lite: boolean): "always" | "demand" {
+  if (!animate || lite) return "demand";
+  return "always";
 }
 
 export default function BeyondCoreScene({
@@ -389,6 +410,7 @@ export default function BeyondCoreScene({
   onContextLost,
   interactive,
   variant,
+  lite = false,
 }: {
   /** false under `prefers-reduced-motion` — renders one frame and stops. */
   animate: boolean;
@@ -400,6 +422,8 @@ export default function BeyondCoreScene({
   interactive: boolean;
   /** Which look to show; a change plays the kick. */
   variant: number;
+  /** Cheap path for a small second emblem. 30fps, no antialiasing, one light. */
+  lite?: boolean;
 }) {
   const onLost = useRef(onContextLost);
   onLost.current = onContextLost;
@@ -415,8 +439,8 @@ export default function BeyondCoreScene({
       /* `frameloop: demand` renders exactly one frame and then only on request.
          Combined with the static emblem this is what makes reduced-motion free
          rather than merely still. */
-      frameloop={animate ? "always" : "demand"}
-      dpr={highDpr ? [1, 2] : [1, 1.5]}
+      frameloop={frameLoop(animate, lite)}
+      dpr={pixelRatio(lite, highDpr)}
       shadows={false}
       camera={{ position: [0, 0, 5], fov: 42 }}
       /* The page is white and the emblem is deep blue, so the canvas stays
@@ -426,13 +450,18 @@ export default function BeyondCoreScene({
         if (!(canvas instanceof HTMLCanvasElement)) {
           return new WebGLRenderer({
             alpha: true,
-            antialias: highDpr,
-            powerPreference: "low-power",
+            antialias: !lite && highDpr,
+            powerPreference: lite ? "default" : "low-power",
           });
         }
-        return createRenderer(canvas, highDpr, () => onLost.current());
+        return createRenderer(canvas, !lite && highDpr, () => onLost.current(), !lite);
       }}
-      style={{ width: "100%", height: "100%" }}
+      style={
+        lite
+          ? { width: "100%", height: "100%", transform: "translateZ(0)" }
+          : { width: "100%", height: "100%" }
+      }
+      resize={{ offsetSize: true }}
       events={quietEvents}
       onCreated={({ gl: renderer }) => {
         const el = renderer.domElement;
@@ -495,13 +524,23 @@ export default function BeyondCoreScene({
         };
       }}
     >
+      {lite && animate ? <Pace /> : null}
       {/* Two point lights plus a dim ambient: the ambient stops the unlit faces
-          going pure black, which on a white page looks like a hole. */}
-      <ambientLight intensity={0.55} />
-      <pointLight position={[4, 3, 5]} intensity={55} color="#ffffff" distance={18} />
-      <pointLight position={[-4, -2, 3]} intensity={30} color={BRAND_200} distance={16} />
+          going pure black, which on a white page looks like a hole. The lite
+          slot adds a third light in front, because a small metal orb was reading as a dark blob. */}
+      <ambientLight intensity={lite ? 1.15 : 0.55} />
+      <pointLight position={[4, 3, 5]} intensity={lite ? 110 : 55} color="#ffffff" distance={22} />
+      <pointLight
+        position={[-4, -2, 3]}
+        intensity={lite ? 60 : 30}
+        color={BRAND_200}
+        distance={18}
+      />
+      {lite ? (
+        <pointLight position={[0, 1, 6]} intensity={45} color="#ffffff" distance={16} />
+      ) : null}
       {animate ? (
-        <Emblem over={over} pointer={pointer} drag={drag} variant={variant} />
+        <Emblem over={over} pointer={pointer} drag={drag} variant={variant} lite={lite} />
       ) : (
         <StaticEmblem variant={variant} />
       )}

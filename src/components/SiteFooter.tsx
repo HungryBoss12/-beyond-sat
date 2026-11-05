@@ -1,29 +1,102 @@
+import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Home, Instagram, Send, Sparkles } from "lucide-react";
+import { ArrowRight, Home, Instagram, Send } from "lucide-react";
+import { useRegistrationEnabled } from "@/lib/registration";
 
-export function SiteFooter() {
+const PRACTICE = [
+  { to: "/programs", hash: undefined, label: "Digital SAT" },
+  { to: "/programs", hash: "mocks", label: "Mock exams" },
+  { to: "/programs", hash: "bank", label: "Question bank" },
+  { to: "/results", hash: undefined, label: "Score results" },
+] as const;
+
+const LEGAL = [
+  { to: "/support", label: "Support" },
+  { to: "/privacy", label: "Privacy" },
+  { to: "/terms", label: "Terms" },
+  { to: "/about", label: "About" },
+] as const;
+
+export function SiteFooter({ mobileOrb }: { mobileOrb?: ReactNode }) {
+  const registrationOn = useRegistrationEnabled();
+  const startHref = registrationOn ? "/signup" : "/signin";
+
   return (
-    /* Secondary copy is the light brand step at full opacity rather than
-       white/70, so nothing in the footer reads as dimmed. */
-    <footer className="bg-brand-600 text-white">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4">
-        <div className="md:col-span-2">
-          <div className="text-2xl font-bold text-white">BeyondSAT</div>
-          <p className="mt-3 max-w-sm text-sm text-brand-100">
-            The digital SAT prep platform built to feel exactly like test day. Practice, track, and
-            reach your goal score.
-          </p>
-          {/* Stated in the footer as well as the landing band: the footer is on
-              every page, so this is the one place the claim is always visible. */}
-          <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-brand-800 px-3.5 py-1.5 text-xs font-bold text-white ring-1 ring-brand-400/50">
-            <Sparkles className="h-3.5 w-3.5 text-brand-200" strokeWidth={2.5} />
-            Free to use — no subscription, no paywall
-          </p>
-          <div className="mt-5 flex gap-3">
+    /* The closing panel is the last thing on every marketing page, so the
+       free claim lives here even when a page has no landing band. */
+    <footer className="marketing relative isolate overflow-hidden bg-brand-600 text-white">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="grid-fade-dark absolute inset-0" />
+        <div className="absolute -bottom-24 right-0 h-80 w-[36rem] rounded-full bg-brand-400/35 blur-3xl" />
+        <p
+          aria-hidden="true"
+          className="absolute bottom-16 right-[-4%] select-none text-[26vw] font-semibold leading-none tracking-[-0.07em] text-white/[0.08] md:bottom-8 md:text-[11rem]"
+        >
+          beyond
+        </p>
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-7xl">
+        <div className="grid gap-12 px-6 pb-8 pt-14 sm:px-10 md:pt-16 lg:grid-cols-[1.3fr_0.9fr] lg:gap-8">
+          <div>
+            <h2 className="max-w-xl text-5xl font-semibold leading-[0.95] tracking-[-0.045em] text-white sm:text-6xl md:text-7xl">
+              Walk in ready.
+              <span className="block text-brand-200">It stays free.</span>
+            </h2>
+            <p className="mt-5 max-w-md text-sm leading-relaxed text-brand-100 sm:text-base">
+              Practice that feels like test day. Track every point. No subscription and no paywall.
+            </p>
+            <Link
+              to={startHref}
+              className="btn-brand mt-8 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-600 hover:bg-brand-50"
+            >
+              Start practicing <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 gap-8 self-end pb-2">
+            <div>
+              <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-brand-200">
+                Practice
+              </div>
+              <ul className="space-y-2.5 text-sm text-brand-100">
+                {PRACTICE.map((item) => (
+                  <li key={item.label}>
+                    <Link to={item.to} hash={item.hash} className="transition hover:text-white">
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-brand-200">
+                Legal
+              </div>
+              <ul className="space-y-2.5 text-sm text-brand-100">
+                {LEGAL.map((item) => (
+                  <li key={item.label}>
+                    <Link to={item.to} className="transition hover:text-white">
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {mobileOrb ? (
+          <div className="relative z-10 flex justify-center px-6 pb-8 sm:hidden">{mobileOrb}</div>
+        ) : null}
+
+        <div className="flex flex-col gap-4 border-t border-white/10 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-10">
+          <p className="text-xs text-brand-100">© 2026 BeyondSAT. All rights reserved.</p>
+          <div className="flex items-center gap-2">
             <Link
               to="/"
               aria-label="BeyondSAT home"
-              className="tap grid h-9 w-9 place-items-center rounded-full bg-brand-800 text-white transition hover:bg-brand-400"
+              className="tap grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition hover:bg-white hover:text-brand-600"
             >
               <Home className="h-4 w-4" />
             </Link>
@@ -32,7 +105,7 @@ export function SiteFooter() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"
-              className="tap grid h-9 w-9 place-items-center rounded-full bg-brand-800 text-white transition hover:bg-brand-400"
+              className="tap grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition hover:bg-white hover:text-brand-600"
             >
               <Instagram className="h-4 w-4" />
             </a>
@@ -41,56 +114,11 @@ export function SiteFooter() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Telegram"
-              className="tap grid h-9 w-9 place-items-center rounded-full bg-brand-800 text-white transition hover:bg-brand-400"
+              className="tap grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition hover:bg-white hover:text-brand-600"
             >
               <Send className="h-4 w-4" />
             </a>
           </div>
-        </div>
-        <div>
-          <div className="mb-3 text-sm font-semibold text-white">Programs</div>
-          <ul className="space-y-2 text-sm text-brand-100">
-            <li>
-              <Link to="/programs" className="hover:text-white">
-                Digital SAT
-              </Link>
-            </li>
-            <li>
-              <Link to="/programs" hash="mocks" className="hover:text-white">
-                Mock Exams
-              </Link>
-            </li>
-            <li>
-              <Link to="/programs" hash="bank" className="hover:text-white">
-                Question Bank
-              </Link>
-            </li>
-          </ul>
-        </div>
-        <div>
-          <div className="mb-3 text-sm font-semibold text-white">Contact</div>
-          <ul className="space-y-2 text-sm text-brand-100">
-            <li>
-              <Link to="/support" className="hover:text-white">
-                Support
-              </Link>
-            </li>
-            <li>
-              <Link to="/privacy" className="hover:text-white">
-                Privacy
-              </Link>
-            </li>
-            <li>
-              <Link to="/terms" className="hover:text-white">
-                Terms
-              </Link>
-            </li>
-          </ul>
-        </div>
-      </div>
-      <div className="border-t border-brand-400/40">
-        <div className="mx-auto max-w-7xl px-4 py-5 text-xs text-brand-100 sm:px-6">
-          © 2026 BeyondSAT. All rights reserved.
         </div>
       </div>
     </footer>

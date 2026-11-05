@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { BeyondCore } from "@/components/landing/BeyondCore";
 import { useInView } from "@/hooks/useInView";
 import { cn } from "@/lib/utils";
+import { PersonAvatar } from "./PersonAvatar";
 import type { HallStory } from "./schema";
 import { StoryDeck } from "./StoryCard";
 import { useOnScreen, useStoryDeck } from "./useStoryDeck";
@@ -11,10 +12,10 @@ import { useOnScreen, useStoryDeck } from "./useStoryDeck";
 const STORY_MS = 6500;
 
 /**
- * The story panel: a visual on the left and a student story on the right.
+ * The story panel: the orb in the middle, with each result floating around it.
  *
- * The visual is the BeyondCore orb. It is the one piece meant to be swapped when the final example
- * arrives, so everything that is not the orb stays in `StoryDeck` and the chips below.
+ * The orb is the BeyondCore emblem. It is the one piece meant to be swapped when the final example
+ * arrives, so everything that is not the orb stays in the cards below.
  *
  * The orb mounts only once the panel is on screen. The hero already runs a WebGL scene, and a second
  * one should not start while it is far below the fold. BeyondCore still brings its own fallbacks
@@ -77,6 +78,69 @@ function Chips({
   );
 }
 
+/** Where card `index` sits while `active` is the one on the right. Evenly spaced around the centre. */
+function orbitStyle(index: number, active: number, count: number): { left: string; top: string } {
+  const turn = count > 0 ? ((index - active) / count) * Math.PI * 2 : 0;
+  return {
+    left: `${50 + Math.cos(turn) * 36}%`,
+    top: `${50 + Math.sin(turn) * 34}%`,
+  };
+}
+
+function OrbitCard({
+  story,
+  index,
+  active,
+  count,
+  onPick,
+}: {
+  story: HallStory;
+  index: number;
+  active: number;
+  count: number;
+  onPick: () => void;
+}) {
+  const on = index === active;
+  return (
+    <div
+      className="story-orbit absolute z-20"
+      style={{ ...orbitStyle(index, active, count), animationDelay: `${index * 0.6}s` }}
+    >
+      <button
+        type="button"
+        onClick={onPick}
+        aria-current={on ? "true" : undefined}
+        className={cn(
+          "block rounded-2xl border border-white/15 bg-brand-600 text-left text-white shadow-panel transition-[width,padding] duration-700",
+          on ? "w-64 p-4 ring-2 ring-white/80" : "w-48 p-3 opacity-90 hover:opacity-100",
+        )}
+      >
+        <span className="flex items-center gap-2.5">
+          <PersonAvatar
+            name={story.name}
+            photo={story.photo}
+            className="h-9 w-9 shrink-0 ring-2 ring-white/30"
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-bold">{story.name}</span>
+            {story.detail && (
+              <span className="block truncate text-[11px] text-brand-100">{story.detail}</span>
+            )}
+          </span>
+          {story.score !== undefined && (
+            <span className="text-xl font-black leading-none">{story.score}</span>
+          )}
+        </span>
+        {on && story.quote && (
+          <span className="mt-3 line-clamp-3 block text-xs leading-relaxed text-white">
+            “{story.quote}”
+          </span>
+        )}
+      </button>
+    </div>
+  );
+}
+
 function StepButton({ dir, onClick }: { dir: "prev" | "next"; onClick: () => void }) {
   const Icon = dir === "prev" ? ChevronLeft : ChevronRight;
   return (
@@ -111,16 +175,42 @@ export function HallOfFameSlot({ stories }: { stories: HallStory[] }) {
     deck.reset();
   };
 
+  const focusStory = (index: number) => {
+    const count = visible.length;
+    if (count < 2 || index === deck.index) return;
+    const forward = (index - deck.index + count) % count;
+    const back = count - forward;
+    deck.go(forward <= back ? forward : -back);
+  };
+
   return (
-    <div
-      ref={ref}
-      className="grid items-center gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:gap-10"
-    >
-      <Visual variant={deck.index} />
-      <div className="space-y-4">
-        {countries.length > 1 && (
-          <Chips options={["All", ...countries]} active={country} onPick={pick} />
-        )}
+    <div ref={ref} className="space-y-4">
+      {countries.length > 1 && (
+        <Chips options={["All", ...countries]} active={country} onPick={pick} />
+      )}
+      {/* Desktop: the cards ride an ellipse around the orb and glide to a new spot on each story. */}
+      <div
+        className="relative mx-auto hidden h-[40rem] max-w-5xl md:block"
+        onPointerEnter={() => setHold(true)}
+        onPointerLeave={() => setHold(false)}
+      >
+        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
+          <div className="pointer-events-auto w-full max-w-sm">
+            <Visual variant={deck.index} />
+          </div>
+        </div>
+        {visible.map((story, i) => (
+          <OrbitCard
+            key={`${story.name}-${i}`}
+            story={story}
+            index={i}
+            active={deck.index}
+            count={visible.length}
+            onPick={() => focusStory(i)}
+          />
+        ))}
+      </div>
+      <div className="space-y-4 md:hidden">
         {deck.current && (
           /* Hovering or focusing the card holds autoplay, so a story can be read without it leaving. */
           <div
@@ -142,13 +232,13 @@ export function HallOfFameSlot({ stories }: { stories: HallStory[] }) {
             />
           </div>
         )}
-        {visible.length > 1 && (
-          <div className="flex gap-2">
-            <StepButton dir="prev" onClick={() => deck.go(-1)} />
-            <StepButton dir="next" onClick={() => deck.go(1)} />
-          </div>
-        )}
       </div>
+      {visible.length > 1 && (
+        <div className="flex justify-center gap-2">
+          <StepButton dir="prev" onClick={() => deck.go(-1)} />
+          <StepButton dir="next" onClick={() => deck.go(1)} />
+        </div>
+      )}
     </div>
   );
 }

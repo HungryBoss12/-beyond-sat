@@ -34,7 +34,7 @@ export function MarketingShell({
   useHashScroll();
 
   return (
-    <div className="relative isolate flex min-h-screen flex-col bg-white">
+    <div className="marketing relative isolate flex min-h-screen flex-col bg-white">
       <AmbientGlow />
       <SiteNav />
       <main
@@ -65,7 +65,9 @@ export function MarketingHero({
       {eyebrow ? (
         <p className="text-xs font-bold uppercase tracking-wider text-brand-600">{eyebrow}</p>
       ) : null}
-      <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">{title}</h1>
+      <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">
+        {title}
+      </h1>
       <p className="mt-3 max-w-2xl text-base text-slate-600 md:text-lg">{subtitle}</p>
     </header>
   );
@@ -81,9 +83,14 @@ export function MarketingSection({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-24 border-t border-brand-100 py-10 first:border-t-0 first:pt-0">
+    <section
+      id={id}
+      className="scroll-mt-24 border-t border-brand-100 py-10 first:border-t-0 first:pt-0"
+    >
       <h2 className="text-xl font-black tracking-tight text-slate-900 md:text-2xl">{title}</h2>
-      <div className="mt-4 space-y-3 text-sm leading-relaxed text-slate-600 md:text-base">{children}</div>
+      <div className="mt-4 space-y-3 text-sm leading-relaxed text-slate-600 md:text-base">
+        {children}
+      </div>
     </section>
   );
 }

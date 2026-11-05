@@ -5,6 +5,13 @@ type DayCell = {
   date: string; // YYYY-MM-DD
   count: number;
   level: 0 | 1 | 2 | 3 | 4;
+  future: boolean;
+};
+
+export type ParticipationGrid = {
+  cells: DayCell[];
+  monthLabels: { label: string; col: number }[];
+  total: number;
 };
 
 function ymd(d: Date): string {
@@ -20,6 +27,60 @@ function startOfWeekSunday(d: Date): Date {
   return x;
 }
 
+/** Columns = weeks, rows = Sun→Sat. `today` is injectable for tests. */
+export function buildParticipationGrid(
+  rows: Pick<LessonAttendance, "lesson_date" | "participated">[],
+  weeks = 26,
+  today = new Date(),
+): ParticipationGrid {
+  const byDate = new Map<string, number>();
+  for (const r of rows) {
+    if (!r.participated) continue;
+    byDate.set(r.lesson_date, (byDate.get(r.lesson_date) ?? 0) + 1);
+  }
+
+  const day = new Date(today);
+  day.setHours(0, 0, 0, 0);
+  const todayKey = ymd(day);
+  const end = startOfWeekSunday(day);
+  end.setDate(end.getDate() + 6);
+  const start = new Date(end);
+  start.setDate(start.getDate() - (weeks * 7 - 1));
+
+  const list: DayCell[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const key = ymd(cursor);
+    const count = byDate.get(key) ?? 0;
+    const level: DayCell["level"] =
+      count === 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : count === 3 ? 3 : 4;
+    list.push({ date: key, count, level, future: key > todayKey });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  const labels: { label: string; col: number }[] = [];
+  let lastMonth = -1;
+  let lastCol = -99;
+  for (let i = 0; i < list.length; i += 7) {
+    const d = new Date(list[i].date + "T12:00:00");
+    const m = d.getMonth();
+    const col = Math.floor(i / 7);
+    // A full name needs about three week-columns. Skip a month that would paint on top of the previous one.
+    if (m !== lastMonth && col - lastCol >= 3) {
+      labels.push({
+        label: d.toLocaleString("en", { month: "short" }),
+        col,
+      });
+      lastMonth = m;
+      lastCol = col;
+    }
+  }
+
+  let sum = 0;
+  for (const c of list) sum += c.count;
+  return { cells: list, monthLabels: labels, total: sum };
+}
+
 /**
  * GitHub-style contribution heatmap for lesson participation.
  * Columns = weeks, rows = Sun→Sat. Scales to the panel width — no overflow scroll.
@@ -33,49 +94,10 @@ export function AttendanceGrid({
   weeks?: number;
   title?: string;
 }) {
-  const { cells, monthLabels, total } = useMemo(() => {
-    const byDate = new Map<string, number>();
-    for (const r of rows) {
-      if (!r.participated) continue;
-      byDate.set(r.lesson_date, (byDate.get(r.lesson_date) ?? 0) + 1);
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const end = startOfWeekSunday(today);
-    end.setDate(end.getDate() + 6);
-    const start = new Date(end);
-    start.setDate(start.getDate() - (weeks * 7 - 1));
-
-    const list: DayCell[] = [];
-    const cursor = new Date(start);
-    while (cursor <= end) {
-      const key = ymd(cursor);
-      const count = byDate.get(key) ?? 0;
-      const level: DayCell["level"] =
-        count === 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : count === 3 ? 3 : 4;
-      list.push({ date: key, count, level });
-      cursor.setDate(cursor.getDate() + 1);
-    }
-
-    const labels: { label: string; col: number }[] = [];
-    let lastMonth = -1;
-    for (let i = 0; i < list.length; i += 7) {
-      const d = new Date(list[i].date + "T12:00:00");
-      const m = d.getMonth();
-      if (m !== lastMonth) {
-        labels.push({
-          label: d.toLocaleString("en", { month: "short" }),
-          col: Math.floor(i / 7),
-        });
-        lastMonth = m;
-      }
-    }
-
-    let sum = 0;
-    for (const c of byDate.values()) sum += c;
-    return { cells: list, monthLabels: labels, total: sum };
-  }, [rows, weeks]);
+  const { cells, monthLabels, total } = useMemo(
+    () => buildParticipationGrid(rows, weeks),
+    [rows, weeks],
+  );
 
   const cols = Math.ceil(cells.length / 7);
   const gridCols = `1.75rem repeat(${cols}, minmax(0, 1fr))`;
@@ -110,8 +132,10 @@ export function AttendanceGrid({
           {Array.from({ length: cols }, (_, col) => {
             const lab = monthLabels.find((m) => m.col === col);
             return (
-              <span key={col} className="truncate text-center">
-                {lab?.label ?? ""}
+              <span key={col} className="relative h-3">
+                {lab ? (
+                  <span className="absolute left-0 top-0 z-10 whitespace-nowrap">{lab.label}</span>
+                ) : null}
               </span>
             );
           })}
@@ -136,7 +160,7 @@ export function AttendanceGrid({
               <span
                 key={c.date}
                 title={`${c.date}: ${c.count} lesson${c.count === 1 ? "" : "s"}`}
-                className={`aspect-square w-full rounded-[2px] ${levelClass(c.level)}`}
+                className={`aspect-square w-full rounded-[2px] ${c.future ? "bg-transparent" : levelClass(c.level)}`}
                 style={{ gridRow: row, gridColumn: col }}
               />
             );

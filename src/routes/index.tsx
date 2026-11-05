@@ -103,12 +103,44 @@ function HeadlineParts({ title, highlight }: { title: string; highlight?: string
     <>
       {title.slice(0, at)}
       {/* The gradient text stop must stay inside the brand family. */}
-      <span className="bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent">
-        {needle}
-      </span>
+      <span className="text-shine">{needle}</span>
       {title.slice(at + needle.length)}
     </>
   );
+}
+
+/** Centered section title, shared by the content sections. */
+function SectionHead({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="parallax-rise mx-auto mb-14 max-w-2xl text-center">
+      {title && (
+        <h2 className="text-4xl font-semibold tracking-[-0.04em] text-slate-900 md:text-5xl">
+          {title}
+        </h2>
+      )}
+      {subtitle && <p className="mt-4 text-lg leading-relaxed text-slate-500">{subtitle}</p>}
+    </div>
+  );
+}
+
+/** Two copies of the row scroll left by half their width, so the loop has no seam. */
+function Marquee({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="marquee overflow-hidden">
+      <div className="marquee-track">
+        <div className="flex shrink-0 items-center gap-14 pr-14">{children}</div>
+        <div aria-hidden="true" className="flex shrink-0 items-center gap-14 pr-14">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Bento column spans on a 6-column grid. A lone last item fills its row. */
+function bentoSpan(i: number, n: number): string {
+  if (i === n - 1 && i % 2 === 0) return "md:col-span-6";
+  return ["md:col-span-4", "md:col-span-2", "md:col-span-2", "md:col-span-4"][i % 4];
 }
 
 /**
@@ -182,7 +214,7 @@ function Landing() {
      For the same reason the sections below no longer set their own `bg-white` —
      an opaque section background would cover the glow completely. */
   return (
-    <div id="top" className="relative isolate flex min-h-screen flex-col bg-white">
+    <div id="top" className="marketing relative isolate flex min-h-screen flex-col bg-white">
       {/* Cursor spotlight. Sits at the page root — it's position:fixed, so any
           ancestor with an animated transform would become its containing block
           and collapse it. Behind everything via z-0 + the sections' own stacking. */}
@@ -210,11 +242,15 @@ function SectionRenderer({ section }: { section: Section }) {
            an observer callback fires. `HeroProgress` only publishes `--p` so the
            emblem column can drift as the page leaves. */
         <HeroProgress>
-          <div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 md:py-20 lg:grid-cols-2 lg:gap-12">
+          <div
+            aria-hidden="true"
+            className="grid-fade pointer-events-none absolute inset-x-0 top-0 -z-10 h-[34rem]"
+          />
+          <div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 md:py-24 lg:grid-cols-2 lg:gap-12">
             <div className="rise-in">
               {/* Headings sit on the white page, so they stay dark; every card
                   below them is a brand surface with white text. */}
-              <h1 className="text-4xl font-bold leading-[1.08] tracking-tight text-slate-900 sm:text-5xl">
+              <h1 className="text-5xl font-semibold leading-[1.02] tracking-[-0.04em] text-slate-900 sm:text-6xl lg:text-7xl">
                 <HeadlineParts
                   title={jsonText(d.title)}
                   highlight={jsonText(d.highlight, "Digital SAT")}
@@ -222,14 +258,16 @@ function SectionRenderer({ section }: { section: Section }) {
               </h1>
 
               {jsonText(d.subtitle) && (
-                <p className="mt-5 max-w-lg text-base text-slate-500">{jsonText(d.subtitle)}</p>
+                <p className="mt-6 max-w-lg text-lg leading-relaxed text-slate-500">
+                  {jsonText(d.subtitle)}
+                </p>
               )}
 
               <div className="mt-7 flex flex-wrap gap-3">
                 {jsonText(d.primary_cta_label) && (
                   <CtaLink
                     href={jsonText(d.primary_cta_href, "/signup")}
-                    className="btn-brand inline-flex items-center gap-2 rounded-lg bg-brand-600 px-6 py-3 text-sm font-bold text-white"
+                    className="btn-brand inline-flex items-center gap-2 rounded-full bg-brand-600 px-7 py-3.5 text-sm font-semibold text-white"
                   >
                     {jsonText(d.primary_cta_label)} <ArrowRight className="arrow-slide h-4 w-4" />
                   </CtaLink>
@@ -237,7 +275,7 @@ function SectionRenderer({ section }: { section: Section }) {
                 {jsonText(d.secondary_cta_label) && (
                   <CtaLink
                     href={jsonText(d.secondary_cta_href, "/signin")}
-                    className="tap inline-flex items-center rounded-lg border border-brand-600 bg-white px-6 py-3 text-sm font-bold text-brand-600 transition hover:bg-brand-600 hover:text-white"
+                    className="tap inline-flex items-center rounded-full border border-brand-200 bg-white/80 px-7 py-3.5 text-sm font-semibold text-brand-600 backdrop-blur transition hover:border-brand-600 hover:bg-brand-600 hover:text-white"
                   >
                     {jsonText(d.secondary_cta_label)}
                   </CtaLink>
@@ -274,22 +312,24 @@ function SectionRenderer({ section }: { section: Section }) {
       return (
         <Reveal as="section" from="scale" id="stats" className="py-12 md:py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <RevealCard className="rounded-2xl border border-brand-400/40 bg-brand-600 p-6 shadow-panel md:p-10">
-              <StaggerGrid className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+            <RevealCard className="relative overflow-hidden rounded-3xl border border-white/10 bg-brand-600 p-6 shadow-panel md:p-10">
+              <div
+                aria-hidden="true"
+                className="grid-fade-dark pointer-events-none absolute inset-0"
+              />
+              <StaggerGrid className="relative grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-0 lg:divide-x lg:divide-white/10">
                 {dataItems(d).map((s, i) => {
                   const Icon = ICONS[String(s.icon ?? "")] ?? Sparkles;
                   return (
                     <div
                       key={i}
-                      className="flex flex-col items-center text-center lg:items-start lg:text-left"
+                      className="flex flex-col items-center text-center lg:items-start lg:px-8 lg:text-left"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className="h-5 w-5 shrink-0 text-brand-100" strokeWidth={2} />
-                        <div className="text-3xl font-black text-white md:text-4xl">
-                          <CountUp end={Number(s.n) || 0} suffix={String(s.s ?? "")} />
-                        </div>
+                      <Icon className="mb-4 h-5 w-5 shrink-0 text-brand-200" strokeWidth={2} />
+                      <div className="text-5xl font-semibold tracking-[-0.04em] text-white md:text-6xl">
+                        <CountUp end={Number(s.n) || 0} suffix={String(s.s ?? "")} />
                       </div>
-                      <p className="mt-2 max-w-[16rem] text-sm leading-relaxed text-brand-100">
+                      <p className="mt-3 max-w-[16rem] text-sm leading-relaxed text-brand-100">
                         {String(s.l ?? "")}
                       </p>
                     </div>
@@ -304,19 +344,23 @@ function SectionRenderer({ section }: { section: Section }) {
       return (
         <Reveal as="section" from="fade" className="pb-12 md:pb-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <div className="flex flex-col items-center gap-6 md:flex-row md:justify-center md:gap-10">
+            <div className="flex flex-col items-center gap-6 md:flex-row md:gap-10">
               {jsonText(d.label) && (
-                <span className="shrink-0 text-sm text-slate-500">{jsonText(d.label)}</span>
+                <span className="shrink-0 text-sm font-medium text-slate-500">
+                  {jsonText(d.label)}
+                </span>
               )}
-              <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
-                {dataItems(d).map((p, i) => (
-                  <span
-                    key={i}
-                    className="text-lg font-bold tracking-tight text-brand-200 transition hover:text-brand-600"
-                  >
-                    {String(p.name ?? "")}
-                  </span>
-                ))}
+              <div className="min-w-0 flex-1">
+                <Marquee>
+                  {dataItems(d).map((p, i) => (
+                    <span
+                      key={i}
+                      className="whitespace-nowrap text-xl font-semibold tracking-tight text-brand-200 transition hover:text-brand-600"
+                    >
+                      {String(p.name ?? "")}
+                    </span>
+                  ))}
+                </Marquee>
               </div>
             </div>
           </div>
@@ -326,27 +370,41 @@ function SectionRenderer({ section }: { section: Section }) {
       return (
         <Reveal as="section" from="left" id="features" className="py-16 md:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <div className="parallax-rise mb-12 text-center">
-              <h2 className="text-3xl text-slate-900 md:text-4xl">{jsonText(d.title)}</h2>
-              {jsonText(d.subtitle) && (
-                <p className="mt-3 text-slate-500">{jsonText(d.subtitle)}</p>
-              )}
-            </div>
-            <StaggerGrid className="grid gap-6 md:grid-cols-3">
-              {dataItems(d).map((f, i) => {
+            <SectionHead title={jsonText(d.title)} subtitle={jsonText(d.subtitle)} />
+            <StaggerGrid className="grid gap-5 md:grid-cols-6">
+              {dataItems(d).map((f, i, all) => {
                 const Icon = ICONS[String(f.icon ?? "")] ?? Sparkles;
+                const dark = i % 4 === 0 || i % 4 === 3;
                 return (
                   <RevealCard
                     key={i}
-                    className="lift rounded-2xl border border-brand-400/40 bg-brand-600 p-8 shadow-panel"
+                    className={`lift relative flex min-h-[15rem] flex-col justify-between overflow-hidden rounded-3xl border p-8 ${bentoSpan(i, all.length)} ${
+                      dark
+                        ? "border-white/10 bg-brand-600 text-white shadow-panel"
+                        : "border-brand-200/60 bg-white text-slate-900 shadow-sm"
+                    }`}
                   >
-                    <div className="mb-5 grid h-12 w-12 place-items-center rounded-xl bg-brand-400">
+                    {dark && (
+                      <div
+                        aria-hidden="true"
+                        className="grid-fade-dark pointer-events-none absolute inset-0"
+                      />
+                    )}
+                    <div
+                      className={`relative mb-8 grid h-12 w-12 place-items-center rounded-2xl ${dark ? "bg-white/10 ring-1 ring-white/20" : "bg-brand-600"}`}
+                    >
                       <Icon className="h-6 w-6 text-white" strokeWidth={1.75} />
                     </div>
-                    <div className="mb-2 text-lg font-bold text-white">{String(f.title ?? "")}</div>
-                    <p className="text-sm leading-relaxed text-brand-100">
-                      {String(f.description ?? "")}
-                    </p>
+                    <div className="relative">
+                      <div className="mb-2 text-xl font-semibold tracking-tight">
+                        {String(f.title ?? "")}
+                      </div>
+                      <p
+                        className={`max-w-md text-sm leading-relaxed ${dark ? "text-brand-100" : "text-slate-500"}`}
+                      >
+                        {String(f.description ?? "")}
+                      </p>
+                    </div>
                   </RevealCard>
                 );
               })}
@@ -358,20 +416,30 @@ function SectionRenderer({ section }: { section: Section }) {
       return (
         <Reveal as="section" from="right" id="how" className="py-16 md:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <div className="parallax-rise mb-12 text-center">
-              <h2 className="text-3xl text-slate-900 md:text-4xl">{String(d.title ?? "")}</h2>
-            </div>
-            <StaggerGrid className="grid gap-6 md:grid-cols-3">
+            <SectionHead title={String(d.title ?? "")} />
+            <StaggerGrid className="relative grid gap-5 md:grid-cols-3">
+              <div
+                aria-hidden="true"
+                className="step-line pointer-events-none absolute left-[16%] right-[16%] top-[3.25rem] hidden h-0.5 md:block"
+              />
               {dataItems(d).map((s, i) => (
                 <RevealCard
                   key={i}
-                  className="lift rounded-2xl border border-brand-400/40 bg-brand-600 p-8 shadow-panel"
+                  className="lift relative overflow-hidden rounded-3xl border border-brand-200/60 bg-white p-8 shadow-sm"
                 >
-                  <div className="mb-5 grid h-12 w-12 place-items-center rounded-full bg-brand-400 text-lg font-black text-white">
+                  <div className="relative mb-8 grid h-12 w-12 place-items-center rounded-full bg-brand-600 text-base font-semibold text-white ring-8 ring-white">
                     {jsonText(s.n)}
                   </div>
-                  <div className="mb-2 text-lg font-bold text-white">{jsonText(s.title)}</div>
-                  <p className="text-sm leading-relaxed text-brand-100">
+                  <span
+                    aria-hidden="true"
+                    className="ghost-num pointer-events-none absolute -right-2 -top-4 select-none text-[7rem] font-bold leading-none"
+                  >
+                    {jsonText(s.n)}
+                  </span>
+                  <div className="mb-2 text-xl font-semibold tracking-tight text-slate-900">
+                    {jsonText(s.title)}
+                  </div>
+                  <p className="text-sm leading-relaxed text-slate-500">
                     {jsonText(s.description)}
                   </p>
                 </RevealCard>
@@ -384,19 +452,22 @@ function SectionRenderer({ section }: { section: Section }) {
       return (
         <section className="py-16 md:py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="rise-in relative overflow-hidden rounded-3xl bg-grad-brand px-6 py-14 text-center shadow-brand md:py-20">
+            <div className="rise-in relative overflow-hidden rounded-[2rem] bg-grad-brand px-6 py-16 text-center shadow-brand md:py-24">
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 overflow-hidden"
               >
+                <div className="grid-fade-dark absolute inset-0" />
                 <div className="drift absolute -right-24 -top-32 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
               </div>
-              <h2 className="relative text-3xl text-white md:text-4xl">{jsonText(d.title)}</h2>
+              <h2 className="relative mx-auto max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-white md:text-6xl">
+                {jsonText(d.title)}
+              </h2>
               {jsonText(d.button_label) && (
                 <div className="relative mt-8">
                   <CtaLink
                     href={jsonText(d.button_href, "/signup")}
-                    className="tap inline-flex items-center gap-2 rounded-lg bg-white px-8 py-4 text-base font-bold text-brand-600 shadow-float hover:bg-brand-50"
+                    className="tap inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-base font-semibold text-brand-600 shadow-float hover:bg-brand-50"
                   >
                     {jsonText(d.button_label)} <ArrowRight className="h-4 w-4" />
                   </CtaLink>
@@ -436,14 +507,7 @@ function SectionRenderer({ section }: { section: Section }) {
         <Reveal as="section" from="blur" id="showcase" className="py-16 md:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
             {(jsonText(d.title) || jsonText(d.subtitle)) && (
-              <div className="parallax-rise mb-12 text-center">
-                {jsonText(d.title) && (
-                  <h2 className="text-3xl text-slate-900 md:text-4xl">{jsonText(d.title)}</h2>
-                )}
-                {jsonText(d.subtitle) && (
-                  <p className="mt-3 text-slate-500">{jsonText(d.subtitle)}</p>
-                )}
-              </div>
+              <SectionHead title={jsonText(d.title)} subtitle={jsonText(d.subtitle)} />
             )}
             {/* The 2D mockup that used to be the hero visual. It's more use here,
                 where there's room to read it, than squeezed beside the headline. */}
@@ -463,13 +527,10 @@ function SectionRenderer({ section }: { section: Section }) {
         <Reveal as="section" from="none" id="ai" className="py-16 md:py-24">
           <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-14">
             <Reveal as="div" from="left">
-              {jsonText(d.eyebrow) && (
-                <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-25 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-600">
-                  <Sparkles className="h-3.5 w-3.5" /> {jsonText(d.eyebrow)}
-                </span>
-              )}
               {jsonText(d.title) && (
-                <h2 className="mt-4 text-3xl text-slate-900 md:text-4xl">{jsonText(d.title)}</h2>
+                <h2 className="text-4xl font-semibold tracking-[-0.04em] text-slate-900 md:text-5xl">
+                  {jsonText(d.title)}
+                </h2>
               )}
               {jsonText(d.subtitle) && (
                 <p className="mt-4 max-w-lg text-slate-500">{jsonText(d.subtitle)}</p>
@@ -541,40 +602,39 @@ function SectionRenderer({ section }: { section: Section }) {
       return (
         <Reveal as="section" from="scale" id="programs" className="py-16 md:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <div className="parallax-rise mb-12 text-center">
-              {jsonText(d.title) && (
-                <h2 className="text-3xl text-slate-900 md:text-4xl">{jsonText(d.title)}</h2>
-              )}
-              {jsonText(d.subtitle) && (
-                <p className="mt-3 text-slate-500">{jsonText(d.subtitle)}</p>
-              )}
-            </div>
-            <StaggerGrid className="grid gap-6 md:grid-cols-3">
+            <SectionHead title={jsonText(d.title)} subtitle={jsonText(d.subtitle)} />
+            <StaggerGrid className="grid gap-5 md:grid-cols-3">
               {dataItems(d).map((p, i) => {
                 const Icon = ICONS[String(p.icon ?? "")] ?? GraduationCap;
                 return (
                   <RevealCard
                     key={i}
-                    className="lift flex flex-col rounded-2xl border border-brand-400/40 bg-brand-600 p-7 shadow-panel"
+                    className="lift relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-brand-600 p-8 shadow-panel"
                   >
-                    <div className="mb-5 grid h-12 w-12 place-items-center rounded-xl bg-brand-400">
+                    <div
+                      aria-hidden="true"
+                      className="grid-fade-dark pointer-events-none absolute inset-0"
+                    />
+                    <div className="relative mb-8 grid h-12 w-12 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/20">
                       <Icon className="h-6 w-6 text-white" strokeWidth={1.75} />
                     </div>
-                    <div className="text-lg font-bold text-white">{jsonText(p.title)}</div>
+                    <div className="relative text-xl font-semibold tracking-tight text-white">
+                      {jsonText(p.title)}
+                    </div>
                     {jsonText(p.duration) && (
-                      <div className="mt-1 text-xs font-bold uppercase tracking-wider text-brand-200">
+                      <div className="relative mt-1 text-xs font-semibold uppercase tracking-wider text-brand-200">
                         {jsonText(p.duration)}
                       </div>
                     )}
                     {jsonText(p.description) && (
-                      <p className="mt-3 text-sm leading-relaxed text-brand-100">
+                      <p className="relative mt-3 text-sm leading-relaxed text-brand-100">
                         {jsonText(p.description)}
                       </p>
                     )}
                     {jsonText(p.button_label) && (
                       <CtaLink
                         href={jsonText(p.button_href, "/signup")}
-                        className="tap mt-6 inline-flex w-fit items-center gap-2 rounded-lg border border-brand-200/60 px-4 py-2 text-xs font-bold text-white hover:bg-brand-800"
+                        className="tap relative mt-6 inline-flex w-fit items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-semibold text-brand-600 hover:bg-brand-50"
                       >
                         {jsonText(p.button_label)} <ArrowRight className="h-3.5 w-3.5" />
                       </CtaLink>
@@ -609,15 +669,13 @@ function SectionRenderer({ section }: { section: Section }) {
            before the footer, so it lands rather than passes. */
         <Reveal as="section" from="scale-hold" id="free" className="py-16 md:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <RevealCard className="relative overflow-hidden rounded-3xl border border-brand-400/50 bg-grad-brand p-8 text-center shadow-brand md:p-14">
-              {jsonText(d.eyebrow) && (
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-white ring-1 ring-white/25">
-                  <Sparkles className="h-3.5 w-3.5" strokeWidth={2.5} />
-                  {jsonText(d.eyebrow)}
-                </div>
-              )}
+            <RevealCard className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-grad-brand p-8 text-center shadow-brand md:p-16">
+              <div
+                aria-hidden="true"
+                className="grid-fade-dark pointer-events-none absolute inset-0"
+              />
               {jsonText(d.title) && (
-                <h2 className="mx-auto mt-5 max-w-2xl text-3xl font-black tracking-tight text-white md:text-5xl">
+                <h2 className="relative mx-auto max-w-2xl text-4xl font-semibold tracking-[-0.04em] text-white md:text-6xl">
                   {jsonText(d.title)}
                 </h2>
               )}
@@ -760,5 +818,9 @@ function StaggerGrid({ className, children }: { className: string; children: Rea
  */
 function HeroProgress({ children }: { children: React.ReactNode }) {
   const ref = useScrollProgress<HTMLElement>();
-  return <section ref={ref}>{children}</section>;
+  return (
+    <section ref={ref} className="relative">
+      {children}
+    </section>
+  );
 }

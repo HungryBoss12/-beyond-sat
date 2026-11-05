@@ -509,17 +509,31 @@ function UsersIcon({ hovered }: { hovered: boolean }) {
 }
 
 function PaymentsIcon({ hovered }: { hovered: boolean }) {
+  const reduce = useReducedMotion();
   return (
-    <motion.svg
-      {...svgProps}
-      animate={{ y: hovered ? -1 : 0 }}
-      transition={SNAP}
-      style={{ willChange: "transform" }}
-    >
-      <path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 0 4H5a2 2 0 0 0 0 4h12a2 2 0 0 0 2-2v-2" />
-      <path d="M3 5v14a2 2 0 0 0 2 2h14" />
-      <circle cx="16.5" cy="11.5" r="1" />
-    </motion.svg>
+    <svg {...svgProps}>
+      <motion.g
+        animate={
+          reduce
+            ? { rotate: 0, scale: 1 }
+            : hovered
+              ? { rotate: 360, scale: 1.08 }
+              : { rotate: [0, 10, 0, -10, 0], scale: 1 }
+        }
+        transition={
+          reduce
+            ? SNAP
+            : hovered
+              ? { duration: 0.55, ease: EASE }
+              : { duration: 3.2, repeat: Infinity, ease: "easeInOut" }
+        }
+        style={{ transformOrigin: "12px 12px", willChange: "transform" }}
+      >
+        <circle cx="12" cy="12" r="8" />
+        <circle cx="12" cy="12" r="5" />
+        <path d="M12 8.4v7.2" />
+      </motion.g>
+    </svg>
   );
 }
 

@@ -30,6 +30,14 @@ pnpm-lock.yaml
 scripts/output/
 .lovable/
 
+# Local agent skill installs. The same pack is copied under three folders
+# and was showing up as tens of thousands of untracked lines.
+.agents/
+.claude/
+agent/
+skills-lock.json
+.cursor/skills/**/artifacts/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -97,4 +105,14 @@ scripts/apply-sqb-schema.mjs
 scripts/smoke-sqb-katex.mjs
 scripts/verify-sqb-cols.mjs
 scripts/tmp-*.txt
+scripts/_audit.sql
+scripts/_envcheck.mjs
+scripts/_pentest.mjs
+scripts/_pentest2.mjs
+scripts/_pentest3.mjs
+scripts/_sec-report.mjs
+scripts/delete-inactive-accounts.mjs
+scripts/roster-sections.py
+tsc-out.txt
+BeyondSAT_Classes_*.md
 

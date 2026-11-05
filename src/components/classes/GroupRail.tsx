@@ -41,7 +41,9 @@ import { DateTimeField } from "@/components/ui/date-time-field";
 import { tashkentToday } from "@/lib/billing/dates";
 import type { ClassRow, MemberStatus } from "@/lib/classes/types";
 import {
+  activateGroupMember,
   addGroupMember,
+  freezeGroupMember,
   listGroups,
   removeGroupMember,
   setGroupMemberStatus,
@@ -63,6 +65,10 @@ export type RailPerson = {
   badgeScore?: number | null;
   badgeLabel?: string | null;
   badgeColor?: string | null;
+  /** First day the fee stops, when a freeze is set or scheduled. */
+  frozenOn?: string | null;
+  /** Day the fee starts again. Empty means the freeze lasts until Activate. */
+  resumesOn?: string | null;
 };
 
 export type RailFilter = "" | "active" | "trial" | "frozen" | "debt";
@@ -125,6 +131,7 @@ export function GroupRail({
 }) {
   const [moving, setMoving] = useState<RailPerson | null>(null);
   const [removing, setRemoving] = useState<RailPerson | null>(null);
+  const [freezing, setFreezing] = useState<RailPerson | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
   const [leftOn, setLeftOn] = useState(tashkentToday);
   const [formerOpen, setFormerOpen] = useState(false);
@@ -148,11 +155,30 @@ export function GroupRail({
 
   async function changeStatus(person: RailPerson, status: Exclude<MemberStatus, "left">) {
     try {
-      await setGroupMemberStatus(group.id, person.userId, status);
-      toast.success(`${person.name} · ${STATUS_META[status].label}`);
+      if (status === "frozen") {
+        setFreezing(person);
+        return;
+      }
+      if (person.status === "frozen") {
+        await activateGroupMember(group.id, person.userId, status === "trial" ? "trial" : undefined);
+        toast.success(status === "trial" ? `${person.name} · Trial` : `${person.name} is back`);
+      } else {
+        await setGroupMemberStatus(group.id, person.userId, status);
+        toast.success(`${person.name} · ${STATUS_META[status].label}`);
+      }
       await onChanged();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not change the status");
+    }
+  }
+
+  async function activateNow(person: RailPerson) {
+    try {
+      await activateGroupMember(group.id, person.userId);
+      toast.success(person.status === "frozen" ? `${person.name} is back` : `${person.name} · freeze cancelled`);
+      await onChanged();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not activate the student");
     }
   }
 
@@ -243,6 +269,8 @@ export function GroupRail({
             const StatusIcon = STATUS_META[person.status].icon;
             const subtitle = [
               STATUS_META[person.status].label,
+              person.frozenOn ? `from ${shortDate(person.frozenOn)}` : null,
+              person.resumesOn ? `back ${shortDate(person.resumesOn)}` : null,
               person.alsoIn.length > 0 ? `Also in ${person.alsoIn.join(", ")}` : null,
               isAdmin && person.balanceKind && person.balanceKind !== "settled"
                 ? person.balanceKind === "debt"
@@ -303,6 +331,16 @@ export function GroupRail({
                         {STATUS_META[status].label}
                       </DropdownMenuItem>
                     ))}
+                    {person.status === "frozen" && (
+                      <DropdownMenuItem onSelect={() => void activateNow(person)}>
+                        Activate now
+                      </DropdownMenuItem>
+                    )}
+                    {person.status !== "frozen" && person.frozenOn && (
+                      <DropdownMenuItem onSelect={() => void activateNow(person)}>
+                        Cancel freeze
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     {isAdmin && (
                       <DropdownMenuItem onSelect={() => onActivation(person.userId)}>
@@ -446,7 +484,107 @@ export function GroupRail({
         onClose={() => setMoving(null)}
         onMoved={onChanged}
       />
+      <FreezeDialog
+        person={freezing}
+        groupId={group.id}
+        onClose={() => setFreezing(null)}
+        onSaved={onChanged}
+      />
     </aside>
+  );
+}
+
+function FreezeDialog({
+  person,
+  groupId,
+  onClose,
+  onSaved,
+}: {
+  person: RailPerson | null;
+  groupId: string;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [started, setStarted] = useState(tashkentToday);
+  const [resumes, setResumes] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!person) return;
+    setStarted(person.frozenOn || tashkentToday());
+    setResumes(person.resumesOn || "");
+  }, [person]);
+
+  async function save() {
+    if (!person || !started) return;
+    if (resumes && resumes <= started) {
+      toast.error("Activation date must be after the freeze start");
+      return;
+    }
+    setBusy(true);
+    try {
+      await freezeGroupMember(groupId, person.userId, started, resumes || null);
+      toast.success(
+        resumes
+          ? `${person.name} is frozen from ${shortDate(started)} until ${shortDate(resumes)}`
+          : `${person.name} is frozen from ${shortDate(started)}`,
+      );
+      onClose();
+      await onSaved();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not freeze the student");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!person} onOpenChange={(next) => !next && !busy && onClose()}>
+      <DialogContent className="border-brand-400/40 bg-brand-800 text-white sm:rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-white">Freeze {person?.name}</DialogTitle>
+          <DialogDescription className="text-white">
+            The fee stops on the start date. Leave the activation date empty to keep the freeze until
+            someone activates them by hand.
+          </DialogDescription>
+        </DialogHeader>
+        <div>
+          <div className="text-xs font-bold text-white">Freeze started</div>
+          <div className="mt-1">
+            <DateTimeField dateOnly value={started} onChange={setStarted} />
+          </div>
+        </div>
+        <div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-bold text-white">Activates on</div>
+            <button
+              type="button"
+              className="text-xs font-bold text-brand-100 underline-offset-2 hover:underline"
+              onClick={() => setResumes("")}
+            >
+              Skip
+            </button>
+          </div>
+          <div className="mt-1">
+            <DateTimeField dateOnly value={resumes} onChange={setResumes} />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            disabled={busy || !started}
+            className="rounded-full bg-brand-400 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            onClick={() => void save()}
+          >
+            <Snowflake className="mr-1 inline h-4 w-4" aria-hidden="true" />
+            Freeze payments
+          </button>
+          <button type="button" className="tap px-4 py-2 text-sm font-bold" disabled={busy} onClick={onClose}>
+            <X className="mr-1 inline h-4 w-4" aria-hidden="true" /> Cancel
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

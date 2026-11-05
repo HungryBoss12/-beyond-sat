@@ -57,8 +57,7 @@ export function hydrateServerEnv(env: unknown): void {
     "TELEGRAM_WEBHOOK_SECRET",
   ] as const;
   for (const key of keys) {
-    const fromWorker =
-      env && typeof env === "object" ? (env as WorkerEnv)[key] : undefined;
+    const fromWorker = env && typeof env === "object" ? (env as WorkerEnv)[key] : undefined;
     if (typeof fromWorker === "string" && fromWorker.trim()) {
       process.env[key] = fromWorker.trim();
       continue;
@@ -113,11 +112,22 @@ export async function verifySupabaseUser(
  * real user; without one the call runs as `anon`, which is what the public
  * maintenance check needs.
  */
+/** Undici dumps a multi-line stack for a connect timeout. Callers only need the fact. */
+function isConnectTimeout(error: unknown): boolean {
+  if (error instanceof Error && error.name === "TimeoutError") return true;
+  const cause =
+    error instanceof Error && error.cause && typeof error.cause === "object" ? error.cause : null;
+  return (
+    !!cause && "code" in cause && (cause as { code?: unknown }).code === "UND_ERR_CONNECT_TIMEOUT"
+  );
+}
+
 export async function callRpc<T>(
   config: SupabaseConfig,
   fn: string,
   token?: string | null,
   body: unknown = {},
+  timeoutMs = 10_000,
 ): Promise<T | null> {
   try {
     const response = await fetch(`${config.url}/rest/v1/rpc/${fn}`, {
@@ -128,6 +138,7 @@ export async function callRpc<T>(
         "content-type": "application/json",
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) {
       console.error(`[rpc] ${fn} returned ${response.status}`);
@@ -135,7 +146,11 @@ export async function callRpc<T>(
     }
     return (await response.json()) as T;
   } catch (error) {
-    console.error(`[rpc] ${fn} failed`, error);
+    if (isConnectTimeout(error)) {
+      console.error(`[rpc] ${fn} failed: connection timed out`);
+    } else {
+      console.error(`[rpc] ${fn} failed`, error);
+    }
     return null;
   }
 }

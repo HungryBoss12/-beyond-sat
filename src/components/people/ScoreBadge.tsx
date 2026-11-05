@@ -1,6 +1,6 @@
 import { badgeFill } from "@/lib/people/badge";
 
-/** The pill next to a name. A label replaces the score. Nothing is drawn without a score. */
+/** The pill next to a name. Text replaces the score. A text badge needs no score. */
 export function ScoreBadge({
   score,
   label,
@@ -10,8 +10,8 @@ export function ScoreBadge({
   label?: string | null;
   color?: string | null;
 }) {
-  if (score == null) return null;
-  const text = label?.trim() ? label.trim() : String(score);
+  const text = label?.trim() ? label.trim() : score != null ? String(score) : "";
+  if (!text) return null;
   const paint = badgeFill(score, color);
   return (
     <span

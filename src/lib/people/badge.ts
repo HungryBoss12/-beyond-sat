@@ -25,12 +25,18 @@ export function badgePaint(score: number): BadgePaint {
   return { color: `hsl(${hue} 78% 56%)`, ink: "#fff", tier: "spectrum" };
 }
 
-export function badgeFill(score: number, color: string | null | undefined): BadgePaint {
+export function badgeFill(
+  score: number | null | undefined,
+  color: string | null | undefined,
+): BadgePaint {
   const choice = BADGE_COLORS.find((item) => item.id === color);
-  if (!choice) return badgePaint(score);
-  return {
-    color: choice.color,
-    ink: choice.ink,
-    tier: choice.id === "gold" ? "gold" : choice.id === "red" ? "perfect" : "spectrum",
-  };
+  if (choice) {
+    return {
+      color: choice.color,
+      ink: choice.ink,
+      tier: choice.id === "gold" ? "gold" : choice.id === "red" ? "perfect" : "spectrum",
+    };
+  }
+  if (score == null) return { color: "#7c3aed", ink: "#fff", tier: "spectrum" };
+  return badgePaint(score);
 }

@@ -333,6 +333,8 @@ function Header({
   const [badgeWords, setBadgeWords] = useState(profile.badge_label ?? "");
   const [badgeColor, setBadgeColor] = useState<string | null>(profile.badge_color ?? null);
   const [badgeBusy, setBadgeBusy] = useState(false);
+  const badgePreviewScore =
+    Number(badgeText) >= 400 && Number(badgeText) <= 1600 ? Number(badgeText) : null;
 
   function openBadge() {
     setBadgeText(profile.badge_score == null ? "" : String(profile.badge_score));
@@ -344,25 +346,27 @@ function Header({
   async function saveBadge() {
     const trimmed = badgeText.trim();
     const score = trimmed === "" ? null : Number(trimmed);
+    const label = badgeWords.trim();
     if (score != null && (!Number.isInteger(score) || score < 400 || score > 1600)) {
       toast.error("Enter a score from 400 to 1600, or leave it empty.");
       return;
     }
     const userId = profile.id;
     if (!userId) return;
+    const removing = score == null && label === "";
     setBadgeBusy(true);
     const { error } = await supabase.rpc("admin_set_badge_score", {
       p_user_id: userId,
       p_score: score,
-      p_label: score == null ? null : badgeWords.trim() || null,
-      p_color: score == null ? null : badgeColor,
+      p_label: label || null,
+      p_color: removing ? null : badgeColor,
     });
     setBadgeBusy(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success(score == null ? "Badge removed" : "Badge saved");
+    toast.success(removing ? "Badge removed" : "Badge saved");
     setBadgeOpen(false);
     onBadgeSaved();
   }
@@ -446,12 +450,12 @@ function Header({
           <DialogHeader>
             <DialogTitle className="text-white">Badge</DialogTitle>
             <DialogDescription className="text-brand-100">
-              SAT total from 400 to 1600. Leave the score empty to remove the badge. Text replaces the
-              score on the pill. Leave the text empty to show the score.
+              A score from 400 to 1600, or short text with no score. Text replaces the number on the
+              pill. Leave both empty to remove the badge.
             </DialogDescription>
           </DialogHeader>
-          {Number(badgeText) >= 400 && Number(badgeText) <= 1600 ? (
-            <ScoreBadge score={Number(badgeText)} label={badgeWords} color={badgeColor} />
+          {badgePreviewScore != null || badgeWords.trim() ? (
+            <ScoreBadge score={badgePreviewScore} label={badgeWords} color={badgeColor} />
           ) : null}
           <label className="block">
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-brand-100">

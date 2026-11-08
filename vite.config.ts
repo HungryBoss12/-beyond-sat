@@ -5,6 +5,7 @@ import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 import { nitro } from "nitro/vite";
+import { DEV_SERVER_FS_DENY, DEV_SERVER_HOST } from "./src/lib/dev-server";
 
 export default defineConfig(({ mode, command }) => {
   const envDefine: Record<string, string> = {};
@@ -69,8 +70,9 @@ export default defineConfig(({ mode, command }) => {
       ignoreOutdatedRequests: true,
     },
     server: {
-      host: "::",
+      host: DEV_SERVER_HOST,
       port: 8080,
+      fs: { deny: DEV_SERVER_FS_DENY },
       // Windows throws EBUSY if a watched file is locked. Agent skill files
       // are not app source, and a lock there was killing `npm run dev`.
       watch: {

@@ -240,9 +240,8 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
     return json({ error: "Request body must be JSON" }, 400);
   }
 
-  const normalized = normalizeMessages(payload.messages, {
-    storageHost: storageHostFromUrl(config.url),
-  });
+  const storageHost = storageHostFromUrl(config.url);
+  const normalized = normalizeMessages(payload.messages, { storageHost });
   if ("error" in normalized) {
     return json({ error: normalized.error }, 400);
   }
@@ -274,6 +273,7 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
         messages: safe,
         stream,
         surface,
+        storageHost,
       });
     } catch (error) {
       if (error instanceof GeminiError) return geminiClientError(error);
@@ -290,7 +290,12 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
       return json({ error: "Beyond AI isn't available right now." }, 503);
     }
     try {
-      messages = await replaceImagesWithDescriptions(messages, geminiKey, geminiVisionModel);
+      messages = await replaceImagesWithDescriptions(
+        messages,
+        geminiKey,
+        geminiVisionModel,
+        storageHost,
+      );
     } catch (error) {
       if (error instanceof GeminiError) return geminiClientError(error);
       console.error("[ai] image recognition unexpected failure", error);

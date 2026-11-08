@@ -2,7 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { jsonResponse } from "@/lib/vocab/rest";
 import { readSupabaseConfig } from "@/lib/server-env";
 import { normalizeUsername } from "@/lib/classes/types";
-import { requestIp, takeRateToken } from "@/lib/shared-rate-limit";
+import { requestIp, sharedRateLimit } from "@/lib/shared-rate-limit";
+import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
 
 /** Constant 300ms floor so a failed lookup and a real bcrypt verify take the
     same wall-clock time — removes the timing side channel for username
@@ -42,12 +43,9 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
   const config = readSupabaseConfig(env);
   if (!config) return jsonResponse({ error: "Server is not configured" }, 500);
 
-  let body: { username?: unknown; password?: unknown };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400);
-  }
+  const read = await readJsonLimited<{ username?: unknown; password?: unknown }>(request);
+  if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+  const body = read.value ?? {};
 
   const username = normalizeUsername(typeof body.username === "string" ? body.username : "");
   const password = typeof body.password === "string" ? body.password : "";
@@ -63,15 +61,15 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
   const [accountLimit, ipLimit] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabaseAdmin as any).rpc("bs_take_login_attempt", { p_key: `${ip}|${username}` }),
-    takeRateToken(env, `login-ip:${ip}`, 60, 6),
+    sharedRateLimit(env, `login-ip:${ip}`, 60, 6),
   ]);
   const limit = accountLimit.data as { ok?: boolean; retry_after?: number } | null;
   if (accountLimit.error || !limit) {
     console.error("[username-login] rate limit failed", accountLimit.error?.message);
     return jsonResponse({ error: "Could not sign in. Try again." }, 503);
   }
-  if (!limit.ok || (ipLimit && !ipLimit.ok)) {
-    const retry = !limit.ok ? (limit.retry_after ?? 180) : ipLimit?.retryAfter || 60;
+  if (!limit.ok || !ipLimit.ok) {
+    const retry = !limit.ok ? (limit.retry_after ?? 180) : ipLimit.retryAfter || 60;
     return jsonResponse(
       { error: "Too many sign-in attempts. Wait a few minutes and try again." },
       { status: 429, headers: { "retry-after": String(retry) } },

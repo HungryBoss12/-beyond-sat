@@ -1,6 +1,8 @@
 import { jsonResponse, requireAdmin } from "@/lib/vocab/rest";
 import { hydrateServerEnv, readEnv } from "@/lib/server-env";
+import { publicError } from "@/lib/http/public-error";
 
+const FAILED = "Could not reset the password.";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function serviceAuth(): { url: string; key: string } | null {
@@ -71,7 +73,9 @@ export async function handleResetStudentPassword(request: Request, env: unknown)
     .select("role")
     .eq("user_id", userId)
     .in("role", ["admin"]);
-  if (roleErr) return jsonResponse({ error: roleErr.message }, 500);
+  if (roleErr) {
+    return jsonResponse({ error: publicError("reset-password", roleErr.message, FAILED) }, 500);
+  }
   if ((roles ?? []).length > 0) {
     return jsonResponse({ error: "Admin passwords are changed from that person's own profile." }, 400);
   }
@@ -81,17 +85,23 @@ export async function handleResetStudentPassword(request: Request, env: unknown)
     .select("id")
     .eq("id", userId)
     .maybeSingle();
-  if (profErr) return jsonResponse({ error: profErr.message }, 500);
+  if (profErr) {
+    return jsonResponse({ error: publicError("reset-password", profErr.message, FAILED) }, 500);
+  }
   if (!profile) return jsonResponse({ error: "Student not found." }, 404);
 
   const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
-  if (updErr) return jsonResponse({ error: updErr.message }, 400);
+  if (updErr) {
+    return jsonResponse({ error: publicError("reset-password", updErr.message, FAILED) }, 400);
+  }
 
   const { error: flagErr } = await db
     .from("profiles")
     .update({ must_change_credentials: true })
     .eq("id", userId);
-  if (flagErr) return jsonResponse({ error: flagErr.message }, 500);
+  if (flagErr) {
+    return jsonResponse({ error: publicError("reset-password", flagErr.message, FAILED) }, 500);
+  }
 
   await signOutEverywhere(userId);
   return jsonResponse({ ok: true });

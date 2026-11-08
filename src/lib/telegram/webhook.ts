@@ -16,6 +16,8 @@ import {
   unbanConfirmKeyboard,
 } from "./admin-bot";
 import { hydrateServerEnv, readTelegramToken, readWebhookSecret } from "./env";
+import { linkAttemptAllowed } from "./link-throttle";
+import { readJsonLimited } from "@/lib/http/read-json";
 import {
   consumeLinkCode,
   fetchUserDetail,
@@ -42,12 +44,9 @@ export async function handleTelegramWebhook(request: Request, env: unknown): Pro
     return new Response("Server misconfigured", { status: 500 });
   }
 
-  let update: TelegramUpdate;
-  try {
-    update = (await request.json()) as TelegramUpdate;
-  } catch {
-    return new Response("Bad request", { status: 400 });
-  }
+  const read = await readJsonLimited<TelegramUpdate>(request, 65_536);
+  if (!read.ok || !read.value) return new Response("Bad request", { status: read.ok ? 400 : read.status });
+  const update = read.value;
 
   hydrateServerEnv(env);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -67,7 +66,7 @@ export async function handleTelegramWebhook(request: Request, env: unknown): Pro
   if (!text) return new Response("OK");
 
   const cmd = parseCommand(text);
-  await dispatchCommand(cmd, token, chatId, supabaseAdmin);
+  await dispatchCommand(cmd, token, chatId, supabaseAdmin, env);
   return new Response("OK");
 }
 
@@ -119,12 +118,17 @@ async function dispatchCommand(
   token: string,
   chatId: number,
   supabase: Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"],
+  env: unknown,
 ) {
   const linked = !!(await resolveAdminByChat(supabase, chatId));
 
   if (cmd.kind === "link") {
     if (!cmd.code) {
-      await sendTelegramMessage(token, chatId, "Usage: /link AB12CD");
+      await sendTelegramMessage(token, chatId, "Usage: /link CODE");
+      return;
+    }
+    if (!(await linkAttemptAllowed(env, chatId))) {
+      await sendTelegramMessage(token, chatId, "Too many attempts. Try again in a few minutes.");
       return;
     }
     const result = await consumeLinkCode(supabase, cmd.code, chatId);

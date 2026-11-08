@@ -2,6 +2,7 @@ import { jsonResponse, requireUser } from "@/lib/vocab/rest";
 import { isValidUsername, normalizeUsername } from "@/lib/classes/types";
 import { isSyntheticAccountEmail } from "./login-email";
 import { firstLoginAuthUpdate, firstLoginErrorMessage } from "./first-login-update";
+import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
 
 export async function handleCompleteFirstLogin(request: Request, env: unknown): Promise<Response> {
   if (request.method !== "POST") {
@@ -11,12 +12,11 @@ export async function handleCompleteFirstLogin(request: Request, env: unknown): 
   const auth = await requireUser(request, env);
   if (!auth.ok) return auth.response;
 
-  let body: { password?: unknown; username?: unknown; email?: unknown };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400);
-  }
+  const read = await readJsonLimited<{ password?: unknown; username?: unknown; email?: unknown }>(
+    request,
+  );
+  if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+  const body = read.value ?? {};
 
   const password = typeof body.password === "string" ? body.password : "";
   if (password.length < 8) {

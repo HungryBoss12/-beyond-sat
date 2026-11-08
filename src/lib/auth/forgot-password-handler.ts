@@ -4,6 +4,7 @@ import { readEnv, readSupabaseConfig } from "@/lib/server-env";
 import { normalizeUsername } from "@/lib/classes/types";
 import { isSyntheticAccountEmail } from "@/lib/auth/login-email";
 import { requestIp } from "@/lib/shared-rate-limit";
+import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
 
 const RESET_ORIGIN = "https://beyondsat.uz";
 
@@ -27,12 +28,9 @@ export async function handleForgotPassword(request: Request, env: unknown): Prom
   const config = readSupabaseConfig(env);
   if (!config) return jsonResponse({ error: "Server is not configured" }, 500);
 
-  let body: { identifier?: unknown };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400);
-  }
+  const read = await readJsonLimited<{ identifier?: unknown }>(request);
+  if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+  const body = read.value ?? {};
 
   const identifier = typeof body.identifier === "string" ? body.identifier.trim() : "";
   if (!identifier) return jsonResponse({ error: "Enter your username or email." }, 400);

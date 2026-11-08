@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
 import { rememberCurrentSession } from "@/lib/auth/account-switcher";
 import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
+import { friendlyAuthError } from "@/lib/auth/callback-error";
 
 function safeNext(raw: string | null): "/dashboard" | "/profile" {
   if (raw === "/profile") return "/profile";
@@ -26,18 +27,6 @@ export const Route = createFileRoute("/auth/callback")({
 function callbackError(url: URL): string | null {
   const desc = url.searchParams.get("error_description") ?? url.searchParams.get("error");
   return friendlyAuthError(desc?.replace(/\+/g, " ").trim() || null);
-}
-
-function friendlyAuthError(message: string | null): string | null {
-  if (!message) return null;
-  const lower = message.toLowerCase();
-  if (
-    lower.includes("registration is closed") ||
-    lower.includes("database error saving new user")
-  ) {
-    return "Registration is closed. Sign in with an account you already have, or ask your teacher for one.";
-  }
-  return message;
 }
 
 async function establishSession(): Promise<void> {

@@ -71,8 +71,8 @@ export async function handleUinfoFlush(request: Request, env: unknown): Promise<
   try {
     const body = (await request.json()) as { userId?: string };
     if (body.userId && body.userId !== user.id) {
-      const staff = await callRpc<boolean>(config, "bs_is_staff", token);
-      if (!staff) return json({ error: "Forbidden" }, 403);
+      const admin = await callRpc<boolean>(config, "bs_is_admin", token);
+      if (!admin) return json({ error: "Forbidden" }, 403);
       targetId = body.userId;
     }
   } catch {

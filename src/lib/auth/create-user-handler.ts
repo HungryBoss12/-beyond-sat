@@ -63,8 +63,12 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
 }
 
 async function createAdminUser(request: Request, env: unknown): Promise<Response> {
-
   hydrateServerEnv(env);
+
+  // Matches /admin/users UI: provisioning is admin-only. Editors must not mint accounts.
+  const auth = await requireAdmin(request, env);
+  if (!auth.ok) return auth.response;
+
   try {
     const { resetSupabaseAdmin, ensureSupabaseAdmin } = await import(
       "@/integrations/supabase/client.server"
@@ -82,10 +86,6 @@ async function createAdminUser(request: Request, env: unknown): Promise<Response
       500,
     );
   }
-
-  // Matches /admin/users UI: provisioning is admin-only. Editors must not mint accounts.
-  const auth = await requireAdmin(request, env);
-  if (!auth.ok) return auth.response;
 
   let body: {
     name?: unknown;

@@ -1,6 +1,8 @@
 import { jsonResponse, requireAdmin } from "@/lib/vocab/rest";
 import { hydrateServerEnv } from "@/lib/server-env";
-import { requestIp, takeRateToken } from "@/lib/shared-rate-limit";
+import { requestIp, sharedRateLimit } from "@/lib/shared-rate-limit";
+import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
+import { publicError } from "@/lib/http/public-error";
 import { accountEmailFor, slugUsernameFromName } from "./login-email";
 import { isValidUsername, normalizeUsername } from "@/lib/classes/types";
 
@@ -132,18 +134,18 @@ function inviteClosed(row: {
   return null;
 }
 
-async function inviteRateLimited(
+export async function inviteRateLimited(
   request: Request,
   env: unknown,
   kind: "preview" | "claim",
 ): Promise<Response | null> {
-  const limit = await takeRateToken(
+  const limit = await sharedRateLimit(
     env,
     `invite-${kind}:${requestIp(request)}`,
     kind === "preview" ? 40 : 20,
     kind === "preview" ? 10 : 5,
   );
-  if (!limit || limit.ok) return null;
+  if (limit.ok) return null;
   return jsonResponse(
     { error: "Too many tries. Wait a minute and open the link again." },
     { status: 429, headers: { "retry-after": String(limit.retryAfter || 60) } },
@@ -155,12 +157,9 @@ export async function handlePreviewStudentInvite(request: Request, env: unknown)
   hydrateServerEnv(env);
   const limited = await inviteRateLimited(request, env, "preview");
   if (limited) return limited;
-  let body: { token?: unknown };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400);
-  }
+  const read = await readJsonLimited<{ token?: unknown }>(request);
+  if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+  const body = read.value ?? {};
   const token = typeof body.token === "string" ? body.token.trim() : "";
   if (token.length < 20) return jsonResponse({ error: "This link is not valid." }, 404);
   try {
@@ -187,12 +186,14 @@ export async function handleClaimStudentInvite(request: Request, env: unknown): 
   hydrateServerEnv(env);
   const limited = await inviteRateLimited(request, env, "claim");
   if (limited) return limited;
-  let body: { token?: unknown; name?: unknown; username?: unknown; password?: unknown };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400);
-  }
+  const read = await readJsonLimited<{
+    token?: unknown;
+    name?: unknown;
+    username?: unknown;
+    password?: unknown;
+  }>(request);
+  if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+  const body = read.value ?? {};
   const token = typeof body.token === "string" ? body.token.trim() : "";
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
@@ -233,7 +234,12 @@ export async function handleClaimStudentInvite(request: Request, env: unknown): 
       .eq("id", row.id)
       .is("used_at", null)
       .select("id");
-    if (claimErr) return jsonResponse({ error: claimErr.message }, 500);
+    if (claimErr) {
+      return jsonResponse(
+        { error: publicError("student-invite/claim", claimErr.message, "Could not save your account.") },
+        500,
+      );
+    }
     if (!claimed?.length) {
       return jsonResponse({ error: "This link has already been used." }, 410);
     }
@@ -249,7 +255,10 @@ export async function handleClaimStudentInvite(request: Request, env: unknown): 
     });
     if (updErr) {
       await release();
-      return jsonResponse({ error: updErr.message }, 400);
+      return jsonResponse(
+        { error: publicError("student-invite/claim", updErr.message, "Could not save your account.") },
+        400,
+      );
     }
 
     const { first_name, last_name, full_name } = splitName(name);
@@ -267,7 +276,10 @@ export async function handleClaimStudentInvite(request: Request, env: unknown): 
       .eq("id", userId);
     if (profErr) {
       await release();
-      return jsonResponse({ error: profErr.message }, 500);
+      return jsonResponse(
+        { error: publicError("student-invite/claim", profErr.message, "Could not save your account.") },
+        500,
+      );
     }
 
     const { error: goalsErr } = await db
@@ -276,7 +288,10 @@ export async function handleClaimStudentInvite(request: Request, env: unknown): 
       .eq("user_id", userId);
     if (goalsErr) {
       await release();
-      return jsonResponse({ error: goalsErr.message }, 500);
+      return jsonResponse(
+        { error: publicError("student-invite/claim", goalsErr.message, "Could not save your account.") },
+        500,
+      );
     }
 
     const { error: studentErr } = await db
@@ -285,7 +300,10 @@ export async function handleClaimStudentInvite(request: Request, env: unknown): 
       .eq("id", row.student_id);
     if (studentErr) {
       await release();
-      return jsonResponse({ error: studentErr.message }, 500);
+      return jsonResponse(
+        { error: publicError("student-invite/claim", studentErr.message, "Could not save your account.") },
+        500,
+      );
     }
 
     return jsonResponse({ ok: true, username });
@@ -370,7 +388,12 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
             .from("student_invites")
             .update({ activates_at: start.toISOString(), expires_at })
             .eq("id", live.id);
-          if (error) return jsonResponse({ error: error.message }, 500);
+          if (error) {
+            return jsonResponse(
+              { error: publicError("student-invite/create", error.message, "Could not update the invite.") },
+              500,
+            );
+          }
         } else {
           const token = await issueInvite(db, student.id, auth.user.id, start.toISOString());
           if (body.returnLink === true) path = `/join/${token}`;
@@ -387,7 +410,12 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
       const { data: student, error } = studentId
         ? await query.eq("id", studentId).maybeSingle()
         : await query.eq("user_id", userId).maybeSingle();
-      if (error) return jsonResponse({ error: error.message }, 500);
+      if (error) {
+        return jsonResponse(
+          { error: publicError("student-invite/create", error.message, "Could not load the student.") },
+          500,
+        );
+      }
       if (!student) return jsonResponse({ error: "No student record for this account." }, 404);
       if (student.user_id && (await isStaffAccount(db, student.user_id))) {
         return jsonResponse({ error: "No student record for this account." }, 404);
@@ -425,7 +453,10 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
     const email = accountEmailFor(username);
     const { error: passErr } = await db.from("staff_account_passes").upsert({ email });
     if (passErr) {
-      return jsonResponse({ error: `Could not prepare the account: ${passErr.message}` }, 500);
+      return jsonResponse(
+        { error: publicError("student-invite/create", passErr.message, "Could not prepare the account.") },
+        500,
+      );
     }
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -436,13 +467,13 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
     });
     if (createErr || !created.user) {
       await db.from("staff_account_passes").delete().eq("email", email);
-      const message = createErr?.message?.trim();
       return jsonResponse(
         {
-          error:
-            message && message !== "{}"
-              ? message
-              : "Could not create the account.",
+          error: publicError(
+            "student-invite/create",
+            createErr?.message,
+            "Could not create the account.",
+          ),
         },
         400,
       );
@@ -469,7 +500,10 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
       .eq("id", newUserId);
     if (profErr) {
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
-      return jsonResponse({ error: profErr.message }, 500);
+      return jsonResponse(
+        { error: publicError("student-invite/create", profErr.message, "Could not save the student.") },
+        500,
+      );
     }
 
     const { data: student, error: studentErr } = await db
@@ -479,7 +513,10 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
       .single();
     if (studentErr || !student) {
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
-      return jsonResponse({ error: studentErr?.message ?? "Could not save the student." }, 500);
+      return jsonResponse(
+        { error: publicError("student-invite/create", studentErr?.message, "Could not save the student.") },
+        500,
+      );
     }
 
     if (classId) {
@@ -489,7 +526,10 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
         .insert({ class_id: classId, user_id: newUserId, ...(enrolledOn ? { enrolled_on: enrolledOn } : {}) });
       if (memErr) {
         await supabaseAdmin.auth.admin.deleteUser(newUserId);
-        return jsonResponse({ error: memErr.message }, 500);
+        return jsonResponse(
+          { error: publicError("student-invite/create", memErr.message, "Could not add the student to the class.") },
+          500,
+        );
       }
     }
 
@@ -501,7 +541,9 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
       path: `/join/${token}`,
     });
   } catch (e) {
-    console.error("[student-invite] create", (e as Error).message);
-    return jsonResponse({ error: (e as Error).message || "Could not create the link." }, 500);
+    return jsonResponse(
+      { error: publicError("student-invite/create", (e as Error).message, "Could not create the link.") },
+      500,
+    );
   }
 }

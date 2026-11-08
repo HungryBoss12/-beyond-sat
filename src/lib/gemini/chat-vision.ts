@@ -3,6 +3,7 @@ import { buildSystemPrompt, IMAGE_RECOGNITION_PROMPT } from "@/lib/ai/prompts";
 import { resolveMaxTokens, EARLIER_IMAGE_PLACEHOLDER, type AiMessage, type AiSurface } from "@/lib/ai/router";
 import { GEMINI_CHAT_VISION_MODEL, parseImageDataUrl } from "./config";
 import { GeminiError, mapGeminiSdkError } from "./errors";
+import { isAllowedVisionUrl } from "./vision-url";
 
 const VISION_TEMPERATURE = 0.3;
 const RECOGNITION_MAX_TOKENS = 1200;
@@ -18,7 +19,10 @@ function sseDone(): string {
   return "data: [DONE]\n\n";
 }
 
-async function inlineImageFromUrl(url: string): Promise<{ mimeType: string; data: string }> {
+async function inlineImageFromUrl(
+  url: string,
+  storageHost: string | undefined,
+): Promise<{ mimeType: string; data: string }> {
   if (/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(url)) {
     const { mimeType, buffer } = parseImageDataUrl(url);
     return { mimeType, data: buffer.toString("base64") };
@@ -30,11 +34,7 @@ async function inlineImageFromUrl(url: string): Promise<{ mimeType: string; data
   } catch {
     throw new GeminiError("INVALID_IMAGE", "Could not load the attached image.", 400);
   }
-  if (
-    parsed.protocol !== "https:" ||
-    !parsed.hostname.endsWith(".supabase.co") ||
-    !/^\/storage\/v1\/object\/(?:sign|public|authenticated)\//i.test(parsed.pathname)
-  ) {
+  if (!isAllowedVisionUrl(parsed, storageHost)) {
     throw new GeminiError("INVALID_IMAGE", "Could not load the attached image.", 400);
   }
 
@@ -80,7 +80,10 @@ async function readCappedBody(response: Response, maxBytes: number): Promise<Uin
   return out;
 }
 
-async function toGeminiParts(content: AiMessage["content"]): Promise<GeminiPart[]> {
+async function toGeminiParts(
+  content: AiMessage["content"],
+  storageHost: string | undefined,
+): Promise<GeminiPart[]> {
   if (typeof content === "string") return [{ text: content }];
 
   const parts: GeminiPart[] = [];
@@ -89,17 +92,17 @@ async function toGeminiParts(content: AiMessage["content"]): Promise<GeminiPart[
       parts.push({ text: part.text });
       continue;
     }
-    parts.push({ inlineData: await inlineImageFromUrl(part.image_url.url) });
+    parts.push({ inlineData: await inlineImageFromUrl(part.image_url.url, storageHost) });
   }
   return parts;
 }
 
-async function toGeminiContents(messages: AiMessage[]) {
+async function toGeminiContents(messages: AiMessage[], storageHost: string | undefined) {
   const contents: { role: "user" | "model"; parts: GeminiPart[] }[] = [];
   for (const message of messages) {
     contents.push({
       role: message.role === "assistant" ? "model" : "user",
-      parts: await toGeminiParts(message.content),
+      parts: await toGeminiParts(message.content, storageHost),
     });
   }
   return contents;
@@ -110,11 +113,12 @@ async function describeOneImage(
   model: string,
   imageUrl: string,
   userText: string,
+  storageHost: string | undefined,
 ): Promise<string> {
   const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
   const parts: GeminiPart[] = [{ text: IMAGE_RECOGNITION_PROMPT }];
   if (userText.trim()) parts.push({ text: `Student message: ${userText.trim()}` });
-  parts.push({ inlineData: await inlineImageFromUrl(imageUrl) });
+  parts.push({ inlineData: await inlineImageFromUrl(imageUrl, storageHost) });
 
   try {
     const response = await Promise.race([
@@ -157,6 +161,7 @@ export async function replaceImagesWithDescriptions(
   messages: AiMessage[],
   apiKey: string,
   model: string,
+  storageHost: string | undefined,
 ): Promise<AiMessage[]> {
   const lastIndex = messages.length - 1;
   const enriched: AiMessage[] = [];
@@ -190,7 +195,13 @@ export async function replaceImagesWithDescriptions(
     for (const [imageIndex, part] of imageParts.entries()) {
       if (part.type !== "image_url") continue;
       const label = imageParts.length > 1 ? `Attached image ${imageIndex + 1}` : "Attached image";
-      const description = await describeOneImage(apiKey, model, part.image_url.url, userText);
+      const description = await describeOneImage(
+        apiKey,
+        model,
+        part.image_url.url,
+        userText,
+        storageHost,
+      );
       descriptions.push(`${label}:\n${description}`);
     }
 
@@ -206,6 +217,7 @@ export type GeminiVisionChatOptions = {
   messages: AiMessage[];
   stream: boolean;
   surface: AiSurface;
+  storageHost: string | undefined;
 };
 
 export async function geminiVisionChatResponse(options: GeminiVisionChatOptions): Promise<Response> {
@@ -219,7 +231,7 @@ export async function geminiVisionChatResponse(options: GeminiVisionChatOptions)
   }
 
   const model = options.model.trim() || GEMINI_CHAT_VISION_MODEL;
-  const contents = await toGeminiContents(options.messages);
+  const contents = await toGeminiContents(options.messages, options.storageHost);
   const ai = new GoogleGenAI({ apiKey });
   const config = {
     systemInstruction: buildSystemPrompt("vision"),

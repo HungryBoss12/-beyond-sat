@@ -24,6 +24,11 @@ bun.lockb
 yarn.lock
 pnpm-lock.yaml
 
+# Local environment files. Commit `.env.example`, never a real `.env`.
+.env
+.env.*
+!.env.example
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

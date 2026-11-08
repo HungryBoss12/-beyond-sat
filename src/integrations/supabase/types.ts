@@ -4465,6 +4465,7 @@ export type Database = {
         Args: {
           p_frozen_on: string;
           p_group_id: string;
+          p_reason?: string | null;
           p_resumes_on?: string | null;
           p_user_id: string;
         };

@@ -1,4 +1,5 @@
 import { hydrateServerEnv } from "@/lib/server-env";
+import { rateLimit } from "@/lib/rate-limit";
 
 export type SharedLimitResult = { ok: boolean; retryAfter: number };
 
@@ -50,10 +51,26 @@ export function takeRateToken(
   });
 }
 
+/**
+ * Token bucket shared by every Worker isolate (database-backed). If the
+ * database cannot be reached it falls back to the per-isolate bucket, so an
+ * outage never locks everyone out.
+ */
+export async function sharedRateLimit(
+  env: unknown,
+  key: string,
+  capacity: number,
+  perMinute: number,
+): Promise<SharedLimitResult> {
+  const shared = await takeRateToken(env, key, capacity, perMinute);
+  if (shared) return shared;
+  return rateLimit(key, capacity, perMinute);
+}
+
+/**
+ * The caller's IP as Cloudflare saw it. `x-forwarded-for` is client-controlled
+ * and is deliberately not used: a missing header shares one "unknown" bucket.
+ */
 export function requestIp(request: Request): string {
-  return (
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown"
-  );
+  return request.headers.get("cf-connecting-ip")?.trim() || "unknown";
 }

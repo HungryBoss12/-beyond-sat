@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useRegistrationEnabled } from "@/lib/registration";
+import { BrandMark } from "@/components/BrandMark";
 
 const LINKS = [
   { to: "/", label: "Home" },
@@ -22,18 +23,6 @@ const RESOURCES: { hash: string; label: string; description: string }[] = [
   { hash: "guides", label: "Study guides", description: "What we cover, section by section" },
   { hash: "scores", label: "Score results", description: "Outcomes from real students" },
 ];
-
-/** Geometric mark shown to the left of the wordmark. */
-function LogoMark() {
-  return (
-    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white">
-      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden="true">
-        <path d="M12 3 21 7.5 12 12 3 7.5 12 3Z" fill="#0b0761" />
-        <path d="M3 12.5 12 17l9-4.5V16l-9 4.5L3 16v-3.5Z" fill="#535291" />
-      </svg>
-    </span>
-  );
-}
 
 export function SiteNav() {
   const [open, setOpen] = useState(false);
@@ -57,7 +46,7 @@ export function SiteNav() {
           className={`flex items-center justify-between px-4 transition-all duration-300 sm:px-5 ${scrolled ? "h-14" : "h-16"}`}
         >
           <Link to="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
-            <LogoMark />
+            <BrandMark className="h-8 w-8 rounded-lg" />
             <span className="text-xl font-black tracking-tight text-white">
               Beyond<span className="text-brand-100">SAT</span>
             </span>

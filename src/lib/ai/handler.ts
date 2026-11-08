@@ -24,8 +24,8 @@ import {
 } from "../server-env";
 import { userIsBanned } from "@/lib/vocab/rest";
 import { loadUinfoSummary } from "@/lib/uinfo/summarize";
-import { dailyCap, rateLimit } from "@/lib/rate-limit";
-import { takeAiQuota } from "@/lib/shared-rate-limit";
+import { dailyCap } from "@/lib/rate-limit";
+import { sharedRateLimit, takeAiQuota } from "@/lib/shared-rate-limit";
 import {
   formatYoutubePromptBlock,
   latestUserText,
@@ -216,7 +216,7 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
      in-memory counter only covers a database outage. The cap reads
      `ai_chat_daily_cap` from app_settings when present. Both run after auth but
      before any billable work — a 429 costs nothing. */
-  const perMinute = rateLimit(`ai-chat:${user.id}`, 20, 6);
+  const perMinute = await sharedRateLimit(env, `ai-chat:${user.id}`, 20, 6);
   if (!perMinute.ok) {
     return json(
       { error: "Too many messages too fast. Pause for a moment and try again." },

@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { Check, ChevronLeft, Minus, Pencil, Wallet, X } from "lucide-react";
+import { Check, ChevronLeft, Minus, Pencil, Users, Wallet, X } from "lucide-react";
+import { IconButton } from "@/components/ui/icon-button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Panel, PanelGlow, PanelHead } from "@/components/ui/panel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useClassContext } from "@/components/classes/ClassContext";
@@ -205,54 +207,65 @@ function StudentProfilePage() {
         </div>
         <div className="flex gap-2">
           {isAdmin && (
-            <button
-              type="button"
+            <IconButton
+              icon={Pencil}
+              label="Edit"
+              variant="outline"
               onClick={() => {
                 setEditName(name);
                 setEditNotes(description ?? "");
                 setEditOpen(true);
               }}
-              className="tap inline-flex h-10 items-center gap-1.5 rounded-full border border-brand-200 px-4 text-sm font-bold text-brand-700 hover:bg-brand-25"
-            >
-              <Pencil className="h-4 w-4" aria-hidden="true" />
-              Edit
-            </button>
+            />
           )}
           {isAdmin && (
-            <button
-              type="button"
+            <IconButton
+              icon={Users}
+              label="Groups"
+              variant="outline"
               onClick={() => setGroupsOpen(true)}
-              className="tap inline-flex h-10 items-center gap-1.5 rounded-full border border-brand-200 px-4 text-sm font-bold text-brand-700 hover:bg-brand-25"
-            >
-              Groups
-            </button>
+            />
           )}
           {isAdmin && (
-            <Link
-              to="/admin/payments"
-              className="tap inline-flex h-10 items-center gap-1.5 rounded-full border border-brand-200 px-4 text-sm font-bold text-brand-700 hover:bg-brand-25"
-            >
-              <Wallet className="h-4 w-4" aria-hidden="true" />
-              All balances
-            </Link>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/admin/payments"
+                  aria-label="All balances"
+                  className="tap inline-flex h-10 w-10 items-center justify-center rounded-full border border-brand-200 bg-white text-brand-700 hover:bg-brand-25 focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+                >
+                  <Wallet className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-brand-800 text-white">
+                All balances
+              </TooltipContent>
+            </Tooltip>
           )}
           {firstGroup && (
-            <Link
-              to="/admin/classes/$classId/$subject"
-              params={{ classId: klass.id, subject: subjectToSlug(firstGroup.subject) }}
-              search={{
-                tab: "attendance",
-                month: monthKey(),
-                lesson: "",
-                q: "",
-                status: "",
-                sections: 0,
-              }}
-              className="tap inline-flex h-10 items-center gap-1.5 rounded-full border border-brand-200 px-4 text-sm font-bold text-brand-700 hover:bg-brand-25"
-            >
-              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-              Classroom
-            </Link>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/admin/classes/$classId/$subject"
+                  params={{ classId: klass.id, subject: subjectToSlug(firstGroup.subject) }}
+                  search={{
+                    tab: "attendance",
+                    month: monthKey(),
+                    lesson: "",
+                    q: "",
+                    status: "",
+                    sections: 0,
+                  }}
+                  aria-label="Classroom"
+                  className="tap inline-flex h-10 w-10 items-center justify-center rounded-full border border-brand-200 bg-white text-brand-700 hover:bg-brand-25 focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-brand-800 text-white">
+                Classroom
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>

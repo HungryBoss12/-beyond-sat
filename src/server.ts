@@ -14,6 +14,7 @@ import { handleVocabGenerate } from "./lib/vocab/handlers/generate";
 import { handleVocabQuizSubmit } from "./lib/vocab/handlers/quiz-submit";
 import { handleVocabReview, handleVocabSession } from "./lib/vocab/handlers/session";
 import { handleAdminCreateUser } from "./lib/auth/create-user-handler";
+import { handleDeleteStudent } from "./lib/auth/delete-student-handler";
 import { handleResetStudentPassword } from "./lib/auth/reset-student-password-handler";
 import {
   handleClaimStudentInvite,
@@ -186,6 +187,10 @@ export default {
 
       if (url.pathname === "/api/admin/create-user") {
         return applySecurityHeaders(await handleAdminCreateUser(request, env), env);
+      }
+
+      if (url.pathname === "/api/admin/delete-student") {
+        return applySecurityHeaders(await handleDeleteStudent(request, env), env);
       }
 
       if (url.pathname === "/api/admin/reset-student-password") {

@@ -37,7 +37,7 @@ type SceneProps = {
   animate: boolean;
   highDpr: boolean;
   onContextLost: () => void;
-  /** Drag to spin, with inertia. Off for the hero, where the pointer only leans the emblem. */
+  /** Drag to spin, with inertia. The hero and the smaller emblems turn this on. */
   interactive: boolean;
   /** Which look to show. Changing it makes the emblem kick, morph and recolour. */
   variant: number;
@@ -236,7 +236,9 @@ export function BeyondCore({
 
       {/* The emblem is decorative; this is what a screen reader gets instead. */}
       <p className="sr-only">
-        An animated three-dimensional emblem representing the Beyond AI engine.
+        {interactive
+          ? "An animated three-dimensional emblem. Drag to turn it."
+          : "An animated three-dimensional emblem representing the Beyond AI engine."}
       </p>
     </div>
   );

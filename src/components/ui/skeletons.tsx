@@ -28,12 +28,21 @@ export function HeadSkeleton({ wide = false }: { wide?: boolean }) {
   );
 }
 
-/** Row of compact stat tiles. */
+/** Row of compact stat tiles. Mirrors StatTile: icon, value, label. */
 export function StatRowSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {range(count).map((i) => (
-        <Skeleton key={i} className="h-[74px] rounded-2xl" />
+        <div
+          key={i}
+          className="flex h-[74px] items-center gap-3.5 rounded-2xl border border-brand-400/30 bg-brand-600 px-4 shadow-panel"
+        >
+          <Skeleton className="h-10 w-10 shrink-0 rounded-xl" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-5 w-14 rounded-md" />
+            <Skeleton className="h-3 w-24 rounded-full" />
+          </div>
+        </div>
       ))}
     </div>
   );

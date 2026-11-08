@@ -3,7 +3,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   BookOpen,
   User,
-  Flame,
   LogOut,
   Menu,
   X,
@@ -29,6 +28,7 @@ import {
   type SavedAccount,
 } from "@/lib/auth/account-switcher";
 import { liveStreak } from "@/lib/streak";
+import { BrandMark } from "@/components/BrandMark";
 import { loadNick } from "@/lib/profile-nick";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { NotificationAnchorProvider } from "@/components/notifications/NotificationAnchorContext";
@@ -132,24 +132,85 @@ function activeNavKey(pathname: string, staff: StaffRole | null): string {
   return NAV[0].to;
 }
 
+function StreakFlame({ lit, className }: { lit: boolean; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={`streak-flame-mark shrink-0 ${lit ? "streak-flame-lit" : "streak-flame-cold"} ${className ?? ""}`}
+    >
+      <path
+        className="streak-flame"
+        d="M12 1.6c.2 3.2 2.2 5 3.4 6.6 1.5 2 2.8 3.6 2.8 6.3a6.2 6.2 0 0 1-12.4 0c0-2.4 1.1-4.2 2.4-6 .8-1.1 1.6-2.1 2-3.4.2 1.6.8 2.6 1.8 2.6 0-2.6-.4-4.6 0-6.1Z"
+      />
+      <path
+        className="streak-flame-core"
+        d="M12 11.2c.4 1.6 1.6 2.6 2.2 4 .7 1.5.6 3.2-.6 4.2-1 .8-2.4.6-3.2-.3-.9-1-.9-2.6-.2-3.8.5-.9 1.2-1.6 1.8-2.6Z"
+      />
+    </svg>
+  );
+}
+
 function NavGlyph({
   icon: Icon,
   kind,
+  active = false,
   className,
 }: {
   icon?: LucideIcon;
   kind: NavKind;
+  active?: boolean;
   className?: string;
 }) {
-  const cls = `nav-ico nav-ico-${kind} shrink-0 ${className ?? ""}`;
+  const cls = `nav-ico nav-ico-${kind} shrink-0 ${active ? "nav-ico-on" : ""} ${className ?? ""}`;
 
   if (kind === "dashboard") {
     return (
-      <svg viewBox="0 0 24 24" className={cls} aria-hidden="true" fill="currentColor">
-        <rect className="nav-tile nav-tile-tl" x="3" y="3" width="8" height="10" rx="1.5" />
-        <rect className="nav-tile nav-tile-bl" x="3" y="15" width="8" height="6" rx="1.5" />
-        <rect className="nav-tile nav-tile-tr" x="13" y="3" width="8" height="6" rx="1.5" />
-        <rect className="nav-tile nav-tile-br" x="13" y="11" width="8" height="10" rx="1.5" />
+      <svg viewBox="0 0 24 24" className={cls} aria-hidden="true" fill="none">
+        <rect
+          className="nav-tile nav-tile-tl"
+          x="3"
+          y="3"
+          width="8"
+          height="10"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          fill={active ? "currentColor" : "none"}
+        />
+        <rect
+          className="nav-tile nav-tile-bl"
+          x="3"
+          y="15"
+          width="8"
+          height="6"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          fill={active ? "currentColor" : "none"}
+        />
+        <rect
+          className="nav-tile nav-tile-tr"
+          x="13"
+          y="3"
+          width="8"
+          height="6"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          fill={active ? "currentColor" : "none"}
+        />
+        <rect
+          className="nav-tile nav-tile-br"
+          x="13"
+          y="11"
+          width="8"
+          height="10"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          fill={active ? "currentColor" : "none"}
+        />
       </svg>
     );
   }
@@ -176,11 +237,11 @@ function NavGlyph({
     return (
       <svg viewBox="0 0 24 24" className={cls} aria-hidden="true" fill="none">
         <g className="nav-class-a" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
-          <circle cx="8.2" cy="8" r="2.7" />
+          <circle cx="8.2" cy="8" r="2.7" fill={active ? "currentColor" : "none"} />
           <path d="M3.4 18.4c.7-3.1 2.5-4.8 4.8-4.8 2.3 0 4.1 1.7 4.8 4.8" />
         </g>
         <g className="nav-class-b" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
-          <circle cx="16.2" cy="8.4" r="2.35" />
+          <circle cx="16.2" cy="8.4" r="2.35" fill={active ? "currentColor" : "none"} />
           <path d="M12.4 18.4c.6-2.6 2.1-4.1 3.8-4.1 1.7 0 3.2 1.5 3.8 4.1" />
         </g>
       </svg>
@@ -218,7 +279,8 @@ function NavGlyph({
           rx="2"
           stroke="currentColor"
           strokeWidth="1.35"
-          opacity="0.28"
+          fill={active ? "currentColor" : "none"}
+          opacity={active ? 0.35 : 0.28}
         />
         <rect
           className="nav-vocab-deck nav-vocab-deck-1"
@@ -229,7 +291,8 @@ function NavGlyph({
           rx="2"
           stroke="currentColor"
           strokeWidth="1.35"
-          opacity="0.52"
+          fill={active ? "currentColor" : "none"}
+          opacity={active ? 0.55 : 0.52}
         />
         <g className="nav-vocab-front">
           <rect
@@ -240,6 +303,7 @@ function NavGlyph({
             rx="2"
             stroke="currentColor"
             strokeWidth="1.75"
+            fill={active ? "currentColor" : "none"}
           />
           <line
             className="nav-vocab-line nav-vocab-line-a"
@@ -250,7 +314,7 @@ function NavGlyph({
             stroke="currentColor"
             strokeWidth="1.15"
             strokeLinecap="round"
-            opacity="0.42"
+            opacity={active ? 0 : 0.42}
           />
           <rect
             className="nav-vocab-highlight"
@@ -259,7 +323,7 @@ function NavGlyph({
             width="5.8"
             height="1.55"
             rx="0.4"
-            fill="currentColor"
+            fill={active ? "var(--color-brand-400)" : "currentColor"}
           />
           <line
             className="nav-vocab-line nav-vocab-line-b"
@@ -270,7 +334,7 @@ function NavGlyph({
             stroke="currentColor"
             strokeWidth="1.15"
             strokeLinecap="round"
-            opacity="0.42"
+            opacity={active ? 0 : 0.42}
           />
         </g>
         <g className="nav-vocab-srs" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
@@ -294,7 +358,7 @@ function NavGlyph({
           <path d="M9.9 19.2A7.5 7.5 0 0 1 4.8 14.1" strokeWidth="2.35" />
           <path d="M4.8 9.9A7.5 7.5 0 0 1 9.9 4.8" strokeWidth="2.35" />
           <path d="M14.1 4.8A7.5 7.5 0 0 1 19.2 9.9" strokeWidth="2.35" />
-          <circle cx="12" cy="12" r="3.05" strokeWidth="1.55" />
+          <circle cx="12" cy="12" r="3.05" strokeWidth="1.55" fill={active ? "currentColor" : "none"} />
         </g>
         <g className="nav-ring-straps" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
           <line x1="12" y1="1.35" x2="12" y2="2.85" />
@@ -309,23 +373,19 @@ function NavGlyph({
   if (kind === "lessons") {
     return (
       <svg viewBox="0 0 24 24" className={cls} aria-hidden="true" fill="none">
-        <g className="nav-cap">
+        <circle
+          cx="12"
+          cy="12"
+          r="8.2"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          fill={active ? "currentColor" : "none"}
+        />
+        <g className="nav-lesson-play">
           <path
-            className="nav-cap-board"
-            d="M12 3.2 21.2 7.6 12 12 2.8 7.6 12 3.2Z"
-            fill="currentColor"
+            d="M10.2 8.6v6.8l5.8-3.4-5.8-3.4Z"
+            fill={active ? "var(--color-brand-400)" : "currentColor"}
           />
-          <path
-            d="M6.2 10.2v4.1c0 2.4 2.6 4.2 5.8 4.2s5.8-1.8 5.8-4.2v-4.1"
-            stroke="currentColor"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <g className="nav-cap-tassel" stroke="currentColor" strokeLinecap="round">
-            <path d="M12 7.6v5.4" strokeWidth="1.35" />
-            <circle cx="12" cy="14.35" r="1.05" fill="currentColor" stroke="none" />
-          </g>
         </g>
       </svg>
     );
@@ -341,6 +401,7 @@ function NavGlyph({
           r="9"
           stroke="currentColor"
           strokeWidth="1.4"
+          fill={active ? "currentColor" : "none"}
         />
         <circle
           className="nav-profile-head"
@@ -349,11 +410,12 @@ function NavGlyph({
           r="3.15"
           stroke="currentColor"
           strokeWidth="2"
+          fill={active ? "var(--color-brand-400)" : "none"}
         />
         <path
           className="nav-profile-body"
           d="M6.4 19.2c.9-3.3 3.1-5.1 5.6-5.1s4.7 1.8 5.6 5.1"
-          stroke="currentColor"
+          stroke={active ? "var(--color-brand-400)" : "currentColor"}
           strokeWidth="2"
           strokeLinecap="round"
         />
@@ -362,15 +424,13 @@ function NavGlyph({
   }
 
   if (!Icon) return null;
-  return <Icon aria-hidden="true" className={cls} />;
-}
-
-function BrandMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className ?? "h-[17px] w-[17px]"} aria-hidden="true">
-      <path d="M12 3 21 7.5 12 12 3 7.5 12 3Z" fill="#fff" />
-      <path d="M3 12.5 12 17l9-4.5V16l-9 4.5L3 16v-3.5Z" fill="#fff" fillOpacity="0.55" />
-    </svg>
+    <Icon
+      aria-hidden="true"
+      className={cls}
+      fill={active ? "currentColor" : "none"}
+      strokeWidth={active ? 1.75 : 2}
+    />
   );
 }
 
@@ -387,7 +447,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [drawerMounted, setDrawerMounted] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [moreMounted, setMoreMounted] = useState(false);
+  const [moreShown, setMoreShown] = useState(false);
   const [navOpen, setNavOpen] = useState(true);
   const [staffRole, setStaffRole] = useState<StaffRole | null>(null);
   const [accounts, setAccounts] = useState<SavedAccount[]>([]);
@@ -395,6 +456,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [switching, setSwitching] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const drawerTimer = useRef<number | null>(null);
+  const moreTimer = useRef<number | null>(null);
 
   useEffect(() => {
     try {
@@ -483,6 +545,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }, DRAWER_MS);
   }
 
+  function openMore() {
+    if (moreTimer.current) window.clearTimeout(moreTimer.current);
+    setMoreMounted(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setMoreShown(true));
+    });
+  }
+
+  function closeMore() {
+    setMoreShown(false);
+    if (moreTimer.current) window.clearTimeout(moreTimer.current);
+    moreTimer.current = window.setTimeout(() => {
+      setMoreMounted(false);
+      moreTimer.current = null;
+    }, DRAWER_MS);
+  }
+
   const skipDrawerClose = useRef(true);
   useEffect(() => {
     if (skipDrawerClose.current) {
@@ -490,12 +569,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
     closeDrawer();
+    closeMore();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   useEffect(() => {
     return () => {
       if (drawerTimer.current) window.clearTimeout(drawerTimer.current);
+      if (moreTimer.current) window.clearTimeout(moreTimer.current);
     };
   }, []);
 
@@ -545,16 +626,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const currentNav = activeNavKey(pathname, staffRole);
   const rail = useSlidingHighlight(currentNav);
   const moreActive =
-    moreOpen ||
+    moreShown ||
     currentNav === "admin" ||
     MOBILE_MORE.some((n) => n.to === currentNav);
-  const mobileIdx = moreActive
-    ? MOBILE_PRIMARY.length
-    : MOBILE_PRIMARY.findIndex((n) => n.to === currentNav);
-
-  useEffect(() => {
-    setMoreOpen(false);
-  }, [pathname]);
 
   /* Phones never hover, so the glyph motions would stay frozen. Play each
      visible icon once on arrival, and again when More opens. */
@@ -568,7 +642,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       timers.push(window.setTimeout(() => playNavMotion(node), 160 + i * 80));
     });
     return () => timers.forEach((id) => window.clearTimeout(id));
-  }, [pathname, moreOpen]);
+  }, [pathname, moreShown]);
 
   const navLinks = (opts: { onNavigate?: () => void; iconSize: string }) => (
     <>
@@ -586,7 +660,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               (active ? "text-white" : "text-brand-100 nudge hover:text-white")
             }
           >
-            <NavGlyph icon={"icon" in n ? n.icon : undefined} kind={n.kind} className={opts.iconSize} />
+            <NavGlyph
+              icon={"icon" in n ? n.icon : undefined}
+              kind={n.kind}
+              active={active}
+              className={opts.iconSize}
+            />
             {n.label}
           </RevealLink>
         );
@@ -602,7 +681,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             (currentNav === "admin" ? "text-white" : "text-brand-100 nudge hover:text-white")
           }
         >
-          <NavGlyph icon={Shield} kind="admin" className={opts.iconSize} />
+          <NavGlyph
+            icon={Shield}
+            kind="admin"
+            active={currentNav === "admin"}
+            className={opts.iconSize}
+          />
           {staffRole === "admin" ? "Admin" : staffRole === "teacher" ? "Teaching" : "Editor"}
         </RevealLink>
       )}
@@ -622,9 +706,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <div className="flex h-16 items-center border-b border-brand-400/30 px-6">
           <Link to="/dashboard" className="group flex min-w-0 items-center gap-2.5">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-400 shadow-brand transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
-              <BrandMark />
-            </span>
+            <BrandMark className="h-8 w-8 shadow-brand transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3" />
             <span className="truncate text-lg font-black tracking-tight text-white">
               Beyond<span className="text-brand-200">SAT</span>
             </span>
@@ -646,8 +728,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {navLinks({ iconSize: "h-[18px] w-[18px]" })}
         </nav>
         <div className="border-t border-brand-400/30 p-4">
-          <div className="flex items-center gap-2.5 rounded-xl bg-brand-800 px-3 py-2.5 ring-1 ring-brand-400/40">
-            <Flame className="h-5 w-5 fill-brand-200 text-brand-200" />
+          <div
+            className={
+              "flex items-center gap-2.5 rounded-xl px-3 py-2.5 ring-1 " +
+              (streak > 0 ? "streak-pill-lit bg-brand-800" : "bg-brand-800 ring-1 ring-brand-400/40")
+            }
+          >
+            <StreakFlame lit={streak > 0} className="h-5 w-5" />
             <div>
               <div className="text-lg font-black leading-none text-white tabular-nums">{streak}</div>
               <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-100">
@@ -688,8 +775,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-3">
             {pathname === "/dashboard" ? <NotificationBell /> : null}
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-brand-400/50 bg-brand-800 px-3 py-1.5 transition-transform duration-200 hover:scale-105">
-              <Flame className="h-4 w-4 fill-brand-200 text-brand-200" />
+            <div
+              className={
+                "inline-flex items-center gap-1.5 rounded-full border bg-brand-800 px-3 py-1.5 transition-transform duration-200 hover:scale-105 " +
+                (streak > 0 ? "streak-pill-lit border-transparent" : "border-brand-400/50")
+              }
+            >
+              <StreakFlame lit={streak > 0} className="h-4 w-4" />
               <span className="text-sm font-bold tabular-nums text-white">{streak}</span>
               <span className="hidden text-xs font-semibold text-brand-100 sm:inline">
                 day{streak === 1 ? "" : "s"}
@@ -806,9 +898,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <div className="flex h-16 items-center justify-between border-b border-brand-400/30 px-4">
               <span className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand-400 shadow-brand">
-                  <BrandMark />
-                </span>
+                <BrandMark className="h-8 w-8 shadow-brand" />
                 <span className="text-lg font-black tracking-tight text-white">
                   Beyond<span className="text-brand-200">SAT</span>
                 </span>
@@ -835,18 +925,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
-      {moreOpen && (
+      {moreMounted && (
         <div className="fixed inset-0 z-30 lg:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-brand-900/50 backdrop-blur-sm"
+            className={
+              "absolute inset-0 bg-brand-900/50 backdrop-blur-sm transition-opacity duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
+              (moreShown ? "opacity-100" : "opacity-0")
+            }
             aria-label="Close more destinations"
-            onClick={() => setMoreOpen(false)}
+            onClick={closeMore}
           />
           <div
             role="dialog"
             aria-label="More"
-            className="absolute inset-x-0 bottom-[3.75rem] rounded-t-2xl border-t border-brand-400/30 bg-brand-600 px-3 pb-3 pt-2 shadow-float"
+            className={
+              "absolute inset-x-0 bottom-[3.75rem] rounded-t-2xl border-t border-brand-400/30 bg-brand-600 px-3 pb-3 pt-2 shadow-float transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
+              (moreShown ? "translate-y-0" : "translate-y-full")
+            }
           >
             <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-white/25" aria-hidden />
             <div className="grid grid-cols-4 gap-1">
@@ -856,7 +952,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <Link
                     key={n.to}
                     to={n.to}
-                    onClick={() => setMoreOpen(false)}
+                    onClick={closeMore}
                     {...navPlayHandlers()}
                     className={
                       "group flex flex-col items-center gap-1 rounded-xl px-1 py-2.5 text-[11px] font-semibold " +
@@ -866,6 +962,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <NavGlyph
                       icon={"icon" in n ? (n.icon as LucideIcon) : undefined}
                       kind={n.kind}
+                      active={active}
                       className="h-5 w-5"
                     />
                     {n.label}
@@ -875,14 +972,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {staffRole && (
                 <RevealLink
                   to={staffHome(staffRole)}
-                  onClick={() => setMoreOpen(false)}
+                  onClick={closeMore}
                   {...navPlayHandlers()}
                   className={
                     "group flex flex-col items-center gap-1 rounded-xl px-1 py-2.5 text-[11px] font-semibold " +
                     (currentNav === "admin" ? "bg-brand-400 text-white" : "text-brand-100 hover:bg-brand-800 hover:text-white")
                   }
                 >
-                  <NavGlyph icon={Shield} kind="admin" className="h-5 w-5" />
+                  <NavGlyph
+                    icon={Shield}
+                    kind="admin"
+                    active={currentNav === "admin"}
+                    className="h-5 w-5"
+                  />
                   {staffRole === "admin" ? "Admin" : staffRole === "teacher" ? "Teaching" : "Editor"}
                 </RevealLink>
               )}
@@ -891,61 +993,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-brand-400/30 bg-brand-600/95 backdrop-blur-md lg:hidden">
-        <div className="relative grid grid-cols-5">
-          <span
-            aria-hidden
-            className="nav-tab-pill pointer-events-none absolute top-1.5 left-0 flex w-[calc(100%/5)] justify-center"
-            style={{
-              transform: `translateX(${Math.max(0, mobileIdx) * 100}%)`,
-              opacity: mobileIdx < 0 ? 0 : 1,
-            }}
-          >
-            <span className="h-7 w-12 rounded-full bg-brand-400" />
-          </span>
+      <nav className="fixed inset-x-0 bottom-0 z-40 overflow-visible border-t border-brand-400/30 bg-brand-600/95 backdrop-blur-md lg:hidden">
+        <div className="relative grid grid-cols-5 overflow-visible">
           {MOBILE_PRIMARY.map((n) => {
             const active = n.to === currentNav;
             return (
               <Link
                 key={n.to}
                 to={n.to}
-                onClick={() => setMoreOpen(false)}
+                aria-label={n.label}
+                onClick={closeMore}
                 {...navPlayHandlers()}
                 className={
-                  "group relative z-10 flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 text-[10px] font-semibold transition-colors duration-200 " +
+                  "group relative z-10 flex min-w-0 items-center justify-center px-0.5 py-3 transition-colors duration-200 " +
                   (active ? "text-white" : "text-brand-100 hover:text-white")
                 }
               >
                 <NavGlyph
                   icon={"icon" in n ? n.icon : undefined}
                   kind={n.kind}
+                  active={active}
                   className={
-                    "relative mb-0.5 h-5 w-5 transition-transform duration-300 " +
+                    "relative h-6 w-6 transition-transform duration-300 " +
                     (active ? "scale-110" : "")
                   }
                 />
-                <span className="w-full truncate text-center leading-tight">{n.label}</span>
               </Link>
             );
           })}
           <button
             type="button"
-            onClick={() => setMoreOpen((open) => !open)}
+            onClick={() => (moreShown ? closeMore() : openMore())}
             className={
-              "group relative z-10 flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 text-[10px] font-semibold transition-colors duration-200 " +
+              "group relative z-10 flex min-w-0 items-center justify-center px-0.5 py-3 transition-colors duration-200 " +
               (moreActive ? "text-white" : "text-brand-100 hover:text-white")
             }
-            aria-expanded={moreOpen}
+            aria-label="More"
+            aria-expanded={moreShown}
             aria-haspopup="dialog"
           >
             <MoreHorizontal
               aria-hidden
+              fill={moreActive ? "currentColor" : "none"}
+              strokeWidth={moreActive ? 1.75 : 2}
               className={
-                "relative mb-0.5 h-5 w-5 transition-transform duration-300 " +
+                "relative h-6 w-6 transition-transform duration-300 " +
                 (moreActive ? "scale-110" : "")
               }
             />
-            <span className="w-full truncate text-center leading-tight">More</span>
           </button>
         </div>
       </nav>

@@ -744,6 +744,16 @@
   }
 }
 
+/* A bright core travels the full width, then the cycle starts again. */
+@keyframes skeleton-flow {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
 /* Slow drift for the ambient blurred blobs behind hero panels. Small offsets
    only — this runs forever, so anything larger becomes a distraction. */
 @keyframes drift {
@@ -1325,29 +1335,42 @@
   }
 }
 
-/* Shimmering placeholder. Better than a flat pulse because the moving
-   highlight signals "loading" rather than "disabled". */
-/* Placeholder blocks sit on brand surfaces now, so the shimmer runs through the
-   blue ramp rather than slate — a grey block would be the one off-palette
-   colour on the page. */
+/* Loading placeholder. The brand steps are too close to shimmer against each
+   other, so a violet-white core travels across a deeper base. Every block
+   shares the same duration and starts together. */
 @utility skeleton {
+  background-color: color-mix(in srgb, var(--accent) 22%, var(--surface-base));
   background-image: linear-gradient(
-    90deg,
-    var(--surface-base) 25%,
-    var(--surface-lift) 37%,
-    var(--surface-base) 63%
+    105deg,
+    transparent 0%,
+    transparent 36%,
+    var(--accent) 46%,
+    color-mix(in srgb, white 78%, var(--accent)) 50%,
+    var(--accent) 54%,
+    transparent 64%,
+    transparent 100%
   );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-flow 1.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-/* Light-surface variant, for the test runner. The default `skeleton` shimmers
-   through the dark blue ramp, which reads as a solid navy block against the ice
-   canvas. */
+/* Light-surface variant, for the test runner. */
 @utility skeleton-light {
-  background-image: linear-gradient(90deg, #e3eaf3 25%, #f4f8fc 37%, #e3eaf3 63%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
+  background-color: #e3eaf3;
+  background-image: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 36%,
+    #c5d4e8 46%,
+    #ffffff 50%,
+    #c5d4e8 54%,
+    transparent 64%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-flow 1.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 /* Primary action on the light test surface. Same motion as `btn-brand`, but the
@@ -1976,17 +1999,17 @@
   animation: nav-book 0.7s ease-in-out;
 }
 
-.group:hover .nav-cap,
-.group:focus-visible .nav-cap,
-.group:active .nav-cap,
-.group[data-nav-play] .nav-cap {
-  animation: nav-cap-toss 0.72s ease-in-out;
+.group:hover .nav-ico-lessons,
+.group:focus-visible .nav-ico-lessons,
+.group:active .nav-ico-lessons,
+.group[data-nav-play] .nav-ico-lessons {
+  animation: nav-lesson-bounce 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.group:hover .nav-cap-tassel,
-.group:focus-visible .nav-cap-tassel,
-.group:active .nav-cap-tassel,
-.group[data-nav-play] .nav-cap-tassel {
-  animation: nav-cap-tassel 0.78s ease-in-out;
+.group:hover .nav-lesson-play,
+.group:focus-visible .nav-lesson-play,
+.group:active .nav-lesson-play,
+.group[data-nav-play] .nav-lesson-play {
+  animation: nav-lesson-play 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .group:hover .nav-bar,
@@ -2239,40 +2262,91 @@
   }
 }
 
-@keyframes nav-cap-toss {
+@keyframes nav-lesson-bounce {
   0%,
   100% {
-    transform: translateY(0) rotate(0deg);
+    transform: scale(1);
   }
-  36% {
-    transform: translateY(-1.6px) rotate(-10deg);
+  35% {
+    transform: scale(0.86);
   }
   68% {
-    transform: translateY(0.4px) rotate(7deg);
+    transform: scale(1.12);
   }
 }
-@keyframes nav-cap-tassel {
+@keyframes nav-lesson-play {
   0%,
   100% {
-    transform: rotate(0deg);
+    transform: scale(1);
   }
-  28% {
-    transform: rotate(28deg);
+  40% {
+    transform: scale(0.55);
   }
-  58% {
-    transform: rotate(-20deg);
-  }
-  82% {
-    transform: rotate(6deg);
+  72% {
+    transform: scale(1.22);
   }
 }
-.nav-cap {
+.nav-lesson-play {
   transform-box: fill-box;
-  transform-origin: center 28%;
+  transform-origin: center;
 }
-.nav-cap-tassel {
+
+.streak-flame,
+.streak-flame-core {
   transform-box: fill-box;
-  transform-origin: center top;
+  transform-origin: center bottom;
+}
+.streak-flame-lit .streak-flame {
+  fill: #ff8c1a;
+  animation: streak-burn 1.05s ease-in-out infinite;
+}
+.streak-flame-lit .streak-flame-core {
+  fill: #ffe56a;
+  animation: streak-burn 0.72s ease-in-out infinite reverse;
+}
+.streak-flame-cold .streak-flame {
+  fill: #7978a9;
+  animation: streak-rest 3.8s ease-in-out infinite;
+}
+.streak-flame-cold .streak-flame-core {
+  fill: #c6c5da;
+}
+.streak-pill-lit {
+  border-color: rgb(255 176 48 / 0.75);
+  box-shadow: 0 0 14px rgb(255 140 26 / 0.35);
+  animation: streak-glow 1.6s ease-in-out infinite;
+}
+@keyframes streak-burn {
+  0%,
+  100% {
+    transform: scale(1, 1) rotate(0deg);
+  }
+  40% {
+    transform: scale(0.9, 1.1) rotate(-5deg);
+  }
+  72% {
+    transform: scale(1.06, 0.92) rotate(4deg);
+  }
+}
+@keyframes streak-rest {
+  0%,
+  100% {
+    transform: scaleY(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scaleY(1.05);
+    opacity: 1;
+  }
+}
+@keyframes streak-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgb(255 140 26 / 0.25);
+  }
+  50% {
+    box-shadow: 0 0 16px rgb(255 196 64 / 0.5);
+  }
 }
 
 @keyframes nav-bar-rand {
@@ -2814,8 +2888,10 @@
   .nav-ico-practice,
   .nav-ico-vocab,
   .nav-ico-lessons,
-  .nav-cap,
-  .nav-cap-tassel,
+  .nav-lesson-play,
+  .streak-flame,
+  .streak-flame-core,
+  .streak-pill-lit,
   .nav-ico-analysis,
   .nav-ico-ai,
   .nav-ico-news,
@@ -3370,19 +3446,39 @@
 }
 
 .text-shine {
-  background: linear-gradient(100deg, #0b0761 20%, #535291 45%, #9f9fc2 55%, #535291 65%, #0b0761 85%);
-  background-size: 250% 100%;
+  /* A soft band, not a hard stripe. The old 100deg ramp was steep enough that
+     one half of the phrase went pale and the rest snapped back to navy, and
+     the clipped fill let the page grid read through the light letters.
+     90deg keeps the band vertical. The peak sits just outside the phrase at
+     both ends of the animation (see the keyframes), so it enters, crosses,
+     and leaves without a pop. Every stop is opaque, so the grid stays behind. */
+  background-image: linear-gradient(
+    90deg,
+    #0b0761 0%,
+    #0b0761 35%,
+    #3c3a86 43%,
+    #b7b7d4 50%,
+    #3c3a86 57%,
+    #0b0761 65%,
+    #0b0761 100%
+  );
+  background-size: 340% 100%;
+  background-repeat: no-repeat;
   -webkit-background-clip: text;
   background-clip: text;
+  -webkit-text-fill-color: transparent;
   color: transparent;
-  animation: text-shine 6s linear infinite;
+  -webkit-font-smoothing: antialiased;
+  animation: text-shine 5.5s ease-in-out infinite;
 }
 @keyframes text-shine {
-  from {
+  0%,
+  18% {
     background-position: 100% 0;
   }
-  to {
-    background-position: -100% 0;
+  62%,
+  100% {
+    background-position: 0% 0;
   }
 }
 

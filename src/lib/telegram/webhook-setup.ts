@@ -10,14 +10,21 @@ export type WebhookEnsureResult = {
   webhookUrl?: string;
 };
 
+const ALLOWED_WEBHOOK_ORIGINS = new Set([
+  "https://beyondsat.uz",
+  "https://www.beyondsat.uz",
+  "https://beyond-sat-v0.javazbek80.workers.dev",
+]);
+
 function resolvePublicUrl(env: unknown, requestUrl?: string): string | undefined {
-  const fromEnv = readEnv(env, "WORKER_PUBLIC_URL");
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  const fromEnv = readEnv(env, "WORKER_PUBLIC_URL")?.replace(/\/$/, "");
+  if (fromEnv && ALLOWED_WEBHOOK_ORIGINS.has(fromEnv)) return fromEnv;
 
   if (requestUrl) {
     try {
       const url = new URL(requestUrl);
-      return `${url.protocol}//${url.host}`;
+      const origin = `${url.protocol}//${url.host}`;
+      if (ALLOWED_WEBHOOK_ORIGINS.has(origin)) return origin;
     } catch {
       return undefined;
     }

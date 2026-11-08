@@ -135,31 +135,8 @@ export function scaledScore(
   return rawToScaled(section, projected);
 }
 
-export async function bumpDailyStreak(userId: string): Promise<void> {
-  const today = format(new Date(), "yyyy-MM-dd");
-  const { data: sp } = await supabase
-    .from("student_profiles")
-    .select("current_streak,longest_streak,last_daily_completed_date")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  const last = sp?.last_daily_completed_date ?? null;
-  if (last === today) return;
-
-  let next = 1;
-  if (last) {
-    const y = new Date();
-    y.setDate(y.getDate() - 1);
-    const yesterday = format(y, "yyyy-MM-dd");
-    if (last === yesterday) next = (sp?.current_streak ?? 0) + 1;
-  }
-  const longest = Math.max(sp?.longest_streak ?? 0, next);
-  await supabase
-    .from("student_profiles")
-    .update({
-      current_streak: next,
-      longest_streak: longest,
-      last_daily_completed_date: today,
-    })
-    .eq("user_id", userId);
+export async function bumpDailyStreak(_userId: string): Promise<void> {
+  /* Daily streak is now updated atomically inside the `complete_session`
+     SECURITY DEFINER RPC when a daily test finishes, so `student_profiles`
+     streak columns stay locked against direct client writes. */
 }

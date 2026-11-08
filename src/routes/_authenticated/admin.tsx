@@ -16,6 +16,7 @@ import { AmbientGlow, RevealLink } from "@/components/ui/reveal-card";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AdminNavIcon, type AdminAnim } from "@/components/admin/AdminNavIcon";
 import { SectionBack } from "@/components/SectionBack";
+import { BrandMark } from "@/components/BrandMark";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   /* Runs again on every navigation within /admin, so it doubles as the
@@ -238,12 +239,7 @@ function SidebarBody({
           onClick={onNavigate}
           className="group flex min-w-0 items-center gap-2.5"
         >
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-400 shadow-brand transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
-            <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" aria-hidden="true">
-              <path d="M12 3 21 7.5 12 12 3 7.5 12 3Z" fill="#fff" />
-              <path d="M3 12.5 12 17l9-4.5V16l-9 4.5L3 16v-3.5Z" fill="#fff" fillOpacity="0.55" />
-            </svg>
-          </span>
+          <BrandMark className="h-9 w-9 shadow-brand transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3" />
           <span className="min-w-0">
             <span className="block text-base font-black leading-none tracking-tight text-white">
               Beyond<span className="text-brand-200">SAT</span>

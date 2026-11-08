@@ -56,10 +56,18 @@ export async function uploadHomeworkFile(
   };
 }
 
+/** The extension comes from the declared type, never from the file name. */
+const AVATAR_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+
 export async function uploadAvatar(file: File): Promise<string> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Not signed in");
-  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const ext = AVATAR_EXT[file.type] ?? "jpg";
   const path = `${u.user.id}/avatar-${Date.now()}.${ext}`;
   const { error } = await supabase.storage.from("chat-uploads").upload(path, file, {
     upsert: true,

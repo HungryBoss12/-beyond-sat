@@ -33,7 +33,7 @@ const schema = z.object({
   city: z.string().trim().min(1, "City is required").max(80),
   school: z.string().trim().min(1, "School is required").max(120),
   grade: z.enum(["5", "6", "7", "8", "9", "10", "11", "12", "graduated"], {
-    errorMap: () => ({ message: "Select your grade" }),
+    error: "Select your grade",
   }),
   birth_date: z.string().min(1, "Date of birth is required"),
   email: z.string().trim().email("Enter a valid email").max(255),

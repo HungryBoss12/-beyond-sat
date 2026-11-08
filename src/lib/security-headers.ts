@@ -82,6 +82,9 @@ export function securityHeaders(env: unknown): Record<string, string> {
     "x-content-type-options": "nosniff",
     "referrer-policy": "strict-origin-when-cross-origin",
     "x-frame-options": "DENY",
+    "permissions-policy":
+      "camera=(), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=()",
+    "cross-origin-opener-policy": "same-origin-allow-popups",
     "strict-transport-security": "max-age=31536000; includeSubDomains",
   };
   if (!import.meta.env.DEV) {

@@ -3,15 +3,12 @@ import { jsonResponse } from "@/lib/vocab/rest";
 import { readEnv, readSupabaseConfig } from "@/lib/server-env";
 import { normalizeUsername } from "@/lib/classes/types";
 import { isSyntheticAccountEmail } from "@/lib/auth/login-email";
+import { requestIp } from "@/lib/shared-rate-limit";
 
 const RESET_ORIGIN = "https://beyondsat.uz";
 
 function clientKey(request: Request): string {
-  return (
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown"
-  );
+  return requestIp(request);
 }
 
 /** Always the public site. Request headers must not choose where the reset link opens. */

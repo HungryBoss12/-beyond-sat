@@ -229,7 +229,7 @@ function ClassOverview() {
           body="Add students to Maths, Eng or both."
         />
       ) : search.tab === "ranking" ? (
-        <Panel>
+        <Panel className="overflow-hidden">
           <RankingTable students={rankRows} onSaved={load} />
         </Panel>
       ) : (

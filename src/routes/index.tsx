@@ -303,7 +303,7 @@ function SectionRenderer({ section }: { section: Section }) {
             {/* Drifts down as the hero scrolls away, so the emblem and the copy
                 separate slightly instead of leaving as one block. */}
             <div className="parallax-drift">
-              <BeyondCore />
+              <BeyondCore interactive />
             </div>
           </div>
         </HeroProgress>

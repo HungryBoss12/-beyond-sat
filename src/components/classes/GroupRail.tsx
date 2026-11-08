@@ -9,12 +9,17 @@ import {
   EllipsisVertical,
   FlaskConical,
   Info,
+  Link2,
+  Play,
   School,
   Search,
   Snowflake,
   TriangleAlert,
+  Undo2,
+  UserMinus,
   UserPlus,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { reissueStudentInvite } from "@/lib/students/api";
@@ -24,10 +29,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +87,44 @@ export type FormerPerson = {
   badgeLabel?: string | null;
   badgeColor?: string | null;
 };
+
+function RailMenuAction({
+  label,
+  icon: Icon,
+  disabled,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  icon: LucideIcon;
+  disabled?: boolean;
+  selected?: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="block">
+          <DropdownMenuItem
+            disabled={disabled}
+            aria-label={label}
+            onSelect={onSelect}
+            className={cn(
+              "grid h-9 w-9 cursor-pointer place-items-center rounded-lg p-0 text-white focus:bg-white/15 focus:text-white",
+              selected && "bg-white text-brand-900 focus:bg-white focus:text-brand-900",
+              disabled && "data-[disabled]:opacity-100",
+            )}
+          >
+            <Icon className="h-4 w-4" aria-hidden="true" />
+          </DropdownMenuItem>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="left" className="z-[60] bg-brand-900 text-white">
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 const LEGEND: {
   id: Exclude<RailFilter, "">;
@@ -320,36 +363,46 @@ export function GroupRail({
                       className="h-9 min-w-9 w-9 text-white hover:bg-brand-500"
                     />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Status</DropdownMenuLabel>
+                  <DropdownMenuContent
+                    align="end"
+                    className="min-w-0 border-white/15 bg-brand-800 p-1 text-white"
+                  >
                     {(["active", "trial", "frozen"] as const).map((status) => (
-                      <DropdownMenuItem
+                      <RailMenuAction
                         key={status}
+                        label={STATUS_META[status].label}
+                        icon={STATUS_META[status].icon}
+                        selected={person.status === status}
                         disabled={person.status === status}
                         onSelect={() => void changeStatus(person, status)}
-                      >
-                        {STATUS_META[status].label}
-                      </DropdownMenuItem>
+                      />
                     ))}
                     {person.status === "frozen" && (
-                      <DropdownMenuItem onSelect={() => void activateNow(person)}>
-                        Activate now
-                      </DropdownMenuItem>
+                      <RailMenuAction
+                        label="Activate now"
+                        icon={Play}
+                        onSelect={() => void activateNow(person)}
+                      />
                     )}
                     {person.status !== "frozen" && person.frozenOn && (
-                      <DropdownMenuItem onSelect={() => void activateNow(person)}>
-                        Cancel freeze
-                      </DropdownMenuItem>
+                      <RailMenuAction
+                        label="Cancel freeze"
+                        icon={Undo2}
+                        onSelect={() => void activateNow(person)}
+                      />
                     )}
-                    <DropdownMenuSeparator />
+                    <DropdownMenuSeparator className="bg-white/15" />
                     {isAdmin && (
-                      <DropdownMenuItem onSelect={() => onActivation(person.userId)}>
-                        <CalendarClock className="mr-2 h-4 w-4" aria-hidden="true" />
-                        Activation date
-                      </DropdownMenuItem>
+                      <RailMenuAction
+                        label="Activation date"
+                        icon={CalendarClock}
+                        onSelect={() => onActivation(person.userId)}
+                      />
                     )}
                     {isAdmin && (
-                      <DropdownMenuItem
+                      <RailMenuAction
+                        label="Copy setup link"
+                        icon={Link2}
                         onSelect={() => {
                           void reissueStudentInvite(person.userId)
                             .then(async (link) => {
@@ -360,16 +413,18 @@ export function GroupRail({
                               toast.error(err instanceof Error ? err.message : "Could not copy the link"),
                             );
                         }}
-                      >
-                        Copy setup link
-                      </DropdownMenuItem>
+                      />
                     )}
-                    <DropdownMenuItem onSelect={() => setMoving(person)}>
-                      Move to another class…
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setRemoving(person)}>
-                      Remove from {group.name}
-                    </DropdownMenuItem>
+                    <RailMenuAction
+                      label="Move to another class"
+                      icon={ArrowRightLeft}
+                      onSelect={() => setMoving(person)}
+                    />
+                    <RailMenuAction
+                      label={`Remove from ${group.name}`}
+                      icon={UserMinus}
+                      onSelect={() => setRemoving(person)}
+                    />
                   </DropdownMenuContent>
                 </DropdownMenu>
               </li>
@@ -494,6 +549,14 @@ export function GroupRail({
   );
 }
 
+/** The day after a YYYY-MM-DD date. That day is the first day back after an inclusive end. */
+function dayAfter(iso: string): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  const next = new Date(Date.UTC(year, month - 1, day));
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next.toISOString().slice(0, 10);
+}
+
 function FreezeDialog({
   person,
   groupId,
@@ -505,29 +568,62 @@ function FreezeDialog({
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
+  const [past, setPast] = useState(false);
   const [started, setStarted] = useState(tashkentToday);
   const [resumes, setResumes] = useState("");
+  const [ended, setEnded] = useState("");
+  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!person) return;
+    setPast(false);
     setStarted(person.frozenOn || tashkentToday());
     setResumes(person.resumesOn || "");
+    setEnded("");
+    setReason("");
   }, [person]);
 
   async function save() {
     if (!person || !started) return;
-    if (resumes && resumes <= started) {
+    const today = tashkentToday();
+    let back: string | null = resumes || null;
+    let why: string | null = null;
+    if (past) {
+      why = reason.trim();
+      if (!ended) {
+        toast.error("Choose the last day of the freeze");
+        return;
+      }
+      if (ended < started) {
+        toast.error("The end must be on or after the start");
+        return;
+      }
+      if (ended >= today) {
+        toast.error("A past freeze must end before today");
+        return;
+      }
+      if (!why || why.length > 200) {
+        toast.error(why ? "The reason must be 200 characters or fewer" : "Write a reason for this freeze");
+        return;
+      }
+      back = dayAfter(ended);
+    } else if (resumes && resumes <= started) {
       toast.error("Activation date must be after the freeze start");
+      return;
+    } else if (resumes && resumes <= today) {
+      toast.error("Use \"Correct a past period\" when the freeze has already ended");
       return;
     }
     setBusy(true);
     try {
-      await freezeGroupMember(groupId, person.userId, started, resumes || null);
+      await freezeGroupMember(groupId, person.userId, started, back, why);
       toast.success(
-        resumes
-          ? `${person.name} is frozen from ${shortDate(started)} until ${shortDate(resumes)}`
-          : `${person.name} is frozen from ${shortDate(started)}`,
+        past
+          ? `${person.name} was frozen ${shortDate(started)}–${shortDate(ended)}. The fee for that period was recalculated.`
+          : back
+            ? `${person.name} is frozen from ${shortDate(started)} until ${shortDate(back)}`
+            : `${person.name} is frozen from ${shortDate(started)}`,
       );
       onClose();
       await onSaved();
@@ -544,31 +640,80 @@ function FreezeDialog({
         <DialogHeader>
           <DialogTitle className="text-white">Freeze {person?.name}</DialogTitle>
           <DialogDescription className="text-white">
-            The fee stops on the start date. Leave the activation date empty to keep the freeze until
-            someone activates them by hand.
+            {past
+              ? "Both dates are days the student did not come. They stay active now, and the fee for that period is recalculated."
+              : "The fee stops on the start date. Leave the activation date empty to keep the freeze until someone activates them by hand."}
           </DialogDescription>
         </DialogHeader>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            aria-pressed={!past}
+            className={
+              past
+                ? "rounded-full px-3 py-2 text-sm font-bold text-white ring-1 ring-white/30"
+                : "rounded-full bg-brand-400 px-3 py-2 text-sm font-bold text-white"
+            }
+            onClick={() => setPast(false)}
+          >
+            Freeze from a date
+          </button>
+          <button
+            type="button"
+            aria-pressed={past}
+            className={
+              past
+                ? "rounded-full bg-brand-400 px-3 py-2 text-sm font-bold text-white"
+                : "rounded-full px-3 py-2 text-sm font-bold text-white ring-1 ring-white/30"
+            }
+            onClick={() => setPast(true)}
+          >
+            Correct a past period
+          </button>
+        </div>
         <div>
-          <div className="text-xs font-bold text-white">Freeze started</div>
+          <div className="text-xs font-bold text-white">{past ? "First day frozen" : "Freeze started"}</div>
           <div className="mt-1">
             <DateTimeField dateOnly value={started} onChange={setStarted} />
           </div>
         </div>
-        <div>
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-xs font-bold text-white">Activates on</div>
-            <button
-              type="button"
-              className="text-xs font-bold text-brand-100 underline-offset-2 hover:underline"
-              onClick={() => setResumes("")}
-            >
-              Skip
-            </button>
+        {past ? (
+          <>
+            <div>
+              <div className="text-xs font-bold text-white">Last day frozen</div>
+              <div className="mt-1">
+                <DateTimeField dateOnly value={ended} onChange={setEnded} />
+              </div>
+            </div>
+            <label className="block">
+              <span className="text-xs font-bold text-white">Reason</span>
+              <textarea
+                value={reason}
+                maxLength={200}
+                rows={3}
+                onChange={(event) => setReason(event.target.value)}
+                placeholder="They did not come these days"
+                className="mt-1 w-full resize-none rounded-xl border border-white/30 bg-brand-900 px-3 py-2 text-sm text-white placeholder:text-white/50"
+              />
+            </label>
+          </>
+        ) : (
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs font-bold text-white">Activates on</div>
+              <button
+                type="button"
+                className="text-xs font-bold text-brand-100 underline-offset-2 hover:underline"
+                onClick={() => setResumes("")}
+              >
+                Skip
+              </button>
+            </div>
+            <div className="mt-1">
+              <DateTimeField dateOnly value={resumes} onChange={setResumes} />
+            </div>
           </div>
-          <div className="mt-1">
-            <DateTimeField dateOnly value={resumes} onChange={setResumes} />
-          </div>
-        </div>
+        )}
         <div className="flex flex-col gap-2">
           <button
             type="button"

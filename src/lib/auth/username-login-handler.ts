@@ -2,16 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { jsonResponse } from "@/lib/vocab/rest";
 import { readSupabaseConfig } from "@/lib/server-env";
 import { normalizeUsername } from "@/lib/classes/types";
-import { takeRateToken } from "@/lib/shared-rate-limit";
-
-/** Coarse client key for rate limiting: IP when present, else "unknown". */
-function clientKey(request: Request): string {
-  const ip =
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown";
-  return ip;
-}
+import { requestIp, takeRateToken } from "@/lib/shared-rate-limit";
 
 /** Constant 300ms floor so a failed lookup and a real bcrypt verify take the
     same wall-clock time — removes the timing side channel for username
@@ -20,6 +11,25 @@ async function timingFloor(startedAt: number): Promise<void> {
   const elapsed = Date.now() - startedAt;
   if (elapsed < 300) {
     await new Promise((r) => setTimeout(r, 300 - elapsed));
+  }
+}
+
+/** A wrong-username request does the same password round-trip a real one does,
+    so response time no longer tells an attacker whether the username exists. */
+async function decoyVerify(
+  config: { url: string; anonKey: string },
+  password: string,
+): Promise<void> {
+  try {
+    const anon = createClient(config.url, config.anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    await anon.auth.signInWithPassword({
+      email: `nobody-${crypto.randomUUID()}@invalid.example`,
+      password,
+    });
+  } catch {
+    /* the result is irrelevant; only the elapsed time matters */
   }
 }
 
@@ -48,7 +58,7 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
   /* A whole class signs in from one school IP, so the tight limit is per
      account on that IP (5, then one every 3 minutes) and the IP itself only
      gets a wide cap. Both counts live in the database so every Worker shares them. */
-  const ip = clientKey(request);
+  const ip = requestIp(request);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const [accountLimit, ipLimit] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -80,12 +90,14 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
   }
   const profile = (rows ?? [])[0] as { id: string; banned: boolean | null } | undefined;
   if (!profile) {
+    await decoyVerify(config, password);
     await timingFloor(startedAt);
     return jsonResponse({ error: "That username and password don't match." }, 401);
   }
   const { data: authUser, error: userErr } = await supabaseAdmin.auth.admin.getUserById(profile.id);
   const email = authUser.user?.email;
   if (userErr || !email) {
+    await decoyVerify(config, password);
     await timingFloor(startedAt);
     return jsonResponse({ error: "That username and password don't match." }, 401);
   }

@@ -1,11 +1,17 @@
 import sharp from "sharp";
 
-const SRC = "public/pwa-icon.svg";
+const SRC = "public/brand-mark.png";
 
 const png = { compressionLevel: 9, effort: 10 };
 
 async function writeAny(size) {
-  await sharp(SRC).resize(size, size).png(png).toFile(`public/pwa-${size}x${size}.png`);
+  const logo = await sharp(SRC).resize(size, size).png(png).toBuffer();
+  await sharp({
+    create: { width: size, height: size, channels: 4, background: "#0b0761" },
+  })
+    .composite([{ input: logo, gravity: "center" }])
+    .png(png)
+    .toFile(`public/pwa-${size}x${size}.png`);
 }
 
 async function writeMaskable(size) {

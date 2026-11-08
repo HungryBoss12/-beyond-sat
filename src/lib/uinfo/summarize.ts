@@ -1,6 +1,6 @@
 import { callRpc, readEnv, readSupabaseConfig, type VerifiedUser } from "@/lib/server-env";
 import { DEFAULT_MODELS } from "@/lib/ai/router";
-import { rateLimit } from "@/lib/rate-limit";
+import { sharedRateLimit } from "@/lib/shared-rate-limit";
 import { userIsBanned } from "@/lib/vocab/rest";
 
 const FLUSH_COUNT = 24;
@@ -59,7 +59,7 @@ export async function handleUinfoFlush(request: Request, env: unknown): Promise<
   /* One flush per 10 minutes per user (plan H1). A flush is a billable
      OpenRouter call over the user's own activity log, so it must not be
      spammable. Per-isolate caveat applies (lib/rate-limit.ts). */
-  const limit = rateLimit(`uinfo-flush:${user.id}`, 1, 1 / 10);
+  const limit = await sharedRateLimit(env, `uinfo-flush:${user.id}`, 1, 1 / 10);
   if (!limit.ok) {
     return new Response(null, {
       status: 204,
@@ -122,7 +122,13 @@ async function flushUinfo(
     ? ((await prevRes.json()) as { summary?: string }[])[0]?.summary ?? ""
     : "";
 
-  const lines = logs.map((row) => `${row.k}:${row.d || "-"}`).join(" ");
+  const lines = logs
+    .map((row) => {
+      const k = String(row.k ?? "").replace(/[^a-z]/g, "").slice(0, 4);
+      const d = String(row.d ?? "-").replace(/[^A-Za-z0-9_./:-]/g, "").slice(0, 64);
+      return `${k}:${d || "-"}`;
+    })
+    .join(" ");
   const apiKey = readEnv(env, "OPENROUTER_API_KEY");
   let summary = prev;
   if (apiKey) {

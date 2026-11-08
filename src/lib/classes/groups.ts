@@ -220,18 +220,21 @@ export async function setGroupMemberStatus(
   if (error) throw error;
 }
 
-/** Freeze one sub-class from `frozenOn`. `resumesOn` empty means it stays frozen until Activate. */
+/** Freeze one sub-class from `frozenOn`. `resumesOn` empty means it stays frozen until Activate.
+ *  A finished window (`resumesOn` today or earlier) requires `reason`. */
 export async function freezeGroupMember(
   groupId: string,
   userId: string,
   frozenOn: string,
   resumesOn?: string | null,
+  reason?: string | null,
 ): Promise<void> {
   const { error } = await db.rpc("staff_freeze_group_member", {
     p_group_id: groupId,
     p_user_id: userId,
     p_frozen_on: frozenOn,
     p_resumes_on: resumesOn || null,
+    p_reason: reason?.trim() || null,
   });
   if (error) throw error;
 }

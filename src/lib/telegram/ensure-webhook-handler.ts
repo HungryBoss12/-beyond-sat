@@ -1,4 +1,5 @@
 import { callRpc, readBearerToken, readSupabaseConfig, verifySupabaseUser } from "@/lib/server-env";
+import { timingSafeEqual } from "./api";
 import { readWebhookSecret } from "./env";
 import { ensureTelegramWebhook } from "./webhook-setup";
 
@@ -30,7 +31,7 @@ export async function handleEnsureTelegramWebhook(
 
   const setupToken = request.headers.get("X-Telegram-Setup-Token");
   const secret = readWebhookSecret(env);
-  const setupAuthorized = !!secret && setupToken === secret;
+  const setupAuthorized = !!secret && !!setupToken && (await timingSafeEqual(setupToken, secret));
   const adminAuthorized = await isAdminRequest(request, env);
 
   if (!setupAuthorized && !adminAuthorized) {

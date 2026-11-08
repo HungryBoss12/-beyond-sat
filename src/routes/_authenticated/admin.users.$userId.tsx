@@ -1,7 +1,7 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { ArrowLeft, Award, Ban, CircleCheck, KeyRound, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Award, Ban, CircleCheck, KeyRound, Loader2, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { BADGE_COLORS } from "@/lib/people/badge";
@@ -33,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { sessionAuthHeaders } from "@/lib/auth/session-headers";
+import { deleteStudentAccount } from "@/lib/auth/delete-student";
 
 type Role = "student" | "editor" | "admin";
 
@@ -57,6 +58,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/$userId")({
 
 function AdminUserDetailPage() {
   const { userId } = Route.useParams();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("overview");
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [sessions, setSessions] = useState<AdminUserSessionRow[]>([]);
@@ -194,6 +196,28 @@ function AdminUserDetailPage() {
     loadDetail();
   }
 
+  async function deleteAccount() {
+    if (!detail || detail.role !== "student") return;
+    const profile = detail.profile as { full_name?: string | null; email?: string | null };
+    const name = profile.full_name || profile.email || "this student";
+    if (
+      !confirm(
+        `Delete ${name}'s account? Their login, classes, and payment history are removed. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await deleteStudentAccount(userId);
+      toast.success(`${name} was deleted`);
+      await navigate({ to: "/admin/users" });
+    } catch (e) {
+      toast.error(errorMessage(e, "Could not delete the account"));
+      setBusy(false);
+    }
+  }
+
   const tabs: [Tab, string][] = [
     ["overview", "Overview"],
     ["tests", "Tests"],
@@ -235,6 +259,7 @@ function AdminUserDetailPage() {
             onRole={setRole}
             onBan={toggleBan}
             onReset={() => setResetOpen(true)}
+            onDelete={() => void deleteAccount()}
             onBadgeSaved={() => void loadDetail()}
           />
 
@@ -306,6 +331,7 @@ function Header({
   onRole,
   onBan,
   onReset,
+  onDelete,
   onBadgeSaved,
 }: {
   detail: AdminUserDetail;
@@ -313,6 +339,7 @@ function Header({
   onRole: (r: Role) => void;
   onBan: () => void;
   onReset: () => void;
+  onDelete: () => void;
   onBadgeSaved: () => void;
 }) {
   const profile = detail.profile as {
@@ -444,6 +471,17 @@ function Header({
           )}
           {profile.banned ? "Unban" : "Ban"}
         </button>
+        {role === "student" && (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={busy}
+            className="tap inline-flex items-center gap-1.5 rounded-lg bg-brand-900 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-brand-300/60 hover:bg-brand-800 disabled:opacity-60"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
+          </button>
+        )}
       </div>
       <Dialog open={badgeOpen} onOpenChange={setBadgeOpen}>
         <DialogContent className="border-brand-400/40 bg-brand-800 text-white">

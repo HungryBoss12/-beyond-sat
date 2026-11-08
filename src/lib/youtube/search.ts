@@ -1,4 +1,5 @@
 import { readEnv, readSupabaseConfig, verifySupabaseUser, readBearerToken } from "@/lib/server-env";
+import { sharedRateLimit } from "@/lib/shared-rate-limit";
 import { loadUinfoSummary } from "@/lib/uinfo/summarize";
 import { userIsBanned } from "@/lib/vocab/rest";
 
@@ -429,6 +430,11 @@ export async function handleYoutubeRecs(request: Request, env: unknown): Promise
   const banned = await userIsBanned(config, token, user.id);
   if (banned === "unknown") return json({ error: "Could not verify account" }, 503);
   if (banned === "yes") return json({ error: "This account is banned." }, 403);
+
+  const limit = await sharedRateLimit(env, `youtube-recs:${user.id}`, 10, 2);
+  if (!limit.ok) {
+    return json({ videos: [] }, 200);
+  }
 
   try {
     const section = parseYoutubeSection(new URL(request.url).searchParams.get("section"));

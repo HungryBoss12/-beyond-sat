@@ -18,6 +18,7 @@ import {
   School,
   Search,
   Sparkles,
+  Trash2,
   Users,
   Wand2,
   X,
@@ -44,6 +45,7 @@ import {
   generateStudentPassword,
   type CreatedStudent,
 } from "@/lib/auth/create-user";
+import { deleteStudentAccount } from "@/lib/auth/delete-student";
 import { isSyntheticAccountEmail } from "@/lib/auth/login-email";
 import { listAllClasses, addClassMember } from "@/lib/classes/api";
 import { addGroupMember, listGroups, listUserGroupMemberships, type ClassGroup } from "@/lib/classes/groups";
@@ -452,6 +454,54 @@ function AdminStudents() {
       return;
     }
     void load();
+  }
+
+  async function deleteSelected() {
+    const chosen = rows.filter((r) => selectedIds.has(r.id) && r.role === "student");
+    if (chosen.length === 0) {
+      toast.error("Select student accounts. Staff accounts are not deleted here.");
+      return;
+    }
+    const skipped = selectedIds.size - chosen.length;
+    const staffNote =
+      skipped > 0 ? ` ${skipped} staff account${skipped === 1 ? "" : "s"} in the selection will stay.` : "";
+    if (
+      !confirm(
+        `Delete ${chosen.length} student account${chosen.length === 1 ? "" : "s"}? Logins, classes, and payment history are removed.${staffNote} This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setBulkBusy(true);
+    setBulkError(null);
+    const failed: string[] = [];
+    for (let i = 0; i < chosen.length; i += 5) {
+      const chunk = chosen.slice(i, i + 5);
+      const results = await Promise.all(
+        chunk.map(async (u) => {
+          try {
+            await deleteStudentAccount(u.id);
+            return null;
+          } catch (err) {
+            const name = u.full_name || u.email || "A student";
+            return `${name}: ${err instanceof Error ? err.message : "could not be deleted"}`;
+          }
+        }),
+      );
+      for (const message of results) if (message) failed.push(message);
+    }
+    const removed = chosen.length - failed.length;
+    if (removed > 0) {
+      toast.success(`${removed} student account${removed === 1 ? "" : "s"} deleted`);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const u of chosen) next.delete(u.id);
+        return next;
+      });
+      await load();
+    }
+    setBulkError(failed.length > 0 ? failed.slice(0, 3).join(" ") : null);
+    setBulkBusy(false);
   }
 
   function toggleSort(key: SortKey) {
@@ -918,67 +968,69 @@ function AdminStudents() {
                 <div className="min-w-[180px]">
                   <DateTimeField dateOnly value={bulkAddedOn} onChange={setBulkAddedOn} />
                 </div>
-                <button
-                  type="button"
-                  disabled={bulkBusy || !bulkClassId || !bulkAddedOn}
-                  onClick={() => void bulkAddToClass()}
-                  className="btn-brand inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
-                >
-                  {bulkBusy ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Plus className="h-3.5 w-3.5" />
-                  )}
-                  Add to class
-                </button>
-                <button
-                  type="button"
-                  disabled={bulkBusy}
-                  onClick={() => void issueFreshLinks()}
-                  className="tap inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
-                >
-                  <Link2 className="h-3.5 w-3.5" />
-                  New sign-in links
-                </button>
-                <button
-                  type="button"
-                  disabled={bulkBusy}
-                  onClick={() => {
-                    setActPreview(null);
-                    setActOpen(true);
-                  }}
-                  className="tap inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
-                >
-                  <CalendarCheck className="h-3.5 w-3.5" />
-                  Activation date
-                </button>
-                <button
-                  type="button"
-                  disabled={bulkBusy}
-                  onClick={() => setLinkOpen(true)}
-                  className="tap inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-3 py-2 text-xs font-bold text-white"
-                >
-                  <CalendarClock className="h-3.5 w-3.5" />
-                  Link activation
-                </button>
-                <IconButton
-                  icon={BadgeDollarSign}
-                  label="Set fee for selected students"
-                  variant="brand"
-                  disabled={bulkBusy}
-                  onClick={() => setFeeOpen(true)}
-                />
-                <button
-                  type="button"
-                  disabled={bulkBusy}
-                  onClick={() => {
-                    setSelectedIds(new Set());
-                    setBulkError(null);
-                  }}
-                  className="tap rounded-lg px-3 py-2 text-xs font-semibold text-brand-100 hover:bg-brand-800 hover:text-white"
-                >
-                  <X className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> Clear
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <IconButton
+                    icon={Plus}
+                    label="Add to class"
+                    variant="brand"
+                    disabled={bulkBusy || !bulkClassId || !bulkAddedOn}
+                    onClick={() => void bulkAddToClass()}
+                    className="h-9 w-9 min-w-9 bg-brand-400 text-white hover:bg-brand-300 [&_svg]:h-4 [&_svg]:w-4"
+                  />
+                  <IconButton
+                    icon={Link2}
+                    label="New sign-in links"
+                    variant="brand"
+                    disabled={bulkBusy}
+                    onClick={() => void issueFreshLinks()}
+                    className="h-9 w-9 min-w-9 bg-brand-400 text-white hover:bg-brand-300 [&_svg]:h-4 [&_svg]:w-4"
+                  />
+                  <IconButton
+                    icon={CalendarCheck}
+                    label="Activation date"
+                    variant="brand"
+                    disabled={bulkBusy}
+                    onClick={() => {
+                      setActPreview(null);
+                      setActOpen(true);
+                    }}
+                    className="h-9 w-9 min-w-9 bg-brand-400 text-white hover:bg-brand-300 [&_svg]:h-4 [&_svg]:w-4"
+                  />
+                  <IconButton
+                    icon={CalendarClock}
+                    label="Link activation"
+                    variant="brand"
+                    disabled={bulkBusy}
+                    onClick={() => setLinkOpen(true)}
+                    className="h-9 w-9 min-w-9 bg-brand-400 text-white hover:bg-brand-300 [&_svg]:h-4 [&_svg]:w-4"
+                  />
+                  <IconButton
+                    icon={BadgeDollarSign}
+                    label="Set fee for selected students"
+                    variant="brand"
+                    disabled={bulkBusy}
+                    onClick={() => setFeeOpen(true)}
+                    className="h-9 w-9 min-w-9 bg-brand-400 text-white hover:bg-brand-300 [&_svg]:h-4 [&_svg]:w-4"
+                  />
+                  <IconButton
+                    icon={Trash2}
+                    label="Delete selected students"
+                    variant="brand"
+                    disabled={bulkBusy}
+                    onClick={() => void deleteSelected()}
+                    className="h-9 w-9 min-w-9 bg-brand-900 text-white ring-1 ring-brand-300/60 hover:bg-brand-800 [&_svg]:h-4 [&_svg]:w-4"
+                  />
+                  <IconButton
+                    icon={X}
+                    label="Clear selection"
+                    disabled={bulkBusy}
+                    onClick={() => {
+                      setSelectedIds(new Set());
+                      setBulkError(null);
+                    }}
+                    className="h-9 w-9 min-w-9 bg-transparent text-white hover:bg-brand-800 [&_svg]:h-4 [&_svg]:w-4"
+                  />
+                </div>
                 {bulkError ? (
                   <p className="w-full text-xs font-semibold text-white ring-1 ring-brand-300/60 rounded-lg bg-brand-900 px-3 py-2">
                     {bulkError}

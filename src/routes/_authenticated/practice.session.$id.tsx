@@ -163,10 +163,25 @@ function SessionRunner() {
         }
       }
 
-      const { data: attemptRows } = await supabase
-        .from("attempts")
-        .select("question_id,is_correct,selected_choice_id,grid_answer")
-        .eq("session_id", id);
+      /* Not a direct table read: an unfinished mock hides is_correct from the table. */
+      const { data: attemptData } = await (
+        supabase as unknown as {
+          rpc: (
+            fn: string,
+            args: Record<string, unknown>,
+          ) => Promise<{
+            data:
+              | {
+                  question_id: string;
+                  is_correct: boolean | null;
+                  selected_choice_id: string | null;
+                  grid_answer: string | null;
+                }[]
+              | null;
+          }>;
+        }
+      ).rpc("my_session_attempts", { p_session_id: id });
+      const attemptRows = attemptData ?? [];
       const attemptById = new Map(
         (attemptRows ?? []).map((row) => [row.question_id, row]),
       );
@@ -185,7 +200,7 @@ function SessionRunner() {
       );
       setInitialGrades(
         (attemptRows ?? [])
-          .filter((row) => row.question_id)
+          .filter((row) => row.question_id && row.is_correct !== null)
           .map((row) => ({
             questionId: row.question_id as string,
             isCorrect: !!row.is_correct,

@@ -1,6 +1,7 @@
 import { jsonResponse, requireUser } from "@/lib/vocab/rest";
 import { isValidUsername, normalizeUsername } from "@/lib/classes/types";
-import { accountEmailFor, isSyntheticAccountEmail } from "./login-email";
+import { isSyntheticAccountEmail } from "./login-email";
+import { firstLoginAuthUpdate, firstLoginErrorMessage } from "./first-login-update";
 
 export async function handleCompleteFirstLogin(request: Request, env: unknown): Promise<Response> {
   if (request.method !== "POST") {
@@ -68,39 +69,34 @@ export async function handleCompleteFirstLogin(request: Request, env: unknown): 
     return jsonResponse({ error: "Could not update your account." }, 500);
   }
 
-  const currentEmail = authUser.user.email ?? null;
-  let authEmail: string | undefined;
-  if (nextEmail) {
-    authEmail = nextEmail;
-  } else if (
-    nextUsername &&
-    nextUsername !== prof.username &&
-    isSyntheticAccountEmail(currentEmail)
-  ) {
-    authEmail = accountEmailFor(nextUsername);
-  }
-
-  const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(auth.user.id, {
+  const update = firstLoginAuthUpdate({
     password,
-    ...(authEmail ? { email: authEmail, email_confirm: true } : {}),
+    nextEmail,
+    nextUsername,
+    prevUsername: (prof.username as string | null) ?? null,
+    currentEmail: authUser.user.email ?? null,
   });
+
+  const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(
+    auth.user.id,
+    update.attributes,
+  );
   if (updErr) {
-    return jsonResponse({ error: updErr.message }, 400);
+    console.error("[first-login] update user failed", updErr.message);
+    return jsonResponse({ error: firstLoginErrorMessage(updErr.message) }, 400);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: rpcErr } = await (supabaseAdmin as any).rpc("bs_complete_first_login", {
     p_user_id: auth.user.id,
     p_username: nextUsername,
-    p_email: nextEmail || authEmail || null,
+    p_email: update.attributes.email ?? null,
   });
   if (rpcErr) {
-    const msg = rpcErr.message ?? "Could not finish setup.";
-    if (/username taken/i.test(msg)) {
-      return jsonResponse({ error: "That username is already taken." }, 409);
-    }
-    return jsonResponse({ error: msg }, 500);
+    console.error("[first-login] complete failed", rpcErr.message);
+    const msg = firstLoginErrorMessage(rpcErr.message);
+    return jsonResponse({ error: msg }, msg === "That username is already taken." ? 409 : 500);
   }
 
-  return jsonResponse({ ok: true });
+  return jsonResponse({ ok: true, pendingEmail: update.pendingEmail });
 }

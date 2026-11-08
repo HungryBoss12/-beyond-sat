@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { appUrl } from "@/lib/app-url";
 import { isValidUsername, normalizeUsername } from "@/lib/classes/types";
 import { rememberCurrentSession } from "@/lib/auth/account-switcher";
 import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
@@ -102,10 +104,21 @@ function FirstLogin() {
           email: nextEmail || null,
         }),
       });
-      const body = (await res.json()) as { error?: string };
+      const body = (await res.json()) as { error?: string; pendingEmail?: string | null };
       if (!res.ok) {
         setErr(body.error ?? "Could not save your password.");
         return;
+      }
+      if (body.pendingEmail) {
+        const { error: emailErr } = await supabase.auth.updateUser(
+          { email: body.pendingEmail },
+          { emailRedirectTo: appUrl("/auth/callback") },
+        );
+        if (emailErr) {
+          toast.error("Password saved, but the confirmation email couldn't be sent.");
+        } else {
+          toast.success(`Check ${body.pendingEmail} and click the link to confirm your email.`);
+        }
       }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not save your password.");

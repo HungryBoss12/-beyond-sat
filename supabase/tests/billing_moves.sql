@@ -23,7 +23,9 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub', v_admin::text, true);
   PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
   PERFORM set_config('request.jwt.claims',
-    json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
+    json_build_object('sub', v_admin, 'role', 'authenticated',
+      'amr', json_build_array(json_build_object('method', 'password',
+        'timestamp', extract(epoch FROM now())::bigint)))::text, true);
 
   INSERT INTO public.classes (name) VALUES ('ZZ test A') RETURNING id INTO v_a;
   INSERT INTO public.classes (name) VALUES ('ZZ test B') RETURNING id INTO v_b;

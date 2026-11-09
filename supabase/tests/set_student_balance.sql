@@ -12,7 +12,9 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub', v_admin::text, true);
   PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
   PERFORM set_config('request.jwt.claims',
-    json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
+    json_build_object('sub', v_admin, 'role', 'authenticated',
+      'amr', json_build_array(json_build_object('method', 'password',
+        'timestamp', extract(epoch FROM now())::bigint)))::text, true);
 
   INSERT INTO auth.users (id, instance_id, aud, role, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
   VALUES (v_s, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',

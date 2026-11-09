@@ -112,7 +112,6 @@ function LedgerPage() {
         </>
       )}
       <EditPaymentDialog row={editing} onClose={() => setEditing(null)} onSaved={load} />
-      <EditPaymentDialog row={editing} onClose={() => setEditing(null)} onSaved={load} />
       <VoidDialog
         open={voiding != null}
         title="Void entry"

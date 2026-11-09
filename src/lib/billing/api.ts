@@ -476,20 +476,29 @@ export async function resetAllPayments(): Promise<number> {
   return Number(count ?? 0);
 }
 
-/** Every ledger row across students, newest first (admin RLS). */
-export async function listAllLedger(limit = 2000): Promise<LedgerRow[]> {
+const LEDGER_PAGE = 1000;
+
+/** Every ledger row across students, newest first (admin RLS). The API caps each response at 1000 rows. */
+export async function listAllLedger(): Promise<LedgerRow[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as unknown as any;
-  const { data, error } = await db
-    .from("ledger_entries")
-    .select(
-      "id,user_id,kind,amount_uzs,period,method,occurred_on,note,source,voided_at,void_reason,created_at,group_id,prorate_lessons,prorate_total,class_groups(name,subject)",
-    )
-    .order("occurred_on", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return ((data ?? []) as Raw[]).map((r) =>
+  const rows: Raw[] = [];
+  for (let from = 0; ; from += LEDGER_PAGE) {
+    const { data, error } = await db
+      .from("ledger_entries")
+      .select(
+        "id,user_id,kind,amount_uzs,period,method,occurred_on,note,source,voided_at,void_reason,created_at,group_id,prorate_lessons,prorate_total,class_groups(name,subject)",
+      )
+      .order("occurred_on", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, from + LEDGER_PAGE - 1);
+    if (error) throw error;
+    const page = (data ?? []) as Raw[];
+    rows.push(...page);
+    if (page.length < LEDGER_PAGE) break;
+  }
+  return rows.map((r) =>
     mapLedger({ ...r, group_name: r.class_groups?.name, subject: r.class_groups?.subject }),
   );
 }

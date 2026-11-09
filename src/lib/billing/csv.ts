@@ -1,3 +1,8 @@
+/** Spreadsheets run a cell that starts with = + - @ as a formula. Staff-written notes reach these files. */
+function inertCell(text: string): string {
+  return /^[=+\-@\t\r]/.test(text) && !/^-\d+$/.test(text) ? `'${text}` : text;
+}
+
 /** RFC 4180 CSV: fields with a comma, quote or line break are quoted. */
 export function toCsv(
   rows: readonly (readonly (string | number | bigint | null | undefined)[])[],
@@ -6,7 +11,7 @@ export function toCsv(
     .map((row) =>
       row
         .map((cell) => {
-          const text = cell == null ? "" : String(cell);
+          const text = inertCell(cell == null ? "" : String(cell));
           return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
         })
         .join(","),

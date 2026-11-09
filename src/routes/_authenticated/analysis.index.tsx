@@ -40,6 +40,16 @@ import { PageHead, Panel, Skeleton } from "@/components/ui/panel";
 import { HeadSkeleton, ListSkeleton, StatRowSkeleton } from "@/components/ui/skeletons";
 import { Badge, Delta, type Tone } from "@/components/ui/metric";
 import { format } from "date-fns";
+import {
+  REVIEW_MODULES,
+  knownParts,
+  orderByIds,
+  readSessionReviewMeta,
+  sectionChoiceLabel,
+  tagInOrder,
+  type ReviewModule,
+  type ReviewPart,
+} from "@/lib/analysis/review-parts";
 
 export const Route = createFileRoute("/_authenticated/analysis/")({
   component: AnalysisPage,
@@ -56,6 +66,7 @@ type SessionRow = {
   score: number | null;
   rw_score: number | null;
   math_score: number | null;
+  metadata: unknown;
 };
 
 type AttemptRow = {
@@ -90,6 +101,9 @@ function AnalysisPage() {
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);
   const [totalAvailable, setTotalAvailable] = useState(0);
   const [openSession, setOpenSession] = useState<string | null>(null);
+  const [testsById, setTestsById] = useState<Map<string, { section: string; module: number }>>(
+    new Map(),
+  );
 
   const [fSection, setFSection] = useState<Section | "all">("all");
   const [fSkill, setFSkill] = useState<string>("");
@@ -106,7 +120,7 @@ function AnalysisPage() {
         supabase
           .from("test_sessions")
           .select(
-            "id,type,started_at,completed_at,correct_count,total_questions,score,rw_score,math_score",
+            "id,type,started_at,completed_at,correct_count,total_questions,score,rw_score,math_score,metadata",
           )
           .eq("user_id", uid)
           .not("completed_at", "is", null)
@@ -118,7 +132,26 @@ function AnalysisPage() {
           .order("created_at", { ascending: true }),
         supabase.from("tests").select("*", { count: "exact", head: true }),
       ]);
-      setSessions((s ?? []) as SessionRow[]);
+      const rows = (s ?? []) as SessionRow[];
+      const testIds = [
+        ...new Set(
+          rows
+            .map((row) => readSessionReviewMeta(row.metadata).testId)
+            .filter((id): id is string => !!id),
+        ),
+      ];
+      const testMap = new Map<string, { section: string; module: number }>();
+      for (let i = 0; i < testIds.length; i += 40) {
+        const { data: tests } = await supabase
+          .from("tests")
+          .select("id,section,module")
+          .in("id", testIds.slice(i, i + 40));
+        for (const test of tests ?? []) {
+          testMap.set(test.id, { section: test.section, module: test.module });
+        }
+      }
+      setTestsById(testMap);
+      setSessions(rows);
       setAttempts((a ?? []) as AttemptRow[]);
       setTotalAvailable(count ?? 0);
       setLoading(false);
@@ -306,7 +339,9 @@ function AnalysisPage() {
                       <text
                         x={e.x}
                         y={e.y}
-                        textAnchor={(e.textAnchor as "start" | "middle" | "end" | undefined) ?? "middle"}
+                        textAnchor={
+                          (e.textAnchor as "start" | "middle" | "end" | undefined) ?? "middle"
+                        }
                         fill="#ffffff"
                         fontSize={12}
                         fontWeight={700}
@@ -400,6 +435,7 @@ function AnalysisPage() {
                 fSection={fSection}
                 fSkill={fSkill}
                 fDifficulty={fDifficulty}
+                testPart={testsById.get(readSessionReviewMeta(s.metadata).testId ?? "") ?? null}
               />
             ))}
           </ul>
@@ -707,6 +743,109 @@ function FieldFilter({ label, children }: { label: string; children: React.React
   );
 }
 
+function ModuleBlock({
+  sessionId,
+  section,
+  module,
+  rows,
+}: {
+  sessionId: string;
+  section: Section;
+  module: ReviewModule;
+  rows: { question: QuestionLite; attempt: AttemptRow; part: ReviewPart }[];
+}) {
+  const right = rows.filter((row) => row.attempt.is_correct === true).length;
+  return (
+    <section className="space-y-2" aria-label={`Module ${module}`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-md bg-brand-400 px-2 py-1 text-[11px] font-black uppercase tracking-wider text-white">
+          Module {module}
+        </span>
+        <span className="text-xs font-semibold tabular-nums text-brand-100">
+          {right} / {rows.length} correct
+        </span>
+        {rows.length > 0 ? (
+          <Link
+            to="/analysis/session/$id"
+            params={{ id: sessionId }}
+            search={{ section, module }}
+            className="btn-ghost ml-auto inline-flex rounded-lg border border-brand-300/50 bg-brand-800 px-3 py-1.5 text-xs font-bold text-white"
+          >
+            Review
+          </Link>
+        ) : (
+          <span className="ml-auto text-xs text-brand-100">Nothing in this module</span>
+        )}
+      </div>
+      {rows.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-brand-400/40 px-3 py-4 text-center text-sm text-brand-100">
+          No questions in Module {module}.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((row, index) => {
+            const q = row.question;
+            const a = row.attempt;
+            const correctChoice = q.choices?.find((choice) => choice.id === q.correct_choice_id);
+            return (
+              <li
+                key={a.id}
+                className="rounded-xl border border-brand-400/40 bg-brand-800 p-3 transition-shadow duration-200 hover:shadow-panel"
+              >
+                <div className="flex items-start gap-3">
+                  {a.is_correct ? (
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-white" />
+                  ) : (
+                    <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-brand-200" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-bold text-brand-100">Q{index + 1}</span>
+                      <span className="rounded bg-brand-700 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                        Module {module}
+                      </span>
+                      <span className="rounded bg-brand-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                        {SECTION_LABEL[q.section]}
+                      </span>
+                      <span className="rounded bg-brand-700 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-100">
+                        {q.skill}
+                      </span>
+                      <span
+                        className={
+                          "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
+                          difficultyColor(q.difficulty)
+                        }
+                      >
+                        {difficultyLabel(q.difficulty)}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 line-clamp-2 text-sm text-white">
+                      <MathText math={q.section === "math"}>{q.question_text}</MathText>
+                    </div>
+                    <div className="mt-1 text-xs text-brand-100">
+                      {q.kind === "multiple_choice" ? (
+                        <>
+                          Your answer: <b>{a.selected_choice_id ?? "—"}</b> · Correct:{" "}
+                          <b>{correctChoice?.id ?? "—"}</b>
+                        </>
+                      ) : (
+                        <>
+                          Your answer: <b>{a.grid_answer ?? "—"}</b> · Correct:{" "}
+                          <b>{(q.correct_grid_answers ?? []).join(", ") || "—"}</b>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function SessionItem({
   session,
   attempts,
@@ -715,6 +854,7 @@ function SessionItem({
   fSection,
   fSkill,
   fDifficulty,
+  testPart,
 }: {
   session: SessionRow;
   attempts: AttemptRow[];
@@ -723,9 +863,13 @@ function SessionItem({
   fSection: Section | "all";
   fSkill: string;
   fDifficulty: Difficulty | "";
+  testPart: { section: string; module: number } | null;
 }) {
   const [details, setDetails] = useState<QuestionLite[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [picked, setPicked] = useState<Section | null>(
+    fSection === "math" || fSection === "reading_writing" ? fSection : null,
+  );
 
   useEffect(() => {
     if (!isOpen || details !== null) return;
@@ -766,18 +910,49 @@ function SessionItem({
   const pct = total ? Math.round((correct / total) * 100) : 0;
   const completed = session.completed_at ? new Date(session.completed_at) : null;
 
-  const filteredAttempts = useMemo(() => {
+  const reviewMeta = useMemo(() => readSessionReviewMeta(session.metadata), [session.metadata]);
+  const orderedAttempts = useMemo(
+    () => orderByIds(attempts, reviewMeta.questionIds, (attempt) => attempt.question_id),
+    [attempts, reviewMeta.questionIds],
+  );
+  const known = useMemo(
+    () =>
+      knownParts({
+        modules: reviewMeta.modules,
+        test: testPart,
+        questionIds: reviewMeta.questionIds ?? attempts.map((attempt) => attempt.question_id),
+      }),
+    [reviewMeta.modules, reviewMeta.questionIds, testPart, attempts],
+  );
+
+  const filteredRows = useMemo(() => {
     if (!details) return [];
     const byId = new Map(details.map((d) => [d.id, d]));
-    return attempts.filter((a) => {
-      const q = byId.get(a.question_id);
-      if (!q) return false;
-      if (fSection !== "all" && q.section !== fSection) return false;
-      if (fSkill && q.skill !== fSkill) return false;
-      if (fDifficulty && difficultyLabel(q.difficulty) !== fDifficulty) return false;
-      return true;
+    const ordered = orderByIds(
+      orderedAttempts
+        .map((attempt) => byId.get(attempt.question_id))
+        .filter((question): question is QuestionLite => !!question),
+      reviewMeta.questionIds,
+      (question) => question.id,
+    );
+    const attemptByQuestion = new Map(
+      orderedAttempts.map((attempt) => [attempt.question_id, attempt]),
+    );
+    return tagInOrder(ordered, known).flatMap((question) => {
+      const attempt = attemptByQuestion.get(question.id);
+      if (!attempt) return [];
+      if (fSection !== "all" && question.section !== fSection) return [];
+      if (fSkill && question.skill !== fSkill) return [];
+      if (fDifficulty && difficultyLabel(question.difficulty) !== fDifficulty) return [];
+      return [{ question, attempt, part: question.part }];
     });
-  }, [details, attempts, fSection, fSkill, fDifficulty]);
+  }, [details, orderedAttempts, known, reviewMeta.questionIds, fSection, fSkill, fDifficulty]);
+
+  const activeSection: Section =
+    picked ??
+    (filteredRows.some((row) => row.part.section === "reading_writing")
+      ? "reading_writing"
+      : "math");
 
   return (
     <li>
@@ -835,7 +1010,7 @@ function SessionItem({
       </div>
       {isOpen && (
         <div className="rise-in bg-brand-800/60 px-5 pb-5">
-          {loading ? (
+          {loading || details === null ? (
             /* Three placeholder rows the same height as the real detail cards,
                so expanding a session doesn't collapse and re-expand. */
             <div className="space-y-2 py-2">
@@ -847,69 +1022,52 @@ function SessionItem({
             <div className="py-6 text-center text-sm text-brand-100">
               No question details available.
             </div>
-          ) : filteredAttempts.length === 0 ? (
+          ) : filteredRows.length === 0 ? (
             <div className="py-6 text-center text-sm text-brand-100">
               No questions match the filters for this test.
             </div>
           ) : (
-            <ul className="space-y-2 stagger-fast">
-              {filteredAttempts.map((a, i) => {
-                const q = details!.find((d) => d.id === a.question_id)!;
-                const correctChoice = q.choices?.find((c) => c.id === q.correct_choice_id);
-                return (
-                  <li
-                    key={a.id}
-                    className="rounded-xl border border-brand-400/40 bg-brand-800 p-3 transition-shadow duration-200 hover:shadow-panel"
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* The check/cross shape already carries right-vs-wrong, so
-                          the icons ride the brand ramp instead of green and red —
-                          same treatment as the review overlay. */}
-                      {a.is_correct ? (
-                        <CheckCircle2 className="h-5 w-5 text-white shrink-0 mt-0.5" />
-                      ) : (
-                        <XCircle className="h-5 w-5 text-brand-200 shrink-0 mt-0.5" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-bold text-brand-100">Q{i + 1}</span>
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-brand-400 text-white">
-                            {SECTION_LABEL[q.section]}
-                          </span>
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-brand-700 text-brand-100">
-                            {q.skill}
-                          </span>
-                          <span
-                            className={
-                              "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded " +
-                              difficultyColor(q.difficulty)
-                            }
-                          >
-                            {difficultyLabel(q.difficulty)}
-                          </span>
-                        </div>
-                        <div className="mt-1.5 text-sm text-white line-clamp-2">
-                          <MathText math={q.section === "math"}>{q.question_text}</MathText>
-                        </div>
-                        <div className="mt-1 text-xs text-brand-100">
-                          {q.kind === "multiple_choice" ? (
-                            <>
-                              Your answer: <b>{a.selected_choice_id ?? "—"}</b> · Correct:{" "}
-                              <b>{correctChoice?.id ?? "—"}</b>
-                            </>
-                          ) : (
-                            <>
-                              Your answer: <b>{a.grid_answer ?? "—"}</b> · Correct:{" "}
-                              <b>{(q.correct_grid_answers ?? []).join(", ") || "—"}</b>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="space-y-4 pt-3">
+              <div className="grid grid-cols-2 gap-2" role="group" aria-label="Section">
+                {(["reading_writing", "math"] as const).map((section) => {
+                  const inSection = filteredRows.filter((row) => row.part.section === section);
+                  const right = inSection.filter((row) => row.attempt.is_correct === true).length;
+                  const selected = activeSection === section;
+                  return (
+                    <button
+                      key={section}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setPicked(section)}
+                      className={
+                        "tap rounded-xl border px-3 py-3 text-left " +
+                        (selected
+                          ? "border-white bg-brand-400 text-white"
+                          : "border-brand-400/40 bg-brand-800 text-brand-100 hover:border-brand-200")
+                      }
+                    >
+                      <span className="block text-sm font-black">
+                        {sectionChoiceLabel(section)}
+                      </span>
+                      <span className="mt-0.5 block text-xs font-semibold tabular-nums">
+                        {right} / {inSection.length} correct
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {REVIEW_MODULES.map((module) => (
+                <ModuleBlock
+                  key={module}
+                  sessionId={session.id}
+                  section={activeSection}
+                  module={module}
+                  rows={filteredRows.filter(
+                    (row) => row.part.section === activeSection && row.part.module === module,
+                  )}
+                />
+              ))}
+            </div>
           )}
         </div>
       )}

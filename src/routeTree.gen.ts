@@ -53,6 +53,7 @@ import { Route as AuthenticatedAdminPaymentsRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminQuestionsRouteImport } from './routes/_authenticated/admin.questions'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminSqbRouteImport } from './routes/_authenticated/admin.sqb'
+import { Route as AuthenticatedAdminStatisticsRouteImport } from './routes/_authenticated/admin.statistics'
 import { Route as AuthenticatedAdminSupportRouteImport } from './routes/_authenticated/admin.support'
 import { Route as AuthenticatedAdminTestsRouteImport } from './routes/_authenticated/admin.tests'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
@@ -334,6 +335,12 @@ const AuthenticatedAdminSqbRoute = AuthenticatedAdminSqbRouteImport.update({
   path: '/sqb',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminStatisticsRoute =
+  AuthenticatedAdminStatisticsRouteImport.update({
+    id: '/statistics',
+    path: '/statistics',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminSupportRoute =
   AuthenticatedAdminSupportRouteImport.update({
     id: '/support',
@@ -669,6 +676,7 @@ export interface FileRoutesByFullPath {
   '/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/sqb': typeof AuthenticatedAdminSqbRouteWithChildren
+  '/admin/statistics': typeof AuthenticatedAdminStatisticsRoute
   '/admin/support': typeof AuthenticatedAdminSupportRoute
   '/admin/tests': typeof AuthenticatedAdminTestsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
@@ -755,6 +763,7 @@ export interface FileRoutesByTo {
   '/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
   '/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/statistics': typeof AuthenticatedAdminStatisticsRoute
   '/admin/support': typeof AuthenticatedAdminSupportRoute
   '/admin/tests': typeof AuthenticatedAdminTestsRoute
   '/news/$slug': typeof AuthenticatedNewsSlugRoute
@@ -844,6 +853,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/questions': typeof AuthenticatedAdminQuestionsRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/sqb': typeof AuthenticatedAdminSqbRouteWithChildren
+  '/_authenticated/admin/statistics': typeof AuthenticatedAdminStatisticsRoute
   '/_authenticated/admin/support': typeof AuthenticatedAdminSupportRoute
   '/_authenticated/admin/tests': typeof AuthenticatedAdminTestsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
@@ -941,6 +951,7 @@ export interface FileRouteTypes {
     | '/admin/questions'
     | '/admin/settings'
     | '/admin/sqb'
+    | '/admin/statistics'
     | '/admin/support'
     | '/admin/tests'
     | '/admin/users'
@@ -1027,6 +1038,7 @@ export interface FileRouteTypes {
     | '/admin/notifications'
     | '/admin/questions'
     | '/admin/settings'
+    | '/admin/statistics'
     | '/admin/support'
     | '/admin/tests'
     | '/news/$slug'
@@ -1115,6 +1127,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/questions'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/sqb'
+    | '/_authenticated/admin/statistics'
     | '/_authenticated/admin/support'
     | '/_authenticated/admin/tests'
     | '/_authenticated/admin/users'
@@ -1494,6 +1507,13 @@ declare module '@tanstack/react-router' {
       path: '/sqb'
       fullPath: '/admin/sqb'
       preLoaderRoute: typeof AuthenticatedAdminSqbRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/statistics': {
+      id: '/_authenticated/admin/statistics'
+      path: '/statistics'
+      fullPath: '/admin/statistics'
+      preLoaderRoute: typeof AuthenticatedAdminStatisticsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/support': {
@@ -2001,6 +2021,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminQuestionsRoute: typeof AuthenticatedAdminQuestionsRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminSqbRoute: typeof AuthenticatedAdminSqbRouteWithChildren
+  AuthenticatedAdminStatisticsRoute: typeof AuthenticatedAdminStatisticsRoute
   AuthenticatedAdminSupportRoute: typeof AuthenticatedAdminSupportRoute
   AuthenticatedAdminTestsRoute: typeof AuthenticatedAdminTestsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRouteWithChildren
@@ -2024,6 +2045,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminQuestionsRoute: AuthenticatedAdminQuestionsRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminSqbRoute: AuthenticatedAdminSqbRouteWithChildren,
+  AuthenticatedAdminStatisticsRoute: AuthenticatedAdminStatisticsRoute,
   AuthenticatedAdminSupportRoute: AuthenticatedAdminSupportRoute,
   AuthenticatedAdminTestsRoute: AuthenticatedAdminTestsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRouteWithChildren,

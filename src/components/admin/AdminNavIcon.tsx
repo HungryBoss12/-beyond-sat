@@ -12,6 +12,7 @@ export type AdminAnim =
   | "daily"
   | "mocks"
   | "examdates"
+  | "statistics"
   | "news"
   | "lessons"
   | "classes"
@@ -57,6 +58,7 @@ export function AdminNavIcon({ anim, className, hovered: hoveredProp }: Props) {
       {anim === "daily" && <DailyIcon hovered={h} />}
       {anim === "mocks" && <MocksIcon hovered={h} />}
       {anim === "examdates" && <ExamDatesIcon hovered={h} />}
+      {anim === "statistics" && <StatisticsIcon hovered={h} />}
       {anim === "news" && <NewsIcon hovered={h} />}
       {anim === "lessons" && <LessonsIcon hovered={h} />}
       {anim === "classes" && <ClassesIcon hovered={h} />}
@@ -360,6 +362,48 @@ function MocksIcon({ hovered }: { hovered: boolean }) {
         <rect x="10.2" y="2.6" width="3.6" height="2.2" rx="0.6" fill="currentColor" stroke="none" />
       </motion.g>
     </svg>
+  );
+}
+
+function StatisticsIcon({ hovered }: { hovered: boolean }) {
+  return (
+    <motion.svg {...svgProps} style={{ willChange: "transform" }}>
+      <path d="M3.5 20.5h17" />
+      <motion.rect
+        x="4.2"
+        y="12"
+        width="4.2"
+        height="8"
+        rx="0.7"
+        fill="currentColor"
+        stroke="none"
+        animate={{ y: hovered ? -1 : 0 }}
+        transition={SNAP}
+      />
+      <motion.rect
+        x="9.9"
+        y="6.5"
+        width="4.2"
+        height="13.5"
+        rx="0.7"
+        fill="currentColor"
+        stroke="none"
+        animate={{ y: hovered ? -2.5 : 0 }}
+        transition={SNAP}
+        style={{ willChange: "transform" }}
+      />
+      <motion.rect
+        x="15.6"
+        y="14.5"
+        width="4.2"
+        height="5.5"
+        rx="0.7"
+        fill="currentColor"
+        stroke="none"
+        animate={{ y: hovered ? -1 : 0 }}
+        transition={SNAP}
+      />
+    </motion.svg>
   );
 }
 

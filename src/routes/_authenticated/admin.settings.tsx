@@ -1,6 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2, Save, Calculator, Sparkles, Wrench, KeyRound, MessageCircle, Youtube, UserPlus } from "lucide-react";
+import {
+  Loader2,
+  Save,
+  Calculator,
+  Sparkles,
+  Wrench,
+  KeyRound,
+  MessageCircle,
+  Youtube,
+  UserPlus,
+  CalendarDays,
+} from "lucide-react";
+import { ExamDatesEditor } from "@/components/admin/ExamDatesEditor";
 import { clearRegistrationCache } from "@/lib/registration";
 import {
   createTelegramLinkCode,
@@ -705,6 +717,16 @@ function AdminSettings() {
           </div>
         </div>
       </Card>
+
+      <div id="exam-dates">
+        <Card
+          icon={CalendarDays}
+          title="Exam dates"
+          description="Official SAT dates students can pick from."
+        >
+          <ExamDatesEditor />
+        </Card>
+      </div>
     </div>
   );
 }

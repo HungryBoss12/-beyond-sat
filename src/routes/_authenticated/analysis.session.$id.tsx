@@ -10,8 +10,35 @@ import {
   type AnswerState,
   type QuestionRow,
 } from "@/components/QuestionCard";
+import {
+  REVIEW_MODULES,
+  REVIEW_SECTIONS,
+  knownParts,
+  orderByIds,
+  readSessionReviewMeta,
+  sectionChoiceLabel,
+  tagInOrder,
+  type ReviewModule,
+  type ReviewPart,
+} from "@/lib/analysis/review-parts";
+import type { Section } from "@/lib/sat";
+
+type ReviewSearch = { section?: Section; module?: ReviewModule };
 
 export const Route = createFileRoute("/_authenticated/analysis/session/$id")({
+  validateSearch: (search: Record<string, unknown>): ReviewSearch => {
+    const section =
+      search.section === "math" || search.section === "reading_writing"
+        ? search.section
+        : undefined;
+    const module =
+      search.module === 2 || search.module === "2"
+        ? 2
+        : search.module === 1 || search.module === "1"
+          ? 1
+          : undefined;
+    return { section, module };
+  },
   component: SessionReview,
   head: () => ({ meta: [{ title: "Session review — BeyondSAT" }] }),
 });
@@ -29,10 +56,12 @@ type AttemptRow = {
 type QuestionFull = QuestionRow & {
   correct_choice_id: string | null;
   correct_grid_answers: string[] | null;
+  part: ReviewPart;
 };
 
 function SessionReview() {
   const { id } = Route.useParams();
+  const search = Route.useSearch();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -45,6 +74,22 @@ function SessionReview() {
       const { data: u } = await supabase.auth.getUser();
       const uid = u.user?.id;
       if (!uid) return;
+      const { data: sess } = await supabase
+        .from("test_sessions")
+        .select("metadata")
+        .eq("id", id)
+        .eq("user_id", uid)
+        .maybeSingle();
+      const meta = readSessionReviewMeta(sess?.metadata);
+      let test: { section: string; module: number } | null = null;
+      if (meta.testId && !meta.modules?.length) {
+        const { data: row } = await supabase
+          .from("tests")
+          .select("section,module")
+          .eq("id", meta.testId)
+          .maybeSingle();
+        if (row) test = { section: row.section, module: row.module };
+      }
       const { data: att, error: aErr } = await supabase
         .from("attempts")
         .select(
@@ -59,6 +104,11 @@ function SessionReview() {
         return;
       }
       const ids = (att ?? []).map((a) => a.question_id).filter((x): x is string => !!x);
+      const known = knownParts({
+        modules: meta.modules,
+        test,
+        questionIds: meta.questionIds ?? ids,
+      });
       if (ids.length === 0) {
         setErr("No answers found for this session.");
         setLoading(false);
@@ -92,20 +142,51 @@ function SessionReview() {
           correct_choice_id: a?.correct_choice_id ?? null,
           correct_grid_answers: a?.correct_grid_answers ?? null,
           explanation: a?.explanation ?? null,
-        } as QuestionFull;
+        };
       });
       const byId = new Map(merged.map((q) => [q.id, q]));
-      const ordered = (att ?? [])
+      const inExamOrder = orderByIds(att ?? [], meta.questionIds, (a) => a.question_id ?? "");
+      const ordered = inExamOrder
         .map((a) => (a.question_id ? byId.get(a.question_id) : undefined))
-        .filter(Boolean) as QuestionFull[];
+        .filter((q): q is (typeof merged)[number] => !!q);
 
-      setQuestions(await applyResolvedImageUrls(ordered));
-      setAttempts((att ?? []) as AttemptRow[]);
+      setQuestions(await applyResolvedImageUrls(tagInOrder(ordered, known)));
+      setAttempts(inExamOrder as AttemptRow[]);
       setLoading(false);
     })();
   }, [id]);
 
-  const currentAttempt = attempts.find((a) => a.question_id === questions[idx]?.id) ?? null;
+  const visible = useMemo(() => {
+    if (!search.section || !search.module) return [];
+    return questions.filter(
+      (q) => q.part.section === search.section && q.part.module === search.module,
+    );
+  }, [questions, search.section, search.module]);
+  const safeIdx = Math.min(idx, Math.max(visible.length - 1, 0));
+  const currentAttempt = attempts.find((a) => a.question_id === visible[safeIdx]?.id) ?? null;
+
+  function openPart(section: Section, module: ReviewModule) {
+    setIdx(0);
+    void navigate({
+      to: "/analysis/session/$id",
+      params: { id },
+      search: { section, module },
+      replace: true,
+    });
+  }
+
+  function correctIn(section: Section, module: ReviewModule) {
+    const ids = new Set(
+      questions
+        .filter((q) => q.part.section === section && q.part.module === module)
+        .map((q) => q.id),
+    );
+    const rows = attempts.filter((a) => a.question_id && ids.has(a.question_id));
+    return {
+      total: rows.length,
+      correct: rows.filter((a) => a.is_correct === true).length,
+    };
+  }
 
   const answerState: AnswerState = useMemo(() => {
     if (!currentAttempt) return emptyAnswer();
@@ -117,6 +198,22 @@ function SessionReview() {
       highlights: [],
     };
   }, [currentAttempt]);
+
+  useEffect(() => {
+    if (loading || err || (search.section && search.module)) return;
+    const filled = REVIEW_SECTIONS.flatMap((section) =>
+      REVIEW_MODULES.map((module) => ({ section, module })).filter((part) =>
+        questions.some((q) => q.part.section === part.section && q.part.module === part.module),
+      ),
+    );
+    if (filled.length !== 1) return;
+    void navigate({
+      to: "/analysis/session/$id",
+      params: { id },
+      search: { section: filled[0].section, module: filled[0].module },
+      replace: true,
+    });
+  }, [loading, err, search.section, search.module, questions, id, navigate]);
 
   /* This route is a full-screen overlay, so the skeleton has to reproduce the
      overlay's own chrome — top bar, question body, footer — on the white page
@@ -163,8 +260,63 @@ function SessionReview() {
     );
   }
 
-  const q = questions[idx];
+  const q = visible[safeIdx];
   const isCorrect = currentAttempt?.is_correct;
+
+  if (!search.section || !search.module) {
+    const chooser = (
+      <div className="fixed inset-0 z-[80] flex h-[100dvh] flex-col bg-test-canvas">
+        <header className="flex shrink-0 items-center gap-2 bg-test-chrome px-4 py-3 sm:px-6">
+          <button
+            onClick={() => navigate({ to: "/analysis" })}
+            className="tap grid h-7 w-7 shrink-0 place-items-center rounded text-test-muted hover:bg-test-well hover:text-test-ink"
+            aria-label="Exit"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <span className="text-[15px] font-bold text-test-ink">Review mode</span>
+        </header>
+        <div className="mx-auto grid w-full max-w-3xl flex-1 content-start gap-4 overflow-y-auto p-4 sm:grid-cols-2 sm:p-8">
+          {REVIEW_SECTIONS.map((section) => (
+            <section
+              key={section}
+              className="rounded-2xl border border-test-line bg-white p-5 shadow-panel"
+            >
+              <h2 className="text-lg font-black text-test-ink">{sectionChoiceLabel(section)}</h2>
+              <div className="mt-4 space-y-2">
+                {REVIEW_MODULES.map((module) => {
+                  const tally = correctIn(section, module);
+                  return (
+                    <button
+                      key={module}
+                      type="button"
+                      disabled={tally.total === 0}
+                      onClick={() => openPart(section, module)}
+                      className="tap flex w-full items-center justify-between rounded-xl border border-test-line px-3 py-3 text-left hover:bg-test-tint disabled:pointer-events-none disabled:opacity-40"
+                    >
+                      <span>
+                        <span className="block text-sm font-bold text-test-ink">
+                          Module {module}
+                        </span>
+                        <span className="text-xs text-test-muted">
+                          {tally.total === 0
+                            ? "No questions"
+                            : `${tally.correct} / ${tally.total} correct`}
+                        </span>
+                      </span>
+                      <span className="text-xs font-bold text-test-accent">Review</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      </div>
+    );
+    if (typeof document === "undefined") return chooser;
+    return createPortal(chooser, document.body);
+  }
 
   const review = (
     /* Portaled so route-enter's transform does not collapse this fixed overlay. */
@@ -179,7 +331,9 @@ function SessionReview() {
             >
               <X className="h-4 w-4" />
             </button>
-            <span className="truncate text-[15px] font-bold text-test-ink">Review mode</span>
+            <span className="truncate text-[15px] font-bold text-test-ink">
+              Review · {sectionChoiceLabel(search.section)} · Module {search.module}
+            </span>
           </div>
           <div className="flex justify-center">
             {/* Still no green/red: correct is the accent fill, incorrect is a
@@ -199,28 +353,71 @@ function SessionReview() {
             )}
           </div>
           <div className="flex justify-end text-sm font-semibold tabular-nums text-test-ink">
-            {idx + 1} / {questions.length}
+            {visible.length === 0 ? "0 / 0" : `${safeIdx + 1} / ${visible.length}`}
           </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-2 px-4 pb-3">
+          {REVIEW_SECTIONS.map((section) => (
+            <button
+              key={section}
+              type="button"
+              aria-pressed={section === search.section}
+              onClick={() => openPart(section, search.module)}
+              className={
+                "tap rounded-full px-3 py-1 text-xs font-bold " +
+                (section === search.section
+                  ? "bg-test-accent text-white"
+                  : "border border-test-line bg-white text-test-ink hover:bg-test-tint")
+              }
+            >
+              {sectionChoiceLabel(section)}
+            </button>
+          ))}
+          <span className="mx-1 hidden h-4 w-px bg-test-line sm:block" aria-hidden />
+          {REVIEW_MODULES.map((module) => (
+            <button
+              key={module}
+              type="button"
+              aria-pressed={module === search.module}
+              onClick={() => openPart(search.section, module)}
+              className={
+                "tap rounded-full px-3 py-1 text-xs font-bold " +
+                (module === search.module
+                  ? "bg-test-ink text-white"
+                  : "border border-test-line bg-white text-test-ink hover:bg-test-tint")
+              }
+            >
+              Module {module}
+            </button>
+          ))}
         </div>
         <div className="border-b border-dashed border-test-edge" />
       </header>
 
-      {q && (
-        <QuestionCard
-          q={q}
-          index={idx}
-          answer={answerState}
-          onChange={() => {}}
-          reveal
-          correctChoiceId={q.correct_choice_id ?? null}
-          correctGridAnswers={q.correct_grid_answers ?? null}
-        />
+      {visible.length === 0 ? (
+        <div className="grid flex-1 place-items-center px-6 text-center">
+          <p className="text-sm font-semibold text-test-ink">
+            No questions in {sectionChoiceLabel(search.section)} Module {search.module}.
+          </p>
+        </div>
+      ) : (
+        q && (
+          <QuestionCard
+            q={q}
+            index={safeIdx}
+            answer={answerState}
+            onChange={() => {}}
+            reveal
+            correctChoiceId={q.correct_choice_id ?? null}
+            correctGridAnswers={q.correct_grid_answers ?? null}
+          />
+        )
       )}
 
       <div className="flex h-16 shrink-0 items-center justify-between border-t border-test-line bg-test-chrome px-4 sm:px-6">
         <button
           onClick={() => setIdx((i) => Math.max(0, i - 1))}
-          disabled={idx === 0}
+          disabled={safeIdx === 0 || visible.length === 0}
           className="group tap inline-flex items-center gap-1.5 rounded-full border border-test-accent bg-white px-5 py-2 text-sm font-bold text-test-accent hover:bg-test-tint disabled:pointer-events-none disabled:opacity-40"
         >
           <ChevronLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
@@ -228,12 +425,13 @@ function SessionReview() {
         </button>
         <button
           onClick={() => {
-            if (idx >= questions.length - 1) navigate({ to: "/analysis" });
+            if (visible.length === 0 || safeIdx >= visible.length - 1)
+              navigate({ to: "/analysis" });
             else setIdx((i) => i + 1);
           }}
           className="btn-test group inline-flex items-center gap-1.5 rounded-full bg-test-accent px-5 py-2 text-sm font-bold text-white hover:bg-test-accent-deep"
         >
-          {idx >= questions.length - 1 ? "Finish" : "Next"}{" "}
+          {visible.length === 0 || safeIdx >= visible.length - 1 ? "Finish" : "Next"}{" "}
           <ChevronRight className="arrow-slide h-4 w-4" />
         </button>
       </div>

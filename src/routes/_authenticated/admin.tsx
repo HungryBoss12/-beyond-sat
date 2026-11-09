@@ -87,9 +87,9 @@ const NAV = [
   { to: "/admin/daily", label: "Daily Tests", anim: "daily", group: "Content" },
   { to: "/admin/mocks", label: "Mock Exams", anim: "mocks", group: "Content" },
   {
-    to: "/admin/examdates",
-    label: "Exam Dates",
-    anim: "examdates",
+    to: "/admin/statistics",
+    label: "Statistics",
+    anim: "statistics",
     group: "Content",
     adminOnly: true,
   },

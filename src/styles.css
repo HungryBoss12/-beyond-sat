@@ -1681,6 +1681,11 @@
   transform-origin: center;
   opacity: 0;
 }
+/* The active glyph fills this disc and cuts the person out of it. Leaving it
+   hidden drops the shoulders into the selected tile and leaves only the head ring. */
+.nav-ico-on .nav-profile-ring {
+  opacity: 1;
+}
 
 .nav-vocab-deck {
   transform-origin: 50% 85%;
@@ -2424,6 +2429,60 @@
   }
   40% {
     transform: translateY(-2.5px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .podium-sheen {
+    animation: podium-sheen 4.5s ease-in-out infinite;
+  }
+  .podium-twinkle {
+    animation: podium-twinkle 3.2s ease-in-out infinite;
+  }
+  .podium-aura {
+    animation: podium-aura 3.6s ease-in-out infinite;
+  }
+}
+.podium-twinkle {
+  opacity: 0.35;
+}
+
+@keyframes podium-sheen {
+  0%,
+  55% {
+    transform: translateX(0) skewX(-12deg);
+    opacity: 0;
+  }
+  65% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(420%) skewX(-12deg);
+    opacity: 0;
+  }
+}
+
+@keyframes podium-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes podium-aura {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
   }
 }
 

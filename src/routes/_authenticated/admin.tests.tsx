@@ -207,7 +207,6 @@ function AdminTests() {
 
   async function load() {
     setLoading(true);
-    await adoptNamelessMathDrafts().catch(() => undefined);
     const [row, tally] = await Promise.all([
       supabase
         .from("tests")
@@ -233,7 +232,17 @@ function AdminTests() {
       void navigate({ to: "/admin/sqb", replace: true });
       return;
     }
-    void load();
+    let cancelled = false;
+    void (async () => {
+      await load();
+      /* Naming leftover math drafts scans every math question. It used to run
+         before the list, so the tab sat on the skeleton for the whole scan. */
+      const made = await adoptNamelessMathDrafts().catch(() => 0);
+      if (!cancelled && made > 0) await load();
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bank]);
 
@@ -1170,7 +1179,7 @@ function PaperCard({
       tabIndex={selecting ? 0 : undefined}
       aria-pressed={selecting ? selected : undefined}
       className={
-        "rise-in flex aspect-[4/3] flex-col overflow-hidden rounded-2xl border bg-brand-600 shadow-panel lift " +
+        "rise-in flex flex-col overflow-hidden rounded-2xl border bg-brand-600 shadow-panel lift " +
         (selected ? "border-white ring-2 ring-white" : "border-brand-400/40")
       }
     >
@@ -1227,13 +1236,18 @@ function PaperCard({
           </div>
         )}
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-2 px-3.5 pt-1">
+      <div
+        className={
+          "flex flex-col gap-2 px-3.5 pt-1 " +
+          (isComplete && onCreateMock && fullPaper ? "pb-2" : "pb-3.5")
+        }
+      >
         {([1, 2] as const).map((mod) => {
           const t = mod === 1 ? mod1 : mod2;
           return (
             <RevealCard
               key={mod}
-              className="flex min-h-0 flex-1 items-stretch overflow-hidden rounded-xl border border-brand-400/30 bg-brand-800/70"
+              className="flex shrink-0 items-stretch rounded-xl border border-brand-400/30 bg-brand-800/70"
             >
               <div className="my-2.5 ml-2 w-1.5 shrink-0 rounded-full bg-brand-400" aria-hidden />
               {!t ? (
@@ -1257,7 +1271,7 @@ function PaperCard({
                   )}
                 </div>
               ) : (
-                <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2.5">
+                <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-white">Module {mod}</p>
                     <p className="truncate text-xs font-medium text-white">

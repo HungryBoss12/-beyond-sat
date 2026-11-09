@@ -5,7 +5,7 @@ export type StaffRole = "admin" | "editor" | "teacher" | "support_teacher";
 
 /**
  * The only admin sections an editor may open. Everything else — Overview,
- * Homepage, Exam Dates, Users, Settings — is admin-only.
+ * Homepage, Statistics, Users, Settings — is admin-only.
  *
  * Tests is included so editors can manage sets they create via Add tests.
  */

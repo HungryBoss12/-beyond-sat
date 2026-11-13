@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { Check, ChevronLeft, Minus, Pencil, Users, Wallet, X } from "lucide-react";
+import { Check, ChevronLeft, Minus, Pencil, Play, Snowflake, Users, Wallet, X } from "lucide-react";
 import { IconButton } from "@/components/ui/icon-button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Panel, PanelGlow, PanelHead } from "@/components/ui/panel";
@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useClassContext } from "@/components/classes/ClassContext";
 import { StudentMoney } from "@/components/classes/StudentMoney";
 import { EditGroupsDialog } from "@/components/classes/EditGroupsDialog";
+import { FreezeDialog, type FreezeTarget } from "@/components/classes/FreezeDialog";
+import { profileFreezePlan } from "@/lib/classes/profile-freeze";
 import { RankBadge } from "@/components/classes/RankBadge";
 import { SubclassChip } from "@/components/classes/SubclassChip";
 import { LevelValue, SectionToggle } from "@/components/classes/LevelTab";
@@ -22,6 +24,7 @@ import {
   listRecentGroupLessons,
   listStudentSubmissions,
   listUserAttendance,
+  activateGroupMembers,
   listUserGroupMemberships,
   listUserHwMarks,
   listUserResults,
@@ -83,6 +86,7 @@ function StudentProfilePage() {
   const [submissions, setSubmissions] = useState<StudentSubmission[]>([]);
   const [editOpen, setEditOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
+  const [freezing, setFreezing] = useState<FreezeTarget | null>(null);
   const [editName, setEditName] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
@@ -150,6 +154,13 @@ function StudentProfilePage() {
 
   const total = score ? totalScore(score.rw, score.math) : null;
   const firstGroup = blocks[0]?.group ?? groups[0];
+  const freezePlan = profileFreezePlan(
+    blocks.map((block) => ({
+      groupId: block.group.id,
+      status: block.member.status,
+      frozenOn: block.member.frozen_on,
+    })),
+  );
   const expanded = search.sections === 1;
   const done = useMemo(
     () => new Set(marks.filter((m) => m.done).map((m) => `${m.lesson_id}:${m.item}`)),
@@ -224,6 +235,32 @@ function StudentProfilePage() {
               label="Groups"
               variant="outline"
               onClick={() => setGroupsOpen(true)}
+            />
+          )}
+          {freezePlan.freezeGroupIds.length > 0 && (
+            <IconButton
+              icon={Snowflake}
+              label="Freeze"
+              variant="outline"
+              onClick={() => setFreezing({ userId, name })}
+            />
+          )}
+          {freezePlan.activateGroupIds.length > 0 && (
+            <IconButton
+              icon={Play}
+              label="Activate"
+              variant="outline"
+              onClick={() => {
+                void (async () => {
+                  try {
+                    await activateGroupMembers(freezePlan.activateGroupIds, userId);
+                    toast.success(`${name} is back`);
+                    await load();
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Could not activate the student");
+                  }
+                })();
+              }}
             />
           )}
           {isAdmin && (
@@ -319,6 +356,12 @@ function StudentProfilePage() {
         userId={userId}
         name={name}
         onClose={() => setGroupsOpen(false)}
+        onSaved={() => void load()}
+      />
+      <FreezeDialog
+        person={freezing}
+        groupIds={freezePlan.freezeGroupIds}
+        onClose={() => setFreezing(null)}
         onSaved={() => void load()}
       />
 

@@ -220,8 +220,26 @@ export async function setGroupMemberStatus(
   if (error) throw error;
 }
 
-/** Freeze one sub-class from `frozenOn`. `resumesOn` empty means it stays frozen until Activate.
+/** Freeze every listed sub-class in one transaction. `resumesOn` empty means frozen until Activate.
  *  A finished window (`resumesOn` today or earlier) requires `reason`. */
+export async function freezeGroupMembers(
+  groupIds: string[],
+  userId: string,
+  frozenOn: string,
+  resumesOn?: string | null,
+  reason?: string | null,
+): Promise<void> {
+  const { error } = await db.rpc("staff_freeze_group_members", {
+    p_group_ids: groupIds,
+    p_user_id: userId,
+    p_frozen_on: frozenOn,
+    p_resumes_on: resumesOn || null,
+    p_reason: reason?.trim() || null,
+  });
+  if (error) throw error;
+}
+
+/** Freeze one sub-class. Same rules as `freezeGroupMembers`. */
 export async function freezeGroupMember(
   groupId: string,
   userId: string,
@@ -229,12 +247,19 @@ export async function freezeGroupMember(
   resumesOn?: string | null,
   reason?: string | null,
 ): Promise<void> {
-  const { error } = await db.rpc("staff_freeze_group_member", {
-    p_group_id: groupId,
+  await freezeGroupMembers([groupId], userId, frozenOn, resumesOn, reason);
+}
+
+/** Thaw every listed sub-class in one transaction. Someone already back is left as they are. */
+export async function activateGroupMembers(
+  groupIds: string[],
+  userId: string,
+  status?: "active" | "trial",
+): Promise<void> {
+  const { error } = await db.rpc("staff_activate_group_members", {
+    p_group_ids: groupIds,
     p_user_id: userId,
-    p_frozen_on: frozenOn,
-    p_resumes_on: resumesOn || null,
-    p_reason: reason?.trim() || null,
+    p_status: status ?? null,
   });
   if (error) throw error;
 }
@@ -245,12 +270,7 @@ export async function activateGroupMember(
   userId: string,
   status?: "active" | "trial",
 ): Promise<void> {
-  const { error } = await db.rpc("staff_activate_group_member", {
-    p_group_id: groupId,
-    p_user_id: userId,
-    p_status: status ?? null,
-  });
-  if (error) throw error;
+  await activateGroupMembers([groupId], userId, status);
 }
 
 export async function removeGroupMember(

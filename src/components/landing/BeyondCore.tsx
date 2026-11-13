@@ -199,39 +199,42 @@ export function BeyondCore({
 
   return (
     <div className="relative">
-      {/* Reserves the emblem's box before the chunk arrives so the hero doesn't
-          reflow when it lands. The aspect ratio is fixed rather than the height
-          so it scales down cleanly on narrow viewports. */}
-      <div className="relative mx-auto aspect-square w-full max-w-[28rem]">
-        {/* Soft brand halo behind the canvas. Pure CSS, so it's present during
+      {/* Reserves a square before the chunk arrives so the hero doesn't reflow.
+          Padding, not aspect-ratio: some browsers give this grid child no height
+          from aspect-ratio, and the canvas then stretches one facet across the column. */}
+      <div className="relative mx-auto w-full max-w-[28rem]">
+        <div className="pt-[100%]" />
+        <div className="absolute inset-0">
+          {/* Soft brand halo behind the canvas. Pure CSS, so it's present during
             the pending state too and the area never looks empty — the emblem
             fades in over it rather than appearing in a blank column. */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-[12%] rounded-full bg-brand-400/20 blur-3xl"
-        />
-        {/* A faint ring at the emblem's silhouette, shown only while waiting.
-            Without it the halo alone reads as an unfinished gradient. */}
-        {support === "pending" && (
           <div
             aria-hidden="true"
-            className="pulse-ring pointer-events-none absolute inset-[22%] rounded-full border border-brand-400/25"
+            className="pointer-events-none absolute inset-[12%] rounded-full bg-brand-400/20 blur-3xl"
           />
-        )}
-        {support === "webgl" && (
-          <SceneBoundary fallback={<DashboardMockup />}>
-            <Suspense fallback={null}>
-              <BeyondCoreScene
-                animate={animate}
-                highDpr={lite ? false : highDpr}
-                onContextLost={() => setSupport("fallback")}
-                interactive={interactive}
-                variant={variant}
-                lite={lite}
-              />
-            </Suspense>
-          </SceneBoundary>
-        )}
+          {/* A faint ring at the emblem's silhouette, shown only while waiting.
+            Without it the halo alone reads as an unfinished gradient. */}
+          {support === "pending" && (
+            <div
+              aria-hidden="true"
+              className="pulse-ring pointer-events-none absolute inset-[22%] rounded-full border border-brand-400/25"
+            />
+          )}
+          {support === "webgl" && (
+            <SceneBoundary fallback={<DashboardMockup />}>
+              <Suspense fallback={null}>
+                <BeyondCoreScene
+                  animate={animate}
+                  highDpr={lite ? false : highDpr}
+                  onContextLost={() => setSupport("fallback")}
+                  interactive={interactive}
+                  variant={variant}
+                  lite={lite}
+                />
+              </Suspense>
+            </SceneBoundary>
+          )}
+        </div>
       </div>
 
       {/* The emblem is decorative; this is what a screen reader gets instead. */}

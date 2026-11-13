@@ -1,13 +1,17 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { lookFor, LOOKS, type OrbLook } from "@/components/landing/beyond-core-looks";
 import { quietEvents } from "@/components/landing/quiet-events";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
 import {
   Color,
+  EdgesGeometry,
+  IcosahedronGeometry,
+  PerspectiveCamera,
   WebGLRenderer,
   type Group,
+  type LineBasicMaterial,
+  type LineSegments,
   type Mesh,
-  type MeshBasicMaterial,
   type MeshStandardMaterial,
   type WebGLRendererParameters,
 } from "three";
@@ -93,9 +97,9 @@ function Emblem({
 }) {
   const group = useRef<Group>(null);
   const core = useRef<Mesh>(null);
-  const shell = useRef<Mesh>(null);
+  const shell = useRef<LineSegments>(null);
   const coreMat = useRef<MeshStandardMaterial>(null);
-  const shellMat = useRef<MeshBasicMaterial>(null);
+  const shellMat = useRef<LineBasicMaterial>(null);
 
   /* Smoothed scroll value. Reading window.scrollY straight into the transform
      makes the mesh jitter on trackpads, which emit many small deltas per frame;
@@ -218,7 +222,9 @@ function Emblem({
     } else if (phase.current === "in" && Math.abs(sq.x - 1) < 0.01 && Math.abs(sq.v) < 0.05) {
       phase.current = "idle";
     }
-    group.current.scale.setScalar(sq.x * (1 + swell.current * 0.05));
+    const scale = sq.x * (1 + swell.current * 0.05);
+    if (Number.isFinite(scale))
+      group.current.scale.setScalar(Math.min(1.15, Math.max(0.15, scale)));
 
     // The shell counter-rotates so the two layers shear against each other;
     // rotating together would read as one solid object. A drag drags it the other way too.
@@ -233,10 +239,6 @@ function Emblem({
     coreMat.current?.emissive.lerp(target.emissive, k);
     shellMat.current?.color.lerp(target.shell, k);
   });
-
-  /* Shell geometry args are memoised: a fresh array literal in JSX makes R3F dispose
-     and rebuild the geometry on every render. */
-  const shellArgs = useMemo(() => [1.85, lite ? 0 : 1] as [number, number], [lite]);
 
   return (
     /* No R3F pointer handlers. Fiber copies every enumerable field of the native
@@ -258,17 +260,42 @@ function Emblem({
         />
       </mesh>
 
-      <mesh ref={shell}>
-        <icosahedronGeometry args={shellArgs} />
-        <meshBasicMaterial
-          ref={shellMat}
-          color={initialLook.shell}
-          wireframe
-          transparent
-          opacity={0.35}
-        />
-      </mesh>
+      {/* Edges, not a wireframe material. wireframe triangulates the shell, and some
+          GPUs draw that as one filled triangle that covers the core. */}
+      <WireShell lite={lite} color={initialLook.shell} shellRef={shell} materialRef={shellMat} />
     </group>
+  );
+}
+
+/** The cage around the core. Line segments stay lines on the GPUs that break wireframe. */
+function WireShell({
+  lite,
+  color,
+  shellRef,
+  materialRef,
+}: {
+  lite: boolean;
+  color: string;
+  shellRef?: Ref<LineSegments>;
+  materialRef?: Ref<LineBasicMaterial>;
+}) {
+  const geometry = useMemo(() => {
+    const shape = new IcosahedronGeometry(1.85, lite ? 0 : 1);
+    const edges = new EdgesGeometry(shape);
+    shape.dispose();
+    return edges;
+  }, [lite]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return (
+    <lineSegments ref={shellRef} geometry={geometry}>
+      <lineBasicMaterial
+        ref={materialRef}
+        color={color}
+        transparent
+        opacity={0.55}
+        toneMapped={false}
+      />
+    </lineSegments>
   );
 }
 
@@ -295,12 +322,27 @@ function StaticEmblem({ variant }: { variant: number }) {
           flatShading
         />
       </mesh>
-      <mesh>
-        <icosahedronGeometry args={[1.85, 1]} />
-        <meshBasicMaterial color={look.shell} wireframe transparent opacity={0.35} />
-      </mesh>
+      <WireShell lite={false} color={look.shell} />
     </group>
   );
+}
+
+/** Keeps the whole orb in frame. A canvas that first measures as 0px tall leaves the
+    camera with a broken aspect, and the core then paints as one clipped triangle. */
+function CameraFit() {
+  const camera = useThree((s) => s.camera);
+  const size = useThree((s) => s.size);
+  useLayoutEffect(() => {
+    if (!(camera instanceof PerspectiveCamera)) return;
+    if (size.width < 8 || size.height < 8) return;
+    camera.aspect = size.width / size.height;
+    camera.position.set(0, 0, 5);
+    camera.fov = 42;
+    camera.near = 0.1;
+    camera.far = 30;
+    camera.updateProjectionMatrix();
+  }, [camera, size.width, size.height]);
+  return null;
 }
 
 /**
@@ -524,6 +566,7 @@ export default function BeyondCoreScene({
         };
       }}
     >
+      <CameraFit />
       {lite && animate ? <Pace /> : null}
       {/* Two point lights plus a dim ambient: the ambient stops the unlit faces
           going pure black, which on a white page looks like a hole. The lite

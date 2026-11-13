@@ -49,6 +49,7 @@ import {
   activateGroupMember,
   addGroupMember,
   listGroups,
+  listUserGroupMemberships,
   removeGroupMember,
   setGroupMemberStatus,
   type ClassGroup,
@@ -177,6 +178,7 @@ export function GroupRail({
   const [freezing, setFreezing] = useState<RailPerson | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
   const [leftOn, setLeftOn] = useState(tashkentToday);
+  const [memberGroups, setMemberGroups] = useState<ClassGroup[] | null>(null);
   const [formerOpen, setFormerOpen] = useState(false);
   const formerNeedle = query.trim().toLowerCase();
   const formerShown = former.filter(
@@ -188,8 +190,26 @@ export function GroupRail({
   }, [group.id]);
 
   useEffect(() => {
-    if (removing) setLeftOn(tashkentToday());
-  }, [removing]);
+    if (!removing) {
+      setMemberGroups(null);
+      return;
+    }
+    setLeftOn(tashkentToday());
+    let gone = false;
+    void (async () => {
+      try {
+        const memberships = await listUserGroupMemberships([removing.userId]);
+        const ids = new Set(memberships.map((row) => row.group_id));
+        const groups = (await listGroups()).filter((row) => ids.has(row.id));
+        if (!gone) setMemberGroups(groups.length > 0 ? groups : [group]);
+      } catch {
+        if (!gone) setMemberGroups([group]);
+      }
+    })();
+    return () => {
+      gone = true;
+    };
+  }, [removing, group.id]);
 
   useEffect(() => {
     if (!formerNeedle) return;
@@ -239,6 +259,27 @@ export function GroupRail({
       await onChanged();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not remove the student");
+    } finally {
+      setRemoveBusy(false);
+    }
+  }
+
+  async function removeAll(person: RailPerson) {
+    if (!leftOn || !memberGroups || memberGroups.length < 2) return;
+    setRemoveBusy(true);
+    const names = memberGroups.map((row) => row.name);
+    try {
+      for (const row of memberGroups) {
+        await removeGroupMember(row.id, person.userId, true, leftOn);
+      }
+      toast.success(
+        `${person.name} left ${names.join(", ")} on ${leftOn}. The fee runs through that day in each group.`,
+      );
+      setRemoving(null);
+      await onChanged();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not remove the student");
+      await onChanged();
     } finally {
       setRemoveBusy(false);
     }
@@ -493,7 +534,12 @@ export function GroupRail({
             <DialogTitle className="text-white">Remove {removing?.name}</DialogTitle>
             <DialogDescription className="text-white">
               {removing
-                ? `${removing.name} leaves ${group.name}. The fee uses the day they stopped attending.`
+                ? memberGroups && memberGroups.length > 1
+                  ? `${removing.name} leaves ${group.name}. Remove from all groups also leaves ${memberGroups
+                      .filter((row) => row.id !== group.id)
+                      .map((row) => row.name)
+                      .join(", ")} and includes the participation fee in each.`
+                  : `${removing.name} leaves ${group.name}. The fee uses the day they stopped attending.`
                 : ""}
             </DialogDescription>
           </DialogHeader>
@@ -520,6 +566,16 @@ export function GroupRail({
             >
               <X className="mr-1 inline h-4 w-4" aria-hidden="true" /> No fee
             </button>
+            {memberGroups && memberGroups.length > 1 && (
+              <button
+                type="button"
+                disabled={removeBusy || !removing || !leftOn}
+                className="rounded-full px-4 py-2 text-sm font-bold text-white ring-1 ring-white/40 disabled:opacity-40"
+                onClick={() => removing && void removeAll(removing)}
+              >
+                <UserMinus className="mr-1 inline h-4 w-4" aria-hidden="true" /> Remove from all groups
+              </button>
+            )}
             <button
               type="button"
               className="tap px-4 py-2 text-sm font-bold"

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Minus, Plus } from "lucide-react";
-import { setResult, setResultSlots, type GroupLesson, type ResultRow } from "@/lib/classes/groups";
+import { setResult, setResultSlots, type AttendanceRow, type GroupLesson, type ResultRow } from "@/lib/classes/groups";
 import { boxesAfterReload, moduleMax, parseModule, reloadHasSave, resultLabel, resultValues } from "@/lib/classes/results";
 import type { ClassSubject } from "@/lib/classes/types";
 import { shortDate } from "@/lib/classes/schedule";
@@ -29,6 +29,7 @@ export function ResultsGrid({
   lessons,
   people,
   results,
+  attendance = [],
   selectedId,
   onSelect,
   onSlots,
@@ -38,6 +39,7 @@ export function ResultsGrid({
   lessons: GroupLesson[];
   people: GridPerson[];
   results: ResultRow[];
+  attendance?: AttendanceRow[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onSlots: (lessonId: string, slots: number) => void;
@@ -107,6 +109,13 @@ export function ResultsGrid({
   }, [results]);
 
   const selected = lessons.find((l) => l.id === selectedId) ?? null;
+  const absentOn = (userId: string, lessonDate: string) =>
+    attendance.some(
+      (row) =>
+        row.user_id === userId &&
+        row.lesson_date.slice(0, 10) === lessonDate.slice(0, 10) &&
+        !row.participated,
+    );
   const slots = selected?.result_slots ?? MIN_SLOTS;
   const roster = people.map((p) => p.userId).join(",");
   const max = moduleMax(subject);
@@ -338,18 +347,25 @@ export function ResultsGrid({
               <tr key={person.userId} className="border-t border-brand-400/30">
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 max-w-[200px] truncate bg-brand-600 px-2 py-2 font-bold text-white"
+                  className={cn(
+                    "sticky left-0 z-10 max-w-[200px] truncate bg-brand-600 px-2 py-2 font-bold text-white",
+                    selected && absentOn(person.userId, selected.lesson_date) && "text-red-300 line-through",
+                  )}
                 >
                   {person.name}
                 </th>
                 {lessons.map((lesson) => {
+                  const missed = absentOn(person.userId, lesson.lesson_date);
                   if (lesson.id !== selectedId) {
                     const row = saved.get(`${person.userId}:${lesson.id}`);
                     return (
                       <td
                         key={lesson.id}
                         style={{ minWidth: dayWidth }}
-                        className="px-2 py-2 text-center tabular-nums text-white"
+                        className={cn(
+                          "px-2 py-2 text-center tabular-nums text-white",
+                          missed && "text-red-300 line-through",
+                        )}
                       >
                         {resultLabel(resultValues(row ?? { m1: null, m2: null }), subject)}
                       </td>
@@ -365,6 +381,7 @@ export function ResultsGrid({
                       draft={draft}
                       errors={parsed.map((item) => item.kind === "error")}
                       label={resultLabel(scores, subject)}
+                      absent={missed}
                       max={max}
                       refs={refs.current}
                       onChange={(field, value) => {
@@ -396,6 +413,7 @@ function ResultCells({
   draft,
   errors,
   label,
+  absent = false,
   max,
   refs,
   onChange,
@@ -406,6 +424,7 @@ function ResultCells({
   draft: string[];
   errors: boolean[];
   label: string;
+  absent?: boolean;
   max: number;
   refs: Map<string, HTMLInputElement>;
   onChange: (field: number, value: string) => void;
@@ -415,7 +434,7 @@ function ResultCells({
   return (
     <>
       {draft.map((value, field) => (
-        <td key={field} className="bg-brand-500 px-1 py-1">
+        <td key={field} className={cn("bg-brand-500 px-1 py-1", absent && "line-through")}>
           <input
             ref={(el) => {
               if (el) refs.set(`${person.userId}:${field}`, el);
@@ -442,7 +461,12 @@ function ResultCells({
           />
         </td>
       ))}
-      <td className="bg-brand-500 px-2 py-1 text-center font-black tabular-nums text-white">
+      <td
+        className={cn(
+          "bg-brand-500 px-2 py-1 text-center font-black tabular-nums text-white",
+          absent && "text-red-300 line-through",
+        )}
+      >
         {label}
         {errors.some(Boolean) && <span className="sr-only"> (enter 0 to {max})</span>}
       </td>

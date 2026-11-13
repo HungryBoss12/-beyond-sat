@@ -24,13 +24,18 @@ export const Route = createFileRoute("/_authenticated")({
        applied yet the request errors and returns no row — combined, that would
        read as "no profile" and bounce every user into onboarding. Split, a
        missing column just means "not banned" / "no forced password change". */
-    const [{ data: prof }, { data: ban }, { data: cred }] = await Promise.all([
+    const [{ data: prof }, { data: ban }, { data: closed }, { data: cred }] = await Promise.all([
       onOnboarding || onFirstLogin
         ? Promise.resolve({ data: null })
         : supabase.from("profiles").select("intro_completed").eq("id", uid).maybeSingle(),
       supabase.from("profiles").select("banned").eq("id", uid).maybeSingle(),
+      supabase.from("profiles").select("deleted_at").eq("id", uid).maybeSingle(),
       supabase.from("profiles").select("must_change_credentials").eq("id", uid).maybeSingle(),
     ]);
+    if (closed && "deleted_at" in closed && closed.deleted_at) {
+      await supabase.auth.signOut();
+      throw redirect({ to: "/signin" });
+    }
     if (ban?.banned) throw redirect({ to: "/banned" });
     if (cred?.must_change_credentials && !onFirstLogin) {
       throw redirect({ to: "/first-login" });

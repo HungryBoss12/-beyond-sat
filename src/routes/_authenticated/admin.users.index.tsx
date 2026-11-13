@@ -45,7 +45,7 @@ import {
   generateStudentPassword,
   type CreatedStudent,
 } from "@/lib/auth/create-user";
-import { deleteStudentAccount } from "@/lib/auth/delete-student";
+import { holdStudentAccount } from "@/lib/billing/api";
 import { isSyntheticAccountEmail } from "@/lib/auth/login-email";
 import { listAllClasses, addClassMember } from "@/lib/classes/api";
 import { addGroupMember, listGroups, listUserGroupMemberships, type ClassGroup } from "@/lib/classes/groups";
@@ -467,7 +467,7 @@ function AdminStudents() {
       skipped > 0 ? ` ${skipped} staff account${skipped === 1 ? "" : "s"} in the selection will stay.` : "";
     if (
       !confirm(
-        `Delete ${chosen.length} student account${chosen.length === 1 ? "" : "s"}? Logins, classes, and payment history are removed.${staffNote} This cannot be undone.`,
+        `Move ${chosen.length} student account${chosen.length === 1 ? "" : "s"} to the basket? They cannot sign in. After 14 days the login is removed if the balance is zero. A credit or a debt stays until it is settled.${staffNote}`,
       )
     ) {
       return;
@@ -480,7 +480,7 @@ function AdminStudents() {
       const results = await Promise.all(
         chunk.map(async (u) => {
           try {
-            await deleteStudentAccount(u.id);
+            await holdStudentAccount(u.id);
             return null;
           } catch (err) {
             const name = u.full_name || u.email || "A student";
@@ -492,7 +492,7 @@ function AdminStudents() {
     }
     const removed = chosen.length - failed.length;
     if (removed > 0) {
-      toast.success(`${removed} student account${removed === 1 ? "" : "s"} deleted`);
+      toast.success(`${removed} student account${removed === 1 ? "" : "s"} moved to the basket`);
       setSelectedIds((prev) => {
         const next = new Set(prev);
         for (const u of chosen) next.delete(u.id);

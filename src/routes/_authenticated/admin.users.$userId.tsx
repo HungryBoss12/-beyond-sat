@@ -33,7 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { sessionAuthHeaders } from "@/lib/auth/session-headers";
-import { deleteStudentAccount } from "@/lib/auth/delete-student";
+import { holdStudentAccount } from "@/lib/billing/api";
 
 type Role = "student" | "editor" | "admin";
 
@@ -202,15 +202,15 @@ function AdminUserDetailPage() {
     const name = profile.full_name || profile.email || "this student";
     if (
       !confirm(
-        `Delete ${name}'s account? Their login, classes, and payment history are removed. This cannot be undone.`,
+        `Move ${name} to the basket? They cannot sign in. After 14 days the login is removed if the balance is zero. A credit or a debt stays until it is settled.`,
       )
     ) {
       return;
     }
     setBusy(true);
     try {
-      await deleteStudentAccount(userId);
-      toast.success(`${name} was deleted`);
+      await holdStudentAccount(userId);
+      toast.success(`${name} was moved to the basket`);
       await navigate({ to: "/admin/users" });
     } catch (e) {
       toast.error(errorMessage(e, "Could not delete the account"));

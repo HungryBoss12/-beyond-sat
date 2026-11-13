@@ -74,6 +74,61 @@ export type BalanceFilters = {
   monthsInDebt?: number | null;
 };
 
+/** Class on each student's newest charge. Used when they are no longer in a class. */
+export async function lastChargeClassIds(userIds: string[]): Promise<Map<string, string>> {
+  const found = new Map<string, string>();
+  if (userIds.length === 0) return found;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as unknown as any;
+  const { data, error } = await db
+    .from("ledger_entries")
+    .select("user_id, class_id, occurred_on, created_at")
+    .in("user_id", userIds)
+    .eq("kind", "charge")
+    .not("class_id", "is", null)
+    .order("occurred_on", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message || "Could not load the last class");
+  for (const row of (data ?? []) as { user_id: string; class_id: string | null }[]) {
+    if (row.class_id && !found.has(row.user_id)) found.set(row.user_id, row.class_id);
+  }
+  return found;
+}
+
+export type BasketStudent = {
+  user_id: string;
+  full_name: string | null;
+  username: string | null;
+  phone: string | null;
+  balance: bigint;
+  deleted_at: string;
+  class_id: string | null;
+};
+
+/** Accounts an admin deleted. They stay until restored, or until the balance is zero after 14 days. */
+export async function listStudentBasket(): Promise<BasketStudent[]> {
+  const rows = await call<Raw[]>("admin_student_basket");
+  return (rows ?? []).map((row) => ({
+    user_id: row.user_id,
+    full_name: row.full_name ?? null,
+    username: row.username ?? null,
+    phone: row.phone ?? null,
+    balance: toUzs(row.balance),
+    deleted_at: row.deleted_at,
+    class_id: row.class_id ?? null,
+  }));
+}
+
+/** Holds a student account. A second call does not restart the 14 days. */
+export async function holdStudentAccount(userId: string): Promise<void> {
+  await call("admin_hold_student", { p_user_id: userId });
+}
+
+/** Puts a held account back on the main lists. */
+export async function restoreStudentAccount(userId: string): Promise<void> {
+  await call("admin_restore_student", { p_user_id: userId });
+}
+
 export async function listBalances(filters: BalanceFilters = {}): Promise<BalanceRow[]> {
   const rows = await call("admin_student_balances", {
     p_search: filters.search || null,

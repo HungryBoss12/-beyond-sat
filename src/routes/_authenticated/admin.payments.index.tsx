@@ -1,5 +1,5 @@
 import { createFileRoute, getRouteApi, Link, type SearchSchemaInput } from "@tanstack/react-router";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
@@ -64,7 +64,11 @@ import {
   groupFees,
   listAllLedger,
   clearStudentDiscount,
+  lastChargeClassIds,
   listBalances,
+  listStudentBasket,
+  restoreStudentAccount,
+  type BasketStudent,
   listDiscountStudents,
   listStudentDiscounts,
   paymentsSummary,
@@ -148,6 +152,23 @@ function studentName(row: Pick<BalanceRow, "full_name" | "user_id">): string {
   return staffName(row);
 }
 
+function basketName(row: BasketStudent): string {
+  return staffName({ full_name: row.full_name });
+}
+
+const BASKET_MS = 14 * 24 * 60 * 60 * 1000;
+
+function basketNote(row: BasketStudent): string {
+  const due = new Date(new Date(row.deleted_at).getTime() + BASKET_MS);
+  const dueLabel = due.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  if (row.balance !== 0n && due.getTime() <= Date.now()) {
+    return "Held until the balance is zero. The 14 days have passed.";
+  }
+  if (row.balance !== 0n) return `Login removed on ${dueLabel} once the balance is zero.`;
+  if (due.getTime() <= Date.now()) return "The balance is zero. The login is removed within the hour.";
+  return `Login removed on ${dueLabel}.`;
+}
+
 function isActiveStudent(row: BalanceRow): boolean {
   return row.status === "active" || row.groups.some((group) => group.status === "active");
 }
@@ -158,6 +179,8 @@ function PaymentsPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const [rows, setRows] = useState<BalanceRow[]>([]);
+  const [formerClass, setFormerClass] = useState<Map<string, string>>(new Map());
+  const [basket, setBasket] = useState<BasketStudent[]>([]);
   const [census, setCensus] = useState<BalanceRow[]>([]);
   const [notes, setNotes] = useState<CollectNote[]>([]);
   const [ledger, setLedger] = useState<TxRow[] | null>(null);
@@ -224,22 +247,26 @@ function PaymentsPage() {
       }
       const maxDebt = parseUzsInput(search.maxDebt, 10n ** 12n);
       const minDebt = parseUzsInput(search.minDebt, 10n ** 12n);
-      const [sum, groupRows, people, tuition, collect] = await Promise.all([
+      const [sum, groupRows, people, tuition, collect, held] = await Promise.all([
         paymentsSummary(),
         groupFees(),
         listBalances({}),
         tuitionDiscountTotals().catch(() => null),
         listCollectNotes().catch(() => [] as CollectNote[]),
+        listStudentBasket(),
       ]);
+      const heldIds = new Set(held.map((person) => person.user_id));
+      const listed = people.filter((person) => !heldIds.has(person.user_id));
       setSummary(sum);
       setFees(groupRows);
-      setCensus(people);
+      setCensus(listed);
+      setBasket(held);
       setNotes(collect);
       setTuitionEdge(tuition);
       if (search.view === "ledger") {
         const groupNames = new Map<string, string[]>();
-        const studentNames = new Map(people.map((person) => [person.user_id, studentName(person)]));
-        for (const person of people) {
+        const studentNames = new Map(listed.map((person) => [person.user_id, studentName(person)]));
+        for (const person of listed) {
           for (const group of person.groups) {
             if (group.status === "left" || !group.class_id) continue;
             const key = `${person.user_id}:${group.class_id}`;
@@ -248,6 +275,8 @@ function PaymentsPage() {
             groupNames.set(key, list);
           }
         }
+        const missingClass = listed.filter((person) => !person.class_id).map((person) => person.user_id);
+        setFormerClass(await lastChargeClassIds(missingClass));
         const ledgerRows = await listAllLedger();
         setLedger(
           ledgerRows.map((row) => {
@@ -260,18 +289,20 @@ function PaymentsPage() {
           }),
         );
       } else {
-        setRows(
-          await listBalances({
-            search: search.q,
-            groupId: search.group,
-            kind: search.chip === "all" ? "" : search.chip,
-            status: search.status,
-            rank: search.rank,
-            minBalance: maxDebt == null ? null : -maxDebt,
-            maxBalance: minDebt == null ? null : -minDebt,
-            monthsInDebt: search.monthsInDebt ? Number(search.monthsInDebt) : null,
-          }),
-        );
+        const shown = await listBalances({
+          search: search.q,
+          groupId: search.group,
+          kind: search.chip === "all" ? "" : search.chip,
+          status: search.status,
+          rank: search.rank,
+          minBalance: maxDebt == null ? null : -maxDebt,
+          maxBalance: minDebt == null ? null : -minDebt,
+          monthsInDebt: search.monthsInDebt ? Number(search.monthsInDebt) : null,
+        });
+        const visible = shown.filter((person) => !heldIds.has(person.user_id));
+        setRows(visible);
+        const missingClass = visible.filter((person) => !person.class_id).map((person) => person.user_id);
+        setFormerClass(await lastChargeClassIds(missingClass));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load balances");
@@ -721,11 +752,30 @@ function PaymentsPage() {
           </p>
         </>
       ) : rows.length === 0 ? (
-        <EmptyState icon={Search} title="No students match" body="Try another filter or search." />
+        <>
+          <EmptyState icon={Search} title="No students match" body="Try another filter or search." />
+          <StudentBasket
+            rows={basket}
+            onPay={(row) =>
+              setPayFor({
+                userId: row.user_id,
+                name: basketName(row),
+                balance: row.balance,
+                monthlyFee: null,
+              })
+            }
+            onRestore={async (row) => {
+              await restoreStudentAccount(row.user_id);
+              toast.success(`${basketName(row)} is back on the list`);
+              await load();
+            }}
+          />
+        </>
       ) : (
         <>
           <BalancesTable
             rows={sortedRows}
+            formerClass={formerClass}
             onPay={(row) =>
               setPayFor({
                 userId: row.user_id,
@@ -754,6 +804,22 @@ function PaymentsPage() {
             {rows.length} shown · {debtors.length} debtors · owed {compactUzs(owed)} · fee auto-runs
             monthly
           </p>
+          <StudentBasket
+            rows={basket}
+            onPay={(row) =>
+              setPayFor({
+                userId: row.user_id,
+                name: basketName(row),
+                balance: row.balance,
+                monthlyFee: null,
+              })
+            }
+            onRestore={async (row) => {
+              await restoreStudentAccount(row.user_id);
+              toast.success(`${basketName(row)} is back on the list`);
+              await load();
+            }}
+          />
         </>
       )}
 
@@ -801,13 +867,130 @@ function PaymentsPage() {
   );
 }
 
+function StudentBasket({
+  rows,
+  onPay,
+  onRestore,
+}: {
+  rows: BasketStudent[];
+  onPay: (row: BasketStudent) => void;
+  onRestore: (row: BasketStudent) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  if (rows.length === 0) return null;
+  return (
+    <section className="space-y-2" aria-label="Basket">
+      <h2 className="text-sm font-bold text-brand-800">Basket · {rows.length}</h2>
+      <p className="text-xs text-brand-700">
+        Deleted accounts. The login is removed 14 days later, and only when the balance is zero.
+      </p>
+      <ul className="divide-y divide-brand-400/30 overflow-hidden rounded-2xl border border-brand-400/40 bg-brand-600 text-white">
+        {rows.map((row) => {
+          const classId = row.class_id;
+          const name = basketName(row);
+          return (
+            <li key={row.user_id} className="flex flex-wrap items-center gap-3 p-3">
+              <div className="min-w-0 flex-1">
+                {classId ? (
+                  <Link
+                    to="/admin/classes/$classId/students/$userId"
+                    params={{ classId, userId: row.user_id }}
+                    className="tap truncate font-bold underline-offset-2 hover:underline"
+                  >
+                    {name}
+                  </Link>
+                ) : (
+                  <Link
+                    to="/admin/users/$userId"
+                    params={{ userId: row.user_id }}
+                    className="tap truncate font-bold underline-offset-2 hover:underline"
+                  >
+                    {name}
+                  </Link>
+                )}
+                <div className="mt-0.5 text-xs text-white">{row.phone || "No phone"}</div>
+                <div className="mt-1 text-xs text-white">{basketNote(row)}</div>
+              </div>
+              <BalanceLabel balance={row.balance} />
+              <IconButton
+                icon={HandCoins}
+                label="Record payment"
+                className="text-white hover:bg-brand-500"
+                onClick={() => onPay(row)}
+              />
+              <button
+                type="button"
+                disabled={busy === row.user_id}
+                className="tap rounded-full px-3 py-2 text-sm font-bold text-white ring-1 ring-white/40 disabled:opacity-40"
+                onClick={() => {
+                  setBusy(row.user_id);
+                  void onRestore(row)
+                    .catch((err) =>
+                      toast.error(err instanceof Error ? err.message : "Could not restore the student"),
+                    )
+                    .finally(() => setBusy(null));
+                }}
+              >
+                <RotateCcw className="mr-1 inline h-4 w-4" aria-hidden="true" /> Restore
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+function profileClassId(row: BalanceRow, formerClass: Map<string, string>): string | null {
+  return row.class_id || formerClass.get(row.user_id) || null;
+}
+
+function StudentOpenLink({
+  row,
+  classId,
+  className,
+  label,
+  children,
+}: {
+  row: BalanceRow;
+  classId: string | null;
+  className: string;
+  label?: string;
+  children: ReactNode;
+}) {
+  if (classId) {
+    return (
+      <Link
+        to="/admin/classes/$classId/students/$userId"
+        params={{ classId, userId: row.user_id }}
+        aria-label={label}
+        className={className}
+      >
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <Link
+      to="/admin/users/$userId"
+      params={{ userId: row.user_id }}
+      aria-label={label}
+      className={className}
+    >
+      {children}
+    </Link>
+  );
+}
+
 function BalancesTable({
   rows,
+  formerClass,
   onPay,
   onCharge,
   onVoidCharge,
 }: {
   rows: BalanceRow[];
+  formerClass: Map<string, string>;
   onPay: (row: BalanceRow) => void;
   onCharge: (row: BalanceRow) => void;
   onVoidCharge: (entry: BalanceRow["recent"][number], name: string) => void;
@@ -828,17 +1011,13 @@ function BalancesTable({
             <tr key={row.user_id} className="border-t border-brand-400/30 align-top">
               <td className="p-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  {row.class_id ? (
-                    <Link
-                      to="/admin/classes/$classId/students/$userId"
-                      params={{ classId: row.class_id, userId: row.user_id }}
-                      className="tap truncate font-bold underline-offset-2 hover:underline"
-                    >
-                      {studentName(row)}
-                    </Link>
-                  ) : (
-                    <span className="truncate font-bold">{studentName(row)}</span>
-                  )}
+                  <StudentOpenLink
+                    row={row}
+                    classId={profileClassId(row, formerClass)}
+                    className="tap truncate font-bold underline-offset-2 hover:underline"
+                  >
+                    {studentName(row)}
+                  </StudentOpenLink>
                   {row.status && <StatusLabel status={row.status} className="text-white" />}
                 </div>
                 <div className="mt-0.5 text-xs text-white">{row.phone || "No phone"}</div>
@@ -917,16 +1096,14 @@ function BalancesTable({
               </td>
               <td className="p-2">
                 <div className="flex justify-end gap-1">
-                  {row.class_id && (
-                    <Link
-                      to="/admin/classes/$classId/students/$userId"
-                      params={{ classId: row.class_id, userId: row.user_id }}
-                      aria-label={`Profile of ${studentName(row)}`}
-                      className="tap grid h-10 w-10 place-items-center rounded-full text-white hover:bg-brand-500 focus-visible:ring-2 focus-visible:ring-brand-200"
-                    >
-                      <UserRound className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  )}
+                  <StudentOpenLink
+                    row={row}
+                    classId={profileClassId(row, formerClass)}
+                    label={`Profile of ${studentName(row)}`}
+                    className="tap grid h-10 w-10 place-items-center rounded-full text-white hover:bg-brand-500 focus-visible:ring-2 focus-visible:ring-brand-200"
+                  >
+                    <UserRound className="h-4 w-4" aria-hidden="true" />
+                  </StudentOpenLink>
                   <IconButton
                     icon={HandCoins}
                     label="Record payment"

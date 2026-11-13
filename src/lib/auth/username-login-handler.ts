@@ -78,7 +78,7 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
 
   const { data: rows, error: lookupErr } = await supabaseAdmin
     .from("profiles")
-    .select("id,banned")
+    .select("id,banned,deleted_at")
     .eq("username", username)
     .limit(1);
   if (lookupErr) {
@@ -86,7 +86,7 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
     console.error("[username-login] lookup failed", lookupErr.message);
     return jsonResponse({ error: "Could not sign in. Try again." }, 500);
   }
-  const profile = (rows ?? [])[0] as { id: string; banned: boolean | null } | undefined;
+  const profile = (rows ?? [])[0] as { id: string; banned: boolean | null; deleted_at: string | null } | undefined;
   if (!profile) {
     await decoyVerify(config, password);
     await timingFloor(startedAt);
@@ -108,10 +108,13 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
     await timingFloor(startedAt);
     return jsonResponse({ error: "That username and password don't match." }, 401);
   }
-  if (profile.banned) {
+  if (profile.banned || profile.deleted_at) {
     await supabaseAdmin.auth.admin.signOut(data.session.access_token, "global");
     await timingFloor(startedAt);
-    return jsonResponse({ error: "This account is suspended." }, 403);
+    return jsonResponse(
+      { error: profile.deleted_at ? "This account is closed." : "This account is suspended." },
+      403,
+    );
   }
 
   return jsonResponse({

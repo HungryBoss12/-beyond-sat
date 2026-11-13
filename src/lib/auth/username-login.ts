@@ -31,9 +31,13 @@ export async function signInWithIdentifier(identifier: string, password: string)
     if (userId) {
       const { data: prof } = await supabase
         .from("profiles")
-        .select("banned")
+        .select("banned, deleted_at")
         .eq("id", userId)
         .maybeSingle();
+      if (prof?.deleted_at) {
+        await supabase.auth.signOut({ scope: "global" });
+        throw new Error("This account is closed.");
+      }
       if (prof?.banned) {
         await supabase.auth.signOut({ scope: "global" });
         throw new Error("This account is suspended.");

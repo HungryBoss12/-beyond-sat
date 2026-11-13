@@ -1,5 +1,6 @@
 import { definePlugin } from "nitro";
 import { applyRecurringFees } from "../lib/billing/recurring-cron";
+import { purgeSettledStudents } from "../lib/auth/purge-students";
 import { notifySupportStarting } from "../lib/support/starting-soon";
 
 // The worker's cron only reaches the app through this Nitro hook; a scheduled()
@@ -15,6 +16,11 @@ export default definePlugin((nitroApp) => {
           return;
         }
         await applyRecurringFees(payload.env);
+        try {
+          await purgeSettledStudents(payload.env);
+        } catch (error) {
+          console.error("[basket] purge failed", error);
+        }
       } catch (error) {
         console.error(cron === "*/5 * * * *" ? "[support] start notices failed" : "[billing] recurring fees failed", error);
       }

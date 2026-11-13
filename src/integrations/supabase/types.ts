@@ -1896,6 +1896,7 @@ export type Database = {
           city: string | null;
           class_id: string | null;
           created_at: string;
+          deleted_at: string | null;
           email: string | null;
           first_name: string | null;
           full_name: string | null;
@@ -1926,6 +1927,7 @@ export type Database = {
           city?: string | null;
           class_id?: string | null;
           created_at?: string;
+          deleted_at?: string | null;
           email?: string | null;
           first_name?: string | null;
           full_name?: string | null;
@@ -1956,6 +1958,7 @@ export type Database = {
           city?: string | null;
           class_id?: string | null;
           created_at?: string;
+          deleted_at?: string | null;
           email?: string | null;
           first_name?: string | null;
           full_name?: string | null;

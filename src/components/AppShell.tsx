@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
+import { PersonAvatar } from "@/components/people/PersonAvatar";
 import { getStaffRole, staffHome, type StaffRole } from "@/lib/admin";
 import { displayAccountEmail } from "@/lib/auth/login-email";
 import { pathAfterSignIn } from "@/lib/auth/after-sign-in";
@@ -439,6 +440,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [name, setName] = useState<string>("");
   const [nick, setNick] = useState<string>("");
+  const [avatarRef, setAvatarRef] = useState<string | null>(null);
   const [badgeScore, setBadgeScore] = useState<number | null>(null);
   const [badgeLabel, setBadgeLabel] = useState<string | null>(null);
   const [badgeColor, setBadgeColor] = useState<string | null>(null);
@@ -475,7 +477,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       setUid(u.id);
       setEmail(displayAccountEmail(u.email) ?? "");
       const [{ data: prof }, { data: sp }, role] = await Promise.all([
-        supabase.from("profiles").select("full_name,first_name,username,badge_score,badge_label,badge_color").eq("id", u.id).maybeSingle(),
+        supabase.from("profiles").select("full_name,first_name,username,avatar_url,badge_score,badge_label,badge_color").eq("id", u.id).maybeSingle(),
         supabase
           .from("student_profiles")
           .select("current_streak,last_active_at,last_daily_completed_date")
@@ -491,6 +493,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           "Student",
       );
       setNick(await loadNick(u.id).catch(() => ""));
+      setAvatarRef(prof?.avatar_url ?? null);
       setBadgeScore(prof?.badge_score ?? null);
       setBadgeLabel(prof?.badge_label ?? null);
       setBadgeColor(prof?.badge_color ?? null);
@@ -792,9 +795,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => setMenuOpen((v) => !v)}
                 className="btn-ghost inline-flex items-center gap-2 rounded-full border border-brand-400/50 bg-brand-800 py-1 pl-1 pr-2"
               >
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-400 text-xs font-bold text-white shadow-brand">
-                  {initials}
-                </span>
+                <PersonAvatar avatarUrl={avatarRef} name={name || initials} className="h-7 w-7 text-xs shadow-brand" />
                 <span className="hidden max-w-[220px] items-center gap-1.5 truncate text-sm font-semibold text-white sm:inline-flex">
                   <span className="truncate">{name}</span>
                   {nick ? <span className="truncate text-xs font-semibold text-brand-100">{nick}</span> : null}

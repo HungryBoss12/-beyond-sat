@@ -3,6 +3,7 @@ import { usePointerGlow } from "@/hooks/usePointerGlow";
 import { CalendarDays, CalendarPlus, Check, CheckCheck, Eraser, Gauge, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
+import { PersonAvatar } from "@/components/people/PersonAvatar";
 import { IconButton } from "@/components/ui/icon-button";
 import type { MemberStatus } from "@/lib/classes/types";
 import {
@@ -36,6 +37,7 @@ export type GridPerson = {
   badgeScore?: number | null;
   badgeLabel?: string | null;
   badgeColor?: string | null;
+  avatarUrl?: string | null;
 };
 
 const NAME_COL = "minmax(150px, 200px)";
@@ -332,7 +334,7 @@ export function AttendanceGrid({
                 role="rowheader"
                 className="sticky left-0 z-10 flex min-w-0 items-center gap-1 bg-brand-600 px-2 py-2 text-sm font-bold"
               >
-                <span className="truncate">{person.name}</span>
+                <PersonAvatar avatarUrl={person.avatarUrl} name={person.name} size="xs" />                <span className="truncate">{person.name}</span>
                 <ScoreBadge score={person.badgeScore} label={person.badgeLabel} color={person.badgeColor} />
               </div>
               {lessons.map((lesson, c) => {
@@ -649,7 +651,7 @@ export function MarksGrid({
                     selected && absentOn(person.userId, selected.lesson_date) && "text-red-300 line-through",
                   )}
                 >
-                  <span className="truncate">{person.name}</span>
+                  <PersonAvatar avatarUrl={person.avatarUrl} name={person.name} size="xs" />                  <span className="truncate">{person.name}</span>
                   <ScoreBadge score={person.badgeScore} label={person.badgeLabel} color={person.badgeColor} />
                 </div>
                 {lessons.map((lesson) => (

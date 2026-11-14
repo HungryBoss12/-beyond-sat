@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PersonAvatar } from "@/components/people/PersonAvatar";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ListSkeleton } from "@/components/ui/skeletons";
@@ -19,6 +20,7 @@ type ProfileRow = {
   id: string;
   username: string | null;
   full_name: string | null;
+  avatar_url: string | null;
 };
 
 const STEP_ORDER = [2, 1, 3] as const;
@@ -150,6 +152,7 @@ function AdminStatistics() {
   const [recent, setRecent] = useState<RecentMock[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [places, setPlaces] = useState<PlaceGroup[] | null>(null);
+  const [avatars, setAvatars] = useState<Map<string, string | null>>(new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -193,6 +196,7 @@ function AdminStatistics() {
         const profiles = await fetchProfiles(ids);
         if (cancelled) return;
         const byId = new Map(profiles.map((profile) => [profile.id, profile]));
+        setAvatars(new Map(profiles.map((profile) => [profile.id, profile.avatar_url])));
         setPlaces(
           rankMockAttempts(
             rows.map((row) => ({
@@ -282,8 +286,8 @@ function AdminStatistics() {
             </div>
           ) : (
             <>
-              <Podium places={places} />
-              <StandingList places={places} />
+              <Podium places={places} avatars={avatars} />
+              <StandingList places={places} avatars={avatars} />
             </>
           )}
         </section>
@@ -292,7 +296,7 @@ function AdminStatistics() {
   );
 }
 
-function Podium({ places }: { places: PlaceGroup[] }) {
+function Podium({ places, avatars }: { places: PlaceGroup[]; avatars: Map<string, string | null> }) {
   return (
     <div
       className="relative overflow-hidden px-4 pt-12"
@@ -325,6 +329,7 @@ function Podium({ places }: { places: PlaceGroup[] }) {
             key={place}
             place={place}
             group={places.find((group) => group.place === place)}
+            avatars={avatars}
           />
         ))}
       </div>
@@ -341,7 +346,15 @@ function Podium({ places }: { places: PlaceGroup[] }) {
   );
 }
 
-function PodiumStep({ place, group }: { place: 1 | 2 | 3; group: PlaceGroup | undefined }) {
+function PodiumStep({
+  place,
+  group,
+  avatars,
+}: {
+  place: 1 | 2 | 3;
+  group: PlaceGroup | undefined;
+  avatars: Map<string, string | null>;
+}) {
   const metal = METAL[place];
   const people = group?.people ?? [];
   const empty = people.length === 0;
@@ -365,13 +378,15 @@ function PodiumStep({ place, group }: { place: 1 | 2 | 3; group: PlaceGroup | un
         ) : (
           <>
             {people.map((person) => (
-              <p
-                key={person.userId}
-                className="text-sm font-black leading-tight text-white [overflow-wrap:anywhere]"
-                style={{ textShadow: `0 0 14px ${metal.glow}` }}
-              >
-                {person.name}
-              </p>
+              <div key={person.userId} className="flex items-center justify-center gap-1.5">
+                <PersonAvatar avatarUrl={avatars.get(person.userId)} name={person.name} size="xs" />
+                <p
+                  className="text-sm font-black leading-tight text-white [overflow-wrap:anywhere]"
+                  style={{ textShadow: `0 0 14px ${metal.glow}` }}
+                >
+                  {person.name}
+                </p>
+              </div>
             ))}
             <span
               className="mt-1.5 inline-block rounded-full px-3 py-0.5 text-xs font-black"
@@ -520,7 +535,7 @@ function Wreath({
   );
 }
 
-function StandingList({ places }: { places: PlaceGroup[] }) {
+function StandingList({ places, avatars }: { places: PlaceGroup[]; avatars: Map<string, string | null> }) {
   if (places.length === 0) {
     return <p className="px-5 pb-6 text-sm text-slate-500">No scored finishes for this mock.</p>;
   }
@@ -532,6 +547,7 @@ function StandingList({ places }: { places: PlaceGroup[] }) {
             <span className="grid min-h-8 min-w-8 shrink-0 place-items-center rounded-full bg-slate-100 px-1.5 py-1 text-xs font-black tracking-tight text-slate-700">
               <RomanMark value={roman(group.place)} barClassName="h-0.5" />
             </span>
+            <PersonAvatar avatarUrl={avatars.get(person.userId)} name={person.name} />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold text-slate-900">{person.name}</div>
               <div className="text-xs text-slate-500">
@@ -610,7 +626,7 @@ async function fetchProfiles(ids: string[]): Promise<ProfileRow[]> {
     const slice = ids.slice(index, index + 80);
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, full_name")
+      .select("id, username, full_name, avatar_url")
       .in("id", slice);
     if (error) throw error;
     profiles.push(...((data ?? []) as ProfileRow[]));

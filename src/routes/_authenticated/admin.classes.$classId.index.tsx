@@ -24,6 +24,7 @@ import { scheduleLine } from "@/lib/classes/schedule";
 import { subjectToSlug } from "@/lib/classes/schemes";
 import { restoreClass } from "@/lib/classes";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
+import { PersonAvatar } from "@/components/people/PersonAvatar";
 import { listBalances } from "@/lib/billing/api";
 import { reissueStudentInvite, unclaimedUserIds } from "@/lib/students/api";
 import { toast } from "sonner";
@@ -95,6 +96,7 @@ function ClassOverview() {
     badgeScore: profiles.get(person.userId)?.badge_score ?? null,
     badgeLabel: profiles.get(person.userId)?.badge_label ?? null,
     badgeColor: profiles.get(person.userId)?.badge_color ?? null,
+    avatarUrl: profiles.get(person.userId)?.avatar_url ?? null,
   }));
 
   return (
@@ -177,6 +179,7 @@ function ClassOverview() {
               badgeScore={group.teacher_id ? profiles.get(group.teacher_id)?.badge_score : null}
               badgeLabel={group.teacher_id ? profiles.get(group.teacher_id)?.badge_label : null}
               badgeColor={group.teacher_id ? profiles.get(group.teacher_id)?.badge_color : null}
+              avatarUrl={group.teacher_id ? profiles.get(group.teacher_id)?.avatar_url : null}
               active={
                 members.filter((m) => m.group_id === group.id && m.status === "active").length
               }
@@ -331,6 +334,7 @@ function SubclassCard({
   badgeScore,
   badgeLabel,
   badgeColor,
+  avatarUrl,
   active,
 }: {
   group: ClassGroup;
@@ -339,6 +343,7 @@ function SubclassCard({
   badgeScore?: number | null;
   badgeLabel?: string | null;
   badgeColor?: string | null;
+  avatarUrl?: string | null;
   active: number;
 }) {
   return (
@@ -351,6 +356,7 @@ function SubclassCard({
       <SubclassChip subject={group.subject} name={group.name} />
       <p className="mt-2 truncate text-sm font-bold text-white">{scheduleLine(group)}</p>
       <p className="flex min-w-0 items-center gap-1.5 truncate text-xs text-white">
+        {teacher ? <PersonAvatar avatarUrl={avatarUrl} name={teacher} size="xs" /> : null}
         <span className="truncate">
           {teacher ? `Teacher ${teacher}` : "No teacher set"} · {active} active
           {group.room ? ` · Room ${group.room}` : ""}

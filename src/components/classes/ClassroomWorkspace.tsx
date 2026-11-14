@@ -224,6 +224,7 @@ export function ClassroomWorkspace({
           badgeScore: profiles.get(row.userId)?.badge_score ?? null,
           badgeLabel: profiles.get(row.userId)?.badge_label ?? null,
           badgeColor: profiles.get(row.userId)?.badge_color ?? null,
+          avatarUrl: profiles.get(row.userId)?.avatar_url ?? null,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [former, profiles],
@@ -243,6 +244,7 @@ export function ClassroomWorkspace({
           badgeScore: profiles.get(m.user_id)?.badge_score ?? null,
           badgeLabel: profiles.get(m.user_id)?.badge_label ?? null,
           badgeColor: profiles.get(m.user_id)?.badge_color ?? null,
+          avatarUrl: profiles.get(m.user_id)?.avatar_url ?? null,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [members, profiles, alsoIn, balances, isAdmin],
@@ -269,6 +271,7 @@ export function ClassroomWorkspace({
           badgeScore: person.badgeScore,
           badgeLabel: person.badgeLabel,
           badgeColor: person.badgeColor,
+          avatarUrl: person.avatarUrl,
         })),
     [filtered],
   );

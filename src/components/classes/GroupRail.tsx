@@ -57,6 +57,7 @@ import {
 import { scheduleLine, shortDate } from "@/lib/classes/schedule";
 import { formatUzs, type BalanceKind } from "@/lib/billing/money";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
+import { PersonAvatar } from "@/components/people/PersonAvatar";
 import { FreezeDialog } from "@/components/classes/FreezeDialog";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +72,7 @@ export type RailPerson = {
   badgeScore?: number | null;
   badgeLabel?: string | null;
   badgeColor?: string | null;
+  avatarUrl?: string | null;
   /** First day the fee stops, when a freeze is set or scheduled. */
   frozenOn?: string | null;
   /** Day the fee starts again. Empty means the freeze lasts until Activate. */
@@ -87,6 +89,7 @@ export type FormerPerson = {
   badgeScore?: number | null;
   badgeLabel?: string | null;
   badgeColor?: string | null;
+  avatarUrl?: string | null;
 };
 
 function RailMenuAction({
@@ -380,7 +383,7 @@ export function GroupRail({
                 )}
                 <div className="min-w-0 flex-1 py-1.5">
                   <div className="flex min-w-0 items-center gap-1">
-                    <span className="truncate text-sm font-bold">{person.name}</span>
+                    <PersonAvatar avatarUrl={person.avatarUrl} name={person.name} size="xs" />                    <span className="truncate text-sm font-bold">{person.name}</span>
                     <ScoreBadge score={person.badgeScore} label={person.badgeLabel} color={person.badgeColor} />
                     {isAdmin && person.balanceKind === "debt" && (
                       <TriangleAlert className="h-3 w-3 shrink-0" aria-label="Debtor" />
@@ -495,7 +498,7 @@ export function GroupRail({
                   >
                     <div className="min-w-0 flex-1 py-1.5">
                       <div className="flex min-w-0 items-center gap-1">
-                        <div className="truncate text-sm font-bold text-white/80">{person.name}</div>
+                        <PersonAvatar avatarUrl={person.avatarUrl} name={person.name} size="xs" />                        <div className="truncate text-sm font-bold text-white/80">{person.name}</div>
                         <ScoreBadge score={person.badgeScore} label={person.badgeLabel} color={person.badgeColor} />
                       </div>
                       <div className="truncate text-[11px] text-white">

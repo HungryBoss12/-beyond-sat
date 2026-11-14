@@ -37,6 +37,7 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { FocusNextPanel } from "@/components/ai/FocusNextPanel";
 import { AttendanceGrid } from "@/components/classes/AttendanceGrid";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
+import { PersonAvatar } from "@/components/people/PersonAvatar";
 import { Panel, PanelGlow, PanelHead, PageHead, EmptyState, Skeleton } from "@/components/ui/panel";
 import { Badge, Delta, MeterRow, StatTile, type Tone } from "@/components/ui/metric";
 import { listAttendance, type LessonAttendance } from "@/lib/classes";
@@ -107,6 +108,7 @@ type AttemptRow = {
 
 function Dashboard() {
   const [name, setName] = useState<string>("");
+  const [avatarRef, setAvatarRef] = useState<string | null>(null);
   const [badgeScore, setBadgeScore] = useState<number | null>(null);
   const [badgeLabel, setBadgeLabel] = useState<string | null>(null);
   const [badgeColor, setBadgeColor] = useState<string | null>(null);
@@ -134,7 +136,7 @@ function Dashboard() {
         lessonAtt,
         { data: dt },
       ] = await Promise.all([
-        supabase.from("profiles").select("full_name,first_name,badge_score,badge_label,badge_color").eq("id", uid).maybeSingle(),
+        supabase.from("profiles").select("full_name,first_name,avatar_url,badge_score,badge_label,badge_color").eq("id", uid).maybeSingle(),
         supabase
           .from("student_profiles")
           .select(
@@ -161,6 +163,7 @@ function Dashboard() {
         supabase.from("daily_tests").select("id").eq("date", today).maybeSingle(),
       ]);
       setName(prof?.full_name || prof?.first_name || "Student");
+      setAvatarRef(prof?.avatar_url ?? null);
       setBadgeScore(prof?.badge_score ?? null);
       setBadgeLabel(prof?.badge_label ?? null);
       setBadgeColor(prof?.badge_color ?? null);
@@ -304,6 +307,7 @@ function Dashboard() {
         }
         action={
           <span className="inline-flex items-center gap-2">
+            <PersonAvatar avatarUrl={avatarRef} name={name} size="md" />
             <ScoreBadge score={badgeScore} label={badgeLabel} color={badgeColor} />
             {staffRole ? (
               <Link

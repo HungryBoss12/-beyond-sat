@@ -217,7 +217,8 @@ export async function saveChatSetup(input: {
     .from("profiles")
     .update({
       username,
-      avatar_url: input.avatar_url ?? null,
+      // Only a new photo is written. An empty value must never wipe the saved one.
+      ...(input.avatar_url ? { avatar_url: input.avatar_url } : {}),
       telegram_username: input.telegram_username?.replace(/^@/, "").trim() || null,
       chat_setup_completed: true,
     })

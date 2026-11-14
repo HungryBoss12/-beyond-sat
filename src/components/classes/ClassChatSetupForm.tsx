@@ -1,13 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import { Camera, Loader2 } from "lucide-react";
+﻿import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { AvatarPicker } from "@/components/people/AvatarPicker";
 import {
   getChatProfile,
   isValidUsername,
   listActiveClasses,
   normalizeUsername,
-  resolveAvatarUrl,
   saveChatSetup,
-  uploadAvatar,
   type ClassRow,
 } from "@/lib/classes";
 
@@ -32,18 +31,9 @@ export function ClassChatSetupForm({
   const [username, setUsername] = useState("");
   const [telegram, setTelegram] = useState("");
   const [avatarPath, setAvatarPath] = useState<string | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    };
-  }, [avatarPreview]);
 
   useEffect(() => {
     void (async () => {
@@ -53,11 +43,7 @@ export function ClassChatSetupForm({
 
         if (profile?.username) setUsername(profile.username);
         if (profile?.telegram_username) setTelegram(profile.telegram_username);
-        if (profile?.avatar_url) {
-          setAvatarPath(profile.avatar_url);
-          const url = await resolveAvatarUrl(profile.avatar_url);
-          if (url) setAvatarPreview(url);
-        }
+        if (profile?.avatar_url) setAvatarPath(profile.avatar_url);
         if (profile?.class_id) setClassId(profile.class_id);
       } catch (e) {
         setErr((e as Error)?.message ?? "Could not load profile.");
@@ -66,23 +52,6 @@ export function ClassChatSetupForm({
       }
     })();
   }, []);
-
-  async function onAvatar(file: File) {
-    setUploading(true);
-    setErr(null);
-    try {
-      const local = URL.createObjectURL(file);
-      setAvatarPreview((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return local;
-      });
-      setAvatarPath(await uploadAvatar(file));
-    } catch (e) {
-      setErr((e as Error)?.message ?? "Avatar upload failed.");
-    } finally {
-      setUploading(false);
-    }
-  }
 
   async function submit() {
     setErr(null);
@@ -94,7 +63,6 @@ export function ClassChatSetupForm({
     try {
       await saveChatSetup({
         username: normalizeUsername(username),
-        avatar_url: avatarPath,
         telegram_username: telegram || null,
       });
       onDone?.();
@@ -130,39 +98,7 @@ export function ClassChatSetupForm({
         </div>
       )}
 
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="relative grid h-16 w-16 place-items-center overflow-hidden rounded-full bg-brand-800 ring-2 ring-brand-400/50"
-          aria-label="Upload profile photo"
-        >
-          {avatarPreview ? (
-            <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <Camera className="h-5 w-5 text-white" />
-          )}
-          {uploading && (
-            <span className="absolute inset-0 grid place-items-center bg-brand-900/60">
-              <Loader2 className="h-4 w-4 animate-spin text-white" />
-            </span>
-          )}
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void onAvatar(f);
-          }}
-        />
-        <div className="text-xs text-white">
-          Profile photo (optional). You can also just use a username.
-        </div>
-      </div>
+      <AvatarPicker value={avatarPath} name={username} size="lg" onChange={setAvatarPath} />
 
       <label className="block">
         <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white">
@@ -215,7 +151,7 @@ export function ClassChatSetupForm({
       <button
         type="button"
         onClick={() => void submit()}
-        disabled={saving || uploading}
+        disabled={saving}
         className="btn-brand inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-400 py-3 font-bold text-white disabled:opacity-50"
       >
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

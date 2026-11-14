@@ -15,6 +15,7 @@ import {
   type ClassSubject,
 } from "@/lib/classes";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
+import { PersonAvatar } from "@/components/people/PersonAvatar";
 import { CLASS_CONTROL } from "./control";
 
 /** The sub-class chat (subject thread) plus the class-wide thread. */
@@ -120,6 +121,7 @@ export function ChatPanel({ classId, subject }: { classId: string; subject: Clas
               }
             >
               <div className="mb-0.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                <PersonAvatar avatarUrl={sender?.avatar_url} name={sender ? displayName(sender) : null} size="xs" />
                 {sender ? displayName(sender) : message.sender_id.slice(0, 8)}
                 <ScoreBadge score={sender?.badge_score} label={sender?.badge_label} color={sender?.badge_color} />
               </div>

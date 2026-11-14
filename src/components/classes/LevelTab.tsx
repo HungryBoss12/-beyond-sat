@@ -1,6 +1,7 @@
 import { Columns3, Gauge, History, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { IconButton } from "@/components/ui/icon-button";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
+import { PersonAvatar } from "@/components/people/PersonAvatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { LevelBoardRow, LevelSection } from "@/lib/classes/groups";
 import { levelTrend, sectionShort } from "@/lib/classes/level";
@@ -118,7 +119,7 @@ export function LevelTab({
                     scope="row"
                     className="sticky left-0 z-10 flex max-w-[220px] items-center gap-1 bg-brand-600 px-2 py-2 font-bold"
                   >
-                    <span className="truncate">{person.name}</span>
+                    <PersonAvatar avatarUrl={person.avatarUrl} name={person.name} size="xs" />                    <span className="truncate">{person.name}</span>
                     <ScoreBadge score={person.badgeScore} label={person.badgeLabel} color={person.badgeColor} />
                   </th>
                   <td className="px-2 py-2">

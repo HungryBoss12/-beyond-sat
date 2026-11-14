@@ -12,6 +12,9 @@ import { EditGroupsDialog } from "@/components/classes/EditGroupsDialog";
 import { FreezeDialog, type FreezeTarget } from "@/components/classes/FreezeDialog";
 import { profileFreezePlan } from "@/lib/classes/profile-freeze";
 import { RankBadge } from "@/components/classes/RankBadge";
+import { PersonAvatar } from "@/components/people/PersonAvatar";
+import { staffRemoveAvatar } from "@/lib/avatar/upload";
+import { invalidateAvatar } from "@/lib/avatar/urls";
 import { SubclassChip } from "@/components/classes/SubclassChip";
 import { LevelValue, SectionToggle } from "@/components/classes/LevelTab";
 import { StatusLabel } from "@/components/billing/labels";
@@ -74,6 +77,9 @@ function StudentProfilePage() {
   const { klass, groups, isAdmin } = useClassContext();
   const [name, setName] = useState("Student");
   const [description, setDescription] = useState<string | null>(null);
+  const [avatarRef, setAvatarRef] = useState<string | null>(null);
+  const [bio, setBio] = useState<string | null>(null);
+  const [removingPhoto, setRemovingPhoto] = useState(false);
   const [blocks, setBlocks] = useState<GroupBlock[]>([]);
   const [score, setScore] = useState<{ rw: number; math: number } | null>(null);
   const [attendance, setAttendance] = useState<
@@ -103,6 +109,8 @@ function StudentProfilePage() {
         listStudentSubmissions(userId).catch(() => []),
       ]);
     setName(personName(profiles.get(userId), userId));
+    setAvatarRef(profiles.get(userId)?.avatar_url ?? null);
+    setBio(profiles.get(userId)?.bio ?? null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: studentRow } = await (supabase as any)
       .from("students")
@@ -152,6 +160,22 @@ function StudentProfilePage() {
     void load();
   }, [load]);
 
+  async function removePhoto() {
+    if (!avatarRef) return;
+    if (!confirm("Remove this profile photo? The student can upload a new one.")) return;
+    setRemovingPhoto(true);
+    try {
+      await staffRemoveAvatar(userId, avatarRef);
+      invalidateAvatar(avatarRef);
+      setAvatarRef(null);
+      toast.success("Photo removed");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not remove the photo");
+    } finally {
+      setRemovingPhoto(false);
+    }
+  }
+
   const total = score ? totalScore(score.rw, score.math) : null;
   const firstGroup = blocks[0]?.group ?? groups[0];
   const freezePlan = profileFreezePlan(
@@ -191,7 +215,21 @@ function StudentProfilePage() {
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h1 className="truncate text-2xl font-black tracking-tight md:text-3xl">{name}</h1>
+          <PersonAvatar avatarUrl={avatarRef} name={name} size="lg" />
+          <div className="min-w-0">
+            <h1 className="truncate text-2xl font-black tracking-tight md:text-3xl">{name}</h1>
+            {bio ? <p className="text-sm font-semibold text-brand-700">{bio}</p> : null}
+            {isAdmin && avatarRef ? (
+              <button
+                type="button"
+                disabled={removingPhoto}
+                onClick={() => void removePhoto()}
+                className="tap text-xs font-bold text-brand-700 underline disabled:opacity-50"
+              >
+                {removingPhoto ? "Removing…" : "Remove photo"}
+              </button>
+            ) : null}
+          </div>
           {blocks.map((block) => (
             <Link
               key={block.group.id}

@@ -1891,6 +1891,7 @@ export type Database = {
           badge_color: string | null;
           badge_label: string | null;
           badge_score: number | null;
+          bio: string | null;
           birth_date: string | null;
           chat_setup_completed: boolean;
           city: string | null;
@@ -1922,6 +1923,7 @@ export type Database = {
           badge_color?: string | null;
           badge_label?: string | null;
           badge_score?: number | null;
+          bio?: string | null;
           birth_date?: string | null;
           chat_setup_completed?: boolean;
           city?: string | null;
@@ -1953,6 +1955,7 @@ export type Database = {
           badge_color?: string | null;
           badge_label?: string | null;
           badge_score?: number | null;
+          bio?: string | null;
           birth_date?: string | null;
           chat_setup_completed?: boolean;
           city?: string | null;
@@ -4063,6 +4066,7 @@ export type Database = {
           tests_practice: number;
           tests_total: number;
           username: string;
+          avatar_url: string | null;
         }[];
       };
       admin_void_entry: {

@@ -21,6 +21,7 @@ export type AdminUserSummaryRow = {
   badge_score: number | null;
   badge_label: string | null;
   badge_color: string | null;
+  avatar_url?: string | null;
 };
 
 export type AdminUserDetail = {

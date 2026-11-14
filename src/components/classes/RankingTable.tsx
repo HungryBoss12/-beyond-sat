@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
+import { PersonAvatar } from "@/components/people/PersonAvatar";
 import {
   clampScore,
   compareRanked,
@@ -20,6 +21,7 @@ export type RankStudent = {
   badgeScore?: number | null;
   badgeLabel?: string | null;
   badgeColor?: string | null;
+  avatarUrl?: string | null;
 };
 
 const LETTERS: RankLetter[] = ["S", "A", "B", "C", "D"];
@@ -120,7 +122,7 @@ export function RankingTable({
                   <td className="px-5 py-2.5 font-black tabular-nums text-brand-100 md:px-6">{place}</td>
                   <td className="py-2.5 font-bold">
                     <span className="inline-flex min-w-0 items-center gap-1.5">
-                      <span className="truncate">{row.name}</span>
+                      <PersonAvatar avatarUrl={row.avatarUrl} name={row.name} size="xs" />                      <span className="truncate">{row.name}</span>
                       <ScoreBadge score={row.badgeScore} label={row.badgeLabel} color={row.badgeColor} />
                     </span>
                   </td>
@@ -141,7 +143,7 @@ export function RankingTable({
                 <td className="px-5 py-2.5 tabular-nums text-brand-200 md:px-6">—</td>
                 <td className="py-2.5 font-bold text-brand-100">
                   <span className="inline-flex min-w-0 items-center gap-1.5">
-                    <span className="truncate">{row.name}</span>
+                    <PersonAvatar avatarUrl={row.avatarUrl} name={row.name} size="xs" />                    <span className="truncate">{row.name}</span>
                     <ScoreBadge score={row.badgeScore} label={row.badgeLabel} color={row.badgeColor} />
                   </span>
                 </td>

@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { parseStorageRef } from "@/lib/storage-url";
 
 function safeName(name: string): string {
   return name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
@@ -56,55 +55,6 @@ export async function uploadHomeworkFile(
   };
 }
 
-/** The extension comes from the declared type, never from the file name. */
-const AVATAR_EXT: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
-};
-
-export async function uploadAvatar(file: File): Promise<string> {
-  const { data: u } = await supabase.auth.getUser();
-  if (!u.user) throw new Error("Not signed in");
-  const ext = AVATAR_EXT[file.type] ?? "jpg";
-  const path = `${u.user.id}/avatar-${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from("chat-uploads").upload(path, file, {
-    upsert: true,
-    contentType: file.type || "image/jpeg",
-  });
-  if (error) throw error;
-  return path;
-}
-
-/** Resolve a stored avatar path (or a legacy signed HTTP URL) for display. */
-export async function resolveAvatarUrl(stored: string | null | undefined): Promise<string | null> {
-  const value = (stored ?? "").trim();
-  if (!value) return null;
-  if (/^data:/i.test(value)) return value;
-
-  const parsed = parseStorageRef(value, "chat-uploads");
-  if (parsed) {
-    const { data, error } = await supabase.storage
-      .from(parsed.bucket)
-      .createSignedUrl(parsed.path, 3600);
-    if (error || !data?.signedUrl) return null;
-    return data.signedUrl;
-  }
-
-  return /^https?:\/\//i.test(value) ? value : null;
-}
-
-export async function resolveAvatarUrls(
-  refs: Array<string | null | undefined>,
-): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
-  const unique = [...new Set(refs.map((r) => (r ?? "").trim()).filter(Boolean))];
-  await Promise.all(
-    unique.map(async (ref) => {
-      const url = await resolveAvatarUrl(ref);
-      if (url) out.set(ref, url);
-    }),
-  );
-  return out;
-}
+/** Profile pictures live in `src/lib/avatar`; these names stay importable from here. */
+export { resolveAvatarUrl, resolveAvatarUrls } from "@/lib/avatar/urls";
+export { uploadMyAvatar as uploadAvatar } from "@/lib/avatar/upload";

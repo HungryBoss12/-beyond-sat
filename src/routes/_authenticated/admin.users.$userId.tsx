@@ -1,9 +1,12 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { ArrowLeft, Award, Ban, CircleCheck, KeyRound, Loader2, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
+import { UserAvatar } from "@/components/people/UserAvatar";
+import { useAvatarUrls } from "@/lib/avatar/urls";
+import { staffRemoveAvatar } from "@/lib/avatar/upload";
 import { BADGE_COLORS } from "@/lib/people/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { UserActivityFeed } from "@/components/admin/UserActivityFeed";
@@ -261,6 +264,7 @@ function AdminUserDetailPage() {
             onReset={() => setResetOpen(true)}
             onDelete={() => void deleteAccount()}
             onBadgeSaved={() => void loadDetail()}
+            onPhotoRemoved={() => void loadDetail()}
           />
 
           <div className="mt-4 flex flex-wrap gap-1 rounded-2xl border border-brand-400/40 bg-brand-600 p-1">
@@ -333,6 +337,7 @@ function Header({
   onReset,
   onDelete,
   onBadgeSaved,
+  onPhotoRemoved,
 }: {
   detail: AdminUserDetail;
   busy: boolean;
@@ -341,8 +346,11 @@ function Header({
   onReset: () => void;
   onDelete: () => void;
   onBadgeSaved: () => void;
+  onPhotoRemoved: () => void;
 }) {
   const profile = detail.profile as {
+    avatar_url?: string | null;
+    bio?: string | null;
     id?: string;
     full_name?: string | null;
     email?: string | null;
@@ -354,7 +362,24 @@ function Header({
     badge_color?: string | null;
   };
   const online = isOnline(profile.last_seen_at ?? null);
+  const avatarUrls = useAvatarUrls([profile.avatar_url]);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const role = detail.role as Role;
+
+  async function removePhoto() {
+    if (!profile.id || !profile.avatar_url) return;
+    if (!confirm("Remove this profile photo? The student can upload a new one.")) return;
+    setPhotoBusy(true);
+    try {
+      await staffRemoveAvatar(profile.id, profile.avatar_url);
+      toast.success("Photo removed");
+      onPhotoRemoved();
+    } catch (e) {
+      toast.error(errorMessage(e, "Could not remove the photo"));
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
   const [badgeOpen, setBadgeOpen] = useState(false);
   const [badgeText, setBadgeText] = useState(profile.badge_score == null ? "" : String(profile.badge_score));
   const [badgeWords, setBadgeWords] = useState(profile.badge_label ?? "");
@@ -400,6 +425,24 @@ function Header({
 
   return (
     <div className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-brand-400/40 bg-brand-600 p-4 shadow-panel">
+      <div className="flex min-w-0 items-start gap-4">
+        <div className="shrink-0 space-y-1.5 text-center">
+          <UserAvatar
+            src={profile.avatar_url ? (avatarUrls.get(profile.avatar_url) ?? null) : null}
+            name={profile.full_name || profile.email}
+            size="lg"
+          />
+          {profile.avatar_url ? (
+            <button
+              type="button"
+              onClick={() => void removePhoto()}
+              disabled={photoBusy}
+              className="tap block w-full text-[11px] font-bold text-brand-100 underline-offset-2 hover:text-white hover:underline disabled:opacity-50"
+            >
+              {photoBusy ? "Removing…" : "Remove photo"}
+            </button>
+          ) : null}
+        </div>
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-xl font-black text-white">{profile.full_name || profile.email || "User"}</h2>
@@ -424,6 +467,8 @@ function Header({
             ` · Joined ${format(new Date(profile.created_at), "MMM d, yyyy")}`}
           {detail.class_name && ` · ${detail.class_name}`}
         </p>
+        {profile.bio ? <p className="mt-1 text-sm text-white">{profile.bio}</p> : null}
+      </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <AdminSelect

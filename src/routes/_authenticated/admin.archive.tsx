@@ -20,6 +20,7 @@ import {
 import { scheduleLine } from "@/lib/classes/schedule";
 import { subjectToSlug } from "@/lib/classes/schemes";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
+import { PersonAvatar } from "@/components/people/PersonAvatar";
 import { listBalances } from "@/lib/billing/api";
 
 export const Route = createFileRoute("/_authenticated/admin/archive")({
@@ -141,6 +142,13 @@ function AdminArchive() {
                         <span className="min-w-0">
                           <SubclassChip subject={group.subject} name={group.name} />
                           <span className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-white">
+                            {group.teacher_id ? (
+                              <PersonAvatar
+                                avatarUrl={teachers.get(group.teacher_id)?.avatar_url}
+                                name={personName(teachers.get(group.teacher_id), group.teacher_id)}
+                                size="xs"
+                              />
+                            ) : null}
                             <span className="truncate">
                               {group.teacher_id
                                 ? personName(teachers.get(group.teacher_id), group.teacher_id)

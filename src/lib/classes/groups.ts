@@ -630,6 +630,7 @@ export type PersonProfile = {
   last_name: string | null;
   email: string | null;
   avatar_url: string | null;
+  bio?: string | null;
   last_seen_at: string | null;
   badge_score?: number | null;
   badge_label?: string | null;
@@ -642,7 +643,7 @@ export async function listProfiles(ids: string[]): Promise<Map<string, PersonPro
   if (!unique.length) return new Map();
   const { data, error } = await db
     .from("profiles")
-    .select("id,username,full_name,first_name,last_name,email,avatar_url,last_seen_at,badge_score,badge_label,badge_color")
+    .select("id,username,full_name,first_name,last_name,email,avatar_url,bio,last_seen_at,badge_score,badge_label,badge_color")
     .in("id", unique);
   if (error) throw error;
   return new Map(((data ?? []) as PersonProfile[]).map((p) => [p.id, p]));

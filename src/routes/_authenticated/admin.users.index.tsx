@@ -27,6 +27,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { FeeDialog } from "@/components/billing/FeeDialog";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
+import { UserAvatar } from "@/components/people/UserAvatar";
+import { useAvatarUrls } from "@/lib/avatar/urls";
 import { IconButton } from "@/components/ui/icon-button";
 import { previewActivationChange, setActivationDate, setStudentFee } from "@/lib/billing/api";
 import { tashkentToday } from "@/lib/billing/dates";
@@ -271,6 +273,8 @@ function AdminStudents() {
   const tab = Route.useSearch().tab ?? "directory";
   const navigate = useNavigate({ from: Route.fullPath });
   const [rows, setRows] = useState<UserRow[]>([]);
+  const avatarRefs = useMemo(() => rows.map((row) => row.avatar_url), [rows]);
+  const avatarUrls = useAvatarUrls(avatarRefs);
   const [unclaimed, setUnclaimed] = useState<Set<string>>(new Set());
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1107,6 +1111,7 @@ function AdminStudents() {
                         <UserListRow
                           key={u.id}
                           u={u}
+                          avatarSrc={u.avatar_url ? (avatarUrls.get(u.avatar_url) ?? null) : null}
                           busy={busy === u.id}
                           insightsReady={insightsReady}
                           selected={selectedIds.has(u.id)}
@@ -1619,6 +1624,7 @@ function SortHeader({
 
 function UserListRow({
   u,
+  avatarSrc,
   busy,
   insightsReady,
   selected,
@@ -1628,6 +1634,7 @@ function UserListRow({
   onBan,
 }: {
   u: UserRow;
+  avatarSrc: string | null;
   busy: boolean;
   insightsReady: boolean;
   selected: boolean;
@@ -1673,9 +1680,7 @@ function UserListRow({
         >
           <div className="flex min-w-0 items-center gap-3">
             <div className="relative shrink-0">
-              <div className="grid h-9 w-9 place-items-center rounded-full bg-brand-400 text-xs font-bold text-white">
-                {(u.full_name || u.email || "?").slice(0, 2).toUpperCase()}
-              </div>
+              <UserAvatar src={avatarSrc} name={u.full_name || u.email} className="h-9 w-9" />
               <span
                 title={online ? "Online now" : lastSeenLabel(u.last_seen_at)}
                 className={

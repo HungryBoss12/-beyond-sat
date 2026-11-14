@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ScoreBadge } from "@/components/people/ScoreBadge";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
@@ -16,7 +16,20 @@ import {
   Link2,
   Wallet,
   Award,
+  Camera,
 } from "lucide-react";
+import { UserAvatar } from "@/components/people/UserAvatar";
+import { AvatarPicker } from "@/components/people/AvatarPicker";
+import { useAvatarUrls } from "@/lib/avatar/urls";
+import { BIO_MAX } from "@/lib/avatar/paths";
+import { getStaffRole } from "@/lib/admin";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { formatGrade } from "@/lib/utils";
@@ -30,7 +43,6 @@ import { AttendanceGrid } from "@/components/classes/AttendanceGrid";
 import {
   getChatProfile,
   listAttendance,
-  resolveAvatarUrl,
   type ChatProfile,
   type LessonAttendance,
 } from "@/lib/classes";
@@ -66,6 +78,8 @@ type ProfileRow = {
   school: string | null;
   grade: number | null;
   birth_date: string | null;
+  bio: string | null;
+  avatar_url: string | null;
 };
 
 type StudentRow = {
@@ -120,7 +134,10 @@ function Profile() {
   const [correctTotal, setCorrectTotal] = useState(0);
   const [dateOptions, setDateOptions] = useState<ExamDateOpt[]>([]);
   const [chat, setChat] = useState<ChatProfile | null>(null);
-  const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
+  const [avatarPath, setAvatarPath] = useState<string | null>(null);
+  const avatarUrls = useAvatarUrls([avatarPath]);
+  const avatarSrc = avatarPath ? (avatarUrls.get(avatarPath) ?? null) : null;
+  const [isStaff, setIsStaff] = useState(false);
   const [attendance, setAttendance] = useState<LessonAttendance[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -146,14 +163,13 @@ function Profile() {
   }
 
   useEffect(() => {
-    let cancelled = false;
-    void resolveAvatarUrl(chat?.avatar_url).then((url) => {
-      if (!cancelled) setAvatarSrc(url);
-    });
-    return () => {
-      cancelled = true;
-    };
+    setAvatarPath(chat?.avatar_url ?? null);
   }, [chat?.avatar_url]);
+
+  useEffect(() => {
+    if (!uid) return;
+    void getStaffRole(uid).then((role) => setIsStaff(role !== null));
+  }, [uid]);
 
   useEffect(() => {
     (async () => {
@@ -266,13 +282,6 @@ function Profile() {
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
     email.split("@")[0] ||
     "Student";
-  const initials =
-    displayName
-      .split(" ")
-      .map((s) => s[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "S";
   /* Admin-created students already have username + class_id and chat_setup_completed.
      Nudge users who still need a chat username (class is assigned by admins only). */
   const needsClassSetup = !chat?.chat_setup_completed;
@@ -288,6 +297,7 @@ function Profile() {
         school: form.school,
         grade: form.grade,
         birth_date: form.birth_date,
+        bio: form.bio,
       })
       .eq("id", uid)
       .select("*")
@@ -365,18 +375,17 @@ function Profile() {
       <Surface tone="brand" className="overflow-hidden p-6 md:p-8">
         <PanelGlow />
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          {avatarSrc ? (
-            <img
-              src={avatarSrc}
-              alt=""
-              onError={() => setAvatarSrc(null)}
-              className="h-16 w-16 shrink-0 rounded-full object-cover shadow-brand md:h-20 md:w-20"
-            />
-          ) : (
-            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-brand-400 text-2xl font-black text-white shadow-brand md:h-20 md:w-20">
-              {initials}
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => setEditingInfo(true)}
+            aria-label="Change profile photo"
+            className="relative shrink-0 self-start rounded-full shadow-brand sm:self-auto"
+          >
+            <UserAvatar src={avatarSrc} name={displayName} size="lg" />
+            <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full bg-brand-800 text-white ring-2 ring-brand-400">
+              <Camera className="h-3.5 w-3.5" aria-hidden="true" />
+            </span>
+          </button>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2 text-2xl font-black md:text-3xl">
               <span className="truncate">{displayName}</span>
@@ -395,12 +404,21 @@ function Profile() {
               </span>
             )}
           </div>
-          <button
-            onClick={signOut}
-            className="btn-ghost inline-flex shrink-0 items-center gap-2 self-start rounded-lg border border-brand-300/60 bg-brand-800 px-3 py-2 text-sm font-bold text-white sm:self-auto"
-          >
-            <LogOut className="h-4 w-4" /> Sign out
-          </button>
+          <div className="flex shrink-0 flex-wrap gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setEditingInfo(true)}
+              className="btn-ghost inline-flex items-center gap-2 rounded-lg border border-brand-300/60 bg-brand-800 px-3 py-2 text-sm font-bold text-white"
+            >
+              <Pencil className="h-4 w-4" /> Edit profile
+            </button>
+            <button
+              onClick={signOut}
+              className="btn-ghost inline-flex items-center gap-2 rounded-lg border border-brand-300/60 bg-brand-800 px-3 py-2 text-sm font-bold text-white"
+            >
+              <LogOut className="h-4 w-4" /> Sign out
+            </button>
+          </div>
         </div>
         <div className="stagger mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Stat
@@ -445,28 +463,43 @@ function Profile() {
         {/* Personal info */}
         <Panel
           title="Personal info"
-          editing={editingInfo}
+          editing={false}
           onEdit={() => setEditingInfo(true)}
           onCancel={() => setEditingInfo(false)}
         >
-          {editingInfo ? (
-            <InfoForm profile={profile} nick={nick} onSave={saveInfo} saving={saving} />
-          ) : (
-            <dl className="grid grid-cols-2 gap-4 text-sm">
-              <Field label="Name" value={profile?.full_name} />
-              <Field label="Nick" value={nick} />
-              <Field label="City" value={profile?.city} />
-              <Field label="School" value={profile?.school} />
-              <Field label="Grade" value={formatGrade(profile?.grade)} />
-              <Field
-                label="Birth date"
-                value={
-                  profile?.birth_date ? format(new Date(profile.birth_date), "MMM d, yyyy") : null
-                }
-              />
-            </dl>
-          )}
+          <dl className="grid grid-cols-2 gap-4 text-sm">
+            <Field label="Name" value={profile?.full_name} />
+            <Field label="Nick" value={nick} />
+            <div className="col-span-2">
+              <Field label="Bio" value={profile?.bio} />
+            </div>
+            <Field label="City" value={profile?.city} />
+            {isStaff ? null : (
+              <>
+                <Field label="School" value={profile?.school} />
+                <Field label="Grade" value={formatGrade(profile?.grade)} />
+                <Field
+                  label="Birth date"
+                  value={
+                    profile?.birth_date ? format(new Date(profile.birth_date), "MMM d, yyyy") : null
+                  }
+                />
+              </>
+            )}
+          </dl>
         </Panel>
+        <EditProfileDialog
+          open={editingInfo}
+          onClose={() => setEditingInfo(false)}
+          profile={profile}
+          nick={nick}
+          displayName={displayName}
+          avatarPath={avatarPath}
+          onAvatar={setAvatarPath}
+          showStudentFields={!isStaff}
+          onSave={saveInfo}
+          saving={saving}
+        />
 
         {/* Goals */}
         <Panel
@@ -703,18 +736,77 @@ function Field({ label, value }: { label: string; value: string | null | undefin
   );
 }
 
-function InfoForm({
+function EditProfileDialog({
+  open,
+  onClose,
   profile,
   nick,
+  displayName,
+  avatarPath,
+  onAvatar,
+  showStudentFields,
+  onSave,
+  saving,
+}: {
+  open: boolean;
+  onClose: () => void;
+  profile: ProfileRow | null;
+  nick: string;
+  displayName: string;
+  avatarPath: string | null;
+  onAvatar: (path: string | null) => void;
+  showStudentFields: boolean;
+  onSave: (v: Partial<ProfileRow> & { nick?: string }) => void;
+  saving: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(next) => !next && !saving && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-brand-400/40 bg-brand-800 text-white sm:rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-white">Edit profile</DialogTitle>
+          <DialogDescription className="text-brand-100">
+            Your photo and bio are visible to every signed-in user. Your name and username are
+            changed by an admin.
+          </DialogDescription>
+        </DialogHeader>
+        {open ? (
+          <EditProfileForm
+            profile={profile}
+            nick={nick}
+            displayName={displayName}
+            avatarPath={avatarPath}
+            onAvatar={onAvatar}
+            showStudentFields={showStudentFields}
+            onSave={onSave}
+            saving={saving}
+          />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditProfileForm({
+  profile,
+  nick,
+  displayName,
+  avatarPath,
+  onAvatar,
+  showStudentFields,
   onSave,
   saving,
 }: {
   profile: ProfileRow | null;
   nick: string;
+  displayName: string;
+  avatarPath: string | null;
+  onAvatar: (path: string | null) => void;
+  showStudentFields: boolean;
   onSave: (v: Partial<ProfileRow> & { nick?: string }) => void;
   saving: boolean;
 }) {
   const [nextNick, setNextNick] = useState(nick);
+  const [bio, setBio] = useState(profile?.bio ?? "");
   const [city, setCity] = useState(profile?.city ?? "");
   const [school, setSchool] = useState(profile?.school ?? "");
   const [grade, setGrade] = useState(profile?.grade != null ? String(profile.grade) : "");
@@ -725,14 +817,20 @@ function InfoForm({
         e.preventDefault();
         onSave({
           nick: nextNick,
+          bio: bio.trim() || null,
           city: city || null,
-          school: school || null,
-          grade: grade ? Number(grade) : null,
-          birth_date: birth || null,
+          ...(showStudentFields
+            ? {
+                school: school || null,
+                grade: grade ? Number(grade) : null,
+                birth_date: birth || null,
+              }
+            : {}),
         });
       }}
-      className="grid grid-cols-2 gap-3"
+      className="space-y-4"
     >
+      <AvatarPicker value={avatarPath} name={displayName} onChange={onAvatar} />
       <div>
         <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-brand-100">
           Name
@@ -741,39 +839,60 @@ function InfoForm({
           {profile?.full_name || "—"}
         </p>
       </div>
-      <Input label="Nick" value={nextNick} onChange={setNextNick} maxLength={32} />
-      <Input label="City" value={city} onChange={setCity} />
-      <Input label="School" value={school} onChange={setSchool} />
       <label className="block">
-        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-brand-100">
-          Grade
+        <span className="mb-1 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-brand-100">
+          Bio
+          <span className="tabular-nums normal-case tracking-normal">
+            {bio.length}/{BIO_MAX}
+          </span>
         </span>
-        <AdminSelect
-          tone="light"
-          value={grade}
-          onValueChange={setGrade}
-          placeholder="Select…"
-          options={[
-            { value: "5", label: "5th" },
-            { value: "6", label: "6th" },
-            { value: "7", label: "7th" },
-            { value: "8", label: "8th" },
-            { value: "9", label: "9th" },
-            { value: "10", label: "10th" },
-            { value: "11", label: "11th" },
-            { value: "12", label: "12th" },
-            { value: "13", label: "Graduated" },
-          ]}
+        <textarea
+          value={bio}
+          maxLength={BIO_MAX}
+          rows={2}
+          onChange={(e) => setBio(e.target.value)}
+          placeholder="A few words about you"
+          className="block w-full resize-none rounded-lg border border-brand-400/60 bg-brand-800 px-3 py-2 text-sm text-white placeholder:text-brand-200 focus:border-brand-200 focus:outline-none"
         />
       </label>
-      <Input label="Birth date" value={birth} onChange={setBirth} type="date" />
-      <div className="col-span-2 flex justify-end">
+      <div className="grid grid-cols-2 gap-3">
+        <Input label="Nick" value={nextNick} onChange={setNextNick} maxLength={32} />
+        <Input label="City" value={city} onChange={setCity} />
+        {showStudentFields ? (
+          <>
+            <Input label="School" value={school} onChange={setSchool} />
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-brand-100">
+                Grade
+              </span>
+              <AdminSelect
+                tone="light"
+                value={grade}
+                onValueChange={setGrade}
+                placeholder="Select…"
+                options={[
+                  { value: "5", label: "5th" },
+                  { value: "6", label: "6th" },
+                  { value: "7", label: "7th" },
+                  { value: "8", label: "8th" },
+                  { value: "9", label: "9th" },
+                  { value: "10", label: "10th" },
+                  { value: "11", label: "11th" },
+                  { value: "12", label: "12th" },
+                  { value: "13", label: "Graduated" },
+                ]}
+              />
+            </label>
+            <Input label="Birth date" value={birth} onChange={setBirth} type="date" />
+          </>
+        ) : null}
+      </div>
+      <div className="flex justify-end">
         <SaveButton saving={saving} />
       </div>
     </form>
   );
 }
-
 function GoalsForm({
   student,
   onSave,

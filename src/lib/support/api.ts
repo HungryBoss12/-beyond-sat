@@ -53,9 +53,12 @@ export type OpenSlot = {
 export type CenterHours = { opens_at: string; closes_at: string };
 
 // Group RPCs and tables ship ahead of regenerated Database types.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as unknown as {
-  rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc: (
+    fn: string,
+    args?: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   from: (table: string) => any;
 };
 
@@ -129,7 +132,11 @@ export function subjectLabel(subject: ClassSubject): string {
 }
 
 export async function loadCenterHours(): Promise<CenterHours | null> {
-  const { data, error } = await db.from("support_center_hours").select("opens_at,closes_at").limit(1).maybeSingle();
+  const { data, error } = await db
+    .from("support_center_hours")
+    .select("opens_at,closes_at")
+    .limit(1)
+    .maybeSingle();
   raise(error);
   return (data as CenterHours | null) ?? null;
 }
@@ -165,20 +172,27 @@ export type SupportWindow = {
 const STUDENT_BOOKING_KEY = "support_student_booking";
 
 export async function loadStudentBookingOn(): Promise<boolean> {
-  const { data, error } = await db.from("app_settings").select("value").eq("key", STUDENT_BOOKING_KEY).maybeSingle();
+  const { data, error } = await db
+    .from("app_settings")
+    .select("value")
+    .eq("key", STUDENT_BOOKING_KEY)
+    .maybeSingle();
   raise(error);
   return data?.value === "on";
 }
 
 export async function saveStudentBookingOn(on: boolean): Promise<void> {
-  const { error } = await db.from("app_settings").upsert(
-    { key: STUDENT_BOOKING_KEY, value: on ? "on" : "off" },
-    { onConflict: "key" },
-  );
+  const { error } = await db
+    .from("app_settings")
+    .upsert({ key: STUDENT_BOOKING_KEY, value: on ? "on" : "off" }, { onConflict: "key" });
   raise(error);
 }
 
-export async function postSupportRange(start: string, end: string, teacherId?: string | null): Promise<number> {
+export async function postSupportRange(
+  start: string,
+  end: string,
+  teacherId?: string | null,
+): Promise<number> {
   const { data, error } = await db.rpc("teacher_post_support_range", {
     p_start: tashkentInput(start),
     p_end: tashkentInput(end),
@@ -341,9 +355,12 @@ export type ComingStudent = {
   starts_at: string;
   ends_at: string;
   origin: SupportOrigin;
+  status?: SupportStatus;
   attended: boolean | null;
   subject: ClassSubject;
+  task?: string | null;
   student_name: string;
+  teacher_name?: string;
   groups: string;
 };
 export type SupportTeacherCard = {
@@ -481,6 +498,24 @@ export async function loadScheduledSupportDays(fromDay: string, toDay: string): 
   return [...days];
 }
 
+export async function loadSupportMonthCounts(
+  fromDay: string,
+  toDay: string,
+): Promise<Record<string, number>> {
+  const { data, error } = await db.rpc("support_month_counts", {
+    p_from: fromDay,
+    p_to: toDay,
+  });
+  raise(error);
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { day: string; count: number }[]) {
+    if (row?.day && typeof row.count === "number" && row.count > 0) {
+      counts[row.day] = row.count;
+    }
+  }
+  return counts;
+}
+
 export async function loadDaySheet(day: string, teacherId?: string | null): Promise<DaySlot[]> {
   const { data, error } = await db.rpc("support_day_sheet", {
     p_day: day,
@@ -490,14 +525,18 @@ export async function loadDaySheet(day: string, teacherId?: string | null): Prom
   return (data ?? []) as DaySlot[];
 }
 
-export async function loadReceivedStudents(teacherId?: string | null): Promise<{
-  id: string;
-  name: string;
-  subject: ClassSubject;
-  class_name: string;
-  sent_by: string;
-}[]> {
-  const { data, error } = await db.rpc("support_received_students", { p_teacher: teacherId ?? null });
+export async function loadReceivedStudents(teacherId?: string | null): Promise<
+  {
+    id: string;
+    name: string;
+    subject: ClassSubject;
+    class_name: string;
+    sent_by: string;
+  }[]
+> {
+  const { data, error } = await db.rpc("support_received_students", {
+    p_teacher: teacherId ?? null,
+  });
   raise(error);
   return (data ?? []) as {
     id: string;
@@ -539,7 +578,10 @@ export async function sendSupportStudent(
   raise(error);
 }
 
-export async function unsendSupportStudent(studentId: string, supportTeacherId: string): Promise<void> {
+export async function unsendSupportStudent(
+  studentId: string,
+  supportTeacherId: string,
+): Promise<void> {
   const { error } = await db.rpc("support_unsend_student", {
     p_student: studentId,
     p_support_teacher: supportTeacherId,
@@ -552,7 +594,9 @@ export async function clearSupportWindow(windowId: string): Promise<void> {
   raise(error);
 }
 
-export async function loadGroupStudents(teacherId: string): Promise<{ id: string; name: string }[]> {
+export async function loadGroupStudents(
+  teacherId: string,
+): Promise<{ id: string; name: string }[]> {
   const { data, error } = await db.rpc("support_group_students", { p_teacher: teacherId });
   raise(error);
   return (data ?? []) as { id: string; name: string }[];

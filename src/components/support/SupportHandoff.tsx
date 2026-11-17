@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Check, Search, Undo2, User, Users } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, RotateCw, Search, Undo2, User, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { tashkentToday } from "@/lib/billing/dates";
@@ -18,11 +18,7 @@ import {
   type DaySlot,
   type SendBoard,
 } from "@/lib/support/api";
-
-const BOARDS: { subject: ClassSubject; label: string }[] = [
-  { subject: "ebrw", label: "English" },
-  { subject: "math", label: "Math" },
-];
+import { buildHandoffRows, visibleBoards, type SlotRow } from "@/lib/support/desk";
 
 type PickTarget = {
   startsAt: string;
@@ -30,14 +26,6 @@ type PickTarget = {
   subject: ClassSubject;
   kind: "teacher" | "student";
   window: DaySlot | null;
-};
-
-type SlotRow = {
-  id: string;
-  startsAt: string;
-  endsAt: string;
-  window: DaySlot | null;
-  note: string;
 };
 
 function clock(iso: string): string {
@@ -52,109 +40,86 @@ function clock(iso: string): string {
   return `${hour}:${minute}`;
 }
 
-function rowsFor(
-  subject: ClassSubject,
-  slots: DaySlot[],
-  past: boolean,
-  picked: Record<string, string>,
-  allowed: Set<string> | null,
-  own: boolean,
-  defaultTeacherId: string | null,
-): SlotRow[] {
-  const open = slots.filter((slot) => !slot.closed);
-  if (own) {
-    return open
-      .filter((slot) => !past || slot.student_id)
-      .map((window) => ({
-        id: window.id,
-        startsAt: window.starts_at,
-        endsAt: window.ends_at,
-        window,
-        note: window.task || window.note || "",
-      }));
-  }
-  const filled = open.filter((slot) => slot.student_id && slot.subject === subject);
-  const filledStarts = new Set(filled.map((slot) => slot.starts_at));
-  const freeStarts = new Map<string, DaySlot>();
-  if (!past) {
-    for (const slot of open) {
-      if (slot.student_id || filledStarts.has(slot.starts_at) || freeStarts.has(slot.starts_at)) continue;
-      if (allowed && !allowed.has(slot.teacher_id)) continue;
-      freeStarts.set(slot.starts_at, slot);
-    }
-  }
-  const rows: SlotRow[] = [
-    ...filled.map((window) => ({
-      id: window.id,
-      startsAt: window.starts_at,
-      endsAt: window.ends_at,
-      window,
-      note: window.task || window.note || "",
-    })),
-    ...[...freeStarts.values()].map((slot) => {
-      const teacherId = picked[`${subject}:${slot.starts_at}`] || defaultTeacherId || "";
-      const sameTime = open.filter(
-        (item) =>
-          item.starts_at === slot.starts_at &&
-          !item.student_id &&
-          (!allowed || allowed.has(item.teacher_id)),
-      );
-      const window =
-        sameTime.find((item) => item.teacher_id === teacherId) ??
-        (sameTime.length === 1 ? sameTime[0] : null);
-      const noted = window?.note || sameTime.find((item) => item.note)?.note || "";
-      return {
-        id: window?.id ?? `free:${slot.starts_at}`,
-        startsAt: slot.starts_at,
-        endsAt: slot.ends_at,
-        window,
-        note: window?.task || noted,
-      };
-    }),
-  ];
-  return rows.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-}
-
-export function SupportHandoff({ day, selfSubject }: { day: string; selfSubject?: ClassSubject }) {
-  const own = selfSubject != null;
+export function SupportHandoff({
+  day,
+  selfSubject,
+  own,
+  onChange,
+}: {
+  day: string;
+  selfSubject?: ClassSubject | null;
+  own?: boolean;
+  onChange?: () => void;
+}) {
+  const isOwn = own ?? selfSubject != null;
   const [board, setBoard] = useState<SendBoard>({ teachers: [], students: [] });
-  const [received, setReceived] = useState<{ id: string; name: string; className: string }[]>([]);
+  const [received, setReceived] = useState<
+    { id: string; name: string; className: string; subject: ClassSubject }[]
+  >([]);
   const [slots, setSlots] = useState<DaySlot[]>([]);
+  const [loading, setLoading] = useState(() => Boolean(day));
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickTarget | null>(null);
   const [pickedTeacher, setPickedTeacher] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const seqRef = useRef(0);
   const past = day < tashkentToday();
 
   async function load() {
-    if (own) {
-      const [nextSlots, sent] = await Promise.all([
+    const seq = ++seqRef.current;
+    setLoading(true);
+    setLoadError(null);
+    try {
+      if (isOwn) {
+        const [nextSlots, sent] = await Promise.all([
+          day ? loadDaySheet(day) : Promise.resolve([] as DaySlot[]),
+          loadReceivedStudents(),
+        ]);
+        if (seq !== seqRef.current) return;
+        setSlots(nextSlots);
+        setReceived(
+          sent.map((student) => ({
+            id: student.id,
+            name: student.name,
+            className: student.class_name,
+            subject: student.subject,
+          })),
+        );
+        return;
+      }
+      const [nextBoard, nextSlots] = await Promise.all([
+        loadSendBoard(),
         day ? loadDaySheet(day) : Promise.resolve([] as DaySlot[]),
-        loadReceivedStudents(),
       ]);
+      if (seq !== seqRef.current) return;
+      setBoard(nextBoard);
       setSlots(nextSlots);
-      setReceived(
-        sent
-          .filter((student) => student.subject === selfSubject)
-          .map((student) => ({ id: student.id, name: student.name, className: student.class_name })),
-      );
-      return;
+    } catch (err) {
+      if (seq !== seqRef.current) return;
+      const message = err instanceof Error ? err.message : "Could not load support";
+      setLoadError(message);
+      toast.error(message);
+    } finally {
+      if (seq === seqRef.current) setLoading(false);
     }
-    const [nextBoard, nextSlots] = await Promise.all([
-      loadSendBoard(),
-      day ? loadDaySheet(day) : Promise.resolve([] as DaySlot[]),
-    ]);
-    setBoard(nextBoard);
-    setSlots(nextSlots);
   }
 
   useEffect(() => {
     setPicker(null);
     setPickedTeacher({});
-    void load().catch((err: unknown) => toast.error(err instanceof Error ? err.message : "Could not load support"));
-  }, [day, selfSubject]);
+    void load();
+    return () => {
+      seqRef.current += 1;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day, isOwn]);
 
   const students = useMemo(() => {
-    if (own) return received;
+    if (isOwn) {
+      return received
+        .filter((student) => !selfSubject || student.subject === selfSubject)
+        .map(({ id, name, className }) => ({ id, name, className }));
+    }
     const map = new Map<string, { id: string; name: string; className: string }>();
     for (const student of board.students) {
       if (!map.has(student.id)) {
@@ -162,7 +127,12 @@ export function SupportHandoff({ day, selfSubject }: { day: string; selfSubject?
       }
     }
     return [...map.values()];
-  }, [board.students, own, received]);
+  }, [board.students, isOwn, received, selfSubject]);
+
+  const teacherSubjects = useMemo(
+    () => new Map(board.teachers.map((teacher) => [teacher.id, teacher.subject])),
+    [board.teachers],
+  );
 
   async function run(action: () => Promise<void>, ok: string) {
     setBusy(true);
@@ -170,6 +140,7 @@ export function SupportHandoff({ day, selfSubject }: { day: string; selfSubject?
       await action();
       toast.success(ok);
       await load();
+      onChange?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not update");
     } finally {
@@ -189,10 +160,18 @@ export function SupportHandoff({ day, selfSubject }: { day: string; selfSubject?
       return;
     }
     const existing = slots.find(
-      (item) => item.teacher_id === teacherId && item.starts_at === target.startsAt && !item.closed && !item.student_id,
+      (item) =>
+        item.teacher_id === teacherId &&
+        item.starts_at === target.startsAt &&
+        !item.closed &&
+        !item.student_id,
     );
     const taken = slots.find(
-      (item) => item.teacher_id === teacherId && item.starts_at === target.startsAt && item.student_id && item.subject !== target.subject,
+      (item) =>
+        item.teacher_id === teacherId &&
+        item.starts_at === target.startsAt &&
+        item.student_id &&
+        item.subject !== target.subject,
     );
     if (taken) {
       toast.error("That teacher is already booked at this time");
@@ -201,10 +180,18 @@ export function SupportHandoff({ day, selfSubject }: { day: string; selfSubject?
     setBusy(true);
     try {
       if (!existing) {
-        await postSupportRange(`${day}T${clock(target.startsAt)}`, `${day}T${clock(target.endsAt)}`, teacherId);
+        await postSupportRange(
+          `${day}T${clock(target.startsAt)}`,
+          `${day}T${clock(target.endsAt)}`,
+          teacherId,
+        );
         await load();
+        onChange?.();
       }
-      setPickedTeacher((current) => ({ ...current, [`${target.subject}:${target.startsAt}`]: teacherId }));
+      setPickedTeacher((current) => ({
+        ...current,
+        [`${target.subject}:${target.startsAt}`]: teacherId,
+      }));
       setPicker(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not set that teacher");
@@ -235,11 +222,12 @@ export function SupportHandoff({ day, selfSubject }: { day: string; selfSubject?
     setBusy(true);
     try {
       const noted = slots.find((item) => item.id === windowId)?.note ?? "";
-      await assignSupportStudent(windowId, studentId, target.subject);
+      await assignSupportStudent(windowId, studentId, selfSubject ?? target.subject);
       if (noted) await setWindowNote(windowId, noted);
       toast.success("Student added");
       setPicker(null);
       await load();
+      onChange?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not add that student");
     } finally {
@@ -258,7 +246,7 @@ export function SupportHandoff({ day, selfSubject }: { day: string; selfSubject?
             item.starts_at === row.startsAt &&
             !item.closed &&
             !item.student_id &&
-            (own || teaching.has(item.teacher_id)),
+            (isOwn || teaching.has(item.teacher_id)),
         );
     if (targets.length === 0) {
       toast.error("Open this time before writing a note");
@@ -270,6 +258,7 @@ export function SupportHandoff({ day, selfSubject }: { day: string; selfSubject?
       if (row.window?.session_id) await setSupportTask(row.window.session_id, text);
       toast.success("Notes saved");
       await load();
+      onChange?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save the note");
     } finally {
@@ -277,67 +266,81 @@ export function SupportHandoff({ day, selfSubject }: { day: string; selfSubject?
     }
   }
 
-  const boards = own ? BOARDS.filter((column) => column.subject === selfSubject) : BOARDS;
+  const boards = visibleBoards(isOwn, selfSubject, slots);
 
   return (
     <div className="space-y-4">
       {boards.map((column) => {
-        const subjectTeachers = board.teachers.filter((teacher) => teacher.subject === column.subject);
+        const subjectTeachers = board.teachers.filter(
+          (teacher) => teacher.subject === column.subject,
+        );
         const allowed = new Set(subjectTeachers.map((teacher) => teacher.id));
         const marked = subjectTeachers.find((teacher) => teacher.is_default);
-        const defaultTeacherId = marked?.id ?? (subjectTeachers.length === 1 ? subjectTeachers[0].id : null);
+        const defaultTeacherId =
+          marked?.id ?? (subjectTeachers.length === 1 ? subjectTeachers[0].id : null);
         return (
-        <SubjectBoard
-          key={column.subject}
-          label={column.label}
-          past={past}
-          lockTeacher={own}
-          rows={rowsFor(
-            column.subject,
-            slots,
-            past,
-            pickedTeacher,
-            own ? null : allowed,
-            own,
-            defaultTeacherId,
-          )}
-          busy={busy}
-          onTeacher={(row) =>
-            setPicker({
-              startsAt: row.startsAt,
-              endsAt: row.endsAt,
+          <SubjectBoard
+            key={column.subject}
+            label={column.label}
+            past={past}
+            lockTeacher={isOwn}
+            loading={loading}
+            error={loadError}
+            onRetry={() => void load()}
+            rows={buildHandoffRows({
               subject: column.subject,
-              kind: "teacher",
-              window: row.window,
-            })
-          }
-          onStudent={(row) => {
-            if (!own && !row.window?.teacher_id) {
-              toast.error("Choose a teacher first");
-              return;
+              slots,
+              past,
+              picked: pickedTeacher,
+              allowed: isOwn ? null : allowed,
+              own: isOwn,
+              defaultTeacherId,
+              teacherSubjects,
+            })}
+            busy={busy}
+            onTeacher={(row) =>
+              setPicker({
+                startsAt: row.startsAt,
+                endsAt: row.endsAt,
+                subject: column.subject,
+                kind: "teacher",
+                window: row.window,
+              })
             }
-            setPicker({
-              startsAt: row.startsAt,
-              endsAt: row.endsAt,
-              subject: column.subject,
-              kind: "student",
-              window: row.window,
-            });
-          }}
-          onClear={(windowId) => void run(() => clearSupportWindow(windowId), "Student taken off this day")}
-          onAttend={(sessionId, present) =>
-            void run(() => setSupportTick(sessionId, "attendance", present), present ? "Marked present" : "Marked absent")
-          }
-          onNotes={(row, text) => void saveNote(row, text, column.subject)}
-        />
+            onStudent={(row) => {
+              if (!isOwn && !row.window?.teacher_id) {
+                toast.error("Choose a teacher first");
+                return;
+              }
+              setPicker({
+                startsAt: row.startsAt,
+                endsAt: row.endsAt,
+                subject: column.subject,
+                kind: "student",
+                window: row.window,
+              });
+            }}
+            onClear={(windowId) =>
+              void run(() => clearSupportWindow(windowId), "Student taken off this day")
+            }
+            onAttend={(sessionId, present) =>
+              void run(
+                () => setSupportTick(sessionId, "attendance", present),
+                present ? "Marked present" : "Marked absent",
+              )
+            }
+            onNotes={(row, text) => void saveNote(row, text, column.subject)}
+          />
         );
       })}
-      {picker?.kind === "teacher" && !own ? (
+      {picker?.kind === "teacher" && !isOwn ? (
         <TeacherWindow
           key={`${picker.subject}:${picker.startsAt}`}
           open
           teachers={board.teachers.filter((teacher) => teacher.subject === picker.subject)}
-          teacherId={picker.window?.teacher_id ?? pickedTeacher[`${picker.subject}:${picker.startsAt}`] ?? ""}
+          teacherId={
+            picker.window?.teacher_id ?? pickedTeacher[`${picker.subject}:${picker.startsAt}`] ?? ""
+          }
           busy={busy}
           onOpenChange={(next) => {
             if (!next) setPicker(null);
@@ -366,6 +369,9 @@ function SubjectBoard({
   label,
   past,
   lockTeacher,
+  loading,
+  error,
+  onRetry,
   rows,
   busy,
   onTeacher,
@@ -377,6 +383,9 @@ function SubjectBoard({
   label: string;
   past: boolean;
   lockTeacher?: boolean;
+  loading: boolean;
+  error: string | null;
+  onRetry: () => void;
   rows: SlotRow[];
   busy: boolean;
   onTeacher: (row: SlotRow) => void;
@@ -385,6 +394,7 @@ function SubjectBoard({
   onAttend: (sessionId: string, present: boolean) => void;
   onNotes: (row: SlotRow, text: string) => void;
 }) {
+  const colSpan = past ? 6 : 7;
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-black">{label}</h3>
@@ -402,9 +412,28 @@ function SubjectBoard({
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={past ? 6 : 7} className="fade-in px-2 py-3 text-sm">
+                <td colSpan={colSpan} className="fade-in px-2 py-3 text-sm">
+                  Loading sessions…
+                </td>
+              </tr>
+            ) : error && rows.length === 0 ? (
+              <tr>
+                <td colSpan={colSpan} className="fade-in px-2 py-3 text-sm">
+                  <span>{error}</span>{" "}
+                  <button
+                    type="button"
+                    onClick={onRetry}
+                    className="ml-2 inline-flex items-center gap-1 font-bold underline"
+                  >
+                    <RotateCw className="h-3 w-3" aria-hidden="true" /> Try again
+                  </button>
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={colSpan} className="fade-in px-2 py-3 text-sm">
                   {past ? "No one is booked this day." : "No slots opened for this day."}
                 </td>
               </tr>
@@ -424,7 +453,9 @@ function SubjectBoard({
                         className="inline-flex max-w-[12rem] items-center gap-1 rounded-full bg-white px-2 py-1 text-xs font-bold text-brand-900"
                       >
                         <User className="h-3 w-3 shrink-0" aria-hidden="true" />
-                        <span className="truncate">{row.window?.teacher_name || "Choose teacher"}</span>
+                        <span className="truncate">
+                          {row.window?.teacher_name || "Choose teacher"}
+                        </span>
                       </button>
                     )}
                   </td>
@@ -439,7 +470,9 @@ function SubjectBoard({
                         className="inline-flex max-w-[12rem] items-center gap-1 rounded-full bg-white px-2 py-1 text-xs font-bold text-brand-900"
                       >
                         <Users className="h-3 w-3 shrink-0" aria-hidden="true" />
-                        <span className="truncate">{row.window?.student_name || "Choose student"}</span>
+                        <span className="truncate">
+                          {row.window?.student_name || "Choose student"}
+                        </span>
                       </button>
                     )}
                   </td>
@@ -515,7 +548,7 @@ function NotesField({
   );
 }
 
-function AttendanceTick({
+export function AttendanceTick({
   on,
   label,
   disabled,
@@ -534,7 +567,11 @@ function AttendanceTick({
       disabled={disabled}
       onClick={onClick}
       className={`grid h-8 w-8 place-items-center rounded-full text-xs font-black disabled:opacity-40 ${
-        on === true ? "bg-white text-brand-900" : on === false ? "bg-red-500 text-white" : "bg-brand-800 text-white ring-1 ring-white/40"
+        on === true
+          ? "bg-white text-brand-900"
+          : on === false
+            ? "bg-red-500 text-white"
+            : "bg-brand-800 text-white ring-1 ring-white/40"
       }`}
     >
       {on === true ? <Check className="h-4 w-4" aria-hidden="true" /> : on === false ? "×" : ""}
@@ -565,14 +602,21 @@ function TeacherWindow({
   onPick: (id: string) => void;
 }) {
   const [query, setQuery] = useState("");
-  const list = teachers.filter((teacher) => teacher.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const list = teachers.filter((teacher) =>
+    teacher.name.toLowerCase().includes(query.trim().toLowerCase()),
+  );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto border-brand-400/40 bg-brand-600 text-white [&>button]:text-white sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white">All teachers</DialogTitle>
         </DialogHeader>
-        <SearchField label="Search teachers" value={query} onChange={setQuery} placeholder="Search teachers" />
+        <SearchField
+          label="Search teachers"
+          value={query}
+          onChange={setQuery}
+          placeholder="Search teachers"
+        />
         <ul className="max-h-72 space-y-1 overflow-y-auto" role="listbox" aria-label="Teachers">
           {list.length === 0 ? (
             <li className="px-2 py-2 text-xs">No teachers match.</li>
@@ -581,7 +625,11 @@ function TeacherWindow({
               <li key={teacher.id}>
                 <PickRow
                   selected={teacher.id === teacherId}
-                  title={teacher.subject ? `${teacher.name} · ${subjectLabel(teacher.subject)}` : teacher.name}
+                  title={
+                    teacher.subject
+                      ? `${teacher.name} · ${subjectLabel(teacher.subject)}`
+                      : teacher.name
+                  }
                   disabled={busy}
                   onClick={() => onPick(teacher.id)}
                 />
@@ -629,7 +677,12 @@ function StudentWindow({
         <DialogHeader>
           <DialogTitle className="text-white">All students</DialogTitle>
         </DialogHeader>
-        <SearchField label="Search students" value={query} onChange={setQuery} placeholder="Search students" />
+        <SearchField
+          label="Search students"
+          value={query}
+          onChange={setQuery}
+          placeholder="Search students"
+        />
         <div className="flex gap-1 overflow-x-auto" role="group" aria-label="Group">
           <FilterChip active={group === ""} onClick={() => setGroup("")}>
             All groups

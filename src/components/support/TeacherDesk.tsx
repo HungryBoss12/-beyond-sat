@@ -40,7 +40,9 @@ export function TeacherDesk() {
   }
 
   useEffect(() => {
-    void load().catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load support"));
+    void load().catch((err: unknown) =>
+      setError(err instanceof Error ? err.message : "Could not load support"),
+    );
   }, []);
 
   const rows = useMemo(() => {
@@ -80,7 +82,9 @@ export function TeacherDesk() {
       (session.status === "pending" || session.status === "confirmed") &&
       (!session.ends_at || new Date(session.ends_at).getTime() >= now),
   );
-  const past = sessions.filter((session) => !upcoming.includes(session) && session.status !== "rejected");
+  const past = sessions.filter(
+    (session) => !upcoming.includes(session) && session.status !== "rejected",
+  );
 
   return (
     <div className="space-y-4">
@@ -98,10 +102,12 @@ export function TeacherDesk() {
             className="mt-1 block rounded-xl bg-brand-800 px-3 py-2 text-sm"
           />
         </label>
-        <p className="text-xs">English only lists English teachers. Math only lists Math teachers.</p>
+        <p className="text-xs">
+          English only lists English teachers. Math only lists Math teachers.
+        </p>
         {day ? (
           <div key={day} className="widen-in">
-            <SupportHandoff day={day} />
+            <SupportHandoff day={day} onChange={() => void load()} />
           </div>
         ) : null}
       </Panel>
@@ -119,7 +125,11 @@ export function TeacherDesk() {
                   ] as const
                 ).map(([key, label]) => (
                   <th key={key} className="px-2 py-2 font-bold">
-                    <button type="button" className="inline-flex items-center gap-1 underline" onClick={() => chooseSort(key)}>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 underline"
+                      onClick={() => chooseSort(key)}
+                    >
                       <ArrowUpDown className="h-3 w-3" aria-hidden="true" />
                       {label}
                       {sort === key ? (direction === 1 ? " ↑" : " ↓") : ""}
@@ -155,10 +165,16 @@ export function TeacherDesk() {
                           )
                         }
                         className={`grid h-8 w-8 place-items-center rounded-full text-xs font-black ${
-                          row.attended === true ? "bg-white text-brand-900" : "bg-brand-800 ring-1 ring-white/40"
+                          row.attended === true
+                            ? "bg-white text-brand-900"
+                            : "bg-brand-800 ring-1 ring-white/40"
                         }`}
                       >
-                        {row.attended === true ? <Check className="h-4 w-4" aria-hidden="true" /> : "A"}
+                        {row.attended === true ? (
+                          <Check className="h-4 w-4" aria-hidden="true" />
+                        ) : (
+                          "A"
+                        )}
                       </button>
                     </td>
                   </tr>
@@ -179,7 +195,8 @@ export function TeacherDesk() {
               {upcoming.map((session) => (
                 <li key={session.id} className="rounded-xl bg-brand-800/80 px-3 py-2">
                   <p>
-                    {session.student_name} · {subjectLabel(session.subject)} · {formatWhen(session.starts_at)}
+                    {session.student_name} · {subjectLabel(session.subject)} ·{" "}
+                    {formatWhen(session.starts_at)}
                   </p>
                   <p className="text-xs">{ORIGIN_LABEL[session.origin ?? "request"]}</p>
                   {session.status === "pending" && (
@@ -188,7 +205,9 @@ export function TeacherDesk() {
                         type="button"
                         disabled={busy}
                         className="text-xs font-bold underline"
-                        onClick={() => void run(() => confirmSupport(session.id), "Request confirmed")}
+                        onClick={() =>
+                          void run(() => confirmSupport(session.id), "Request confirmed")
+                        }
                       >
                         <Check className="mr-1 inline h-3 w-3" aria-hidden="true" /> Confirm
                       </button>
@@ -196,7 +215,9 @@ export function TeacherDesk() {
                         type="button"
                         disabled={busy}
                         className="text-xs font-bold underline"
-                        onClick={() => void run(() => declineSupport(session.id, "Declined"), "Request declined")}
+                        onClick={() =>
+                          void run(() => declineSupport(session.id, "Declined"), "Request declined")
+                        }
                       >
                         <X className="mr-1 inline h-3 w-3" aria-hidden="true" /> Decline
                       </button>
@@ -245,7 +266,10 @@ export function TeacherDesk() {
               toast.error("A break is at most 2 hours");
               return;
             }
-            void run(() => startSupportBreak(length), "Break started. Booked students were notified.");
+            void run(
+              () => startSupportBreak(length),
+              "Break started. Booked students were notified.",
+            );
           }}
         >
           <Coffee className="h-4 w-4" aria-hidden="true" /> Start break

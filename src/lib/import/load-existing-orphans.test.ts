@@ -3,7 +3,12 @@ import { groupOrphanMathQuestions } from "./load-existing";
 
 describe("groupOrphanMathQuestions", () => {
   it("keeps a nameless math import together by the day it was added", () => {
-    const rows = Array.from({ length: 3 }, (_, index) => ({
+    const rows: Array<{
+      id: string;
+      source_month: number | null;
+      source_year: number;
+      created_at: string;
+    }> = Array.from({ length: 3 }, (_, index) => ({
       id: `q${index}`,
       source_month: null,
       source_year: 2026,

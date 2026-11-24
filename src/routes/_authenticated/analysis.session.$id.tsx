@@ -318,6 +318,9 @@ function SessionReview() {
     return createPortal(chooser, document.body);
   }
 
+  const activeSection = search.section;
+  const activeModule = search.module;
+
   const review = (
     /* Portaled so route-enter's transform does not collapse this fixed overlay. */
     <div className="fixed inset-0 z-[80] flex h-[100dvh] flex-col bg-test-canvas">
@@ -332,7 +335,7 @@ function SessionReview() {
               <X className="h-4 w-4" />
             </button>
             <span className="truncate text-[15px] font-bold text-test-ink">
-              Review · {sectionChoiceLabel(search.section)} · Module {search.module}
+              Review · {sectionChoiceLabel(activeSection)} · Module {activeModule}
             </span>
           </div>
           <div className="flex justify-center">
@@ -361,11 +364,11 @@ function SessionReview() {
             <button
               key={section}
               type="button"
-              aria-pressed={section === search.section}
-              onClick={() => openPart(section, search.module)}
+              aria-pressed={section === activeSection}
+              onClick={() => openPart(section, activeModule)}
               className={
                 "tap rounded-full px-3 py-1 text-xs font-bold " +
-                (section === search.section
+                (section === activeSection
                   ? "bg-test-accent text-white"
                   : "border border-test-line bg-white text-test-ink hover:bg-test-tint")
               }
@@ -378,11 +381,11 @@ function SessionReview() {
             <button
               key={module}
               type="button"
-              aria-pressed={module === search.module}
-              onClick={() => openPart(search.section, module)}
+              aria-pressed={module === activeModule}
+              onClick={() => openPart(activeSection, module)}
               className={
                 "tap rounded-full px-3 py-1 text-xs font-bold " +
-                (module === search.module
+                (module === activeModule
                   ? "bg-test-ink text-white"
                   : "border border-test-line bg-white text-test-ink hover:bg-test-tint")
               }
@@ -397,7 +400,7 @@ function SessionReview() {
       {visible.length === 0 ? (
         <div className="grid flex-1 place-items-center px-6 text-center">
           <p className="text-sm font-semibold text-test-ink">
-            No questions in {sectionChoiceLabel(search.section)} Module {search.module}.
+            No questions in {sectionChoiceLabel(activeSection)} Module {activeModule}.
           </p>
         </div>
       ) : (

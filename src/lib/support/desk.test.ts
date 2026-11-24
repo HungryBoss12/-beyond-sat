@@ -4,6 +4,7 @@ import {
   buildHandoffRows,
   initialSupportDay,
   monthGridCells,
+  resolveSupportDeskTab,
   tashkentDayKey,
   visibleBoards,
 } from "./desk";
@@ -203,5 +204,26 @@ describe("support teacher booking visibility logic", () => {
 
     expect(mathRows.map((r) => r.id)).toEqual(["win-legacy", "win-math-alt"]);
     expect(mathRows[1]?.note).toBe("Algebra drill");
+  });
+
+  it("shows Booked by default, falls back to Students when no upcoming bookings exist, and respects manual selection", () => {
+    expect(
+      resolveSupportDeskTab(null, { comingCount: 0, receivedCount: 20, loadingComing: true }),
+    ).toBe("booked");
+    expect(
+      resolveSupportDeskTab(null, { comingCount: 2, receivedCount: 20, loadingComing: false }),
+    ).toBe("booked");
+    expect(
+      resolveSupportDeskTab(null, { comingCount: 0, receivedCount: 20, loadingComing: false }),
+    ).toBe("students");
+    expect(
+      resolveSupportDeskTab(null, { comingCount: 0, receivedCount: 0, loadingComing: false }),
+    ).toBe("booked");
+    expect(
+      resolveSupportDeskTab("booked", { comingCount: 0, receivedCount: 20, loadingComing: false }),
+    ).toBe("booked");
+    expect(
+      resolveSupportDeskTab("students", { comingCount: 3, receivedCount: 20, loadingComing: false }),
+    ).toBe("students");
   });
 });

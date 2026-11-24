@@ -36,6 +36,19 @@ export function civilDayKey(day: Date): string {
   return `${day.getFullYear()}-${month}-${date}`;
 }
 
+export type SupportDeskTab = "booked" | "students";
+
+export function resolveSupportDeskTab(
+  preferred: SupportDeskTab | null,
+  state: { comingCount: number; receivedCount: number; loadingComing: boolean },
+): SupportDeskTab {
+  if (preferred) return preferred;
+  if (!state.loadingComing && state.comingCount === 0 && state.receivedCount > 0) {
+    return "students";
+  }
+  return "booked";
+}
+
 export function initialSupportDay(now: Date = new Date()): string {
   return tashkentToday(now);
 }

@@ -1,5 +1,5 @@
 /* BeyondSAT PWA service worker — network-first for pages, cache for static assets. */
-const CACHE = "beyondsat-static-v6";
+const CACHE = "beyondsat-static-v7";
 const PRECACHE = [
   "/offline.html",
   "/manifest.webmanifest",

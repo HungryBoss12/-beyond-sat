@@ -14,6 +14,10 @@ describe("SupportReceivedDesk & SupportHandoff initial render", () => {
 
     // Must not show the dead support_received empty message from the screenshot.
     expect(html).not.toContain("No students have been sent to you yet.");
+    // Both Booked and Students tabs must be available immediately in the top panel.
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain("Booked");
+    expect(html).toContain("Students");
     expect(html).toContain("Loading bookings");
     // Today's cell must already be selected so today's bookings load immediately.
     expect(html).toContain(`data-day="${today}"`);

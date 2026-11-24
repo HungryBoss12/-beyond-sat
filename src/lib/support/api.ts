@@ -525,26 +525,20 @@ export async function loadDaySheet(day: string, teacherId?: string | null): Prom
   return (data ?? []) as DaySlot[];
 }
 
-export async function loadReceivedStudents(teacherId?: string | null): Promise<
-  {
-    id: string;
-    name: string;
-    subject: ClassSubject;
-    class_name: string;
-    sent_by: string;
-  }[]
-> {
+export type ReceivedStudent = {
+  id: string;
+  name: string;
+  subject: ClassSubject;
+  class_name: string;
+  sent_by: string;
+};
+
+export async function loadReceivedStudents(teacherId?: string | null): Promise<ReceivedStudent[]> {
   const { data, error } = await db.rpc("support_received_students", {
     p_teacher: teacherId ?? null,
   });
   raise(error);
-  return (data ?? []) as {
-    id: string;
-    name: string;
-    subject: ClassSubject;
-    class_name: string;
-    sent_by: string;
-  }[];
+  return (data ?? []) as ReceivedStudent[];
 }
 
 export type SendBoard = {

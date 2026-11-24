@@ -4344,6 +4344,10 @@ export type Database = {
       };
       is_admin: { Args: never; Returns: boolean };
       join_class: { Args: { p_class_id: string }; Returns: undefined };
+      mock_exam_question_counts: {
+        Args: { p_mock_ids: string[] };
+        Returns: { mock_exam_id: string; question_count: number }[];
+      };
       my_tuition_snapshot: { Args: never; Returns: Json };
       open_direct_thread: { Args: { p_other_user_id: string }; Returns: string };
       practice_counts: { Args: never; Returns: Json };

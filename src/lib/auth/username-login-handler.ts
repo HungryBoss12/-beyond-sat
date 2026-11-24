@@ -54,22 +54,36 @@ export async function handleUsernameLogin(request: Request, env: unknown): Promi
   }
 
   /* A whole class signs in from one school IP, so the tight limit is per
-     account on that IP (5, then one every 3 minutes) and the IP itself only
-     gets a wide cap. Both counts live in the database so every Worker shares them. */
+     account on that IP (5, then one every 3 minutes), backed by a global
+     per-account cap against distributed spraying and a wide per-IP cap. */
   const ip = requestIp(request);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const [accountLimit, ipLimit] = await Promise.all([
+  const [accountLimit, globalAccountLimit, ipLimit] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabaseAdmin as any).rpc("bs_take_login_attempt", { p_key: `${ip}|${username}` }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabaseAdmin as any).rpc("bs_take_rate_token", {
+      p_key: `login-acct:${username}`,
+      p_capacity: 15,
+      p_per_minute: 2,
+    }),
     sharedRateLimit(env, `login-ip:${ip}`, 60, 6),
   ]);
   const limit = accountLimit.data as { ok?: boolean; retry_after?: number } | null;
-  if (accountLimit.error || !limit) {
-    console.error("[username-login] rate limit failed", accountLimit.error?.message);
+  const globalLimit = globalAccountLimit.data as { ok?: boolean; retry_after?: number } | null;
+  if (accountLimit.error || !limit || globalAccountLimit.error || !globalLimit) {
+    console.error(
+      "[username-login] rate limit failed",
+      accountLimit.error?.message ?? globalAccountLimit.error?.message,
+    );
     return jsonResponse({ error: "Could not sign in. Try again." }, 503);
   }
-  if (!limit.ok || !ipLimit.ok) {
-    const retry = !limit.ok ? (limit.retry_after ?? 180) : ipLimit.retryAfter || 60;
+  if (!limit.ok || !globalLimit.ok || !ipLimit.ok) {
+    const retry = !limit.ok
+      ? (limit.retry_after ?? 180)
+      : !globalLimit.ok
+        ? (globalLimit.retry_after ?? 60)
+        : ipLimit.retryAfter || 60;
     return jsonResponse(
       { error: "Too many sign-in attempts. Wait a few minutes and try again." },
       { status: 429, headers: { "retry-after": String(retry) } },

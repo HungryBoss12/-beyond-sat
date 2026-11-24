@@ -525,7 +525,6 @@ export async function fetchYoutubeRecs(
         duration_seconds: video.durationSeconds ?? null,
         youtube_video_id: video.videoId as string,
       }));
-    await ensureCatalogEntries(mapped);
     return sortByScore(await attachRanking(mapped)).slice(0, SECTION_REC_LIMIT);
   } catch {
     return [];

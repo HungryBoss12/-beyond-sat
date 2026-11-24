@@ -95,13 +95,15 @@ export async function userIsBanned(
   token: string,
   userId: string,
 ): Promise<"yes" | "no" | "unknown"> {
-  const result = await restFetch<{ banned: boolean }[]>(
+  const result = await restFetch<{ banned?: boolean | null; deleted_at?: string | null }[]>(
     config,
     token,
-    `profiles?id=eq.${encodeURIComponent(userId)}&select=banned`,
+    `profiles?id=eq.${encodeURIComponent(userId)}&select=banned,deleted_at`,
   );
   if (result.error) return "unknown";
-  return result.data?.[0]?.banned ? "yes" : "no";
+  const row = result.data?.[0];
+  if (!row) return "yes";
+  return row.banned || Boolean(row.deleted_at) ? "yes" : "no";
 }
 
 export async function requireStaff(

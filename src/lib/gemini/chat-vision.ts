@@ -24,8 +24,12 @@ async function inlineImageFromUrl(
   storageHost: string | undefined,
 ): Promise<{ mimeType: string; data: string }> {
   if (/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(url)) {
-    const { mimeType, buffer } = parseImageDataUrl(url);
-    return { mimeType, data: buffer.toString("base64") };
+    try {
+      const { mimeType, buffer } = parseImageDataUrl(url, MAX_IMAGE_BYTES);
+      return { mimeType, data: buffer.toString("base64") };
+    } catch {
+      throw new GeminiError("INVALID_IMAGE", "That image is too large or invalid.", 400);
+    }
   }
 
   let parsed: URL;

@@ -4,6 +4,18 @@ export function accountEmailFor(username: string): string {
   return `${username}@${ACCOUNT_EMAIL_DOMAIN}`;
 }
 
+/**
+ * Unpredictable synthetic login email so attackers cannot bypass
+ * `/api/auth/username-login` by hitting GoTrue's password endpoint directly
+ * with `<username>@accounts.beyondsat.local`.
+ */
+export function uniqueAccountEmailFor(username: string): string {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  const suffix = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${username}.${suffix}@${ACCOUNT_EMAIL_DOMAIN}`;
+}
+
 export function isSyntheticAccountEmail(email: string | null | undefined): boolean {
   return (email ?? "").toLowerCase().endsWith(`@${ACCOUNT_EMAIL_DOMAIN}`);
 }

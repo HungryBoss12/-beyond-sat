@@ -231,7 +231,7 @@ export default {
 
       const maintenance = await checkMaintenance(request, env, Date.now());
       if (maintenance) {
-        return maintenanceResponse(maintenance.message);
+        return applySecurityHeaders(maintenanceResponse(maintenance.message), env);
       }
 
       const handler = await getServerEntry();

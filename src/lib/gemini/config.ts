@@ -27,8 +27,12 @@ export const GEMINI_IMPORT_TEMPERATURE = 0.2;
 export const GEMINI_IMPORT_MODEL = GEMINI_IMPORT_EXTRACT_MODEL;
 
 const DATA_URL_RE = /^data:image\/(png|jpe?g|webp|gif);base64,/i;
+export const DEFAULT_MAX_DATA_IMAGE_BYTES = 12 * 1024 * 1024;
 
-export function parseImageDataUrl(dataUrl: string): { mimeType: string; buffer: Buffer } {
+export function parseImageDataUrl(
+  dataUrl: string,
+  maxBytes = DEFAULT_MAX_DATA_IMAGE_BYTES,
+): { mimeType: string; buffer: Buffer } {
   if (!DATA_URL_RE.test(dataUrl)) {
     throw new Error("imageDataUrl must be a base64 PNG, JPEG, WebP, or GIF data URL.");
   }
@@ -37,6 +41,15 @@ export function parseImageDataUrl(dataUrl: string): { mimeType: string; buffer: 
     throw new Error("Malformed image data URL.");
   }
   const mimeType = dataUrl.slice(5, headerEnd).split(";")[0]?.toLowerCase() ?? "";
-  const base64 = dataUrl.slice(headerEnd + 1);
-  return { mimeType, buffer: Buffer.from(base64, "base64") };
+  const base64 = dataUrl.slice(headerEnd + 1).trim();
+  const pad = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+  const approxBytes = Math.max(0, Math.floor((base64.length * 3) / 4) - pad);
+  if (approxBytes > maxBytes) {
+    throw new Error("That image is too large.");
+  }
+  const buffer = Buffer.from(base64, "base64");
+  if (buffer.byteLength === 0 || buffer.byteLength > maxBytes) {
+    throw new Error("That image is too large.");
+  }
+  return { mimeType, buffer };
 }

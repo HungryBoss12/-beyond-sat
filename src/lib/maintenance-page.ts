@@ -83,9 +83,9 @@ export function renderMaintenancePage(message: string): string {
         <span class="badge"><span class="dot"></span> Scheduled maintenance</span>
         <h1>We'll be right back</h1>
         <p>${body}</p>
-        <div class="actions">
-          <button type="button" onclick="location.reload()">Check again</button>
-        </div>
+        <form class="actions" method="get" action="">
+          <button type="submit">Check again</button>
+        </form>
       </main>
       <p class="foot">Already an admin? <a href="/signin">Sign in</a> to keep working.</p>
     </div>

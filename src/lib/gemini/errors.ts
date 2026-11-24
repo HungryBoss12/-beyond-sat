@@ -37,8 +37,10 @@ export function mapGeminiSdkError(error: unknown): GeminiError {
   }
 
   if (lower.includes("api key") || lower.includes("api_key")) {
-    return new GeminiError("MISSING_API_KEY", "Gemini API key is missing or invalid.", 503);
+    console.error("[gemini] API key rejected", message);
+    return new GeminiError("MISSING_API_KEY", "Vision service is unavailable right now.", 503);
   }
 
-  return new GeminiError("API_ERROR", message || "Gemini request failed.", 502);
+  console.error("[gemini] upstream error", message);
+  return new GeminiError("API_ERROR", "Vision request failed. Please try again.", 502);
 }

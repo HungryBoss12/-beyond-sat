@@ -1,3 +1,6 @@
+import { publicError } from "@/lib/http/public-error";
+import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
+import { sharedRateLimit } from "@/lib/shared-rate-limit";
 import { jsonResponse, requireStaff, restFetch } from "../rest";
 
 type DeckPatch = { title?: unknown };
@@ -24,13 +27,18 @@ export async function handleVocabAdminDeck(
   const auth = await requireStaff(request, env);
   if (!auth.ok) return auth.response;
 
+  const limit = await sharedRateLimit(env, `vocab-admin:${auth.user.id}`, 60, 20);
+  if (!limit.ok) {
+    return jsonResponse(
+      { error: "Too many requests. Wait a moment." },
+      { status: 429, headers: { "retry-after": String(limit.retryAfter || 5) } },
+    );
+  }
+
   if (request.method === "PATCH") {
-    let body: DeckPatch;
-    try {
-      body = (await request.json()) as DeckPatch;
-    } catch {
-      return jsonResponse({ error: "Invalid JSON" }, 400);
-    }
+    const read = await readJsonLimited<DeckPatch>(request, 65_536);
+    if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+    const body = read.value ?? {};
     const title = typeof body.title === "string" ? body.title.trim() : "";
     if (!title) return jsonResponse({ error: "title required" }, 400);
 
@@ -44,7 +52,12 @@ export async function handleVocabAdminDeck(
         headers: { Prefer: "return=representation" },
       },
     );
-    if (patch.error) return jsonResponse({ error: patch.error }, patch.status);
+    if (patch.error) {
+      return jsonResponse(
+        { error: publicError("vocab/admin-deck/patch", patch.error, "Could not update deck.") },
+        patch.status,
+      );
+    }
     const deckRows = (patch.data ?? []) as { id: string }[];
     return jsonResponse({ deck: deckRows[0] ?? null });
   }
@@ -58,7 +71,12 @@ export async function handleVocabAdminDeck(
         method: "DELETE",
       },
     );
-    if (del.error) return jsonResponse({ error: del.error }, del.status);
+    if (del.error) {
+      return jsonResponse(
+        { error: publicError("vocab/admin-deck/delete", del.error, "Could not delete deck.") },
+        del.status,
+      );
+    }
     return jsonResponse({ ok: true });
   }
 
@@ -73,13 +91,18 @@ export async function handleVocabAdminCard(
   const auth = await requireStaff(request, env);
   if (!auth.ok) return auth.response;
 
+  const limit = await sharedRateLimit(env, `vocab-admin:${auth.user.id}`, 60, 20);
+  if (!limit.ok) {
+    return jsonResponse(
+      { error: "Too many requests. Wait a moment." },
+      { status: 429, headers: { "retry-after": String(limit.retryAfter || 5) } },
+    );
+  }
+
   if (request.method === "PATCH") {
-    let body: CardPatch;
-    try {
-      body = (await request.json()) as CardPatch;
-    } catch {
-      return jsonResponse({ error: "Invalid JSON" }, 400);
-    }
+    const read = await readJsonLimited<CardPatch>(request, 65_536);
+    if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+    const body = read.value ?? {};
 
     const patch: Record<string, unknown> = {};
     if (typeof body.word === "string") patch.word = body.word.trim();
@@ -110,7 +133,12 @@ export async function handleVocabAdminCard(
         headers: { Prefer: "return=representation" },
       },
     );
-    if (result.error) return jsonResponse({ error: result.error }, result.status);
+    if (result.error) {
+      return jsonResponse(
+        { error: publicError("vocab/admin-card/patch", result.error, "Could not update card.") },
+        result.status,
+      );
+    }
     const cardRows = (result.data ?? []) as { id: string }[];
     return jsonResponse({ card: cardRows[0] ?? null });
   }
@@ -124,7 +152,12 @@ export async function handleVocabAdminCard(
         method: "DELETE",
       },
     );
-    if (del.error) return jsonResponse({ error: del.error }, del.status);
+    if (del.error) {
+      return jsonResponse(
+        { error: publicError("vocab/admin-card/delete", del.error, "Could not delete card.") },
+        del.status,
+      );
+    }
     return jsonResponse({ ok: true });
   }
 

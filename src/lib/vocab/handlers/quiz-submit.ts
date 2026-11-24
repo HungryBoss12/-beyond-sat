@@ -1,3 +1,6 @@
+import { publicError } from "@/lib/http/public-error";
+import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
+import { sharedRateLimit } from "@/lib/shared-rate-limit";
 import { enqueueMissedWords } from "../missed-words";
 import { jsonResponse, requireUser, restRpc } from "../rest";
 
@@ -31,12 +34,17 @@ export async function handleVocabQuizSubmit(request: Request, env: unknown): Pro
   const auth = await requireUser(request, env);
   if (!auth.ok) return auth.response;
 
-  let body: { quizId?: unknown; answers?: unknown };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400);
+  const limit = await sharedRateLimit(env, `vocab-quiz:${auth.user.id}`, 20, 6);
+  if (!limit.ok) {
+    return jsonResponse(
+      { error: "Too many quiz submissions. Wait a moment and try again." },
+      { status: 429, headers: { "retry-after": String(limit.retryAfter || 10) } },
+    );
   }
+
+  const read = await readJsonLimited<{ quizId?: unknown; answers?: unknown }>(request, 65_536);
+  if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+  const body = read.value ?? {};
 
   const quizId = typeof body.quizId === "string" ? body.quizId.trim() : "";
   if (!/^[0-9a-f-]{36}$/i.test(quizId)) {
@@ -52,11 +60,20 @@ export async function handleVocabQuizSubmit(request: Request, env: unknown): Pro
   }
   const questionIds: string[] = [];
   const selected: string[] = [];
+  const seenIds = new Set<string>();
   for (const a of answers) {
     if (!a || typeof a.questionId !== "string") {
       return jsonResponse({ error: "Invalid answers payload" }, 400);
     }
-    questionIds.push(a.questionId);
+    const qid = a.questionId.trim().toLowerCase();
+    if (!/^[0-9a-f-]{36}$/.test(qid)) {
+      return jsonResponse({ error: "Invalid answers payload" }, 400);
+    }
+    if (seenIds.has(qid)) {
+      return jsonResponse({ error: "Duplicate question in answers" }, 400);
+    }
+    seenIds.add(qid);
+    questionIds.push(qid);
     selected.push(typeof a.selected === "string" ? a.selected : "");
   }
 
@@ -70,7 +87,10 @@ export async function handleVocabQuizSubmit(request: Request, env: unknown): Pro
   );
 
   if (result.error) {
-    return jsonResponse({ error: result.error }, result.status === 200 ? 400 : result.status);
+    return jsonResponse(
+      { error: publicError("vocab/quiz-submit", result.error, "Could not submit quiz.") },
+      result.status === 200 ? 400 : result.status,
+    );
   }
   // The RPC signals a duplicate submit / rate cap with an `error` field inside
   // a 200 body (it returns jsonb, so PostgREST reports 200).

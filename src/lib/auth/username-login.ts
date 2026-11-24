@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isSyntheticAccountEmail } from "./login-email";
 
 export async function signInWithUsername(username: string, password: string): Promise<void> {
   const res = await fetch("/api/auth/username-login", {
@@ -23,6 +24,11 @@ export async function signInWithUsername(username: string, password: string): Pr
 
 export async function signInWithIdentifier(identifier: string, password: string): Promise<void> {
   const value = identifier.trim();
+  if (isSyntheticAccountEmail(value)) {
+    const local = value.split("@")[0]?.split(".")[0] ?? "";
+    await signInWithUsername(local, password);
+    return;
+  }
   if (value.includes("@")) {
     const { error } = await supabase.auth.signInWithPassword({ email: value, password });
     if (error) throw error;

@@ -106,7 +106,14 @@ export function securityHeaders(env: unknown): Record<string, string> {
 export function applySecurityHeaders(response: Response, env: unknown): Response {
   const headers = securityHeaders(env);
   const cacheControl = htmlCacheControl(response);
-  if (cacheControl) headers["cache-control"] = cacheControl;
+  if (cacheControl) {
+    headers["cache-control"] = cacheControl;
+  } else if (
+    (response.headers.get("content-type") ?? "").includes("application/json") &&
+    !response.headers.has("cache-control")
+  ) {
+    headers["cache-control"] = "no-store";
+  }
   try {
     for (const [name, value] of Object.entries(headers)) {
       // cache-control may already exist; it still has to gain no-transform.

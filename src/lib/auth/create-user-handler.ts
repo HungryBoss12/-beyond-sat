@@ -1,6 +1,8 @@
 import { jsonResponse, requireAdmin, restFetch } from "@/lib/vocab/rest";
 import { hydrateServerEnv } from "@/lib/server-env";
-import { accountEmailFor, slugUsernameFromName } from "./login-email";
+import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
+import { publicError } from "@/lib/http/public-error";
+import { slugUsernameFromName, uniqueAccountEmailFor } from "./login-email";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const USERNAME_RE = /^[a-z][a-z0-9_]{2,23}$/;
@@ -58,7 +60,10 @@ export async function handleAdminCreateUser(request: Request, env: unknown): Pro
     return await createAdminUser(request, env);
   } catch (error) {
     console.error("[create-user] failed", error);
-    return jsonResponse({ error: failureSentence(error, "Could not create the account.") }, 500);
+    return jsonResponse(
+      { error: publicError("create-user", failureSentence(error, ""), "Could not create the account.") },
+      500,
+    );
   }
 }
 
@@ -70,35 +75,22 @@ async function createAdminUser(request: Request, env: unknown): Promise<Response
   if (!auth.ok) return auth.response;
 
   try {
-    const { resetSupabaseAdmin, ensureSupabaseAdmin } = await import(
-      "@/integrations/supabase/client.server"
-    );
-    resetSupabaseAdmin();
+    const { ensureSupabaseAdmin } = await import("@/integrations/supabase/client.server");
     ensureSupabaseAdmin();
   } catch (e) {
     console.error("[create-user] service role config", (e as Error).message);
-    return jsonResponse(
-      {
-        error:
-          (e as Error).message ||
-          "Server service role key is invalid. Set Cloudflare secret SUPABASE_SERVICE_ROLE_KEY to the project's service_role JWT or sb_secret_ key (not the publishable/anon key).",
-      },
-      500,
-    );
+    return jsonResponse({ error: "Server is not configured correctly." }, 500);
   }
 
-  let body: {
+  const read = await readJsonLimited<{
     name?: unknown;
     password?: unknown;
     classId?: unknown;
     username?: unknown;
     mustChangeCredentials?: unknown;
-  };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400);
-  }
+  }>(request);
+  if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+  const body = read.value ?? {};
 
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
@@ -176,12 +168,11 @@ async function createAdminUser(request: Request, env: unknown): Promise<Response
     }
   }
 
-  const email = accountEmailFor(username);
+  const email = uniqueAccountEmailFor(username);
   const { error: passErr } = await db.from("staff_account_passes").upsert({ email });
   if (passErr) {
-    console.error("[create-user] staff pass failed", passErr.message);
     return jsonResponse(
-      { error: `Could not prepare the account: ${failureSentence(passErr, "database error")}` },
+      { error: publicError("create-user/pass", passErr.message, "Could not prepare the account.") },
       500,
     );
   }
@@ -209,15 +200,12 @@ async function createAdminUser(request: Request, env: unknown): Promise<Response
     }
     if (/invalid api key/i.test(msg)) {
       console.error("[create-user] Invalid API key from Auth Admin — check SUPABASE_SERVICE_ROLE_KEY");
-      return jsonResponse(
-        {
-          error:
-            "Server service role key is invalid. Set Cloudflare secret SUPABASE_SERVICE_ROLE_KEY to the project's service_role JWT or sb_secret_ key (not the publishable/anon key).",
-        },
-        500,
-      );
+      return jsonResponse({ error: "Server is not configured correctly." }, 500);
     }
-    return jsonResponse({ error: msg }, 400);
+    return jsonResponse(
+      { error: publicError("create-user/auth", msg, "Could not create the account.") },
+      400,
+    );
   }
 
   const userId = created.user.id;
@@ -244,14 +232,14 @@ async function createAdminUser(request: Request, env: unknown): Promise<Response
     .select("id")
     .maybeSingle();
   if (profErr || !updatedProfile) {
-    console.error("[create-user] profile update failed", profErr?.message ?? "no row updated");
     await supabaseAdmin.auth.admin.deleteUser(userId);
     return jsonResponse(
       {
-        error: `Account was created but the profile could not be finished: ${failureSentence(
-          profErr,
-          "profile row missing",
-        )}`,
+        error: publicError(
+          "create-user/profile",
+          profErr?.message ?? "no row updated",
+          "Account was created but the profile could not be finished.",
+        ),
       },
       500,
     );
@@ -267,10 +255,11 @@ async function createAdminUser(request: Request, env: unknown): Promise<Response
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return jsonResponse(
         {
-          error: `Account was created but could not be added to the class: ${failureSentence(
-            memErr,
-            "could not add the class",
-          )}`,
+          error: publicError(
+            "create-user/membership",
+            memErr.message,
+            "Account was created but could not be added to the class.",
+          ),
         },
         500,
       );

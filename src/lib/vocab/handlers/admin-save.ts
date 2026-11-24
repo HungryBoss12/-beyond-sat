@@ -1,3 +1,6 @@
+import { publicError } from "@/lib/http/public-error";
+import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
+import { sharedRateLimit } from "@/lib/shared-rate-limit";
 import { jsonResponse, requireStaff } from "../rest";
 import type { AnkiDeckNode, DifficultyTier, GeneratedVocabItem } from "../types";
 
@@ -121,12 +124,17 @@ export async function handleVocabAdminSave(request: Request, env: unknown): Prom
   const auth = await requireStaff(request, env);
   if (!auth.ok) return auth.response;
 
-  let body: SavePayload;
-  try {
-    body = (await request.json()) as SavePayload;
-  } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400);
+  const limit = await sharedRateLimit(env, `vocab-admin:${auth.user.id}`, 60, 20);
+  if (!limit.ok) {
+    return jsonResponse(
+      { error: "Too many save requests. Wait a moment." },
+      { status: 429, headers: { "retry-after": String(limit.retryAfter || 5) } },
+    );
   }
+
+  const read = await readJsonLimited<SavePayload>(request, 4 * 1024 * 1024);
+  if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+  const body = read.value;
 
   if (!Array.isArray(body.items) || body.items.length === 0) {
     return jsonResponse({ error: "items required" }, 400);
@@ -159,7 +167,10 @@ export async function handleVocabAdminSave(request: Request, env: unknown): Prom
       },
     );
     if (quizErr || !quizRows?.[0]) {
-      return jsonResponse({ error: quizErr ?? "Failed to create quiz" }, 500);
+      return jsonResponse(
+        { error: publicError("vocab/admin-save/quiz", quizErr, "Failed to create quiz.") },
+        500,
+      );
     }
     quizId = quizRows[0].id;
   }
@@ -217,7 +228,10 @@ export async function handleVocabAdminSave(request: Request, env: unknown): Prom
           body: JSON.stringify(cardPayload),
         });
       } else {
-        return jsonResponse({ error: cardErr }, 500);
+        return jsonResponse(
+          { error: publicError("vocab/admin-save/card", cardErr, "Failed to save card.") },
+          500,
+        );
       }
     }
 
@@ -250,7 +264,12 @@ export async function handleVocabAdminSave(request: Request, env: unknown): Prom
       },
     );
 
-    if (qErr) return jsonResponse({ error: qErr }, 500);
+    if (qErr) {
+      return jsonResponse(
+        { error: publicError("vocab/admin-save/question", qErr, "Failed to save quiz question.") },
+        500,
+      );
+    }
 
     saved.push({ cardId, questionId: qRows?.[0]?.id ?? "", word: item.word });
   }

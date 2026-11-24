@@ -186,31 +186,12 @@ export async function deleteVocabHomework(id: string): Promise<void> {
 }
 
 export async function recordDeckHomeworkProgress(
-  deckId: string,
-  rating: 1 | 2 | 3 | 4,
+  _deckId: string,
+  _rating: 1 | 2 | 3 | 4,
 ): Promise<void> {
-  const { data: sess } = await supabase.auth.getSession();
-  const uid = sess.session?.user?.id;
-  if (!uid) return;
-
-  const assignments = (await listActiveHomeworkForUser()).filter(
-    (a) => a.target_type === "deck" && a.deck_id === deckId,
-  );
-  if (!assignments.length) return;
-
-  const isGreen = rating === 3 || rating === 4;
-
-  /* One statement in the database per rating: ratings are sent in parallel, and
-     a read-then-write here lost counts. */
-  for (const a of assignments) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).rpc("bs_bump_vocab_homework", {
-      p_assignment_id: a.id,
-      p_period_key: homeworkPeriodKey(a.recurrence),
-      p_green: isGreen,
-    });
-    if (error) console.error("[vocab/homework] progress", error.message);
-  }
+  /* Deck homework progress is recorded server-side inside POST /api/vocab/review
+     once a due card review is verified, so students cannot self-complete homework
+     from the client. */
 }
 
 export async function recordQuizHomeworkCompletion(

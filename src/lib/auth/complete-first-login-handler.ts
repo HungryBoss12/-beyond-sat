@@ -1,8 +1,9 @@
 import { jsonResponse, requireUser } from "@/lib/vocab/rest";
 import { isValidUsername, normalizeUsername } from "@/lib/classes/types";
-import { isSyntheticAccountEmail } from "./login-email";
+import { isSyntheticAccountEmail, uniqueAccountEmailFor } from "./login-email";
 import { firstLoginAuthUpdate, firstLoginErrorMessage } from "./first-login-update";
 import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
+import { sharedRateLimit } from "@/lib/shared-rate-limit";
 
 export async function handleCompleteFirstLogin(request: Request, env: unknown): Promise<Response> {
   if (request.method !== "POST") {
@@ -11,6 +12,14 @@ export async function handleCompleteFirstLogin(request: Request, env: unknown): 
 
   const auth = await requireUser(request, env);
   if (!auth.ok) return auth.response;
+
+  const limit = await sharedRateLimit(env, `first-login:${auth.user.id}`, 10, 2);
+  if (!limit.ok) {
+    return jsonResponse(
+      { error: "Too many attempts. Wait a minute and try again." },
+      { status: 429, headers: { "retry-after": String(limit.retryAfter || 60) } },
+    );
+  }
 
   const read = await readJsonLimited<{ password?: unknown; username?: unknown; email?: unknown }>(
     request,
@@ -75,6 +84,7 @@ export async function handleCompleteFirstLogin(request: Request, env: unknown): 
     nextUsername,
     prevUsername: (prof.username as string | null) ?? null,
     currentEmail: authUser.user.email ?? null,
+    syntheticEmail: nextUsername ? uniqueAccountEmailFor(nextUsername) : undefined,
   });
 
   const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(

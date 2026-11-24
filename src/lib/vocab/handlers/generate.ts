@@ -1,3 +1,6 @@
+import { publicError } from "@/lib/http/public-error";
+import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
+import { sharedRateLimit } from "@/lib/shared-rate-limit";
 import { generateVocabBatch } from "../ai-generate";
 import { jsonResponse, requireStaff } from "../rest";
 
@@ -9,12 +12,20 @@ export async function handleVocabGenerate(request: Request, env: unknown): Promi
   const auth = await requireStaff(request, env);
   if (!auth.ok) return auth.response;
 
-  let body: { words?: unknown; topic?: unknown; count?: unknown };
-  try {
-    body = (await request.json()) as { words?: unknown; topic?: unknown; count?: unknown };
-  } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400);
+  const limit = await sharedRateLimit(env, `vocab-generate:${auth.user.id}`, 15, 4);
+  if (!limit.ok) {
+    return jsonResponse(
+      { error: "Too many generation requests. Wait a moment." },
+      { status: 429, headers: { "retry-after": String(limit.retryAfter || 15) } },
+    );
   }
+
+  const read = await readJsonLimited<{ words?: unknown; topic?: unknown; count?: unknown }>(
+    request,
+    65_536,
+  );
+  if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+  const body = read.value ?? {};
 
   const words =
     typeof body.words === "string"
@@ -37,9 +48,14 @@ export async function handleVocabGenerate(request: Request, env: unknown): Promi
     const items = await generateVocabBatch({ env, words, topic, count });
     return jsonResponse({ items });
   } catch (e) {
-    console.error("[vocab/generate]", e);
     return jsonResponse(
-      { error: e instanceof Error ? e.message : "Generation failed" },
+      {
+        error: publicError(
+          "vocab/generate",
+          e instanceof Error ? e.message : String(e),
+          "Generation failed. Please try again.",
+        ),
+      },
       502,
     );
   }

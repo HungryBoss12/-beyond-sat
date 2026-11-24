@@ -1,7 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 
 function safeName(name: string): string {
-  return name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
+  return name.replace(/[^\w.-]+/g, "_").slice(0, 80);
+}
+
+function randomUploadToken(): string {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export async function uploadChatFile(file: File | Blob, filename?: string): Promise<{
@@ -13,7 +19,7 @@ export async function uploadChatFile(file: File | Blob, filename?: string): Prom
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Not signed in");
   const name = filename || (file instanceof File ? file.name : "upload.bin");
-  const path = `${u.user.id}/${Date.now()}-${safeName(name)}`;
+  const path = `${u.user.id}/${randomUploadToken()}-${safeName(name)}`;
   const { error } = await supabase.storage.from("chat-uploads").upload(path, file, {
     upsert: false,
     contentType: file.type || undefined,
@@ -40,8 +46,10 @@ export async function uploadHomeworkFile(
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Not signed in");
   const name = filename || (file instanceof File ? file.name : "upload.bin");
-  const root = folder || u.user.id;
-  const path = `${root}/${Date.now()}-${safeName(name)}`;
+  const cleanFolder = folder ? folder.replace(/^\/+|\/+$/g, "") : "";
+  if (cleanFolder.includes("..")) throw new Error("Invalid upload folder");
+  const root = cleanFolder || u.user.id;
+  const path = `${root}/${randomUploadToken()}-${safeName(name)}`;
   const { error } = await supabase.storage.from("homework-uploads").upload(path, file, {
     upsert: false,
     contentType: file.type || undefined,

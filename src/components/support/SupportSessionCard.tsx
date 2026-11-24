@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { SupportCountdown } from "@/components/support/SupportCountdown";
+import { safeNavigationUrl } from "@/lib/safe-url";
 import { startTestSetSession } from "@/lib/session";
 import { formatDay, formatWhen, subjectLabel, type SupportMaterial, type SupportSession } from "@/lib/support/api";
 
@@ -123,9 +124,10 @@ function MaterialLink({ item }: { item: SupportMaterial }) {
       </button>
     );
   }
-  if (item.material_url?.startsWith("https://")) {
+  const safeUrl = safeNavigationUrl(item.material_url);
+  if (safeUrl && /^https:\/\//i.test(safeUrl)) {
     return (
-      <a className="font-bold underline" href={item.material_url} target="_blank" rel="noopener noreferrer">
+      <a className="font-bold underline" href={safeUrl} target="_blank" rel="noopener noreferrer">
         {item.title}
       </a>
     );

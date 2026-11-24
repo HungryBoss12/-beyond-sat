@@ -6,6 +6,7 @@ import { userIsBanned } from "@/lib/vocab/rest";
 const CACHE_MS = 12 * 60 * 60 * 1000;
 const SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
 const VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos";
+const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{6,20}$/;
 
 export type YoutubeRec = {
   title: string;
@@ -144,10 +145,14 @@ export function filterCrossSection(videos: YoutubeRec[], section: YoutubeSection
 }
 
 export function formatYoutubePromptBlock(videos: YoutubeRec[]): string {
-  if (videos.length === 0) return "";
-  const lines = videos.map((video, i) => {
-    const channel = video.channel ? ` (${video.channel})` : "";
-    return `${i + 1}. ${video.title} — ${video.url}${channel}`;
+  const clean = videos.filter((v) => YOUTUBE_VIDEO_ID_RE.test(v.videoId));
+  if (clean.length === 0) return "";
+  const lines = clean.map((video, i) => {
+    const safeTitle = video.title.replace(/[\r\n]+/g, " ").trim().slice(0, 160);
+    const safeChannel = video.channel.replace(/[\r\n]+/g, " ").trim().slice(0, 80);
+    const channel = safeChannel ? ` (${safeChannel})` : "";
+    const safeUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
+    return `${i + 1}. ${safeTitle} — ${safeUrl}${channel}`;
   });
   return `YouTube picks (real URLs only; do not invent videos):\n${lines.join("\n")}`;
 }
@@ -325,11 +330,11 @@ async function searchYoutube(apiKey: string, query: string): Promise<SearchOutco
 
   const items = (searchBody?.items ?? [])
     .map((item) => ({
-      videoId: item.id?.videoId ?? "",
-      title: item.snippet?.title ?? "",
-      channel: item.snippet?.channelTitle ?? "",
+      videoId: (item.id?.videoId ?? "").trim(),
+      title: (item.snippet?.title ?? "").trim(),
+      channel: (item.snippet?.channelTitle ?? "").trim(),
     }))
-    .filter((item) => item.videoId && item.title)
+    .filter((item) => YOUTUBE_VIDEO_ID_RE.test(item.videoId) && item.title)
     .slice(0, MAX_RECS);
   if (items.length === 0) return { ok: true, videos: [] };
 
@@ -360,6 +365,32 @@ async function searchYoutube(apiKey: string, query: string): Promise<SearchOutco
   };
 }
 
+async function seedLessonVideoCatalog(
+  url: string,
+  serviceKey: string,
+  videos: YoutubeRec[],
+): Promise<void> {
+  await Promise.all(
+    videos.map(async (video) => {
+      if (!YOUTUBE_VIDEO_ID_RE.test(video.videoId) || !video.title.trim()) return;
+      try {
+        await fetch(`${url}/rest/v1/rpc/bs_upsert_lesson_video`, {
+          method: "POST",
+          headers: restHeaders(serviceKey),
+          body: JSON.stringify({
+            p_video_id: video.videoId,
+            p_title: video.title.trim().slice(0, 300),
+            p_youtube_url: `https://www.youtube.com/watch?v=${video.videoId}`,
+            p_duration_seconds: video.durationSeconds ?? null,
+          }),
+        });
+      } catch {
+        /* non-fatal catalog seed */
+      }
+    }),
+  );
+}
+
 export async function loadYoutubeRecs(
   env: unknown,
   userId: string,
@@ -375,8 +406,23 @@ export async function loadYoutubeRecs(
 
   if (!opts?.refresh) {
     const exact = cacheFresh(cached, query);
-    if (exact) return filterCrossSection(exact, section).slice(0, MAX_RECS);
-    if (!opts?.allowSearch) return filterCrossSection(cacheFresh(cached) ?? [], section).slice(0, MAX_RECS);
+    if (exact) {
+      const picked = filterCrossSection(exact, section).slice(0, MAX_RECS);
+      if (url && serviceKey && picked.length > 0) {
+        await seedLessonVideoCatalog(url, serviceKey, picked);
+      }
+      return picked;
+    }
+    if (!opts?.allowSearch) {
+      return filterCrossSection(cacheFresh(cached) ?? [], section).slice(0, MAX_RECS);
+    }
+  }
+
+  // Throttle actual upstream YouTube Data API calls across both /api/ai/youtube-recs and /api/ai/chat
+  // so repeated "refresh" chat prompts cannot drain the project's daily YouTube quota.
+  const upstreamLimit = await sharedRateLimit(env, `youtube-upstream:${userId}`, 4, 0.5);
+  if (!upstreamLimit.ok) {
+    return filterCrossSection(cacheFresh(cached) ?? cached?.videos ?? [], section).slice(0, MAX_RECS);
   }
 
   const apiKeys = await resolveApiKeys(env, url, serviceKey);
@@ -393,7 +439,10 @@ export async function loadYoutubeRecs(
       const videos = filterCrossSection(outcome.videos, section).slice(0, MAX_RECS);
       if (videos.length === 0) return filterCrossSection(cacheFresh(cached) ?? [], section).slice(0, MAX_RECS);
       if (url && serviceKey) {
-        await writeCache(url, serviceKey, userId, section, query, videos);
+        await Promise.all([
+          writeCache(url, serviceKey, userId, section, query, videos),
+          seedLessonVideoCatalog(url, serviceKey, videos),
+        ]);
       }
       return videos;
     }

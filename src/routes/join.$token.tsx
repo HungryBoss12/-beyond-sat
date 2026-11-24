@@ -15,6 +15,7 @@ export const Route = createFileRoute("/join/$token")({
     meta: [
       { title: "Set up your account — BeyondSAT" },
       { name: "description", content: "Choose your name, username, and password." },
+      { name: "referrer", content: "no-referrer" },
     ],
   }),
 });

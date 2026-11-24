@@ -3,7 +3,7 @@ import { hydrateServerEnv } from "@/lib/server-env";
 import { requestIp, sharedRateLimit } from "@/lib/shared-rate-limit";
 import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
 import { publicError } from "@/lib/http/public-error";
-import { accountEmailFor, slugUsernameFromName } from "./login-email";
+import { slugUsernameFromName, uniqueAccountEmailFor } from "./login-email";
 import { isValidUsername, normalizeUsername } from "@/lib/classes/types";
 
 const claimError = (raw: string | undefined) =>
@@ -65,10 +65,9 @@ async function isStaffAccount(
 }
 
 async function adminDb() {
-  const { resetSupabaseAdmin, ensureSupabaseAdmin, supabaseAdmin } = await import(
+  const { ensureSupabaseAdmin, supabaseAdmin } = await import(
     "@/integrations/supabase/client.server"
   );
-  resetSupabaseAdmin();
   ensureSupabaseAdmin();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return { supabaseAdmin, db: supabaseAdmin as any };
@@ -249,7 +248,7 @@ export async function handleClaimStudentInvite(request: Request, env: unknown): 
       db.from("student_invites").update({ used_at: null }).eq("id", row.id).eq("used_at", now);
     releaseClaim = release;
 
-    const email = accountEmailFor(username);
+    const email = uniqueAccountEmailFor(username);
     const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       password,
       email,
@@ -310,7 +309,7 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
   const auth = await requireAdmin(request, env);
   if (!auth.ok) return auth.response;
 
-  let body: {
+  const read = await readJsonLimited<{
     name?: unknown;
     classId?: unknown;
     studentId?: unknown;
@@ -319,12 +318,9 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
     activatesAt?: unknown;
     returnLink?: unknown;
     enrolledOn?: unknown;
-  };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400);
-  }
+  }>(request, 65_536);
+  if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+  const body = read.value ?? {};
 
   const studentId = typeof body.studentId === "string" ? body.studentId.trim() : "";
   const userId = typeof body.userId === "string" ? body.userId.trim() : "";
@@ -440,7 +436,7 @@ export async function handleCreateStudentInvite(request: Request, env: unknown):
       const suffix = String(n++);
       username = `${base.slice(0, Math.max(3, 24 - suffix.length))}${suffix}`;
     }
-    const email = accountEmailFor(username);
+    const email = uniqueAccountEmailFor(username);
     const { error: passErr } = await db.from("staff_account_passes").upsert({ email });
     if (passErr) {
       return jsonResponse(

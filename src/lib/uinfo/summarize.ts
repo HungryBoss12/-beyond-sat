@@ -1,5 +1,6 @@
 import { callRpc, readEnv, readSupabaseConfig, type VerifiedUser } from "@/lib/server-env";
 import { DEFAULT_MODELS } from "@/lib/ai/router";
+import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
 import { sharedRateLimit } from "@/lib/shared-rate-limit";
 import { userIsBanned } from "@/lib/vocab/rest";
 
@@ -68,15 +69,16 @@ export async function handleUinfoFlush(request: Request, env: unknown): Promise<
   }
 
   let targetId = user.id;
-  try {
-    const body = (await request.json()) as { userId?: string };
-    if (body.userId && body.userId !== user.id) {
+  const contentLen = request.headers.get("content-length");
+  if (request.body && contentLen !== "0") {
+    const read = await readJsonLimited<{ userId?: string }>(request);
+    if (!read.ok) {
+      if (read.status === 413) return json(jsonReadError(413), 413);
+    } else if (read.value?.userId && read.value.userId !== user.id) {
       const admin = await callRpc<boolean>(config, "bs_is_admin", token);
       if (!admin) return json({ error: "Forbidden" }, 403);
-      targetId = body.userId;
+      targetId = read.value.userId;
     }
-  } catch {
-    /* empty body is fine */
   }
 
   const result = await flushUinfo(env, config.url, serviceKey, targetId);

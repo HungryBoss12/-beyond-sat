@@ -331,6 +331,8 @@ export function parsePastedCards(text: string): GeneratedVocabItem[] {
   return items;
 }
 
+export const MAX_APKG_DECOMPRESSED_BYTES = 150 * 1024 * 1024;
+
 export async function parseApkgFile(file: File): Promise<ApkgParseResult> {
   if (file.size > 80 * 1024 * 1024) {
     throw new Error("Deck file is too large (max 80 MB).");
@@ -339,9 +341,25 @@ export async function parseApkgFile(file: File): Promise<ApkgParseResult> {
   const buf = new Uint8Array(await file.arrayBuffer());
   let files: Record<string, Uint8Array>;
   try {
-    files = unzipSync(buf) as Record<string, Uint8Array>;
-  } catch {
+    files = unzipSync(buf, {
+      filter: (entry) => {
+        if (!/collection\.anki/i.test(entry.name)) return false;
+        if (entry.originalSize > MAX_APKG_DECOMPRESSED_BYTES) {
+          throw new Error("ARCH_TOO_LARGE");
+        }
+        return true;
+      },
+    }) as Record<string, Uint8Array>;
+  } catch (e) {
+    if (e instanceof Error && e.message === "ARCH_TOO_LARGE") {
+      throw new Error("Uncompressed deck database is too large (max 150 MB).");
+    }
     throw new Error("Could not unzip file — use a standard .apkg exported from Anki.");
+  }
+  for (const data of Object.values(files)) {
+    if (data.byteLength > MAX_APKG_DECOMPRESSED_BYTES) {
+      throw new Error("Uncompressed deck database is too large (max 150 MB).");
+    }
   }
 
   const { name: collectionName, data: collectionData } = findCollectionDb(files);

@@ -261,12 +261,63 @@ async function resolveSessionTitles(
   });
 }
 
+export class AdminBotError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AdminBotError";
+  }
+}
+
+export async function isAdminAccount(supabase: AdminClient, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .limit(1);
+  return (data ?? []).length > 0;
+}
+
+async function revokeUserSessionsGlobal(userId: string): Promise<void> {
+  const { readEnv } = await import("@/lib/server-env");
+  const url = (
+    process.env.SUPABASE_URL?.trim() ||
+    process.env.VITE_SUPABASE_URL?.trim() ||
+    readEnv(undefined, "SUPABASE_URL") ||
+    ""
+  ).replace(/\/$/, "");
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    readEnv(undefined, "SUPABASE_SERVICE_ROLE_KEY") ||
+    "";
+  if (!url || !key) return;
+  try {
+    const res = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(userId)}/logout`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ scope: "global" }),
+    });
+    if (!res.ok) {
+      console.error("[telegram] global logout failed", res.status);
+    }
+  } catch (e) {
+    console.error("[telegram] global logout error", (e as Error).message);
+  }
+}
+
 export async function setUserBanned(
   supabase: AdminClient,
   userId: string,
   banned: boolean,
   reason: string | null,
 ): Promise<void> {
+  if (banned && (await isAdminAccount(supabase, userId))) {
+    throw new AdminBotError("Cannot ban another admin account.");
+  }
   const { error } = await supabase
     .from("profiles")
     .update({
@@ -275,7 +326,13 @@ export async function setUserBanned(
       banned_at: banned ? new Date().toISOString() : null,
     })
     .eq("id", userId);
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[telegram] setUserBanned failed", error.message);
+    throw new AdminBotError("Could not update account status.");
+  }
+  if (banned) {
+    await revokeUserSessionsGlobal(userId);
+  }
 }
 
 function sevenDaysAgo(): string {

@@ -4,7 +4,7 @@ import { adminSessionExpired } from "./session-policy";
 
 const CHECK_MS = 5 * 60 * 1000;
 
-/** Signs an admin out once their sign-in is older than ADMIN_SESSION_HOURS. */
+/** Signs an admin or editor out once their sign-in is older than ADMIN_SESSION_HOURS. */
 async function checkAdminSession(): Promise<void> {
   const { data } = await supabase.auth.getSession();
   const session = data.session;
@@ -13,7 +13,8 @@ async function checkAdminSession(): Promise<void> {
     .from("user_roles")
     .select("role")
     .eq("user_id", session.user.id);
-  if (!(roles ?? []).some((row: { role: string }) => row.role === "admin")) return;
+  if (!(roles ?? []).some((row: { role: string }) => row.role === "admin" || row.role === "editor"))
+    return;
   await supabase.auth.signOut({ scope: "local" });
   removeSavedAccount(session.user.id);
   window.location.assign("/signin?expired=admin");

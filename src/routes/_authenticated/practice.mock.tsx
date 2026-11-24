@@ -38,39 +38,21 @@ function MockList() {
         .eq("published", true)
         .order("created_at", { ascending: false });
       const rows = (data ?? []) as Omit<Mock, "questionCount">[];
-      const withCounts: Mock[] = [];
-      for (const m of rows) {
-        /* Counts come from fetched rows rather than `{ count: "exact", head: true }`.
-           A head request's count arrives in the Content-Range header, which isn't
-           always readable client-side — when it isn't, `count` is null. That made
-           every exam show "0 questions", and worse, a null `sectionsCount` fell
-           through to the legacy branch below and counted the wrong table. */
-        const { data: sectionRows } = await supabase
-          .from("mock_exam_sections")
-          .select("test_id")
-          .eq("mock_exam_id", m.id)
-          .not("test_id", "is", null);
-        const testIds = (sectionRows ?? []).map((r) => r.test_id as string);
-        let questionCount = 0;
-        // Prefer sections-based count (newer format); fall back to legacy per-question rows.
-        if (testIds.length > 0) {
-          /* `test_questions` has no `id` column — PK is (test_id, question_id).
-             Selecting `id` fails the query and every mock showed "0 questions". */
-          const { data: tq } = await supabase
-            .from("test_questions")
-            .select("question_id")
-            .in("test_id", testIds);
-          questionCount = (tq ?? []).length;
-        } else {
-          const { data: meq } = await supabase
-            .from("mock_exam_questions")
-            .select("question_id")
-            .eq("mock_exam_id", m.id);
-          questionCount = (meq ?? []).length;
+      const countsByMock = new Map<string, number>();
+      if (rows.length > 0) {
+        const { data: counts } = await supabase.rpc("mock_exam_question_counts", {
+          p_mock_ids: rows.map((m) => m.id),
+        });
+        for (const row of counts ?? []) {
+          countsByMock.set(row.mock_exam_id, row.question_count ?? 0);
         }
-        withCounts.push({ ...m, questionCount });
       }
-      setMocks(withCounts);
+      setMocks(
+        rows.map((m) => ({
+          ...m,
+          questionCount: countsByMock.get(m.id) ?? 0,
+        })),
+      );
     })();
   }, []);
 

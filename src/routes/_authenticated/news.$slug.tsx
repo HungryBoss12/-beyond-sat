@@ -2,6 +2,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Newspaper } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeMediaUrl } from "@/lib/safe-url";
 import { format } from "date-fns";
 import { EmptyState } from "@/components/ui/panel";
 import { DetailSkeleton } from "@/components/ui/skeletons";
@@ -76,9 +77,9 @@ function ArticlePage() {
       <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">
         {article.title}
       </h1>
-      {article.cover_image_url && (
+      {safeMediaUrl(article.cover_image_url) && (
         <img
-          src={article.cover_image_url}
+          src={safeMediaUrl(article.cover_image_url) ?? undefined}
           alt={article.title}
           className="mt-6 w-full rounded-2xl border border-brand-400/40 shadow-panel"
         />

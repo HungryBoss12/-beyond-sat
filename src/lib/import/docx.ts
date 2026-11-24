@@ -15,6 +15,7 @@
 const EOCD_SIG = 0x06054b50;
 const LFH_SIG = 0x04034b50;
 const CD_SIG = 0x02014b50;
+export const MAX_DOCX_ENTRY_BYTES = 50 * 1024 * 1024;
 
 /** A file's location and encoding inside the archive. */
 type ZipEntry = { name: string; method: number; compressedSize: number; localHeaderOffset: number };
@@ -70,7 +71,12 @@ async function inflateEntryBytes(buf: ArrayBuffer, entry: ZipEntry): Promise<Uin
   const start = entry.localHeaderOffset + 30 + nameLen + extraLen;
   const raw = new Uint8Array(buf, start, entry.compressedSize);
 
-  if (entry.method === 0) return raw;
+  if (entry.method === 0) {
+    if (raw.byteLength > MAX_DOCX_ENTRY_BYTES) {
+      throw new Error("That .docx entry exceeds the 50 MB uncompressed limit.");
+    }
+    return raw;
+  }
   if (entry.method !== 8) {
     throw new Error(`That .docx uses an unsupported compression method (${entry.method}).`);
   }
@@ -83,7 +89,27 @@ async function inflateEntryBytes(buf: ArrayBuffer, entry: ZipEntry): Promise<Uin
   const stream = new Blob([raw as BlobPart])
     .stream()
     .pipeThrough(new DecompressionStream("deflate-raw"));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    total += value.byteLength;
+    if (total > MAX_DOCX_ENTRY_BYTES) {
+      await reader.cancel().catch(() => undefined);
+      throw new Error("That .docx entry exceeds the 50 MB uncompressed limit.");
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
 }
 
 async function inflateEntry(buf: ArrayBuffer, entry: ZipEntry): Promise<string> {

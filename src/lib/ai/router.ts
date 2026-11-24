@@ -154,6 +154,9 @@ export function resolveSurface(value: unknown): AiSurface {
 /** Guards against unbounded context growth — and unbounded cost. */
 const MAX_MESSAGES = 24;
 const MAX_CHARS_PER_MESSAGE = 8000;
+export const MAX_CONTENT_PARTS = 12;
+export const MAX_IMAGES_PER_MESSAGE = 4;
+export const MAX_DATA_IMAGE_BYTES = 8 * 1024 * 1024;
 
 export function isAiTask(value: unknown): value is AiTask {
   return value === "chat" || value === "quick" || value === "reasoning" || value === "vision";
@@ -208,9 +211,21 @@ export function resolveGeminiVisionModel(
 const DATA_IMAGE_RE = /^data:image\/(png|jpe?g|webp|gif);base64,/i;
 const STORAGE_PATH_RE = /^\/storage\/v1\/object\/(?:sign|public|authenticated)\//i;
 
-/** Data images, or an object URL on this project's Supabase host. */
+function dataImageDecodedBytes(url: string): number {
+  const comma = url.indexOf(",");
+  if (comma < 0) return Infinity;
+  const b64 = url.slice(comma + 1).trim();
+  if (!b64) return Infinity;
+  const pad = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((b64.length * 3) / 4) - pad);
+}
+
+/** Data images (capped at 8 MB), or an object URL on this project's Supabase host. */
 export function isAllowedImageUrl(url: string, storageHost: string | undefined): boolean {
-  if (DATA_IMAGE_RE.test(url)) return true;
+  if (DATA_IMAGE_RE.test(url)) {
+    const bytes = dataImageDecodedBytes(url);
+    return bytes > 0 && bytes <= MAX_DATA_IMAGE_BYTES;
+  }
   if (!storageHost) return false;
   let parsed: URL;
   try {
@@ -287,7 +302,11 @@ function normalizeParts(
   options?: { storageHost?: string },
 ): { parts: AiContentPart[] } | { error: string } {
   if (content.length === 0) return { error: "message content array must not be empty" };
+  if (content.length > MAX_CONTENT_PARTS) {
+    return { error: `message content may contain at most ${MAX_CONTENT_PARTS} parts` };
+  }
   const parts: AiContentPart[] = [];
+  let imageCount = 0;
   for (const raw of content) {
     if (!raw || typeof raw !== "object") return { error: "each content part must be an object" };
     const part = raw as { type?: unknown; text?: unknown; image_url?: unknown };
@@ -304,9 +323,16 @@ function normalizeParts(
     }
 
     if (part.type === "image_url") {
+      imageCount += 1;
+      if (imageCount > MAX_IMAGES_PER_MESSAGE) {
+        return { error: `at most ${MAX_IMAGES_PER_MESSAGE} images may be attached per message` };
+      }
       const url = (part.image_url as { url?: unknown } | undefined)?.url;
       if (typeof url !== "string" || !url) {
         return { error: "image parts require 'image_url.url'" };
+      }
+      if (DATA_IMAGE_RE.test(url) && dataImageDecodedBytes(url) > MAX_DATA_IMAGE_BYTES) {
+        return { error: "attached image must be 8 MB or smaller" };
       }
       if (!isAllowedImageUrl(url, options?.storageHost)) {
         return { error: "image_url must be a base64 image or a file in this site's storage" };

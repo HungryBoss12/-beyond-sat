@@ -1,6 +1,8 @@
 import { fixBrokenQuestionWithGemini, type FixStage } from "@/lib/gemini/fix-question";
 import { GeminiError } from "@/lib/gemini/errors";
+import { readJsonLimited } from "@/lib/http/read-json";
 import { readEnv } from "@/lib/server-env";
+import { sharedRateLimit } from "@/lib/shared-rate-limit";
 import { requireStaff } from "@/lib/vocab/rest";
 
 function json(body: unknown, status: number): Response {
@@ -33,12 +35,25 @@ export async function handleImportFix(request: Request, env: unknown): Promise<R
   const auth = await requireStaff(request, env);
   if (!auth.ok) return auth.response;
 
-  let payload: FixRequest;
-  try {
-    payload = (await request.json()) as FixRequest;
-  } catch {
-    return json({ error: "Request body must be JSON" }, 400);
+  const limit = await sharedRateLimit(env, `import-ai:${auth.user.id}`, 30, 10);
+  if (!limit.ok) {
+    return new Response(JSON.stringify({ error: "Too many import requests. Wait a moment." }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "retry-after": String(limit.retryAfter || 10),
+      },
+    });
   }
+
+  const read = await readJsonLimited<FixRequest>(request, 512 * 1024);
+  if (!read.ok) {
+    return json(
+      { error: read.status === 413 ? "Request is too large." : "Request body must be JSON" },
+      read.status,
+    );
+  }
+  const payload = read.value;
 
   if (!payload.rec || typeof payload.rec !== "object" || Array.isArray(payload.rec)) {
     return json({ error: "rec must be an object" }, 400);

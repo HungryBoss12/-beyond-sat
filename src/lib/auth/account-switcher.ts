@@ -9,22 +9,22 @@ import {
 } from "./session-policy";
 
 /**
- * Saved-account vault (H4).
+ * Saved-account vault.
  *
- * `localStorage` previously held every account's LONG-LIVED refresh token —
- * a weekslong credential readable by any script on the page, forever. Now:
- *
- *  - localStorage keeps display info and the last access token. A checked
- *    "Keep me signed in" also stores that account's refresh token.
- *  - sessionStorage keeps refresh tokens for this tab.
- *  - When "Keep me signed in" is checked, the same refresh tokens are also
- *    kept in localStorage so Continue as still works after the browser closes.
- *    Unchecking the box deletes that copy. The tab copy is unchanged.
- *  - Legacy vault rows that still contain a `refreshToken` are scrubbed from
- *    localStorage the first time this module touches it.
+ * `localStorage` (`beyondsat.saved-accounts`) holds display metadata ONLY
+ * (`userId`, `username`, `displayName`, `email`) — never `accessToken` or
+ * `refreshToken`.
+ *  - `sessionStorage` keeps per-tab `accessToken` (`beyondsat.saved-access`)
+ *    and `refreshToken` (`beyondsat.saved-refresh`).
+ *  - When "Keep me signed in" is checked, `beyondsat.kept-refresh` stores the
+ *    refresh token so `Continue as` can mint a fresh session after browser
+ *    restarts via `refreshSession`. Unchecking deletes `beyondsat.kept-refresh`.
+ *  - Legacy vault rows carrying `accessToken` or `refreshToken` in
+ *    `localStorage` are scrubbed on read/write.
  */
 
 const KEY = "beyondsat.saved-accounts";
+const ACCESS_KEY = "beyondsat.saved-access";
 const REFRESH_KEY = "beyondsat.saved-refresh";
 const MAX_ACCOUNTS = 5;
 
@@ -33,8 +33,9 @@ export type SavedAccount = {
   username: string | null;
   displayName: string;
   email: string | null;
-  accessToken: string;
-  /** In-memory only — never written to localStorage. */
+  /** In-memory / sessionStorage only — never written to localStorage. */
+  accessToken?: string;
+  /** In-memory / sessionStorage only — never written to localStorage. */
   refreshToken?: string;
 };
 
@@ -46,11 +47,10 @@ function readVault(): SavedAccount[] {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
     const accounts = parsed.filter(isSavedAccount);
-    // Legacy rows may still carry a refresh token in localStorage — rewrite
-    // the vault without them once so the plaintext secret is really gone.
     const legacy = parsed.some((v) => {
       if (!v || typeof v !== "object") return false;
-      return "refreshToken" in (v as Record<string, unknown>);
+      const rec = v as Record<string, unknown>;
+      return "refreshToken" in rec || "accessToken" in rec;
     });
     if (legacy) {
       writeVault(accounts);
@@ -64,31 +64,29 @@ function readVault(): SavedAccount[] {
 function isSavedAccount(value: unknown): value is SavedAccount {
   if (!value || typeof value !== "object") return false;
   const row = value as Record<string, unknown>;
-  return (
-    typeof row.userId === "string" &&
-    typeof row.displayName === "string" &&
-    typeof row.accessToken === "string"
-  );
+  return typeof row.userId === "string" && typeof row.displayName === "string";
 }
 
 function writeVault(accounts: SavedAccount[]) {
-  /* Strip refresh tokens defensively: they must never touch localStorage. */
-  const safe = accounts.slice(0, MAX_ACCOUNTS).map(({ refreshToken: _drop, ...rest }) => rest);
+  /* Strip both access and refresh tokens so localStorage holds metadata only. */
+  const safe = accounts
+    .slice(0, MAX_ACCOUNTS)
+    .map(({ accessToken: _dropAccess, refreshToken: _dropRefresh, ...rest }) => rest);
   localStorage.setItem(KEY, JSON.stringify(safe));
 }
 
-type RefreshMap = Record<string, string>;
+type TokenMap = Record<string, string>;
 
-function readSessionRefresh(): RefreshMap {
+function readSessionTokenMap(storageKey: string): TokenMap {
   if (typeof window === "undefined") return {};
   try {
-    const raw = sessionStorage.getItem(REFRESH_KEY);
+    const raw = sessionStorage.getItem(storageKey);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== "object") return {};
-    const out: RefreshMap = {};
+    const out: TokenMap = {};
     for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
-      if (typeof k === "string" && typeof v === "string") out[k] = v;
+      if (typeof k === "string" && typeof v === "string" && v.length > 0) out[k] = v;
     }
     return out;
   } catch {
@@ -96,10 +94,33 @@ function readSessionRefresh(): RefreshMap {
   }
 }
 
+function writeSessionToken(storageKey: string, userId: string, token: string): void {
+  if (typeof window === "undefined" || !token) return;
+  const map = readSessionTokenMap(storageKey);
+  map[userId] = token;
+  try {
+    sessionStorage.setItem(storageKey, JSON.stringify(map));
+  } catch {
+    /* quota/private mode */
+  }
+}
+
+function dropSessionToken(storageKey: string, userId: string): void {
+  if (typeof window === "undefined") return;
+  const map = readSessionTokenMap(storageKey);
+  if (!(userId in map)) return;
+  delete map[userId];
+  try {
+    sessionStorage.setItem(storageKey, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Refresh token still stored by supabase-js for a kept session. */
-function refreshFromSupabaseStorage(): RefreshMap {
+function refreshFromSupabaseStorage(): TokenMap {
   if (typeof window === "undefined" || !isKeepSignedIn()) return {};
-  const out: RefreshMap = {};
+  const out: TokenMap = {};
   try {
     for (const key of Object.keys(localStorage)) {
       if (!/^sb-.+-auth-token(?:\.\d+)?$/.test(key)) continue;
@@ -121,35 +142,23 @@ function refreshFromSupabaseStorage(): RefreshMap {
   return out;
 }
 
-function readRefreshTokens(): RefreshMap {
-  const session = readSessionRefresh();
+function readRefreshTokens(): TokenMap {
+  const session = readSessionTokenMap(REFRESH_KEY);
   if (!isKeepSignedIn()) return session;
   return { ...refreshFromSupabaseStorage(), ...readKeptRefresh(), ...session };
 }
 
-function saveRefreshToken(userId: string, refreshToken: string): void {
-  if (typeof window === "undefined") return;
-  const map = readSessionRefresh();
-  map[userId] = refreshToken;
-  try {
-    sessionStorage.setItem(REFRESH_KEY, JSON.stringify(map));
-  } catch {
-    /* quota/private mode: switching still works from the access token */
+function saveSessionTokens(userId: string, accessToken?: string, refreshToken?: string): void {
+  if (accessToken) writeSessionToken(ACCESS_KEY, userId, accessToken);
+  if (refreshToken) {
+    writeSessionToken(REFRESH_KEY, userId, refreshToken);
+    writeKeptRefresh(userId, refreshToken);
   }
-  writeKeptRefresh(userId, refreshToken);
 }
 
-function dropRefreshToken(userId: string): void {
-  if (typeof window === "undefined") return;
-  const map = readRefreshTokens();
-  if (userId in map) {
-    delete map[userId];
-    try {
-      sessionStorage.setItem(REFRESH_KEY, JSON.stringify(map));
-    } catch {
-      /* ignore */
-    }
-  }
+function dropAccountTokens(userId: string): void {
+  dropSessionToken(ACCESS_KEY, userId);
+  dropSessionToken(REFRESH_KEY, userId);
   dropKeptRefresh(userId);
 }
 
@@ -204,50 +213,56 @@ export async function rememberCurrentSession(): Promise<void> {
   if (!next) return;
   const rest = readVault().filter((a) => a.userId !== next.userId);
   writeVault([next, ...rest]);
-  if (next.refreshToken) saveRefreshToken(next.userId, next.refreshToken);
+  saveSessionTokens(next.userId, next.accessToken, next.refreshToken);
 }
 
 export async function switchToAccount(userId: string): Promise<void> {
   const account = readVault().find((a) => a.userId === userId);
   if (!account) throw new Error("That account is no longer saved on this device.");
   const refreshToken = readRefreshTokens()[userId];
+  const accessToken = readSessionTokenMap(ACCESS_KEY)[userId];
 
-  if (refreshToken) {
-    /* Same browser session: supabase-js refreshes an expired access token
-       against this refresh token transparently inside setSession. */
+  if (refreshToken && accessToken) {
     const { error, data } = await supabase.auth.setSession({
-      access_token: account.accessToken,
+      access_token: accessToken,
       refresh_token: refreshToken,
     });
     if (error || !data.session) {
       removeSavedAccount(userId);
       throw new Error("That saved session expired. Sign in again.");
     }
-  } else {
-    /* New tab/browser: no refresh token available. Only a still-live access
-       token can restore the session — and setSession refuses an empty refresh
-       token, so a still-valid token goes in with a marker the server never
-       sees; auto-refresh will fail gracefully near expiry instead. */
-    const ttl = accessTokenTtlSeconds(account.accessToken);
+  } else if (refreshToken) {
+    const { error, data } = await supabase.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+    if (error || !data.session) {
+      removeSavedAccount(userId);
+      throw new Error("That saved session expired. Sign in again.");
+    }
+  } else if (accessToken) {
+    const ttl = accessTokenTtlSeconds(accessToken);
     if (ttl <= 60) {
       removeSavedAccount(userId);
       throw new Error("That saved session expired. Sign in again.");
     }
     const { error, data } = await supabase.auth.setSession({
-      access_token: account.accessToken,
+      access_token: accessToken,
       refresh_token: "session-storage-only",
     });
     if (error || !data.session) {
       removeSavedAccount(userId);
       throw new Error("That saved session expired. Sign in again.");
     }
+  } else {
+    removeSavedAccount(userId);
+    throw new Error("That saved session expired. Sign in again.");
   }
   await rememberCurrentSession();
 }
 
 export function removeSavedAccount(userId: string): void {
   writeVault(readVault().filter((a) => a.userId !== userId));
-  dropRefreshToken(userId);
+  dropAccountTokens(userId);
 }
 
 export async function signOutCurrent(): Promise<SavedAccount | null> {
@@ -274,6 +289,7 @@ export async function signOutAll(): Promise<void> {
   writeVault([]);
   if (typeof window !== "undefined") {
     try {
+      sessionStorage.removeItem(ACCESS_KEY);
       sessionStorage.removeItem(REFRESH_KEY);
     } catch {
       /* ignore */

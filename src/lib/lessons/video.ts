@@ -1,16 +1,21 @@
+import { safeMediaUrl } from "@/lib/safe-url";
 import { LESSON_UPLOADS_BUCKET, resolveDisplayUrl } from "@/lib/storage-url";
 import type { Lesson, LessonVideo } from "./types";
 
+const YOUTUBE_HOST_RE = /^(?:www\.|m\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)$/i;
+const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{6,20}$/;
+const YOUTUBE_LIST_RE = /^[A-Za-z0-9_-]{6,64}$/;
+
 export function youtubeId(url: string): string | null {
   const u = url.trim();
-  const watch = u.match(/[?&]v=([\w-]{6,})/);
-  if (watch) return watch[1];
-  const short = u.match(/youtu\.be\/([\w-]{6,})/);
-  if (short) return short[1];
-  const embed = u.match(/youtube\.com\/embed\/([\w-]{6,})/);
-  if (embed) return embed[1];
-  const shorts = u.match(/youtube\.com\/shorts\/([\w-]{6,})/);
-  return shorts?.[1] ?? null;
+  const watch = u.match(/[?&]v=([A-Za-z0-9_-]{6,20})(?:[&#]|$)/);
+  if (watch && YOUTUBE_ID_RE.test(watch[1])) return watch[1];
+  const short = u.match(/youtu\.be\/([A-Za-z0-9_-]{6,20})(?:[?&#/]|$)/);
+  if (short && YOUTUBE_ID_RE.test(short[1])) return short[1];
+  const embed = u.match(/youtube(?:-nocookie)?\.com\/embed\/([A-Za-z0-9_-]{6,20})(?:[?&#/]|$)/);
+  if (embed && YOUTUBE_ID_RE.test(embed[1])) return embed[1];
+  const shorts = u.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{6,20})(?:[?&#/]|$)/);
+  return shorts && YOUTUBE_ID_RE.test(shorts[1]) ? shorts[1] : null;
 }
 
 function vimeoId(url: string): string | null {
@@ -28,7 +33,8 @@ export async function resolveLessonVideo(lesson: Pick<Lesson, "video_url" | "vid
   const raw = (lesson.video_url ?? "").trim();
   if (!raw) return { kind: "none" };
   if (youtubeId(raw) || vimeoId(raw)) return { kind: "none" };
-  if (/^https?:\/\//i.test(raw)) return { kind: "file", src: raw };
+  const safe = safeMediaUrl(raw);
+  if (safe && /^https:\/\//i.test(safe)) return { kind: "file", src: safe };
   return { kind: "none" };
 }
 
@@ -55,8 +61,15 @@ export function youtubeEmbed(url: string, options?: { autoplay?: boolean }): str
 
 /** A playlist embed. origin is required or Firefox tries a file:// fallback. */
 export function youtubePlaylistEmbed(url: string): string | null {
-  const list = /[?&]list=([^&]+)/.exec(url.trim())?.[1];
-  if (!list) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(url.trim());
+  } catch {
+    return null;
+  }
+  if (!YOUTUBE_HOST_RE.test(parsed.hostname)) return null;
+  const list = parsed.searchParams.get("list")?.trim() ?? "";
+  if (!YOUTUBE_LIST_RE.test(list)) return null;
   const params = new URLSearchParams({ list });
   const origin = embedOrigin();
   if (origin) params.set("origin", origin);

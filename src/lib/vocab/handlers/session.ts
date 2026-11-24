@@ -1,4 +1,7 @@
-import { recordUserActivity } from "../activity";
+import { publicError } from "@/lib/http/public-error";
+import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
+import { sharedRateLimit } from "@/lib/shared-rate-limit";
+import { recordVerifiedCardReview } from "../activity";
 import { applyReview, previewIntervals } from "../fsrs";
 import { jsonResponse, requireUser, restFetch } from "../rest";
 import { fetchDueSession } from "../session";
@@ -11,6 +14,14 @@ export async function handleVocabSession(request: Request, env: unknown): Promis
 
   const auth = await requireUser(request, env);
   if (!auth.ok) return auth.response;
+
+  const limit = await sharedRateLimit(env, `vocab-session:${auth.user.id}`, 30, 10);
+  if (!limit.ok) {
+    return jsonResponse(
+      { error: "Too many session requests. Wait a moment." },
+      { status: 429, headers: { "retry-after": String(limit.retryAfter || 10) } },
+    );
+  }
 
   try {
     const url = new URL(request.url);
@@ -41,8 +52,10 @@ export async function handleVocabSession(request: Request, env: unknown): Promis
 
     return jsonResponse({ cards, total: cards.length });
   } catch (e) {
-    console.error("[vocab/session]", e);
-    return jsonResponse({ error: e instanceof Error ? e.message : "Failed to load session" }, 500);
+    return jsonResponse(
+      { error: publicError("vocab/session", e instanceof Error ? e.message : String(e), "Failed to load session.") },
+      500,
+    );
   }
 }
 
@@ -54,12 +67,17 @@ export async function handleVocabReview(request: Request, env: unknown): Promise
   const auth = await requireUser(request, env);
   if (!auth.ok) return auth.response;
 
-  let body: { cardId?: unknown; rating?: unknown };
-  try {
-    body = (await request.json()) as { cardId?: unknown; rating?: unknown };
-  } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400);
+  const limit = await sharedRateLimit(env, `vocab-review:${auth.user.id}`, 120, 60);
+  if (!limit.ok) {
+    return jsonResponse(
+      { error: "Too many reviews too fast. Pause for a moment." },
+      { status: 429, headers: { "retry-after": String(limit.retryAfter || 5) } },
+    );
   }
+
+  const read = await readJsonLimited<{ cardId?: unknown; rating?: unknown }>(request);
+  if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+  const body = read.value ?? {};
 
   const cardId = typeof body.cardId === "string" ? body.cardId : "";
   const rating = body.rating;
@@ -83,11 +101,12 @@ export async function handleVocabReview(request: Request, env: unknown): Promise
       state: number;
       learning_steps?: number;
       last_review: string | null;
+      vocab_cards?: { deck_id?: string | null } | null;
     }[]
   >(
     auth.config,
     auth.token,
-    `user_card_states?user_id=eq.${encodeURIComponent(auth.user.id)}&card_id=eq.${encodeURIComponent(cardId)}&select=*`,
+    `user_card_states?user_id=eq.${encodeURIComponent(auth.user.id)}&card_id=eq.${encodeURIComponent(cardId)}&select=*,vocab_cards(deck_id)`,
   );
 
   if (error || !rows?.[0]) {
@@ -95,6 +114,10 @@ export async function handleVocabReview(request: Request, env: unknown): Promise
   }
 
   const current = rows[0];
+  const dueMs = new Date(current.due).getTime();
+  if (Number.isFinite(dueMs) && dueMs > Date.now() + 60_000) {
+    return jsonResponse({ error: "This card is not due for review yet." }, 409);
+  }
   const updated = applyReview(current, rating as ReviewRating);
 
   const patch = await restFetch(
@@ -109,12 +132,21 @@ export async function handleVocabReview(request: Request, env: unknown): Promise
   );
 
   if (patch.error) {
-    return jsonResponse({ error: patch.error }, 500);
+    return jsonResponse(
+      { error: publicError("vocab/review", patch.error, "Could not save review.") },
+      500,
+    );
   }
 
-  await recordUserActivity(auth.config, auth.token, auth.user.id, 1);
+  await recordVerifiedCardReview(
+    env,
+    auth.user.id,
+    current.vocab_cards?.deck_id ?? null,
+    rating as 1 | 2 | 3 | 4,
+  );
 
-  const next = { ...current, ...updated };
+  const { vocab_cards: _dropCard, ...currentState } = current;
+  const next = { ...currentState, ...updated };
   return jsonResponse({
     state: next,
     intervals: previewIntervals(next),

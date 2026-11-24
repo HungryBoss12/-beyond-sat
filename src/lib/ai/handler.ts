@@ -26,6 +26,7 @@ import { userIsBanned } from "@/lib/vocab/rest";
 import { loadUinfoSummary } from "@/lib/uinfo/summarize";
 import { dailyCap } from "@/lib/rate-limit";
 import { sharedRateLimit, takeAiQuota } from "@/lib/shared-rate-limit";
+import { readJsonLimited } from "@/lib/http/read-json";
 import {
   formatYoutubePromptBlock,
   latestUserText,
@@ -233,12 +234,14 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
     );
   }
 
-  let payload: AiChatRequest;
-  try {
-    payload = (await request.json()) as AiChatRequest;
-  } catch {
-    return json({ error: "Request body must be JSON" }, 400);
+  const read = await readJsonLimited<AiChatRequest>(request, 12 * 1024 * 1024);
+  if (!read.ok) {
+    return json(
+      { error: read.status === 413 ? "Request is too large." : "Request body must be JSON" },
+      read.status,
+    );
   }
+  const payload = read.value;
 
   const storageHost = storageHostFromUrl(config.url);
   const normalized = normalizeMessages(payload.messages, { storageHost });
@@ -257,6 +260,16 @@ export async function handleAiChat(request: Request, env: unknown): Promise<Resp
   const overrides = await loadModelOverrides(config, token);
   const geminiVisionModel = resolveGeminiVisionModel(overrides);
   const model = resolveModel(task, overrides);
+
+  if (task === "vision" || latestUserMessageHasImages(normalized.messages)) {
+    const visionLimit = await sharedRateLimit(env, `ai-vision:${user.id}`, 8, 2);
+    if (!visionLimit.ok) {
+      return json(
+        { error: "Too many image messages too fast. Pause for a moment and try again." },
+        { status: 429, headers: { "retry-after": String(visionLimit.retryAfter || 30) } },
+      );
+    }
+  }
 
   if (task === "vision") {
     const geminiKey = readEnv(env, "GEMINI_API_KEY");

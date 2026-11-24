@@ -1,5 +1,6 @@
 import { jsonResponse, requireAdmin } from "@/lib/vocab/rest";
 import { hydrateServerEnv, readEnv } from "@/lib/server-env";
+import { jsonReadError, readJsonLimited } from "@/lib/http/read-json";
 import { publicError } from "@/lib/http/public-error";
 
 const FAILED = "Could not reset the password.";
@@ -44,12 +45,9 @@ export async function handleResetStudentPassword(request: Request, env: unknown)
   const auth = await requireAdmin(request, env);
   if (!auth.ok) return auth.response;
 
-  let body: { userId?: unknown; password?: unknown };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400);
-  }
+  const read = await readJsonLimited<{ userId?: unknown; password?: unknown }>(request);
+  if (!read.ok) return jsonResponse(jsonReadError(read.status), read.status);
+  const body = read.value ?? {};
 
   const userId = typeof body.userId === "string" ? body.userId.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
@@ -60,10 +58,9 @@ export async function handleResetStudentPassword(request: Request, env: unknown)
   if (password.length < 8) return jsonResponse({ error: "Password must be at least 8 characters." }, 400);
   if (password.length > 72) return jsonResponse({ error: "Password is too long." }, 400);
 
-  const { resetSupabaseAdmin, ensureSupabaseAdmin, supabaseAdmin } = await import(
+  const { ensureSupabaseAdmin, supabaseAdmin } = await import(
     "@/integrations/supabase/client.server"
   );
-  resetSupabaseAdmin();
   ensureSupabaseAdmin();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabaseAdmin as any;

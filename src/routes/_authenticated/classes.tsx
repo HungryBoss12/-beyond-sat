@@ -1085,7 +1085,7 @@ function HomeworkVideo({ url }: { url: string }) {
     );
   }
   const media = safeNavigationUrl(trimmed);
-  if (media && /^https?:/i.test(media)) {
+  if (media && /^https:\/\//i.test(media)) {
     return (
       <div className="mt-3 aspect-video overflow-hidden rounded-xl bg-black">
         <video className="h-full w-full" src={media} controls playsInline />

@@ -19,10 +19,12 @@ import { hydrateServerEnv, readTelegramToken, readWebhookSecret } from "./env";
 import { linkAttemptAllowed } from "./link-throttle";
 import { readJsonLimited } from "@/lib/http/read-json";
 import {
+  AdminBotError,
   consumeLinkCode,
   fetchUserDetail,
   fetchUserSessions,
   findUserByEmailOrId,
+  isAdminAccount,
   resolveAdminByChat,
   searchUsers,
   setUserBanned,
@@ -51,9 +53,17 @@ export async function handleTelegramWebhook(request: Request, env: unknown): Pro
   hydrateServerEnv(env);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  const chatId =
-    update.message?.chat.id ?? update.callback_query?.message?.chat.id ?? null;
+  const chat = update.message?.chat ?? update.callback_query?.message?.chat ?? null;
+  const senderId = update.message?.from?.id ?? update.callback_query?.from.id ?? null;
+  const chatId = chat?.id ?? null;
   if (chatId == null) {
+    return new Response("OK");
+  }
+  // Admin bot commands are strictly 1:1 private DM — never authorize a shared group chat.
+  if (chat?.type !== "private" || senderId == null || senderId !== chatId) {
+    if (update.callback_query) {
+      await answerCallbackQuery(token, update.callback_query.id);
+    }
     return new Response("OK");
   }
 
@@ -104,10 +114,11 @@ async function handleCallback(
         await sendTelegramMessage(token, chatId, "User unbanned.");
       }
     } catch (e) {
+      console.error("[telegram] callback failed", e);
       await sendTelegramMessage(
         token,
         chatId,
-        e instanceof Error ? e.message : "Action failed.",
+        e instanceof AdminBotError ? e.message : "Action failed.",
       );
     }
   }
@@ -215,6 +226,10 @@ async function dispatchCommand(
           await sendTelegramMessage(token, chatId, "You cannot ban your own account.");
           break;
         }
+        if (await isAdminAccount(supabase, user.id)) {
+          await sendTelegramMessage(token, chatId, "Cannot ban another admin account.");
+          break;
+        }
         await sendTelegramMessage(
           token,
           chatId,
@@ -242,10 +257,11 @@ async function dispatchCommand(
         await sendTelegramMessage(token, chatId, "Unknown command. Send /help.");
     }
   } catch (e) {
+    console.error("[telegram] command failed", e);
     await sendTelegramMessage(
       token,
       chatId,
-      e instanceof Error ? e.message : "Something went wrong.",
+      e instanceof AdminBotError ? e.message : "Something went wrong.",
     );
   }
 }

@@ -17,12 +17,17 @@ export function firstLoginAuthUpdate(input: {
   nextUsername: string | null;
   prevUsername: string | null;
   currentEmail: string | null;
+  syntheticEmail?: string;
 }): FirstLoginAuthUpdate {
-  const { password, nextEmail, nextUsername, prevUsername, currentEmail } = input;
+  const { password, nextEmail, nextUsername, prevUsername, currentEmail, syntheticEmail } = input;
   if (nextEmail) return { attributes: { password }, pendingEmail: nextEmail };
   if (nextUsername && nextUsername !== prevUsername && isSyntheticAccountEmail(currentEmail)) {
     return {
-      attributes: { password, email: accountEmailFor(nextUsername), email_confirm: true },
+      attributes: {
+        password,
+        email: syntheticEmail ?? accountEmailFor(nextUsername),
+        email_confirm: true,
+      },
       pendingEmail: null,
     };
   }

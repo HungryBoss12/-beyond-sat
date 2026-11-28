@@ -156,6 +156,9 @@ function SessionReview() {
     })();
   }, [id]);
 
+  const activeSection: Section = search.section ?? "reading_writing";
+  const activeModule: ReviewModule = search.module ?? 1;
+
   const visible = useMemo(() => {
     if (!search.section || !search.module) return [];
     return questions.filter(
@@ -362,7 +365,7 @@ function SessionReview() {
               key={section}
               type="button"
               aria-pressed={section === search.section}
-              onClick={() => openPart(section, search.module)}
+              onClick={() => openPart(section, activeModule)}
               className={
                 "tap rounded-full px-3 py-1 text-xs font-bold " +
                 (section === search.section
@@ -379,7 +382,7 @@ function SessionReview() {
               key={module}
               type="button"
               aria-pressed={module === search.module}
-              onClick={() => openPart(search.section, module)}
+              onClick={() => openPart(activeSection, module)}
               className={
                 "tap rounded-full px-3 py-1 text-xs font-bold " +
                 (module === search.module
